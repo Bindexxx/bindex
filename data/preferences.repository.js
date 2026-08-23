@@ -48,3 +48,10 @@ function prefSidebarCompressaSet(compressa) { localStorage.setItem(CHIAVE_SIDEBA
 
 function prefRiduciAnimazioniGet() { return localStorage.getItem(CHIAVE_RIDUCI_ANIMAZIONI) === 'true'; }
 function prefRiduciAnimazioniSet(ridotte) { localStorage.setItem(CHIAVE_RIDUCI_ANIMAZIONI, ridotte ? 'true' : 'false'); }
+
+// Layout della home a widget (cornice "smartphone", sessione 2026-08-23):
+// ordine + visibilità dei widget, per-dispositivo come le altre preferenze
+// qui sopra — NON sincronizzato tra dispositivi. Valore: JSON di
+// [{id, visibile}]. Vedi ui/phone.ui.js per lettura/scrittura.
+function prefWidgetLayoutGet() { return localStorage.getItem('cardsyncWidgetLayout'); }
+function prefWidgetLayoutSet(layoutJson) { localStorage.setItem('cardsyncWidgetLayout', layoutJson); }
