@@ -1768,13 +1768,6 @@
                     <i class="fa-solid fa-desktop"></i>
                     <span class="app-launch-btn-text nav-label">Apri l'app</span>
                 </button>
-                <label class="app-launch-auto" title="Apri sempre l'app all'apertura del sito da questo dispositivo">
-                    <span class="switch-mini">
-                        <input type="checkbox" id="chkApriSempreApp" onchange="salvaPreferenzaApriSempreApp(this.checked)">
-                        <span class="slider"></span>
-                    </span>
-                    <span class="app-launch-auto-text nav-label">Apri sempre l'app all'apertura del sito da questo dispositivo</span>
-                </label>
             </div>
             <a class="nav-item" id="mNav-impostazioni" onclick="switchTab('impostazioni', this)">
                 <i class="fa-solid fa-gear"></i><span class="nav-label">Impostazioni</span>
@@ -2320,6 +2313,37 @@
                         <input type="checkbox" id="riduciAnimazioniToggle" onchange="toggleRiduciAnimazioni(this.checked)">
                         <span class="slider"></span>
                     </label>
+                </div>
+
+                <!-- GRUPPO ESTENSIONE — visibile solo se l'estensione risponde
+                     (stessa condizione che prima nascondeva questi controlli
+                     nella sidebar, vedi _aggiornaControlliApriApp in
+                     ui/extension.ui.js). Entrambe preferenze PER-DISPOSITIVO,
+                     salvate nell'estensione (chrome.storage.local), non
+                     nell'account Supabase — due dispositivi con lo stesso
+                     login possono avere valori diversi, di proposito. -->
+                <div id="impostazioniEstensioneGroup" style="display:none;">
+                    <div class="setting-row">
+                        <div>
+                            <h4 style="font-size: 0.9rem; font-weight: 700;">Apri sempre l'app all'apertura</h4>
+                            <p style="font-size: 0.75rem; color: var(--text-muted);">Apre automaticamente l'app dell'estensione ogni volta che visiti il sito da questo dispositivo</p>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" id="chkApriSempreApp" onchange="salvaPreferenzaApriSempreApp(this.checked)">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="setting-row">
+                        <div>
+                            <h4 style="font-size: 0.9rem; font-weight: 700;">Aiuta il gruppo da questo dispositivo</h4>
+                            <p style="font-size: 0.75rem; color: var(--text-muted);">L'app aperta su questo device aiuta gli altri a fare i calcoli (risolve anche le carte del resto del gruppo, non solo le tue)</p>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" id="chkAiutaGruppoDispositivo" onchange="salvaPreferenzaAiutaGruppoDispositivo(this.checked)">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
                 </div>
 
                 <!-- TEMA DEL SITO -->
