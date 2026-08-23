@@ -272,7 +272,7 @@
             // già questa cartella — glielo diciamo noi, con certezza.
             const tipoOperazione = _versioneVecchiaRilevata ? 'aggiornamento' : 'installazione';
             document.getElementById('comandoAggiornaEstensione').textContent =
-                `irm https://claudio-git-poke.github.io/CardSyncProOnline/releases/aggiorna_cardsync.bat -OutFile "$env:TEMP\\aggiorna_cardsync.bat"; & "$env:TEMP\\aggiorna_cardsync.bat" ${tipoOperazione}`;
+                `irm https://bindexxx.github.io/bindex/releases/aggiorna_cardsync.bat -OutFile "$env:TEMP\\aggiorna_cardsync.bat"; & "$env:TEMP\\aggiorna_cardsync.bat" ${tipoOperazione}`;
 
             const elPasso3 = document.getElementById('statoIstruzioniPasso3');
             if (_versioneVecchiaRilevata) {
