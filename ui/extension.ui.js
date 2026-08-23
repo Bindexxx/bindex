@@ -116,18 +116,68 @@
         }
 
 
-        // Mostra il gruppo "Apri l'app" solo se l'estensione è stata rilevata
-        // (installata e aggiornata — vedi controlloIngressoCardsync) e se
-        // c'è davvero una sessione attiva da passarle. Se la preferenza
-        // locale "apri sempre" è attiva, la apre subito senza bisogno di
-        // cliccare nulla.
+        // Chiede all'estensione lo stato attuale di "aiutaGruppo" (per-
+        // dispositivo, chrome.storage.local — vedi CARDSYNC_GET_AIUTA_GRUPPO
+        // in background.js). Stessa tolleranza di _chiediVersioneEstensione:
+        // se l'estensione non risponde entro 1.2s, o non c'è proprio,
+        // risolve a false invece di restare in attesa.
+        function _chiediAiutaGruppoEstensione() {
+            return new Promise((resolve) => {
+                if (!window.chrome || !chrome.runtime || !chrome.runtime.sendMessage) {
+                    resolve(false);
+                    return;
+                }
+                let risolto = false;
+                const timeoutId = setTimeout(() => { if (!risolto) { risolto = true; resolve(false); } }, 1200);
+                try {
+                    chrome.runtime.sendMessage(ID_ESTENSIONE_CARDSYNC, { type: 'CARDSYNC_GET_AIUTA_GRUPPO' }, (risposta) => {
+                        if (risolto) return;
+                        risolto = true;
+                        clearTimeout(timeoutId);
+                        if (chrome.runtime.lastError || !risposta || !risposta.ok) { resolve(false); return; }
+                        resolve(!!risposta.aiutaGruppo);
+                    });
+                } catch (_) {
+                    if (!risolto) { risolto = true; clearTimeout(timeoutId); resolve(false); }
+                }
+            });
+        }
+
+        // Scrive la preferenza nell'estensione (CARDSYNC_SET_AIUTA_GRUPPO) —
+        // stessa tolleranza delle altre chiamate verso l'estensione: se non
+        // risponde non blocchiamo né avvisiamo l'utente con un errore, la
+        // preferenza resta quella che era prima sul dispositivo.
+        function salvaPreferenzaAiutaGruppoDispositivo(attivo) {
+            if (!window.chrome || !chrome.runtime || !chrome.runtime.sendMessage) return;
+            try {
+                chrome.runtime.sendMessage(ID_ESTENSIONE_CARDSYNC, { type: 'CARDSYNC_SET_AIUTA_GRUPPO', valore: attivo }, () => {
+                    void chrome.runtime.lastError;
+                });
+            } catch (_) { /* silenzioso */ }
+        }
+
+
+        // Mostra i controlli "Apri l'app" (sidebar) e "Apri sempre l'app" +
+        // "Aiuta il gruppo da questo dispositivo" (Impostazioni) solo se
+        // l'estensione è stata rilevata (installata e aggiornata — vedi
+        // controlloIngressoCardsync). Se la preferenza locale "apri sempre"
+        // è attiva, la apre subito senza bisogno di cliccare nulla.
         async function _aggiornaControlliApriApp() {
             const gruppo = document.getElementById('appLaunchGroup');
-            if (!_versioneVecchiaRilevata) { gruppo.style.display = 'none'; return; }
+            const gruppoImpostazioni = document.getElementById('impostazioniEstensioneGroup');
+            if (!_versioneVecchiaRilevata) {
+                gruppo.style.display = 'none';
+                gruppoImpostazioni.style.display = 'none';
+                return;
+            }
             gruppo.style.display = 'flex';
+            gruppoImpostazioni.style.display = 'block';
+
             const apriSempre = prefApriSempreAppGet();
             document.getElementById('chkApriSempreApp').checked = apriSempre;
             if (apriSempre) _mandaAperturaAppAEstensione();
+
+            document.getElementById('chkAiutaGruppoDispositivo').checked = await _chiediAiutaGruppoEstensione();
         }
 
 
