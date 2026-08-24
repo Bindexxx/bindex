@@ -8,6 +8,23 @@
             const userId = await authGetUserId();
             if (!userId) return;
 
+            // Multi-Binder (2026-08-25): binder_carte ora è per-binder, non più
+            // globale per utente — serve l'id del binder 'extra' PRIMA di
+            // interrogare binder_carte. Get-or-create idempotente (vedi
+            // data/binder.repository.js), fatto qui perché caricaCarteReali()
+            // gira ad ogni apertura del sito, non solo aprendo il widget
+            // Binders — _idsNelBinder deve essere corretto comunque (i
+            // pulsanti "Aggiungi al Binder" in Visualizzazione/Wishlist non
+            // dipendono dal widget Binders essendo mai stato aperto).
+            if (!_binderExtraId) {
+                const { data: binderExtra, error: errBinderExtra } = await binderExtraGarantisci(userId, 'Il mio binder');
+                if (errBinderExtra) {
+                    console.error('Errore nel garantire il binder extra:', errBinderExtra.message);
+                } else if (binderExtra) {
+                    _binderExtraId = binderExtra.id;
+                }
+            }
+
             // Collezione e wishlist ora vivono in DUE TABELLE separate (non
             // più stato='wishlist' dentro 'carte') — le leggiamo insieme e le
             // uniamo in un solo array per riusare la stessa tabella/filtri sul
@@ -16,7 +33,7 @@
             const [{ data: dataCarte, error: errCarte }, { data: dataWishlist, error: errWishlist }, { data: dataBinder, error: errBinder }] = await Promise.all([
                 _selectTuttePagine(cardsQueryCollezione(userId)),
                 _selectTuttePagine(wishlistQueryOrdinata(userId)),
-                _selectTuttePagine(binderCarteQuery(userId)),
+                _binderExtraId ? _selectTuttePagine(binderCarteQuery(userId, _binderExtraId)) : Promise.resolve({ data: [], error: null }),
             ]);
 
             if (errCarte || errWishlist) {
@@ -710,6 +727,11 @@
             const righe = _righeSelezionate();
             if (righe.length === 0) return;
 
+            if (!_binderExtraId) {
+                alert('❌ Il tuo binder personale non è ancora pronto — riprova tra un istante.');
+                return;
+            }
+
             const idsEleggibili = righe
                 .filter(r => r.tabella === 'carte')
                 .map(r => r.id)
@@ -723,7 +745,7 @@
             const userId = await authGetUserId();
             if (!userId) return;
 
-            const { error } = await binderCarteInsert(idsEleggibili.map(id => ({ owner_id: userId, carta_id: id })));
+            const { error } = await binderCarteInsert(idsEleggibili.map(id => ({ owner_id: userId, binder_id: _binderExtraId, carta_id: id })));
             if (error) { alert('❌ Errore nell\'aggiungere le carte al Binder: ' + error.message); return; }
 
             idsEleggibili.forEach(id => {

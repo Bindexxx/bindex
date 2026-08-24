@@ -250,6 +250,11 @@ function renderBinderGrigliaImmagini() {
     const binder = _bindersElenco.find(b => String(b.id) === String(_binderAttivo));
     const permettiRimozione = binder && binder.tipo === 'extra';
 
+    const griglia = document.getElementById('binderGrid');
+    const contenitoreElenco = document.getElementById('binderElencoBody');
+    griglia.style.display = '';
+    if (contenitoreElenco) contenitoreElenco.style.display = 'none';
+
     const layout = BINDER_LAYOUTS[_binderLayout] || BINDER_LAYOUTS['3x3'];
     const perPagina = layout.cols * layout.rows;
 
@@ -270,7 +275,6 @@ function renderBinderGrigliaImmagini() {
         btn.classList.toggle('active', btn.dataset.layout === _binderLayout);
     });
 
-    const griglia = document.getElementById('binderGrid');
     griglia.className = `binder-grid binder-grid-${_binderLayout}`;
 
     let html = '';
@@ -302,31 +306,121 @@ function renderBinderGrigliaImmagini() {
     document.getElementById('binderPagination').style.display = totalePagine > 1 ? 'flex' : 'none';
 }
 
-// STUB — vedi blocco di commenti in cima al file. Non è la vista finale,
-// solo per non lasciare la modalità elenco/soglia-1088 completamente rotta
-// nel frattempo.
-function renderBinderElenco() {
-    const griglia = document.getElementById('binderGrid');
-    if (!griglia) return;
-    griglia.className = 'binder-grid-elenco-stub';
-    griglia.innerHTML = `
-        <div class="stato-vuoto" style="grid-column:1/-1;">
-            <i class="fa-solid fa-list"></i><br>
-            Modalità elenco in arrivo (in attesa di ui/cards.ui.js per riusarla identica a Visualizzazione).<br>
-            <small>${_carteBinderAttivoCache.length} carte in questo binder.</small>
-        </div>`;
-    document.getElementById('binderPagination').style.display = 'none';
-    document.getElementById('binderEmptyMsg').style.display = 'none';
+// ── Aggiungi/Rimuovi dal binder extra (bottoni già esistenti in
+// Visualizzazione/Wishlist, ui/cards.ui.js) ─────────────────────────────
+// Portate dal vecchio binder.ui.js (era il binder singolo, ora è
+// specificamente il binder 'extra') — stesso comportamento: azione
+// leggera, aggiorna solo _idsNelBinder + i pulsanti a schermo, non
+// ricarica tutta la collezione.
+async function toggleBinderMembership(id) {
+    const card = carteReali.find(c => String(c.id) === String(id));
+    if (!card || card.tabella !== 'carte' || card.stato !== 'collezione') return;
+    if (!_binderExtraId) { console.error('toggleBinderMembership: binder extra non ancora pronto'); return; }
+
+    const giaNelBinder = _idsNelBinder.has(String(id));
+    if (giaNelBinder) {
+        if (!confirm(`Rimuovere "${card.name}" dal tuo binder personale?`)) return;
+    }
+
+    const userId = await authGetUserId();
+    if (!userId) return;
+
+    if (giaNelBinder) {
+        const { error } = await binderCarteDeleteOne(userId, _binderExtraId, id);
+        if (error) { alert('❌ Errore nel rimuovere la carta dal Binder: ' + error.message); return; }
+        _idsNelBinder.delete(String(id));
+    } else {
+        const { error } = await binderCarteInsert({ owner_id: userId, binder_id: _binderExtraId, carta_id: id });
+        if (error) { alert('❌ Errore nell\'aggiungere la carta al Binder: ' + error.message); return; }
+        _idsNelBinder.add(String(id));
+    }
+
+    _aggiornaBottoniBinderToggle(id);
+
+    // Se in questo momento è aperto proprio il binder extra nel widget
+    // Binders, la lista in memoria (_carteBinderAttivoCache) è ora
+    // disallineata — la ricarico solo in quel caso specifico, non ad ogni
+    // toggle (che parte quasi sempre da Visualizzazione, non da qui).
+    const binderAperto = _bindersElenco.find(b => String(b.id) === String(_binderAttivo));
+    if (binderAperto && binderAperto.tipo === 'extra') {
+        await _caricaCarteBinderAttivo(binderAperto);
+        renderBinderContenuto();
+    }
 }
 
+function _aggiornaBottoniBinderToggle(id) {
+    const idAttr = String(id);
+    const nelBinder = _idsNelBinder.has(idAttr);
+    document.querySelectorAll(`.btn-binder-toggle[data-id="${idAttr}"]`).forEach((btn) => {
+        btn.innerHTML = nelBinder
+            ? '<i class="fa-solid fa-layer-group"></i> Rimuovi dal Binder'
+            : '<i class="fa-solid fa-layer-group"></i> Aggiungi al Binder';
+        btn.classList.remove('binder-toggle-flash');
+        void btn.offsetWidth;
+        btn.classList.add('binder-toggle-flash');
+        setTimeout(() => btn.classList.remove('binder-toggle-flash'), 600);
+    });
+}
+
+// Rimozione diretta dallo slot pieno nella griglia immagini del binder
+// extra (bottone ✕ su ogni slot, vedi renderBinderGrigliaImmagini).
 async function rimuoviDalBinderExtra(cartaId) {
+    await toggleBinderMembership(cartaId);
+}
+
+
+// ── Modalità elenco (parallela a renderViewTable di Visualizzazione, non
+// la stessa funzione — vedi nota) ────────────────────────────────────────
+// renderViewTable() in ui/cards.ui.js scrive dentro id fissi della pagina
+// Visualizzazione (#viewTableBody, #tableHeaderRow, #stat-count...) — sono
+// GLI STESSI elementi della tab Visualizzazione, non se ne possono avere
+// due copie nel DOM con lo stesso id. Richiamarla da qui scriverebbe nella
+// tabella di Visualizzazione, non in quella del Binder. Questa è quindi
+// un'implementazione parallela con lo STESSO stile visivo della vista
+// compatta (_rigaCompattaHtml), su un contenitore proprio del Binder
+// (#binderElencoBody) — stessi campi, stessa occhiata, DOM separato.
+// Se in futuro renderViewTable() viene generalizzata per accettare un
+// contenitore target, questa funzione può sparire in favore di quella.
+function renderBinderElenco() {
+    const contenitore = document.getElementById('binderElencoBody');
+    const binderGridEl = document.getElementById('binderGrid');
+    if (!contenitore) { console.error('renderBinderElenco: manca #binderElencoBody in index.html'); return; }
+    if (binderGridEl) binderGridEl.style.display = 'none';
+    contenitore.style.display = '';
+
     const binder = _bindersElenco.find(b => String(b.id) === String(_binderAttivo));
-    if (!binder || binder.tipo !== 'extra') return;
-    const userId = await authGetUserId();
-    const { error } = await binderCarteDeleteOne(userId, binder.id, cartaId);
-    if (error) { console.error('rimuoviDalBinderExtra:', error.message); return; }
-    _carteBinderAttivoCache = _carteBinderAttivoCache.filter(c => String(c.id) !== String(cartaId));
-    renderBinderContenuto();
+    const permettiRimozione = binder && binder.tipo === 'extra';
+
+    if (_carteBinderAttivoCache.length === 0) {
+        contenitore.innerHTML = '<div class="stato-vuoto"><i class="fa-solid fa-layer-group"></i><br>Nessuna carta in questo binder.</div>';
+        document.getElementById('binderPagination').style.display = 'none';
+        return;
+    }
+
+    const carte = _carteBinderAttivoCache.slice().sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+
+    contenitore.innerHTML = carte.map(card => {
+        const idAttr = String(card.id).replace(/'/g, "\\'");
+        const nomeAttr = escapeHtml(card.name || '');
+        const immagineSrc = _urlImmagineVisualizzabile(card.immagine);
+        const thumb = immagineSrc
+            ? `<img src="${immagineSrc}" alt="" class="riga-compatta-thumb" loading="lazy" onclick="apriImmagineIngrandita('${idAttr}')" onerror="this.style.display='none';">`
+            : '';
+        return `
+            <div class="riga-compatta">
+                <div class="riga-compatta-top">
+                    ${thumb}
+                    <span class="riga-compatta-nome">
+                        <span class="riga-compatta-nome-testo">${nomeAttr}</span>
+                    </span>
+                    ${card.qty > 1 ? `<span class="riga-compatta-prezzo">×${card.qty}</span>` : ''}
+                    ${permettiRimozione ? `<button class="riga-compatta-menu-btn" onclick="rimuoviDalBinderExtra('${idAttr}')" title="Rimuovi dal Binder"><i class="fa-solid fa-xmark"></i></button>` : ''}
+                </div>
+            </div>`;
+    }).join('');
+
+    document.getElementById('binderPagination').style.display = 'none';
+    document.getElementById('binderEmptyMsg').style.display = 'none';
 }
 
 function binderPaginaAvanti() {
