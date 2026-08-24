@@ -638,9 +638,42 @@
            scelta dall'utente da bucket Supabase: punto di innesto già
            pronto in _applicaSfondoUtente (ui/phone.ui.js), stesso pattern
            di _applicaCorniceUtente per la cornice. */
-        #phoneWidgetHomeWrap {
+        /* ═══════════════════════════════════════════════════════════════
+           HOME COME PAGINA PRINCIPALE + SWIPE AI WIDGET (Claudio,
+           2026-08-24): #phoneScreen ora contiene due "pagine" a scatto
+           orizzontale... anzi VERTICALE (swipe in giù), impilate dentro
+           #phonePagineWrap con scroll-snap — esattamente come cambiare
+           schermata home su iPhone/Android, non scroll libero. Pagina 1
+           = Home (la vecchia dashboard, il nodo #home viene SPOSTATO qui
+           via JS in initPhoneShell — appendChild, non riscritto: stesso
+           contenuto, stessi id, zero rischio), pagina 2 = griglia widget
+           (contenuto invariato, solo non più position:absolute ma normale
+           figlio in sequenza). ═══════════════════════════════════════ */
+        #phonePagineWrap {
             position: absolute;
             inset: 0;
+            overflow-y: auto;
+            scroll-snap-type: y mandatory;
+            scroll-behavior: smooth;
+        }
+        .phone-pagina {
+            height: 100%;
+            width: 100%;
+            box-sizing: border-box;
+            overflow-y: auto;
+            scroll-snap-align: start;
+            scroll-snap-stop: always;
+        }
+        #phoneHomePage {
+            padding: 1.1rem 1rem calc(1.1rem + env(safe-area-inset-bottom));
+        }
+        /* #home viene spostato qui dentro via JS ma resta un normale
+           .view-section altrove nel sito (display:none di default,
+           attivato/disattivato da switchTab) — qui invece deve restare
+           SEMPRE visibile, è una pagina a sé, non un dettaglio. */
+        #phoneHomePage #home.view-section { display: block !important; }
+
+        #phoneWidgetHomeWrap {
             overflow-y: auto;
             padding: 1.1rem 0.9rem calc(1.1rem + env(safe-area-inset-bottom));
             background: radial-gradient(ellipse at top, color-mix(in srgb, var(--primary) 10%, transparent) 0%, transparent 60%), var(--bg-color);
@@ -891,17 +924,37 @@
         }
         .container:not(.container-visibile) { display: none; }
 
-        #btnIndietroDettaglioWidget {
-            display: none;
-            position: fixed;
-            z-index: 12;
-            background: var(--primary); color: #fff; border: none;
-            border-radius: 30px; padding: 0.45rem 0.9rem;
-            font-weight: 700; font-size: 0.78rem; cursor: pointer;
-            display: none; align-items: center; gap: 0.4rem;
-            box-shadow: var(--shadow-soft);
+        /* Bottone fisico unico (Claudio: "il tasto in basso... se apro i
+           widget la saetta diventa indietro") — sostituisce sia il vecchio
+           tasto "Indietro" flottante sia l'idea di rendere cliccabile il
+           disegno della saetta: qui è un bottone HTML vero, posizionato
+           ESATTAMENTE sopra il cerchio della saetta nell'immagine (misurato
+           pixel per pixel, non a occhio — vedi ui/phone.ui.js
+           _aggiornaTastoFisico per quando cambia icona/comportamento),
+           abbastanza opaco da coprire il disegno sottostante. Tre stati:
+           nascosto (sei già sulla Home), icona casetta (sei sui widget,
+           torna alla Home), icona freccia (hai aperto un dettaglio, torna
+           ai widget). */
+        #btnFisicoTelefono {
+            position: absolute;
+            left: 49.94%; top: 93.89%; /* cornice verticale */
+            transform: translate(-50%, -50%);
+            width: 12%; aspect-ratio: 1;
+            border-radius: 50%;
+            background: radial-gradient(circle at 35% 30%, #2b2b2e, #0c0c0e 72%);
+            border: 2px solid color-mix(in srgb, var(--primary) 65%, #000 35%);
+            color: #4ad9ff;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.05rem;
+            cursor: pointer;
+            z-index: 6;
+            box-shadow: 0 0 10px rgba(74, 217, 255, 0.45);
+            transition: visibility 0s;
         }
-        body.phone-detail-open #btnIndietroDettaglioWidget { display: flex; }
+        @media (orientation: landscape) {
+            #btnFisicoTelefono { left: 51.82%; top: 92.35%; width: 9.8%; }
+        }
+        #btnFisicoTelefono.nascosto { visibility: hidden; pointer-events: none; }
 
         /* Notifiche push in stile smartphone — banner che scivola dall'alto
            dentro lo schermo (non dentro .container: resta visibile sia
@@ -2277,37 +2330,49 @@
 
             <div id="phoneScreen">
                 <div id="phonePushBanner"><i class="fa-solid fa-bell"></i><span id="phonePushBannerTesto"></span></div>
-                <div id="phoneWidgetHomeWrap">
-                    <div class="phone-status-bar">
-                        <span class="phone-lcd" id="phoneStatusOra"></span>
-                        <div class="phone-sync-dot" id="phoneSyncDot"></div>
+                <div id="phonePagineWrap">
+                    <div id="phoneHomePage" class="phone-pagina">
+                        <!-- #home viene spostato qui via JS (appendChild, non riscritto)
+                             da initPhoneShell in ui/phone.ui.js — resta lo stesso nodo,
+                             stesso contenuto, stessi id di sempre. -->
                     </div>
-                    <div class="phone-home-header">
-                        <div class="logo">
-                            <img src="favicon.ico" alt="Favicon">
-                            <span class="logo-text">CardSync Pro</span>
+                    <div id="phoneWidgetHomeWrap" class="phone-pagina">
+                        <div class="phone-status-bar">
+                            <span class="phone-lcd" id="phoneStatusOra"></span>
+                            <div class="phone-sync-dot" id="phoneSyncDot"></div>
                         </div>
-                        <button id="btnSuoniWidgetHome" onclick="toggleSuoniWidgetHome()" title="Suoni">
-                            <i class="fa-solid fa-volume-high" id="iconaSuoniWidgetHome"></i>
-                        </button>
-                        <button id="btnDensitaWidgetHome" onclick="toggleDensitaWidgetHome()" title="Densità compatta/comoda">
-                            <i class="fa-solid fa-table-cells-large"></i>
-                        </button>
-                        <button id="btnModificaWidgetHome" onclick="toggleModificaWidgetHome()" title="Personalizza i widget">
-                            <i class="fa-solid fa-pen"></i>
-                        </button>
+                        <div class="phone-home-header">
+                            <div class="logo">
+                                <img src="favicon.ico" alt="Favicon">
+                                <span class="logo-text">CardSync Pro</span>
+                            </div>
+                            <button id="btnSuoniWidgetHome" onclick="toggleSuoniWidgetHome()" title="Suoni">
+                                <i class="fa-solid fa-volume-high" id="iconaSuoniWidgetHome"></i>
+                            </button>
+                            <button id="btnDensitaWidgetHome" onclick="toggleDensitaWidgetHome()" title="Densità compatta/comoda">
+                                <i class="fa-solid fa-table-cells-large"></i>
+                            </button>
+                            <button id="btnModificaWidgetHome" onclick="toggleModificaWidgetHome()" title="Personalizza i widget">
+                                <i class="fa-solid fa-pen"></i>
+                            </button>
+                        </div>
+                        <div id="phoneWidgetGrid"></div>
                     </div>
-                    <div id="phoneWidgetGrid"></div>
                 </div>
             </div>
+
+            <!-- Bottone fisico unico — home/indietro, vedi commento CSS su
+                 #btnFisicoTelefono. Fuori da #phoneScreen (che ha
+                 overflow:hidden per gli angoli arrotondati) ma dentro
+                 #phoneFrameBox, stesso sistema di coordinate percentuali
+                 dello schermo. -->
+            <button id="btnFisicoTelefono" class="nascosto" onclick="_clickTastoFisico()" title="Home">
+                <i class="fa-solid fa-house"></i>
+            </button>
         </div>
     </div>
 
     <div id="widgetPeekOverlay"></div>
-
-    <button id="btnIndietroDettaglioWidget" onclick="chiudiDettaglioWidget()">
-        <i class="fa-solid fa-arrow-left"></i> Indietro
-    </button>
 
     <!-- MODALE — scelta widget da riaggiungere alla home (solo quelli
          nascosti dall'utente, vedi _apriPickerAggiungiWidget in
