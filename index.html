@@ -511,10 +511,10 @@
             --phone-screen-left-v: 17.6%;
             --phone-screen-right-v: 13.6%;
 
-            --phone-screen-top-o: 12.75%;
-            --phone-screen-bottom-o: 15.73%;
-            --phone-screen-left-o: 9.57%;
-            --phone-screen-right-o: 9.57%;
+            --phone-screen-top-o: 11.80%;
+            --phone-screen-bottom-o: 15.30%;
+            --phone-screen-left-o: 8.97%;
+            --phone-screen-right-o: 9.27%;
         }
 
         #phoneShell {
@@ -570,12 +570,18 @@
         }
         /* Solo su desktop (mouse reale, non touch): tetto massimo perché
            resti un mockup, non riempia il monitor — 800px sull'asse
-           lungo (altezza in verticale, larghezza in orizzontale), con
-           l'asse corto ricavato dallo stesso rapporto dell'immagine
-           (885/1777 e 941/1672) così i due valori restano sempre
-           coerenti tra loro. Cambia solo questo numero (800) se vuoi il
-           mockup più grande/piccolo — NON aggiungere di nuovo una regola
-           max-height/max-width separata, riaprirebbe lo stesso bug. */
+           lungo (altezza in verticale), con l'asse corto ricavato dallo
+           stesso rapporto dell'immagine (885/1777) così i due valori
+           restano sempre coerenti tra loro. Cambia solo questo numero
+           (800) se vuoi il mockup più grande/piccolo — NON aggiungere di
+           nuovo una regola max-height/max-width separata, riaprirebbe lo
+           stesso bug. Resta SOLO per la verticale: la cornice orizzontale
+           (Claudio, 2026-08-24: "nuova cornice... così che si adatti allo
+           schermo intero... si agganci al lato superiore e inferiore")
+           usa invece la formula SENZA tetto già definita sopra
+           (@media orientation:landscape, riga ~565) — altezza piena
+           disponibile, larghezza ricavata dal rapporto reale
+           dell'immagine, mai deformata. */
         @media (pointer: fine) {
             #phoneFrameBox {
                 height: min(100%, 100vw * 1777 / 885, 800px);
@@ -584,8 +590,8 @@
         }
         @media (pointer: fine) and (orientation: landscape) {
             #phoneFrameBox {
-                height: min(100%, 100vw * 941 / 1672, 450.24px);
-                width: min(100%, 100vh * 1672 / 941, 800px);
+                height: min(100%, 100vw * 941 / 1672);
+                width: min(100%, 100vh * 1672 / 941);
             }
         }
 
@@ -634,9 +640,9 @@
         .phone-luce-laterale { left: 93.22%; top: 25.35%; width: 1.4%; height: 9%; animation-delay: 0.9s; }
 
         @media (orientation: landscape) {
-            .phone-luce-camera { left: 49.22%; top: 6.91%; width: 1.6%; }
-            .phone-luce-barra-camera { display: none; } /* elemento non presente in questa immagine */
-            .phone-luce-laterale { left: 94.6%; top: 23.1%; width: 1%; height: 13%; }
+            .phone-luce-camera { left: 44.38%; top: 7.28%; width: 1.6%; }
+            .phone-luce-barra-camera { display: none; }
+            .phone-luce-laterale { left: 92.49%; top: 26.99%; width: 1%; height: 13%; }
         }
 
         #phoneScreen {
@@ -783,8 +789,19 @@
            "quando sei in visuale widget") — vedi _aggiornaMatitaBarraGlobale
            in ui/phone.ui.js, che ora gestisce tutti e tre insieme.
            L'ingranaggio Impostazioni NON ha questa classe: resta sempre
-           visibile, su entrambe le pagine. */
-        .nascosto-in-home { display: none; }
+           visibile, su entrambe le pagine.
+
+           BUG REALE (Claudio, screenshot: "è ancora... appaiono solo
+           quando scrolli"): la regola ".nascosto-in-home { display:none }"
+           da sola aveva MENO specificità CSS di
+           ".phone-barra-stato-destra button { display:flex }" qui sopra
+           (classe singola contro classe+elemento) — quindi perdeva
+           SEMPRE, a prescindere dall'ordine nel file o da quale classe
+           JS aggiungesse/togliesse. I bottoni restavano visibili anche
+           quando la classe c'era davvero. Corretto scrivendo la regola di
+           nascondimento con la STESSA "forma" di selettore (classe
+           contenitore + elemento + classe), così ora vince per davvero. */
+        .phone-barra-stato-destra button.nascosto-in-home { display: none; }
 
         .phone-sync-dot {
             width: 9px; height: 9px; border-radius: 50%;
@@ -1049,24 +1066,33 @@
            allineata esattamente al raggio misurato (nessun margine extra
            "per comodità di tocco": lì risultava già più grande del
            disegno). */
+        /* FIX 3 (Claudio, screenshot: "è ancora gigante") — le misure
+           precedenti (raggio ~5% via rilevamento pixel ciano) catturavano
+           anche l'alone di luce sfocato attorno all'anello nell'immagine,
+           non solo il bordo netto del chip — risultava comunque troppo
+           grande nella resa reale. Ridotto sostanzialmente (quasi
+           dimezzato) e il bagliore stretto ulteriormente, cercando la
+           dimensione che replica quella percepita del tasto vero, non
+           quella misurata via soglia colore (che si è dimostrata
+           inaffidabile per elementi con bordo sfumato). */
         #btnFisicoTelefono {
             position: absolute;
             left: 49.94%; top: 93.95%; /* cornice verticale */
             transform: translate(-50%, -50%);
-            width: 10.4%; aspect-ratio: 1;
+            width: 5.6%; aspect-ratio: 1;
             border-radius: 50%;
             background: radial-gradient(circle at 50% 45%, #121214 55%, #030304 100%);
-            border: 1.5px solid #38c9e8;
+            border: 1.2px solid #38c9e8;
             color: #6fe3ff;
             display: flex; align-items: center; justify-content: center;
-            font-size: 0.78rem;
+            font-size: 0.55rem;
             cursor: pointer;
             z-index: 6;
-            box-shadow: 0 0 4px 1px rgba(56, 201, 232, 0.5), inset 0 0 3px rgba(56, 201, 232, 0.35);
+            box-shadow: 0 0 2px rgba(56, 201, 232, 0.45), inset 0 0 2px rgba(56, 201, 232, 0.3);
             transition: visibility 0s;
         }
         @media (orientation: landscape) {
-            #btnFisicoTelefono { left: 51.85%; top: 91.45%; width: 9.9%; }
+            #btnFisicoTelefono { left: 49.58%; top: 91.23%; width: 5.2%; }
         }
         #btnFisicoTelefono.nascosto { visibility: hidden; pointer-events: none; }
 
