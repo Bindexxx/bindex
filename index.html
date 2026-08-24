@@ -652,7 +652,18 @@
            _impostaSyncAttivo in ui/phone.ui.js). */
         .phone-status-bar {
             display: flex; align-items: center; justify-content: space-between;
-            font-size: 0.7rem; color: var(--text-muted); margin-bottom: 0.5rem;
+            font-size: 0.7rem; color: var(--text-muted);
+            /* FIX (Claudio: "la barra in alto deve rimanere fissa") — sticky
+               invece di normale flusso: resta ancorata in cima allo schermo
+               anche scorrendo la griglia widget sotto. Margini negativi +
+               padding di compenso: "sfonda" il padding del contenitore
+               scrollabile (1.1rem sopra, 0.9rem ai lati) per toccare i bordi
+               reali dello schermo, con sfondo pieno perché il contenuto
+               scorso sotto non si veda "attraverso". */
+            position: sticky; top: 0; z-index: 6;
+            background: var(--bg-color);
+            margin: -1.1rem -0.9rem 0.5rem;
+            padding: 1.1rem 0.9rem 0.4rem;
         }
         .phone-sync-dot {
             width: 9px; height: 9px; border-radius: 50%;
@@ -661,24 +672,6 @@
         }
         .phone-sync-dot.attivo { animation: phoneSyncPulse 0.9s ease-in-out infinite; }
         @keyframes phoneSyncPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
-
-        /* Barra "livello collezione" — puramente estetica/gamification,
-           nessun significato reale oltre a dare soddisfazione di
-           progresso (Claudio l'ha approvata come idea divertente, soglie
-           arbitrarie: vedi calcoloLivelloCollezione in ui/phone.ui.js). */
-        .phone-livello-riga {
-            display: flex; align-items: center; gap: 0.5rem;
-            font-size: 0.68rem; font-weight: 700; color: var(--text-muted);
-            margin-bottom: 0.7rem;
-        }
-        .phone-livello-barra {
-            flex: 1; height: 6px; border-radius: 3px; background: var(--border-color);
-            overflow: hidden;
-        }
-        .phone-livello-riempimento {
-            height: 100%; background: var(--primary); border-radius: 3px;
-            transition: width 0.4s ease;
-        }
 
         .phone-home-header {
             display: flex; align-items: center; justify-content: space-between;
@@ -863,16 +856,40 @@
            radius) impostata via JS da _posizionaContainerNelloSchermo() in
            ui/phone.ui.js, che legge il rettangolo REALE di #phoneScreen
            (getBoundingClientRect) invece di duplicare qui le stesse
-           percentuali — un solo posto dove può disallinearsi, non due. */
-        body.phone-detail-open .container {
+           percentuali — un solo posto dove può disallinearsi, non due.
+
+           FIX (Claudio: "l'animazione a volte si blocca a metà lasciando
+           in vista mezza home e mezza pagina") — causa trovata: prima la
+           classe che nasconde .container (display:none) veniva rimossa
+           SUBITO all'apertura/aggiunta SUBITO alla chiusura, tagliando di
+           netto la transizione CSS ancora in corso (display:none non
+           aspetta la fine di un'animazione, la cancella all'istante). In
+           più la transizione clip-path veniva attivata/disattivata a
+           mano via JS (transition:none poi riattivata in un
+           requestAnimationFrame) — un pattern fragile, facile da
+           interrompere se due aperture/chiusure si accavallano. Ora la
+           transizione è sempre dichiarata qui in CSS (mai toccata da
+           JS), e .container-visibile/.container-aperto sono due classi
+           separate: la prima decide SOLO display (tolta con un ritardo
+           pari alla durata dell'animazione, mai a metà — vedi
+           chiudiDettaglioWidget in ui/phone.ui.js), la seconda decide
+           SOLO il cerchio (0%→150%), lasciando che sia il motore di
+           transizione del browser a gestire eventuali interruzioni, che
+           sa farlo in modo robusto meglio di codice scritto a mano. */
+        .container.container-visibile {
             position: fixed;
             max-width: none; margin: 0;
             z-index: 11;
             background-color: var(--bg-color);
             overflow-y: auto;
             padding: calc(2.6rem + env(safe-area-inset-top)) 1rem 1rem;
+            clip-path: circle(0% at var(--pokeball-x, 50%) var(--pokeball-y, 50%));
+            transition: clip-path 0.3s ease;
         }
-        body:not(.phone-detail-open) .container { display: none; }
+        .container.container-visibile.container-aperto {
+            clip-path: circle(150% at var(--pokeball-x, 50%) var(--pokeball-y, 50%));
+        }
+        .container:not(.container-visibile) { display: none; }
 
         #btnIndietroDettaglioWidget {
             display: none;
@@ -2264,10 +2281,6 @@
                     <div class="phone-status-bar">
                         <span class="phone-lcd" id="phoneStatusOra"></span>
                         <div class="phone-sync-dot" id="phoneSyncDot"></div>
-                    </div>
-                    <div class="phone-livello-riga">
-                        <span id="phoneLivelloTesto">Livello 1</span>
-                        <div class="phone-livello-barra"><div class="phone-livello-riempimento" id="phoneLivelloRiempimento" style="width:0%"></div></div>
                     </div>
                     <div class="phone-home-header">
                         <div class="logo">
