@@ -35,14 +35,14 @@ const CATALOGO_WIDGET = {
         },
     },
     visualizzazione: {
-        titolo: 'Visualizzazione', icona: 'fa-list-check',
+        titolo: 'Visualizzazione', icona: 'fa-images',
         preview: () => {
             const n = carteReali.filter(c => c.stato === 'collezione').length;
             return { righe: [`${n} carte totali`] };
         },
     },
     inserimento: {
-        titolo: 'Inserimento', icona: 'fa-plus',
+        titolo: 'Inserimento', icona: 'fa-id-card',
         // Riusa _contaCodaErrori() già definita in home.ui.js — stesso
         // conteggio già mostrato nell'avviso Home, nessuna query duplicata.
         preview: async () => {
@@ -71,7 +71,7 @@ const CATALOGO_WIDGET = {
         },
     },
     wishlist: {
-        titolo: 'Wishlist', icona: 'fa-bookmark',
+        titolo: 'Wishlist', icona: 'fa-heart',
         // Stesso identico filtro "sotto obiettivo" di caricaAvvisiHome in
         // home.ui.js — replicato qui (dati già in carteReali, nessuna
         // query nuova), non indovinato.
@@ -84,7 +84,7 @@ const CATALOGO_WIDGET = {
         },
     },
     binder: {
-        titolo: 'Binder', icona: 'fa-layer-group',
+        titolo: 'Binder', icona: 'fa-book-open',
         preview: () => ({ righe: ['In primo piano'] }),
     },
     sealed: {
@@ -111,7 +111,7 @@ const CATALOGO_WIDGET = {
             const collezione = carteReali.filter(c => c.stato === 'collezione');
             if (collezione.length === 0) return { righe: ['Nessuna carta'] };
             const ultima = collezione.slice().sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))[0];
-            return { righe: [ultima.name || ''], immagine: ultima.immagine, cardId: ultima.id };
+            return { righe: [ultima.name || ''], immagine: ultima.immagine, cardId: ultima.id, rarita: ultima.rarita };
         },
         azione: (dati) => { if (dati && dati.cardId != null) apriFlipCardHome(dati.cardId); },
     },
@@ -127,7 +127,7 @@ const CATALOGO_WIDGET = {
                 _cartaDelGiornoId = collezione[Math.floor(Math.random() * collezione.length)].id;
             }
             const carta = collezione.find(c => String(c.id) === String(_cartaDelGiornoId));
-            return { righe: [carta.name || ''], immagine: carta.immagine, cardId: carta.id };
+            return { righe: [carta.name || ''], immagine: carta.immagine, cardId: carta.id, rarita: carta.rarita };
         },
         azione: (dati) => { if (dati && dati.cardId != null) apriFlipCardHome(dati.cardId); },
     },
@@ -172,7 +172,7 @@ const CATALOGO_WIDGET = {
 
             return { righe: ['Tutto in ordine'], stato: 'ok', tabSuggerito: 'home' };
         },
-        azione: (dati) => { switchTab((dati && dati.tabSuggerito) || 'home', null); document.body.classList.add('phone-detail-open'); _posizionaContainerNelloSchermo(); },
+        azione: (dati, evt) => apriDettaglioWidget((dati && dati.tabSuggerito) || 'home', evt),
     },
     orologio: {
         titolo: 'Orologio', icona: 'fa-clock', decorativo: true,
@@ -292,11 +292,16 @@ async function renderWidgetHome() {
         const primoNumero = (anteprima.righe[0] || '').match(/\d+/);
         const badge = primoNumero ? `<div class="widget-badge">${primoNumero[0]}</div>` : '';
 
+        // Bordo colorato per rarità SOLO se la carta ha davvero un campo
+        // 'rarita' valorizzato (mai confermato nello schema in questa
+        // sessione — nessun rischio: se il campo non esiste, la classe
+        // semplicemente non si applica e resta il bordo neutro di sempre).
+        const classeRarita = anteprima.rarita ? ` widget-tile-thumb-r-${String(anteprima.rarita).toLowerCase().replace(/\s+/g, '_')}` : '';
         const rigaImmagine = anteprima.immagine
-            ? `<div class="widget-tile-thumb-row"><img class="widget-tile-thumb" src="${_urlImmagineVisualizzabile(anteprima.immagine, 96) || ''}" alt="" onerror="this.style.display='none';"></div>`
+            ? `<div class="widget-tile-thumb-row"><img class="widget-tile-thumb${classeRarita}" src="${_urlImmagineVisualizzabile(anteprima.immagine, 96) || ''}" alt="" onerror="this.style.display='none';"></div>`
             : '';
 
-        const azioneClick = _editModeWidget || def.decorativo ? '' : `onclick="_eseguiAzioneWidget('${w.id}')"`;
+        const azioneClick = _editModeWidget || def.decorativo ? '' : `onclick="_eseguiAzioneWidget('${w.id}', event)"`;
 
         return `
             <div class="widget-tile ${classeStato} ${classeCascata} widget-size-${w.size}" ${stileRitardo} data-widget-id="${w.id}" data-widget-index="${indice}" ${azioneClick}>
@@ -328,16 +333,16 @@ async function renderWidgetHome() {
 // presente (riceve gli stessi dati calcolati da preview, per widget come
 // carta del giorno/ultima carta che devono sapere QUALE carta aprire),
 // altrimenti apre come dettaglio la tab indicata in 'tab' o l'id stesso.
-async function _eseguiAzioneWidget(id) {
+async function _eseguiAzioneWidget(id, evt) {
     const def = CATALOGO_WIDGET[id];
     if (!def || def.bloccato) return;
     if (def.azione) {
         let dati = null;
         try { dati = await def.preview(); } catch (_) { dati = null; }
-        def.azione(dati);
+        def.azione(dati, evt);
         return;
     }
-    apriDettaglioWidget(def.tab || id);
+    apriDettaglioWidget(def.tab || id, evt);
 }
 
 function _spostaWidget(indiceVisibile, direzione) {
@@ -662,13 +667,50 @@ function _posizionaContainerNelloSchermo() {
     }
 }
 
-function apriDettaglioWidget(tabId) {
+// ── APERTURA/CHIUSURA — animazione "a Pokéball" ──────────────────────────
+// Claudio ha approvato l'idea di un'apertura che richiami il tema
+// Pokéball. Implementata con clip-path (un cerchio che si espande dal
+// punto esatto in cui hai toccato/cliccato il widget) — nessun asset
+// nuovo, solo CSS/JS. Se manca l'evento (es. chiamata programmatica)
+// parte dal centro dello schermo.
+let _ultimaOrigineApertura = null;
+
+function _animaAperturaDettaglio(evt) {
+    const container = document.querySelector('.container');
+    if (!container) return;
+    const schermo = document.getElementById('phoneScreen');
+    const rect = schermo ? schermo.getBoundingClientRect() : { left: 0, top: 0, width: window.innerWidth, height: window.innerHeight };
+    const x = evt && evt.clientX ? evt.clientX : rect.left + rect.width / 2;
+    const y = evt && evt.clientY ? evt.clientY : rect.top + rect.height / 2;
+    _ultimaOrigineApertura = { x, y };
+
+    container.style.transition = 'none';
+    container.style.clipPath = `circle(0% at ${x}px ${y}px)`;
+    requestAnimationFrame(() => {
+        container.style.transition = 'clip-path 0.3s ease';
+        container.style.clipPath = `circle(150% at ${x}px ${y}px)`;
+    });
+}
+
+function _animaChiusuraDettaglio() {
+    const container = document.querySelector('.container');
+    if (!container || !_ultimaOrigineApertura) return;
+    const { x, y } = _ultimaOrigineApertura;
+    container.style.transition = 'clip-path 0.26s ease';
+    container.style.clipPath = `circle(0% at ${x}px ${y}px)`;
+}
+
+function apriDettaglioWidget(tabId, evt) {
     switchTab(tabId, null);
     document.body.classList.add('phone-detail-open');
     _posizionaContainerNelloSchermo();
+    _animaAperturaDettaglio(evt);
+    _beep(880, 70);
 }
 
 function chiudiDettaglioWidget() {
+    _animaChiusuraDettaglio();
+    _beep(440, 70);
     document.body.classList.remove('phone-detail-open');
     renderWidgetHome();
 }
@@ -689,6 +731,109 @@ function _applicaCorniceUtente(urlVerticale, urlOrizzontale) {
     if (urlOrizzontale) document.getElementById('phoneFrameO').style.backgroundImage = `url('${urlOrizzontale}')`;
 }
 
+// ── SFONDO (WALLPAPER) PERSONALIZZABILE — stesso pattern della cornice ──
+// Oggi solo il placeholder (gradiente tenue via CSS, vedi #phoneWidgetHomeWrap
+// in index.html). Punto di innesto per quando esisterà la scelta da bucket.
+function _applicaSfondoUtente(url) {
+    const wrap = document.getElementById('phoneWidgetHomeWrap');
+    if (wrap && url) wrap.style.backgroundImage = `url('${url}')`;
+}
+
+// ── BARRA DI STATO (orario + indicatore di sync) ─────────────────────────
+function _aggiornaOrologioStatusBar() {
+    const el = document.getElementById('phoneStatusOra');
+    if (el) el.textContent = new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+}
+
+// Pulsa mentre è in corso una VERA chiamata a Supabase (non ad ogni
+// ricalcolo locale gratuito da carteReali) — usata attorno al polling
+// "lento" e a caricaAvvisiHome.
+function _impostaSyncAttivo(attivo) {
+    const dot = document.getElementById('phoneSyncDot');
+    if (dot) dot.classList.toggle('attivo', attivo);
+}
+
+// ── BARRA LIVELLO (gamification pura, soglie arbitrarie) ─────────────────
+// Nessun significato reale — solo soddisfazione di progresso, come
+// discusso e approvato. 100 carte per livello, arrotondato per difetto;
+// riempimento della barra = percentuale verso il livello successivo.
+function _aggiornaBarraLivello() {
+    const collezione = carteReali.filter(c => c.stato === 'collezione');
+    const qty = collezione.reduce((s, c) => s + (c.qty || 0), 0);
+    const CARTE_PER_LIVELLO = 100;
+    const livello = Math.floor(qty / CARTE_PER_LIVELLO) + 1;
+    const percentuale = Math.round((qty % CARTE_PER_LIVELLO) / CARTE_PER_LIVELLO * 100);
+
+    const testo = document.getElementById('phoneLivelloTesto');
+    const riempimento = document.getElementById('phoneLivelloRiempimento');
+    if (testo) testo.textContent = `Livello ${livello}`;
+    if (riempimento) riempimento.style.width = percentuale + '%';
+}
+
+// ── SUONI RETRO (Web Audio, nessun file esterno) ─────────────────────────
+let _phoneAudioCtx = null;
+function _beep(frequenza, durataMs) {
+    if (!prefSuoniWidgetGet()) return;
+    try {
+        _phoneAudioCtx = _phoneAudioCtx || new (window.AudioContext || window.webkitAudioContext)();
+        const osc = _phoneAudioCtx.createOscillator();
+        const gain = _phoneAudioCtx.createGain();
+        osc.type = 'square';
+        osc.frequency.value = frequenza;
+        gain.gain.value = 0.025; // molto discreto, non invadente
+        osc.connect(gain);
+        gain.connect(_phoneAudioCtx.destination);
+        osc.start();
+        gain.gain.exponentialRampToValueAtTime(0.0001, _phoneAudioCtx.currentTime + durataMs / 1000);
+        osc.stop(_phoneAudioCtx.currentTime + durataMs / 1000 + 0.02);
+    } catch (_) { /* Web Audio non disponibile o bloccato: niente suono, nessun errore visibile */ }
+}
+
+function toggleSuoniWidgetHome() {
+    const nuovoStato = !prefSuoniWidgetGet();
+    prefSuoniWidgetSet(nuovoStato);
+    const icona = document.getElementById('iconaSuoniWidgetHome');
+    if (icona) icona.className = nuovoStato ? 'fa-solid fa-volume-high' : 'fa-solid fa-volume-xmark';
+    if (nuovoStato) _beep(660, 60);
+}
+
+// ── NOTIFICHE PUSH (diff sui dati già scaricati, nessuna query nuova) ────
+// Confronta i contatori di rischio col giro di polling precedente — se
+// sono aumentati, mostra un banner + bagliore + vibrazione + suono.
+// Nessun nuovo endpoint: riusa dati già ottenuti dal polling "lento".
+let _contatoriNotifichePrecedenti = null;
+
+async function _controllaNotifichePush() {
+    const codaErrori = await _contaCodaErrori();
+    const prezziScaduti = (typeof _elencoPrezziScaduti !== 'undefined' && _elencoPrezziScaduti) ? _elencoPrezziScaduti.length : 0;
+    const attuali = { codaErrori, prezziScaduti };
+
+    if (_contatoriNotifichePrecedenti) {
+        if (attuali.codaErrori > _contatoriNotifichePrecedenti.codaErrori) {
+            _mostraNotificaPush('Nuova carta da correggere in Inserimento');
+        } else if (attuali.prezziScaduti > _contatoriNotifichePrecedenti.prezziScaduti) {
+            _mostraNotificaPush('Nuovi prezzi da aggiornare');
+        }
+    }
+    _contatoriNotifichePrecedenti = attuali;
+}
+
+function _mostraNotificaPush(testo) {
+    const banner = document.getElementById('phonePushBanner');
+    const testoEl = document.getElementById('phonePushBannerTesto');
+    const schermo = document.getElementById('phoneScreen');
+    if (!banner || !testoEl) return;
+    testoEl.textContent = testo;
+    banner.classList.add('mostrata');
+    if (schermo) schermo.classList.add('glow-notifica');
+    _vibraSeSupportato(15);
+    _beep(660, 90);
+    setTimeout(() => {
+        banner.classList.remove('mostrata');
+        if (schermo) schermo.classList.remove('glow-notifica');
+    }, 4000);
+}
+
 // ── POLLING ────────────────────────────────────────────────────────────
 const INTERVALLO_WIDGET_VELOCE_MS = 15000;
 const INTERVALLO_WIDGET_LENTO_MS = 60000;
@@ -698,12 +843,20 @@ function avviaPollingWidgetHome() {
     if (_pollingWidgetIntervalLento) clearInterval(_pollingWidgetIntervalLento);
 
     _pollingWidgetInterval = setInterval(() => {
-        if (!document.body.classList.contains('phone-detail-open') && !_editModeWidget) renderWidgetHome();
+        if (!document.body.classList.contains('phone-detail-open') && !_editModeWidget) {
+            renderWidgetHome();
+            _aggiornaBarraLivello();
+        }
     }, INTERVALLO_WIDGET_VELOCE_MS);
 
     _pollingWidgetIntervalLento = setInterval(async () => {
         if (document.body.classList.contains('phone-detail-open') || _editModeWidget) return;
-        try { await caricaAvvisiHome(); } catch (e) { console.error('Errore polling avvisi (widget prezzi/inserimento):', e); }
+        _impostaSyncAttivo(true);
+        try {
+            await caricaAvvisiHome();
+            await _controllaNotifichePush();
+        } catch (e) { console.error('Errore polling avvisi (widget prezzi/inserimento):', e); }
+        _impostaSyncAttivo(false);
         renderWidgetHome();
     }, INTERVALLO_WIDGET_LENTO_MS);
 }
@@ -712,7 +865,21 @@ function avviaPollingWidgetHome() {
 async function initPhoneShell() {
     _caricaLayoutWidget();
     await renderWidgetHome();
+    _aggiornaOrologioStatusBar();
+    _aggiornaBarraLivello();
+    setInterval(_aggiornaOrologioStatusBar, 30000);
+
+    const iconaSuoni = document.getElementById('iconaSuoniWidgetHome');
+    if (iconaSuoni) iconaSuoni.className = prefSuoniWidgetGet() ? 'fa-solid fa-volume-high' : 'fa-solid fa-volume-xmark';
+
     avviaPollingWidgetHome();
     window.addEventListener('resize', _gestisciResizeCorniceDebounced);
     window.addEventListener('orientationchange', _gestisciResizeCornice);
+
+    // Animazione di "accensione" — una sola volta, al caricamento.
+    const frameBox = document.getElementById('phoneFrameBox');
+    if (frameBox) {
+        frameBox.classList.add('phone-accensione');
+        setTimeout(() => frameBox.classList.remove('phone-accensione'), 700);
+    }
 }
