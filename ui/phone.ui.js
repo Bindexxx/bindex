@@ -6,7 +6,7 @@
 // tasto indietro) esattamente la stessa view-section che oggi apriva la
 // voce corrispondente nel vecchio menu laterale. Nessuna nuova query
 // Supabase: ogni widget riusa dati/funzioni già esistenti in home.ui.js/
-// navigation.ui.js/queue.ui.js — vedi commento su ogni definePreview.
+// navigation.ui.js/queue.ui.js — vedi commento su ogni preview.
 //
 // Dipende da: state globale carteReali (state/cards.state.js), switchTab
 // (ui/navigation.ui.js), _contaCodaErrori/_elencoPrezziScaduti/
@@ -94,6 +94,7 @@ let _layoutWidget = null; // [{id, visibile}], ordine = ordine di visualizzazion
 let _editModeWidget = false;
 let _pollingWidgetInterval = null;
 let _pollingWidgetIntervalLento = null;
+let _resizeCorniceTimeout = null;
 
 // ── LAYOUT: caricamento/salvataggio per-dispositivo ──────────────────────
 // Stesso pattern già in uso per binder layout/sidebar compressa/riduci
@@ -218,34 +219,110 @@ function toggleModificaWidgetHome() {
     renderWidgetHome();
 }
 
+// ── CORNICE: ritaglio "cover" ricalcolato a runtime ──────────────────────
+// FIX 2/2 (segnalato da Claudio, screenshot "è schiacciato... sistemare la
+// larghezza"): la cornice riempie sempre tutta la finestra (CSS
+// background-size:cover su #phoneShell, vedi index.html) invece di
+// restare piccola al centro con margini vuoti. "cover" ritaglia
+// automaticamente l'eccesso di bordo decorativo sopra/sotto (finestre
+// larghe) o ai lati (finestre strette) — qui ricalcoliamo dove finisce
+// DAVVERO lo schermo dei widget dopo quel ritaglio, replicando la stessa
+// matematica che il browser usa per "cover" (dimensioni reali delle due
+// immagini + percentuali di schermo misurate pixel per pixel una volta
+// sola su base_V.png/base_O.png), e la scriviamo come variabili CSS
+// (--phone-screen-top/bottom/left/right) che sia #phoneScreen sia il
+// tasto Indietro leggono già. Va richiamata ad ogni resize/rotazione.
+const _CORNICE_NATURALE = {
+    verticale: { w: 885, h: 1777, top: 0.092, bottom: 0.093, left: 0.176, right: 0.136 },
+    orizzontale: { w: 1536, h: 1024, top: 0.163, bottom: 0.188, left: 0.102, right: 0.101 },
+};
+
+function _ricalcolaLayoutCornice() {
+    const landscape = window.matchMedia('(orientation: landscape)').matches;
+    const nat = landscape ? _CORNICE_NATURALE.orizzontale : _CORNICE_NATURALE.verticale;
+
+    const boxW = window.innerWidth;
+    const boxH = window.innerHeight;
+
+    // Stessa formula di CSS background-size:cover: scala per riempire il
+    // box (il maggiore dei due rapporti), poi ritaglio centrato sull'asse
+    // che eccede.
+    const scale = Math.max(boxW / nat.w, boxH / nat.h);
+    const renderedW = nat.w * scale;
+    const renderedH = nat.h * scale;
+    const cropXFrac = Math.max(0, (renderedW - boxW) / renderedW / 2);
+    const cropYFrac = Math.max(0, (renderedH - boxH) / renderedH / 2);
+    const visibleFracX = Math.max(1 - 2 * cropXFrac, 0.01); // guardia anti-divisione-per-zero
+    const visibleFracY = Math.max(1 - 2 * cropYFrac, 0.01);
+
+    const pct = (v) => Math.max(0, Math.min(100, v * 100)) + '%';
+
+    const root = document.documentElement.style;
+    root.setProperty('--phone-screen-top', pct((nat.top - cropYFrac) / visibleFracY));
+    root.setProperty('--phone-screen-bottom', pct((nat.bottom - cropYFrac) / visibleFracY));
+    root.setProperty('--phone-screen-left', pct((nat.left - cropXFrac) / visibleFracX));
+    root.setProperty('--phone-screen-right', pct((nat.right - cropXFrac) / visibleFracX));
+}
+
 // ── APERTURA/CHIUSURA DETTAGLIO FULLSCREEN DENTRO IL FRAME ───────────────
-// Non sposta .container nel DOM (rischio zero di rompere selettori/z-index
-// esistenti) — le applica solo una classe che la aggancia, via CSS, al
-// rettangolo "schermo" ritagliato dentro la cornice attuale (verticale/
-// orizzontale, vedi variabili CSS in index.html). switchTab() resta
-// ESATTAMENTE quella di navigation.ui.js, non toccata: stessa funzione che
-// girava già col vecchio menu laterale.
+// .container non viene spostata nel DOM (rischio zero di rompere
+// selettori/z-index esistenti) — le si impostano solo, via JS, top/left/
+// width/height/border-radius ESATTI letti da #phoneScreen.
+// getBoundingClientRect() (coordinate già relative al viewport, quindi
+// direttamente utilizzabili per un elemento position:fixed, nessuna
+// conversione). Più robusto della sola CSS: qualunque sia la strategia di
+// ritaglio della cornice (cover, contain, futura scelta utente da
+// bucket), .container si allinea sempre a ciò che lo schermo mostra
+// DAVVERO, senza dover duplicare percentuali in due punti diversi.
+// switchTab() resta ESATTAMENTE quella di navigation.ui.js, non toccata.
+function _posizionaContainerNelloSchermo() {
+    const schermo = document.getElementById('phoneScreen');
+    const container = document.querySelector('.container');
+    if (!schermo || !container) return;
+    const rect = schermo.getBoundingClientRect();
+    container.style.top = rect.top + 'px';
+    container.style.left = rect.left + 'px';
+    container.style.width = rect.width + 'px';
+    container.style.height = rect.height + 'px';
+    container.style.borderRadius = getComputedStyle(schermo).borderRadius;
+}
+
 function apriDettaglioWidget(tabId) {
     switchTab(tabId, null);
     document.body.classList.add('phone-detail-open');
-    document.getElementById('phoneScreen').classList.add('detail-active');
+    _posizionaContainerNelloSchermo();
 }
 
 function chiudiDettaglioWidget() {
     document.body.classList.remove('phone-detail-open');
-    document.getElementById('phoneScreen').classList.remove('detail-active');
     renderWidgetHome(); // i numeri potrebbero essere cambiati mentre eri nel dettaglio
+}
+
+// Ridimensionamento/rotazione: ricalcola sempre il ritaglio cornice, e se
+// sei nel dettaglio riallinea anche .container di conseguenza (dopo il
+// reflow del nuovo --phone-screen-*, da qui il requestAnimationFrame).
+function _gestisciResizeCornice() {
+    _ricalcolaLayoutCornice();
+    if (document.body.classList.contains('phone-detail-open')) {
+        requestAnimationFrame(_posizionaContainerNelloSchermo);
+    }
+}
+function _gestisciResizeCorniceDebounced() {
+    clearTimeout(_resizeCorniceTimeout);
+    _resizeCorniceTimeout = setTimeout(_gestisciResizeCornice, 100);
 }
 
 // ── CORNICE PERSONALIZZABILE (placeholder oggi, bucket Supabase domani) ──
 // Punto di innesto unico: quando esisterà la UI per scegliere la cornice
 // dal bucket, basterà chiamare questa funzione con l'URL pubblico del file
-// scelto — nessun'altra modifica a CSS/HTML necessaria. Oggi, se non è mai
-// stata scelta una cornice, restano i placeholder caricati via CSS
-// (assets/frame/frame-verticale.png e frame-orizzontale.png).
-function _applicaCorniceUtente(urlVerticale, urlOrizzontale) {
+// scelto E le sue dimensioni reali (naturalWidth/naturalHeight, servono al
+// ricalcolo del ritaglio) — nessun'altra modifica a CSS necessaria.
+function _applicaCorniceUtente(urlVerticale, dimVerticale, urlOrizzontale, dimOrizzontale) {
     if (urlVerticale) document.getElementById('phoneFrameV').style.backgroundImage = `url('${urlVerticale}')`;
     if (urlOrizzontale) document.getElementById('phoneFrameO').style.backgroundImage = `url('${urlOrizzontale}')`;
+    if (dimVerticale) Object.assign(_CORNICE_NATURALE.verticale, { w: dimVerticale.w, h: dimVerticale.h });
+    if (dimOrizzontale) Object.assign(_CORNICE_NATURALE.orizzontale, { w: dimOrizzontale.w, h: dimOrizzontale.h });
+    _gestisciResizeCornice();
 }
 
 // ── POLLING ────────────────────────────────────────────────────────────
@@ -278,7 +355,10 @@ function avviaPollingWidgetHome() {
 // 9999999) copre comunque tutto finché non viene superato, quindi non
 // serve nessuna dipendenza esplicita dall'esito di quel controllo qui.
 async function initPhoneShell() {
+    _ricalcolaLayoutCornice();
     _caricaLayoutWidget();
     await renderWidgetHome();
     avviaPollingWidgetHome();
+    window.addEventListener('resize', _gestisciResizeCorniceDebounced);
+    window.addEventListener('orientationchange', _gestisciResizeCornice);
 }
