@@ -31,3 +31,25 @@
         let _cardBackDragInitDone = false;
         const BINDER_LAYOUT_ETICHETTE = { '2x2': '2×2', '3x3': '3×3', '3x4': '4×3', '4x4': '4×4' };
         let _modificheBinderPendenti = new Map();
+
+        // ── Multi-Binder (2026-08-25): griglia dei contenitori ──────────────
+        // _bindersElenco: righe della tabella 'binders' dell'utente (tipo,
+        // nome, location_valore, id...), caricate una volta all'apertura del
+        // widget Binders. _binderAttivo: id del binder aperto nella vista di
+        // dettaglio (null = si è sulla griglia dei contenitori).
+        let _bindersElenco = [];
+        let _binderAttivo = null;
+
+        // Modalità immagini/elenco — di default 'immagini', sovrascritta dopo
+        // il caricamento di preferenze_utente (per-utente, sincronizzata,
+        // vedi data/user-settings.repository.js:userSettingsUpsertBinderModalita).
+        // Forzata a 'elenco' quando un binder supera SOGLIA_BINDER_SOLO_ELENCO
+        // carte, qualunque sia la preferenza salvata (vedi renderBinderContenuto).
+        let _binderModalita = 'immagini';
+        const SOGLIA_BINDER_SOLO_ELENCO = 1088; // 4×4 per pagina, oltre: solo elenco testuale
+
+        // Cache copertine già risolte in questa sessione (binder_id → url o
+        // null) — evita di richiedere una signed URL ad ogni render della
+        // griglia dei contenitori (le signed URL durano 1h, la griglia si
+        // ridisegna spesso durante drag&drop/resize della home widget).
+        let _coperturaBinderCache = new Map();
