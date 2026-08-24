@@ -886,18 +886,20 @@ function _gestisciScrollPagine() {
     _aggiornaMatitaBarraGlobale();
 }
 
-// Matita (modifica/riordina/ridimensiona widget) nella barra di stato
-// globale — visibile SOLO sulla pagina widget (Claudio: "quando scrolli
-// fino ai widget nella barra deve apparire la matita"); se stai
+// Suoni/densità/matita nella barra di stato globale — visibili SOLO sulla
+// pagina widget (Claudio: "quando sei in visuale widget"); se stai
 // modificando e torni sulla Home, esce anche dalla modalità modifica
 // (non avrebbe senso restare in modifica senza vedere i widget).
 function _aggiornaMatitaBarraGlobale() {
-    const btn = document.getElementById('btnModificaWidgetHome');
-    if (!btn) return;
-    btn.classList.toggle('nascosto-in-home', _paginaAttivaTelefono !== 'widget');
+    const idBottoniCondizionali = ['btnSuoniWidgetHome', 'btnDensitaWidgetHome', 'btnModificaWidgetHome'];
+    idBottoniCondizionali.forEach(id => {
+        const btn = document.getElementById(id);
+        if (btn) btn.classList.toggle('nascosto-in-home', _paginaAttivaTelefono !== 'widget');
+    });
     if (_paginaAttivaTelefono !== 'widget' && _editModeWidget) {
         _editModeWidget = false;
-        btn.classList.remove('attivo');
+        const btnModifica = document.getElementById('btnModificaWidgetHome');
+        if (btnModifica) btnModifica.classList.remove('attivo');
         renderWidgetHome();
     }
 }
