@@ -24,16 +24,12 @@
 // segnalati con bloccato:true, vedi resa in renderWidgetHome().
 
 // ── CATALOGO WIDGET DISPONIBILI ──────────────────────────────────────────
+// NOTA (Claudio, 2026-08-24): il widget "Home" che c'era qui è stato
+// rimosso — la Home ora è la pagina principale del telefono (swipe per
+// arrivare ai widget, non più il contrario), non ha più senso aprirla
+// come un dettaglio da un widget. Vedi #phoneHomePage in index.html e
+// initPhoneShell qui sotto per lo spostamento del nodo #home.
 const CATALOGO_WIDGET = {
-    home: {
-        titolo: 'Home', icona: 'fa-house',
-        preview: () => {
-            const collezione = carteReali.filter(c => c.stato === 'collezione');
-            const qty = collezione.reduce((s, c) => s + (c.qty || 0), 0);
-            const valore = collezione.reduce((s, c) => s + (c.price || 0) * (c.qty || 0), 0);
-            return { righe: [`${qty} carte`, `€ ${valore.toFixed(2)}`] };
-        },
-    },
     visualizzazione: {
         titolo: 'Visualizzazione', icona: 'fa-images',
         preview: () => {
@@ -172,7 +168,11 @@ const CATALOGO_WIDGET = {
 
             return { righe: ['Tutto in ordine'], stato: 'ok', tabSuggerito: 'home' };
         },
-        azione: (dati, evt) => apriDettaglioWidget((dati && dati.tabSuggerito) || 'home', evt),
+        azione: (dati, evt) => {
+            const tab = (dati && dati.tabSuggerito) || 'home';
+            if (tab === 'home') { _vaiAllaPaginaHome(); return; }
+            apriDettaglioWidget(tab, evt);
+        },
     },
     orologio: {
         titolo: 'Orologio', icona: 'fa-clock', decorativo: true,
@@ -209,7 +209,7 @@ const CATALOGO_WIDGET = {
     },
 };
 
-const ORDINE_WIDGET_DEFAULT = ['home', 'visualizzazione', 'inserimento', 'prezzi', 'scambio', 'wishlist', 'binder', 'sealed', 'impostazioni'];
+const ORDINE_WIDGET_DEFAULT = ['visualizzazione', 'inserimento', 'prezzi', 'scambio', 'wishlist', 'binder', 'sealed', 'impostazioni'];
 const MAX_WIDGET_VISIBILI = 10;
 const TAGLIE_CICLO = ['1x1', '2x1', '1x2', '2x2']; // ordine di ciclo del ridimensionamento
 
@@ -653,7 +653,6 @@ function _nascondiPeek() {
 function _posizionaContainerNelloSchermo() {
     const schermo = document.getElementById('phoneScreen');
     const container = document.querySelector('.container');
-    const btnIndietro = document.getElementById('btnIndietroDettaglioWidget');
     if (!schermo || !container) return;
     const rect = schermo.getBoundingClientRect();
     container.style.top = rect.top + 'px';
@@ -661,10 +660,6 @@ function _posizionaContainerNelloSchermo() {
     container.style.width = rect.width + 'px';
     container.style.height = rect.height + 'px';
     container.style.borderRadius = getComputedStyle(schermo).borderRadius;
-    if (btnIndietro) {
-        btnIndietro.style.top = (rect.top + 10) + 'px';
-        btnIndietro.style.left = (rect.left + 14) + 'px';
-    }
 }
 
 // ── APERTURA/CHIUSURA — animazione "a Pokéball" ──────────────────────────
@@ -705,16 +700,18 @@ function apriDettaglioWidget(tabId, evt) {
         requestAnimationFrame(() => container.classList.add('container-aperto'));
     }
     _beep(880, 70);
+    _aggiornaTastoFisico();
 }
 
 function chiudiDettaglioWidget() {
     const container = document.querySelector('.container');
     if (container) container.classList.remove('container-aperto'); // la transizione CSS dichiarata fa il resto (150%→0%)
     _beep(440, 70);
+    document.body.classList.remove('phone-detail-open'); // subito: il bottone deve reagire al tap, non aspettare l'animazione
+    _aggiornaTastoFisico();
 
     clearTimeout(_chiusuraDettaglioTimeout);
     _chiusuraDettaglioTimeout = setTimeout(() => {
-        document.body.classList.remove('phone-detail-open');
         if (container) container.classList.remove('container-visibile'); // SOLO ora, a transizione finita, torna display:none
         renderWidgetHome();
     }, DURATA_ANIMAZIONE_DETTAGLIO_MS);
@@ -848,8 +845,70 @@ function avviaPollingWidgetHome() {
     }, INTERVALLO_WIDGET_LENTO_MS);
 }
 
+// ── HOME COME PAGINA PRINCIPALE — swipe verso i widget ───────────────────
+// #home viene spostato (appendChild — stesso nodo, stesso contenuto,
+// nessuna riscrittura) dentro #phoneHomePage una sola volta, all'avvio.
+// Le due pagine vivono dentro #phonePagineWrap con scroll-snap: swipe/
+// scroll in giù = widget, il bottone fisico (icona casetta) torna su.
+let _paginaAttivaTelefono = 'home';
+
+function _spostaHomeNellaPaginaPrincipale() {
+    const home = document.getElementById('home');
+    const paginaHome = document.getElementById('phoneHomePage');
+    if (home && paginaHome && home.parentElement !== paginaHome) {
+        paginaHome.appendChild(home);
+    }
+}
+
+function _vaiAllaPaginaHome() {
+    const wrap = document.getElementById('phonePagineWrap');
+    if (wrap) wrap.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function _gestisciScrollPagine() {
+    const wrap = document.getElementById('phonePagineWrap');
+    if (!wrap) return;
+    const indice = Math.round(wrap.scrollTop / Math.max(wrap.clientHeight, 1));
+    _paginaAttivaTelefono = indice === 0 ? 'home' : 'widget';
+    _aggiornaTastoFisico();
+}
+
+// Bottone fisico unico — tre stati, vedi commento CSS su
+// #btnFisicoTelefono: nascosto (già sulla Home), casetta (sui widget,
+// torna alla Home), freccia (dettaglio aperto, torna ai widget).
+function _aggiornaTastoFisico() {
+    const btn = document.getElementById('btnFisicoTelefono');
+    if (!btn) return;
+    const icona = btn.querySelector('i');
+
+    if (document.body.classList.contains('phone-detail-open')) {
+        btn.classList.remove('nascosto');
+        if (icona) icona.className = 'fa-solid fa-arrow-left';
+        btn.title = 'Indietro';
+    } else if (_paginaAttivaTelefono === 'widget') {
+        btn.classList.remove('nascosto');
+        if (icona) icona.className = 'fa-solid fa-house';
+        btn.title = 'Home';
+    } else {
+        btn.classList.add('nascosto');
+    }
+}
+
+function _clickTastoFisico() {
+    if (document.body.classList.contains('phone-detail-open')) {
+        chiudiDettaglioWidget(); // "Indietro": torna ai widget, non salta alla Home
+        return;
+    }
+    if (_paginaAttivaTelefono === 'widget') {
+        _vaiAllaPaginaHome();
+    }
+    // Se sei già sulla Home, non fa nulla.
+}
+
 // ── AVVIO ─────────────────────────────────────────────────────────────
 async function initPhoneShell() {
+    _spostaHomeNellaPaginaPrincipale();
+
     _caricaLayoutWidget();
     await renderWidgetHome();
     _aggiornaOrologioStatusBar();
@@ -861,6 +920,10 @@ async function initPhoneShell() {
     avviaPollingWidgetHome();
     window.addEventListener('resize', _gestisciResizeCorniceDebounced);
     window.addEventListener('orientationchange', _gestisciResizeCornice);
+
+    const paginaWrap = document.getElementById('phonePagineWrap');
+    if (paginaWrap) paginaWrap.addEventListener('scroll', _gestisciScrollPagine, { passive: true });
+    _aggiornaTastoFisico();
 
     // Animazione di "accensione" — una sola volta, al caricamento.
     const frameBox = document.getElementById('phoneFrameBox');
