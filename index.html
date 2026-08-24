@@ -652,9 +652,20 @@
             display: flex; flex-direction: column; gap: 0.3rem;
             transition: transform 0.15s ease, box-shadow 0.15s ease;
             touch-action: none; /* i gesti (drag/peek) sono gestiti a mano via Pointer Events */
-            opacity: 0; transform: translateY(8px); /* stato di partenza per la cascata d'ingresso */
         }
+        /* FIX (Claudio: "dopo aver fatto back i widget spariscono ma
+           restano cliccabili"): opacity:0 era sulla regola BASE
+           .widget-tile qui sopra — quindi OGNI tessera, ad OGNI render, non
+           solo alla primissima. Solo le tessere con .widget-tile-entrata
+           (aggiunta solo al primissimo caricamento della home, vedi
+           renderWidgetHome in ui/phone.ui.js) venivano poi animate a
+           opacity:1 dal keyframe; tutte le altre — cioè ogni render
+           successivo, come dopo "Indietro" — restavano invisibili per
+           sempre pur essendo ancora lì e cliccabili (l'opacità non
+           disattiva i click). Ora lo stato di partenza (0) vive solo dentro
+           .widget-tile-entrata stessa, mai sulla regola base. */
         .widget-tile.widget-tile-entrata {
+            opacity: 0; transform: translateY(8px);
             animation: widgetEntrata 0.32s ease forwards;
         }
         @keyframes widgetEntrata {
