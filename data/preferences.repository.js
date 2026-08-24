@@ -55,3 +55,9 @@ function prefRiduciAnimazioniSet(ridotte) { localStorage.setItem(CHIAVE_RIDUCI_A
 // [{id, visibile}]. Vedi ui/phone.ui.js per lettura/scrittura.
 function prefWidgetLayoutGet() { return localStorage.getItem('cardsyncWidgetLayout'); }
 function prefWidgetLayoutSet(layoutJson) { localStorage.setItem('cardsyncWidgetLayout', layoutJson); }
+
+// Suoni retro leggeri della home a widget (apertura/chiusura dettaglio,
+// notifiche push) — per-dispositivo come le altre, default attivi ma
+// disattivabili con un tap (bottone altoparlante in home).
+function prefSuoniWidgetGet() { const v = localStorage.getItem('cardsyncSuoniWidget'); return v === null ? true : v === 'true'; }
+function prefSuoniWidgetSet(attivi) { localStorage.setItem('cardsyncSuoniWidget', attivi ? 'true' : 'false'); }
