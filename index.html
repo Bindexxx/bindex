@@ -2126,6 +2126,70 @@
 
         .binder-layout-btn.active { border-color: var(--primary); background-color: var(--primary); color: white; }
 
+        /* Multi-Binder (2026-08-25) — griglia dei contenitori cliccabili */
+        .binders-contenitori-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            gap: 1rem;
+            margin-top: 0.8rem;
+        }
+        .binder-contenitore-tile {
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.35rem;
+            padding: 0.5rem;
+            border-radius: 12px;
+            transition: background-color 0.15s ease;
+        }
+        .binder-contenitore-tile:hover { background-color: var(--bg-color); }
+        .binder-contenitore-cover {
+            width: 100%;
+            aspect-ratio: 1024 / 1419;
+            border-radius: 10px;
+            background: var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+        }
+        .binder-contenitore-cover img { width: 100%; height: 100%; object-fit: cover; }
+        .binder-contenitore-cover i { font-size: 1.6rem; color: var(--text-muted); }
+        .binder-contenitore-nome {
+            font-size: 0.8rem;
+            font-weight: 700;
+            color: var(--text-dark);
+            text-align: center;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            max-width: 100%;
+        }
+        .binder-contenitore-conteggio { font-size: 0.7rem; color: var(--text-muted); }
+
+        /* Toggle modalità immagini/elenco — preferenza per-utente, vedi
+           impostaModalitaBinder() in ui/binder.ui.js */
+        .binder-modalita-toggle { display: flex; gap: 0.4rem; margin: 0.8rem 0; }
+        .binder-modalita-btn {
+            border: 2px solid var(--border-color);
+            background: var(--bg-color);
+            color: var(--text-dark);
+            font-weight: 700;
+            font-size: 0.78rem;
+            padding: 0.4rem 0.8rem;
+            border-radius: 10px;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+        .binder-modalita-btn.active { border-color: var(--primary); background-color: var(--primary); color: white; }
+
+        .binder-elenco-body { margin-top: 1rem; }
+        .binder-elenco-body .riga-compatta { margin-bottom: 0.5rem; }
+
         .binder-grid {
             display: grid;
             gap: 0.9rem;
@@ -2838,193 +2902,208 @@
         </div>
 
         <!-- SEZIONE 4: IMPOSTAZIONI -->
-        <!-- SEZIONE BINDER — Stage 1 (Traccia A): solo grafica e navigazione.
-             TEMPORANEO: mostra tutta la collezione (carte + sealed in stato
-             'collezione'), NON ancora filtrata sul campo dedicato "nel
-             Binder" — quel campo non esiste ancora su Supabase (Fase A0,
-             non ancora fatta, vedi decisioni di sessione). Nessun editing,
-             drag-and-drop o persistenza personalizzata in questa fase:
-             solo visualizzazione, con dati reali e immagini reali (stesso
-             proxy immagini già usato nella tabella). Ordine carte:
-             automatico, per data di inserimento in collezione. -->
+        <!-- SEZIONE BINDER — Multi-Binder (2026-08-25). Griglia dei
+             contenitori (uno per location + Wishlist + un binder "extra"
+             personalizzabile) in #bindersContenitoriGrid, popolata da
+             renderGrigliaBinders() in ui/binder.ui.js. Click su un
+             contenitore apre #binderDettaglioWrap (nascosto di default),
+             stesso markup di copertina/sleeve/griglia/paginazione di
+             prima, ora agganciato al binder aperto (_binderAttivo) invece
+             che unico per utente — vedi ui/binder.ui.js per la logica. -->
         <div id="binder" class="view-section">
             <div class="settings-card" style="max-width: 900px;">
                 <h3 style="margin-bottom: 0.3rem; color: var(--text-dark); display: flex; align-items: center; gap: 0.6rem; font-size: 1.15rem; font-weight: 800;">
-                    <i class="fa-solid fa-layer-group" style="color: var(--primary);"></i> Binder
+                    <i class="fa-solid fa-layer-group" style="color: var(--primary);"></i> Binders
                 </h3>
                 <p style="font-size: 0.78rem; color: var(--text-muted); margin-bottom: 1.2rem;">
-                    Anteprima grafica — per ora mostra tutta la collezione. La selezione "nel Binder" arriverà con il prossimo intervento sui dati.
+                    Un binder per ogni Location, uno per la Wishlist, e uno tutto tuo da riempire come vuoi.
                 </p>
 
-                <!-- COPERTINA BINDER (Fase 2c, 19/08/2026) — upload con
-                     moderazione admin. Slot 'binder_cover' su user_media,
-                     bucket privato 'user-media'. Upload → status 'pending'
-                     → richiesta collegata in pending_requests (type:
-                     photo_upload). Diventa visibile agli altri solo dopo
-                     approvazione admin (Fase 3, non ancora collegata). -->
-                <div class="settings-card" style="margin-bottom: 1.2rem; padding: 1rem;">
-                    <h4 style="margin: 0 0 0.5rem; font-size: 0.9rem; font-weight: 700; display:flex; align-items:center; gap:0.5rem;">
-                        <i class="fa-solid fa-image" style="color: var(--primary);"></i> Copertina del Binder
-                    </h4>
-                    <div id="binderCoverPreviewWrap" style="display:flex; align-items:center; gap:1rem; flex-wrap:wrap;">
-                        <div id="binderCoverPreview" style="width:80px; height:80px; border-radius:10px; background:var(--border-color); display:flex; align-items:center; justify-content:center; overflow:hidden; flex-shrink:0;">
-                            <i class="fa-solid fa-image" style="color:var(--text-muted);"></i>
-                        </div>
-                        <div style="flex:1; min-width:180px;">
-                            <div id="binderCoverStato" style="font-size:0.8rem; color:var(--text-muted); margin-bottom:0.5rem;">Caricamento stato…</div>
-                            <label class="btn-secondary" id="binderCoverUploadLabel" style="display:inline-flex; align-items:center; gap:0.5rem; padding:0.55rem 0.9rem; font-size:0.8rem; cursor:pointer;">
-                                <i class="fa-solid fa-upload"></i> Carica foto
-                                <input type="file" id="binderCoverInput" accept="image/*" style="display:none;" onchange="gestisciUploadBinderCover(event)">
-                            </label>
-                            <button type="button" class="btn-secondary" style="display:inline-flex; align-items:center; gap:0.5rem; padding:0.55rem 0.9rem; font-size:0.8rem; margin-left:0.4rem;" onclick="toggleGalleriaDefaultBinderCover()">
-                                <i class="fa-solid fa-images"></i> Scegli da galleria
-                            </button>
-                            <div id="binderCoverError" style="display:none; color:var(--danger); font-size:0.78rem; margin-top:0.4rem;"></div>
-                            <div style="font-size:0.72rem; color:var(--text-muted); margin-top:0.4rem;">Qualsiasi foto, qualsiasi dimensione — convertita automaticamente.</div>
-                            <div id="binderCoverGalleriaWrap" style="display:none; margin-top:0.6rem;">
-                                <div id="binderCoverGalleriaGrid" style="display:flex; gap:0.5rem; flex-wrap:wrap;"></div>
+                <!-- Griglia dei contenitori -->
+                <div id="bindersContenitoriGrid" class="binders-contenitori-grid"></div>
+
+                <!-- Dettaglio del binder aperto -->
+                <div id="binderDettaglioWrap" style="display:none;">
+                    <div style="display:flex; align-items:center; gap:0.6rem; margin-bottom:1rem;">
+                        <button type="button" class="btn-secondary" style="padding:0.5rem 0.8rem; font-size:0.8rem;" onclick="tornaAllaGrigliaBinders()">
+                            <i class="fa-solid fa-arrow-left"></i> Binders
+                        </button>
+                        <h4 id="binderDettaglioTitolo" style="margin:0; font-size:1rem; font-weight:800; color:var(--text-dark);"></h4>
+                    </div>
+
+                    <!-- Rinomina — mostrata via JS solo per il binder tipo 'extra' -->
+                    <div id="binderRinominaWrap" style="display:none; margin-bottom:1rem; gap:0.5rem; flex-wrap:wrap;">
+                        <input type="text" id="binderRinominaInput" placeholder="Nome del binder" style="flex:1; min-width:160px; padding:0.5rem 0.7rem; border-radius:8px; border:1px solid var(--border-color); font-size:0.85rem;">
+                        <button type="button" class="btn-secondary" style="padding:0.5rem 0.9rem; font-size:0.8rem;" onclick="rinominaBinderExtraCorrente(document.getElementById('binderRinominaInput').value)">
+                            <i class="fa-solid fa-pen"></i> Rinomina
+                        </button>
+                    </div>
+
+                    <!-- Toggle immagini/elenco — preferenza per-utente -->
+                    <div class="binder-modalita-toggle">
+                        <button type="button" class="binder-modalita-btn" data-modalita="immagini" onclick="impostaModalitaBinder('immagini')"><i class="fa-solid fa-images"></i> Immagini</button>
+                        <button type="button" class="binder-modalita-btn" data-modalita="elenco" onclick="impostaModalitaBinder('elenco')"><i class="fa-solid fa-list"></i> Elenco</button>
+                    </div>
+                    <p id="binderSoglioAvviso" style="display:none; font-size:0.75rem; color:var(--text-muted); background:var(--bg-color); border-radius:8px; padding:0.5rem 0.7rem; margin-bottom:0.8rem;"></p>
+
+                    <!-- Design: copertina + sleeve del binder aperto -->
+                    <details class="settings-card" style="margin-bottom: 1.2rem; padding: 1rem;">
+                        <summary style="cursor:pointer; font-weight:700; font-size:0.9rem; display:flex; align-items:center; gap:0.5rem;">
+                            <i class="fa-solid fa-wand-magic-sparkles" style="color: var(--primary);"></i> Design del binder
+                        </summary>
+
+                        <div class="settings-card" style="margin: 1rem 0; padding: 1rem;">
+                            <h4 style="margin: 0 0 0.5rem; font-size: 0.9rem; font-weight: 700; display:flex; align-items:center; gap:0.5rem;">
+                                <i class="fa-solid fa-image" style="color: var(--primary);"></i> Copertina
+                            </h4>
+                            <div id="binderCoverPreviewWrap" style="display:flex; align-items:center; gap:1rem; flex-wrap:wrap;">
+                                <div id="binderCoverPreview" style="width:80px; height:80px; border-radius:10px; background:var(--border-color); display:flex; align-items:center; justify-content:center; overflow:hidden; flex-shrink:0;">
+                                    <i class="fa-solid fa-image" style="color:var(--text-muted);"></i>
+                                </div>
+                                <div style="flex:1; min-width:180px;">
+                                    <div id="binderCoverStato" style="font-size:0.8rem; color:var(--text-muted); margin-bottom:0.5rem;">Caricamento stato…</div>
+                                    <label class="btn-secondary" id="binderCoverUploadLabel" style="display:inline-flex; align-items:center; gap:0.5rem; padding:0.55rem 0.9rem; font-size:0.8rem; cursor:pointer;">
+                                        <i class="fa-solid fa-upload"></i> Carica foto
+                                        <input type="file" id="binderCoverInput" accept="image/*" style="display:none;" onchange="gestisciUploadCopertinaBinderAttivo(event)">
+                                    </label>
+                                    <button type="button" class="btn-secondary" style="display:inline-flex; align-items:center; gap:0.5rem; padding:0.55rem 0.9rem; font-size:0.8rem; margin-left:0.4rem;" onclick="toggleGalleriaDefaultCopertinaBinderAttivo()">
+                                        <i class="fa-solid fa-images"></i> Scegli da galleria
+                                    </button>
+                                    <div id="binderCoverError" style="display:none; color:var(--danger); font-size:0.78rem; margin-top:0.4rem;"></div>
+                                    <div style="font-size:0.72rem; color:var(--text-muted); margin-top:0.4rem;">Qualsiasi foto, qualsiasi dimensione — convertita automaticamente. Visibile solo a te finché non è approvata.</div>
+                                    <div id="binderCoverGalleriaWrap" style="display:none; margin-top:0.6rem;">
+                                        <div id="binderCoverGalleriaGrid" style="display:flex; gap:0.5rem; flex-wrap:wrap;"></div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                </div>
 
-                <!-- RETRO CARTA PERSONALIZZATO (Fase 2, backcarte, 20/08/2026) —
-                     stesso pattern di "Copertina del Binder" sopra: slot
-                     'card_back' su user_media, bucket 'user-media', upload →
-                     status 'pending' → richiesta in pending_requests. In più
-                     qui c'è l'editor di posizionamento dei 4 campi (nome/
-                     condizione/variazione prezzo/prezzo), portato da
-                     modalita-crea-la-tua-sleeve.html del pacchetto backcarte.
-                     Si apre SUBITO sotto non appena esiste una sleeve
-                     (appena caricata o già salvata in precedenza) — non è
-                     dietro un bottone separato, su richiesta di Claudio. -->
-                <div class="settings-card" style="margin-bottom: 1.2rem; padding: 1rem;">
-                    <h4 style="margin: 0 0 0.5rem; font-size: 0.9rem; font-weight: 700; display:flex; align-items:center; gap:0.5rem;">
-                        <i class="fa-solid fa-clone" style="color: var(--primary);"></i> Retro carta personalizzato
-                    </h4>
-                    <p style="font-size:0.72rem; color:var(--text-muted); margin:0 0 0.8rem;">
-                        Sostituisce il retro standard ovunque giri una carta nel sito. Se non carichi nulla, viene mostrato un retro di sistema.
+                        <div class="settings-card" style="margin: 1rem 0; padding: 1rem;">
+                            <h4 style="margin: 0 0 0.5rem; font-size: 0.9rem; font-weight: 700; display:flex; align-items:center; gap:0.5rem;">
+                                <i class="fa-solid fa-clone" style="color: var(--primary);"></i> Sleeve (retro carta)
+                            </h4>
+                            <p style="font-size:0.72rem; color:var(--text-muted); margin:0 0 0.8rem;">
+                                Sostituisce il retro standard per le carte di questo binder. Se non carichi nulla, viene mostrato un retro di sistema.
+                            </p>
+                            <div id="cardBackPreviewWrap" style="display:flex; align-items:center; gap:1rem; flex-wrap:wrap;">
+                                <div id="cardBackPreview" style="width:60px; height:84px; border-radius:8px; background:var(--border-color); display:flex; align-items:center; justify-content:center; overflow:hidden; flex-shrink:0;">
+                                    <i class="fa-solid fa-image" style="color:var(--text-muted);"></i>
+                                </div>
+                                <div style="flex:1; min-width:180px;">
+                                    <div id="cardBackStato" style="font-size:0.8rem; color:var(--text-muted); margin-bottom:0.5rem;">Caricamento stato…</div>
+                                    <label class="btn-secondary" id="cardBackUploadLabel" style="display:inline-flex; align-items:center; gap:0.5rem; padding:0.55rem 0.9rem; font-size:0.8rem; cursor:pointer;">
+                                        <i class="fa-solid fa-upload"></i> Carica sleeve
+                                        <input type="file" id="cardBackInput" accept="image/*" style="display:none;" onchange="gestisciUploadSleeveBinderAttivo(event)">
+                                    </label>
+                                    <button type="button" class="btn-secondary" style="display:inline-flex; align-items:center; gap:0.5rem; padding:0.55rem 0.9rem; font-size:0.8rem; margin-left:0.4rem;" onclick="toggleGalleriaDefaultSleeveBinderAttivo()">
+                                        <i class="fa-solid fa-images"></i> Scegli da galleria
+                                    </button>
+                                    <div id="cardBackError" style="display:none; color:var(--danger); font-size:0.78rem; margin-top:0.4rem;"></div>
+                                    <div id="cardBackGalleriaWrap" style="display:none; margin-top:0.6rem;">
+                                        <div id="cardBackGalleriaGrid" style="display:flex; gap:0.5rem; flex-wrap:wrap;"></div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div id="cardBackEditorWrap" style="display:none; margin-top:0.6rem;">
+                                <p style="font-size:0.72rem; color:var(--text-muted); margin:0 0 0.5rem;">Trascina i 4 campi per posizionarli, usa la maniglia per ridimensionarli.</p>
+                                <div class="cardback-stage-wrap" id="cardBackStageWrap">
+                                    <div class="cardback-stage" id="cardBackStage">
+                                        <img class="cardback-bg" id="cardBackBgImg" src="" alt="Sleeve retro carta">
+
+                                        <div class="cardback-field" id="cardBackField-pokemon" data-field="pokemon" style="left:13.48%; top:9.33%;">
+                                            <div class="cardback-drag-handle">✥</div>
+                                            <div class="cardback-resize-handle">⤡</div>
+                                            <div class="cardback-field-content">
+                                                <div class="cardback-box">PIKACHU VMAX 044</div>
+                                            </div>
+                                        </div>
+
+                                        <div class="cardback-field" id="cardBackField-condition" data-field="condition" style="left:27.19%; top:31.82%;">
+                                            <div class="cardback-drag-handle">✥</div>
+                                            <div class="cardback-resize-handle">⤡</div>
+                                            <div class="cardback-field-content">
+                                                <div class="cardback-medal-wrap">
+                                                    <div class="cardback-ribbon left"></div>
+                                                    <div class="cardback-ribbon right"></div>
+                                                    <div class="cardback-medal">NM</div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="cardback-field" id="cardBackField-variazione" data-field="variazione" style="left:27.19%; top:55.25%;">
+                                            <div class="cardback-drag-handle">✥</div>
+                                            <div class="cardback-resize-handle">⤡</div>
+                                            <div class="cardback-field-content">
+                                                <div class="cardback-bubble">
+                                                    <div class="cardback-bubble-text">+5,2% questa settimana</div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="cardback-field" id="cardBackField-price" data-field="price" style="left:66.44%; top:78.27%;">
+                                            <div class="cardback-drag-handle">✥</div>
+                                            <div class="cardback-resize-handle">⤡</div>
+                                            <div class="cardback-field-content">
+                                                <div class="cardback-price-wrap">
+                                                    <svg viewBox="0 0 300 145" preserveAspectRatio="none">
+                                                        <path d="
+                                                            M 26 6
+                                                            L 274 6
+                                                            Q 292 6 292 22
+                                                            C 292 40, 258 46, 258 72.5
+                                                            C 258 99, 292 105, 292 123
+                                                            Q 292 139 274 139
+                                                            L 26 139
+                                                            Q 8 139 8 123
+                                                            C 8 105, 42 99, 42 72.5
+                                                            C 42 46, 8 40, 8 22
+                                                            Q 8 6 26 6
+                                                            Z"
+                                                            fill="#fdfdf3" stroke="#14142a" stroke-width="6" stroke-linejoin="round"/>
+                                                    </svg>
+                                                    <div class="cardback-price-text">12,50 €</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div style="display:flex; gap:0.5rem; margin-top:0.7rem; flex-wrap:wrap;">
+                                    <button type="button" class="btn-main" style="padding:0.5rem 0.9rem; font-size:0.8rem;" onclick="salvaPosizioniSleeveBinderAttivo()">
+                                        <i class="fa-solid fa-floppy-disk"></i> Salva posizioni
+                                    </button>
+                                    <button type="button" class="btn-secondary" style="padding:0.5rem 0.9rem; font-size:0.8rem;" onclick="ripristinaPosizioniSleeveBinderAttivoDefault()">
+                                        <i class="fa-solid fa-rotate-left"></i> Ripristina posizioni di default
+                                    </button>
+                                    <span id="cardBackPosStato" style="font-size:0.78rem; color:var(--text-muted); align-self:center;"></span>
+                                </div>
+                            </div>
+                        </div>
+                    </details>
+
+                    <!-- Layout griglia immagini — nascosto via JS in modalità elenco -->
+                    <div class="binder-layout-switcher" style="display:flex; align-items:center; justify-content:space-between; gap:0.6rem; flex-wrap:wrap;">
+                        <div style="display:flex; gap:0.4rem;">
+                            <button type="button" class="binder-layout-btn" data-layout="2x2" onclick="cambiaLayoutBinder('2x2')">2×2</button>
+                            <button type="button" class="binder-layout-btn" data-layout="3x3" onclick="cambiaLayoutBinder('3x3')">3×3</button>
+                            <button type="button" class="binder-layout-btn" data-layout="3x4" onclick="cambiaLayoutBinder('3x4')">4×3</button>
+                            <button type="button" class="binder-layout-btn" data-layout="4x4" onclick="cambiaLayoutBinder('4x4')">4×4</button>
+                        </div>
+                        <span style="font-size:0.72rem; color:var(--text-muted);">Per aggiungere carte al tuo binder personale, usa "Aggiungi al Binder" da Visualizzazione.</span>
+                    </div>
+
+                    <div class="binder-grid" id="binderGrid"></div>
+                    <div id="binderElencoBody" class="binder-elenco-body" style="display:none;"></div>
+
+                    <p id="binderEmptyMsg" style="display:none; text-align:center; color: var(--text-muted); font-size: 0.85rem; margin-top: 1rem;">
+                        Nessuna carta in questo binder.
                     </p>
-                    <div id="cardBackPreviewWrap" style="display:flex; align-items:center; gap:1rem; flex-wrap:wrap;">
-                        <div id="cardBackPreview" style="width:60px; height:84px; border-radius:8px; background:var(--border-color); display:flex; align-items:center; justify-content:center; overflow:hidden; flex-shrink:0;">
-                            <i class="fa-solid fa-image" style="color:var(--text-muted);"></i>
-                        </div>
-                        <div style="flex:1; min-width:180px;">
-                            <div id="cardBackStato" style="font-size:0.8rem; color:var(--text-muted); margin-bottom:0.5rem;">Caricamento stato…</div>
-                            <label class="btn-secondary" id="cardBackUploadLabel" style="display:inline-flex; align-items:center; gap:0.5rem; padding:0.55rem 0.9rem; font-size:0.8rem; cursor:pointer;">
-                                <i class="fa-solid fa-upload"></i> Carica sleeve
-                                <input type="file" id="cardBackInput" accept="image/*" style="display:none;" onchange="gestisciUploadCardBack(event)">
-                            </label>
-                            <button type="button" class="btn-secondary" style="display:inline-flex; align-items:center; gap:0.5rem; padding:0.55rem 0.9rem; font-size:0.8rem; margin-left:0.4rem;" onclick="toggleGalleriaDefaultCardBack()">
-                                <i class="fa-solid fa-images"></i> Scegli da galleria
-                            </button>
-                            <div id="cardBackError" style="display:none; color:var(--danger); font-size:0.78rem; margin-top:0.4rem;"></div>
-                            <div style="font-size:0.72rem; color:var(--text-muted); margin-top:0.4rem;">Qualsiasi foto, qualsiasi dimensione — ritagliata automaticamente in 900×1260.</div>
-                            <div id="cardBackGalleriaWrap" style="display:none; margin-top:0.6rem;">
-                                <div id="cardBackGalleriaGrid" style="display:flex; gap:0.5rem; flex-wrap:wrap;"></div>
-                            </div>
-                        </div>
+
+                    <div class="binder-pagination" id="binderPagination">
+                        <button type="button" class="binder-page-btn" id="binderPrevBtn" onclick="binderPaginaIndietro()" aria-label="Pagina precedente"><i class="fa-solid fa-chevron-left"></i></button>
+                        <span id="binderPaginaLabel">Pagina 1 di 1</span>
+                        <button type="button" class="binder-page-btn" id="binderNextBtn" onclick="binderPaginaAvanti()" aria-label="Pagina successiva"><i class="fa-solid fa-chevron-right"></i></button>
                     </div>
-
-                    <div id="cardBackEditorWrap" style="display:none; margin-top:0.6rem;">
-                        <p style="font-size:0.75rem; color:var(--text-muted); margin:0 0 0.3rem;">
-                            Trascina i 4 campi dove vuoi sopra la sleeve. Maniglia blu = sposta, maniglia verde = ridimensiona.
-                        </p>
-                        <div class="cardback-stage-wrap" id="cardBackStageWrap">
-                            <div class="cardback-stage" id="cardBackStage">
-                                <img class="cardback-bg" id="cardBackBgImg" src="" alt="Sleeve retro carta">
-
-                                <div class="cardback-field" id="cardBackField-pokemon" data-field="pokemon" style="left:13.48%; top:9.33%;">
-                                    <div class="cardback-drag-handle">✥</div>
-                                    <div class="cardback-resize-handle">⤡</div>
-                                    <div class="cardback-field-content">
-                                        <div class="cardback-box">PIKACHU VMAX 044</div>
-                                    </div>
-                                </div>
-
-                                <div class="cardback-field" id="cardBackField-condition" data-field="condition" style="left:27.19%; top:31.82%;">
-                                    <div class="cardback-drag-handle">✥</div>
-                                    <div class="cardback-resize-handle">⤡</div>
-                                    <div class="cardback-field-content">
-                                        <div class="cardback-medal-wrap">
-                                            <div class="cardback-ribbon left"></div>
-                                            <div class="cardback-ribbon right"></div>
-                                            <div class="cardback-medal">NM</div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="cardback-field" id="cardBackField-variazione" data-field="variazione" style="left:27.19%; top:55.25%;">
-                                    <div class="cardback-drag-handle">✥</div>
-                                    <div class="cardback-resize-handle">⤡</div>
-                                    <div class="cardback-field-content">
-                                        <div class="cardback-bubble">
-                                            <div class="cardback-bubble-text">+5,2% questa settimana</div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="cardback-field" id="cardBackField-price" data-field="price" style="left:66.44%; top:78.27%;">
-                                    <div class="cardback-drag-handle">✥</div>
-                                    <div class="cardback-resize-handle">⤡</div>
-                                    <div class="cardback-field-content">
-                                        <div class="cardback-price-wrap">
-                                            <svg viewBox="0 0 300 145" preserveAspectRatio="none">
-                                                <path d="
-                                                    M 26 6
-                                                    L 274 6
-                                                    Q 292 6 292 22
-                                                    C 292 40, 258 46, 258 72.5
-                                                    C 258 99, 292 105, 292 123
-                                                    Q 292 139 274 139
-                                                    L 26 139
-                                                    Q 8 139 8 123
-                                                    C 8 105, 42 99, 42 72.5
-                                                    C 42 46, 8 40, 8 22
-                                                    Q 8 6 26 6
-                                                    Z"
-                                                    fill="#fdfdf3" stroke="#14142a" stroke-width="6" stroke-linejoin="round"/>
-                                            </svg>
-                                            <div class="cardback-price-text">12,50 €</div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div style="display:flex; gap:0.5rem; margin-top:0.7rem; flex-wrap:wrap;">
-                            <button type="button" class="btn-main" style="padding:0.5rem 0.9rem; font-size:0.8rem;" onclick="salvaPosizioniCardBack()">
-                                <i class="fa-solid fa-floppy-disk"></i> Salva posizioni
-                            </button>
-                            <button type="button" class="btn-secondary" style="padding:0.5rem 0.9rem; font-size:0.8rem;" onclick="ripristinaPosizioniCardBackDefault()">
-                                <i class="fa-solid fa-rotate-left"></i> Ripristina posizioni di default
-                            </button>
-                            <span id="cardBackPosStato" style="font-size:0.78rem; color:var(--text-muted); align-self:center;"></span>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="binder-layout-switcher" style="display:flex; align-items:center; justify-content:space-between; gap:0.6rem; flex-wrap:wrap;">
-                    <div style="display:flex; gap:0.4rem;">
-                        <button type="button" class="binder-layout-btn" data-layout="2x2" onclick="impostaBinderLayout('2x2')">2×2</button>
-                        <button type="button" class="binder-layout-btn" data-layout="3x3" onclick="impostaBinderLayout('3x3')">3×3</button>
-                        <button type="button" class="binder-layout-btn" data-layout="3x4" onclick="impostaBinderLayout('3x4')">4×3</button>
-                        <button type="button" class="binder-layout-btn" data-layout="4x4" onclick="impostaBinderLayout('4x4')">4×4</button>
-                    </div>
-                    <button type="button" class="btn-secondary" style="padding:0.5rem 0.9rem; font-size:0.8rem; display:inline-flex; align-items:center; gap:0.4rem;" onclick="apriAggiungiCarteBinder()">
-                        <i class="fa-solid fa-plus"></i> Aggiungi carte
-                    </button>
-                </div>
-
-                <div class="binder-grid" id="binderGrid"></div>
-
-                <p id="binderEmptyMsg" style="display:none; text-align:center; color: var(--text-muted); font-size: 0.85rem; margin-top: 1rem;">
-                    Non hai ancora aggiunto nessuna carta al Binder.
-                </p>
-
-                <div class="binder-pagination" id="binderPagination">
-                    <button type="button" class="binder-page-btn" id="binderPrevBtn" onclick="binderPaginaPrecedente()" aria-label="Pagina precedente"><i class="fa-solid fa-chevron-left"></i></button>
-                    <span id="binderPaginaLabel">Pagina 1 di 1</span>
-                    <button type="button" class="binder-page-btn" id="binderNextBtn" onclick="binderPaginaSuccessiva()" aria-label="Pagina successiva"><i class="fa-solid fa-chevron-right"></i></button>
                 </div>
             </div>
         </div>
