@@ -219,65 +219,22 @@ function toggleModificaWidgetHome() {
     renderWidgetHome();
 }
 
-// ── CORNICE: ritaglio "cover" ricalcolato a runtime ──────────────────────
-// FIX 2/2 (segnalato da Claudio, screenshot "è schiacciato... sistemare la
-// larghezza"): la cornice riempie sempre tutta la finestra (CSS
-// background-size:cover su #phoneShell, vedi index.html) invece di
-// restare piccola al centro con margini vuoti. "cover" ritaglia
-// automaticamente l'eccesso di bordo decorativo sopra/sotto (finestre
-// larghe) o ai lati (finestre strette) — qui ricalcoliamo dove finisce
-// DAVVERO lo schermo dei widget dopo quel ritaglio, replicando la stessa
-// matematica che il browser usa per "cover" (dimensioni reali delle due
-// immagini + percentuali di schermo misurate pixel per pixel una volta
-// sola su base_V.png/base_O.png), e la scriviamo come variabili CSS
-// (--phone-screen-top/bottom/left/right) che sia #phoneScreen sia il
-// tasto Indietro leggono già. Va richiamata ad ogni resize/rotazione.
-const _CORNICE_NATURALE = {
-    verticale: { w: 885, h: 1777, top: 0.092, bottom: 0.093, left: 0.176, right: 0.136 },
-    orizzontale: { w: 1536, h: 1024, top: 0.163, bottom: 0.188, left: 0.102, right: 0.101 },
-};
-
-function _ricalcolaLayoutCornice() {
-    const landscape = window.matchMedia('(orientation: landscape)').matches;
-    const nat = landscape ? _CORNICE_NATURALE.orizzontale : _CORNICE_NATURALE.verticale;
-
-    const boxW = window.innerWidth;
-    const boxH = window.innerHeight;
-
-    // Stessa formula di CSS background-size:cover: scala per riempire il
-    // box (il maggiore dei due rapporti), poi ritaglio centrato sull'asse
-    // che eccede.
-    const scale = Math.max(boxW / nat.w, boxH / nat.h);
-    const renderedW = nat.w * scale;
-    const renderedH = nat.h * scale;
-    const cropXFrac = Math.max(0, (renderedW - boxW) / renderedW / 2);
-    const cropYFrac = Math.max(0, (renderedH - boxH) / renderedH / 2);
-    const visibleFracX = Math.max(1 - 2 * cropXFrac, 0.01); // guardia anti-divisione-per-zero
-    const visibleFracY = Math.max(1 - 2 * cropYFrac, 0.01);
-
-    const pct = (v) => Math.max(0, Math.min(100, v * 100)) + '%';
-
-    const root = document.documentElement.style;
-    root.setProperty('--phone-screen-top', pct((nat.top - cropYFrac) / visibleFracY));
-    root.setProperty('--phone-screen-bottom', pct((nat.bottom - cropYFrac) / visibleFracY));
-    root.setProperty('--phone-screen-left', pct((nat.left - cropXFrac) / visibleFracX));
-    root.setProperty('--phone-screen-right', pct((nat.right - cropXFrac) / visibleFracX));
-}
-
 // ── APERTURA/CHIUSURA DETTAGLIO FULLSCREEN DENTRO IL FRAME ───────────────
-// .container non viene spostata nel DOM (rischio zero di rompere
-// selettori/z-index esistenti) — le si impostano solo, via JS, top/left/
-// width/height/border-radius ESATTI letti da #phoneScreen.
-// getBoundingClientRect() (coordinate già relative al viewport, quindi
-// direttamente utilizzabili per un elemento position:fixed, nessuna
-// conversione). Più robusto della sola CSS: qualunque sia la strategia di
-// ritaglio della cornice (cover, contain, futura scelta utente da
-// bucket), .container si allinea sempre a ciò che lo schermo mostra
-// DAVVERO, senza dover duplicare percentuali in due punti diversi.
-// switchTab() resta ESATTAMENTE quella di navigation.ui.js, non toccata.
+// .container (e il tasto Indietro) non vengono spostati nel DOM (rischio
+// zero di rompere selettori/z-index esistenti) — si impostano solo, via
+// JS, le coordinate ESATTE lette da #phoneScreen.getBoundingClientRect()
+// (coordinate già relative al viewport, direttamente utilizzabili per un
+// elemento position:fixed, nessuna conversione). Robusto per costruzione:
+// qualunque sia la dimensione della cornice (mockup ridotto su desktop,
+// piena finestra su telefono vero — vedi #phoneFrameBox in index.html),
+// .container e il tasto Indietro si allineano sempre a ciò che lo schermo
+// mostra DAVVERO, senza percentuali duplicate da tenere sincronizzate a
+// mano. switchTab() resta ESATTAMENTE quella di navigation.ui.js, non
+// toccata.
 function _posizionaContainerNelloSchermo() {
     const schermo = document.getElementById('phoneScreen');
     const container = document.querySelector('.container');
+    const btnIndietro = document.getElementById('btnIndietroDettaglioWidget');
     if (!schermo || !container) return;
     const rect = schermo.getBoundingClientRect();
     container.style.top = rect.top + 'px';
@@ -285,6 +242,10 @@ function _posizionaContainerNelloSchermo() {
     container.style.width = rect.width + 'px';
     container.style.height = rect.height + 'px';
     container.style.borderRadius = getComputedStyle(schermo).borderRadius;
+    if (btnIndietro) {
+        btnIndietro.style.top = (rect.top + 10) + 'px';
+        btnIndietro.style.left = (rect.left + 14) + 'px';
+    }
 }
 
 function apriDettaglioWidget(tabId) {
@@ -298,11 +259,12 @@ function chiudiDettaglioWidget() {
     renderWidgetHome(); // i numeri potrebbero essere cambiati mentre eri nel dettaglio
 }
 
-// Ridimensionamento/rotazione: ricalcola sempre il ritaglio cornice, e se
-// sei nel dettaglio riallinea anche .container di conseguenza (dopo il
-// reflow del nuovo --phone-screen-*, da qui il requestAnimationFrame).
+// Ridimensionamento/rotazione: la dimensione/proporzione della cornice
+// (#phoneFrameBox) può cambiare — se sei nel dettaglio riallinea
+// .container/tasto Indietro di conseguenza. Nulla da fare sulla home
+// widget (la griglia è già responsive via CSS, nessun calcolo JS
+// necessario per lei).
 function _gestisciResizeCornice() {
-    _ricalcolaLayoutCornice();
     if (document.body.classList.contains('phone-detail-open')) {
         requestAnimationFrame(_posizionaContainerNelloSchermo);
     }
@@ -315,14 +277,12 @@ function _gestisciResizeCorniceDebounced() {
 // ── CORNICE PERSONALIZZABILE (placeholder oggi, bucket Supabase domani) ──
 // Punto di innesto unico: quando esisterà la UI per scegliere la cornice
 // dal bucket, basterà chiamare questa funzione con l'URL pubblico del file
-// scelto E le sue dimensioni reali (naturalWidth/naturalHeight, servono al
-// ricalcolo del ritaglio) — nessun'altra modifica a CSS necessaria.
-function _applicaCorniceUtente(urlVerticale, dimVerticale, urlOrizzontale, dimOrizzontale) {
+// scelto — nessun'altra modifica a CSS necessaria (le percentuali
+// --phone-screen-*-v/-o andranno però rimisurate sulla nuova immagine,
+// stesso metodo pixel-per-pixel usato per i placeholder attuali).
+function _applicaCorniceUtente(urlVerticale, urlOrizzontale) {
     if (urlVerticale) document.getElementById('phoneFrameV').style.backgroundImage = `url('${urlVerticale}')`;
     if (urlOrizzontale) document.getElementById('phoneFrameO').style.backgroundImage = `url('${urlOrizzontale}')`;
-    if (dimVerticale) Object.assign(_CORNICE_NATURALE.verticale, { w: dimVerticale.w, h: dimVerticale.h });
-    if (dimOrizzontale) Object.assign(_CORNICE_NATURALE.orizzontale, { w: dimOrizzontale.w, h: dimOrizzontale.h });
-    _gestisciResizeCornice();
 }
 
 // ── POLLING ────────────────────────────────────────────────────────────
@@ -355,7 +315,6 @@ function avviaPollingWidgetHome() {
 // 9999999) copre comunque tutto finché non viene superato, quindi non
 // serve nessuna dipendenza esplicita dall'esito di quel controllo qui.
 async function initPhoneShell() {
-    _ricalcolaLayoutCornice();
     _caricaLayoutWidget();
     await renderWidgetHome();
     avviaPollingWidgetHome();
