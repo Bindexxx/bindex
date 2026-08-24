@@ -669,50 +669,55 @@ function _posizionaContainerNelloSchermo() {
 
 // ── APERTURA/CHIUSURA — animazione "a Pokéball" ──────────────────────────
 // Claudio ha approvato l'idea di un'apertura che richiami il tema
-// Pokéball. Implementata con clip-path (un cerchio che si espande dal
-// punto esatto in cui hai toccato/cliccato il widget) — nessun asset
-// nuovo, solo CSS/JS. Se manca l'evento (es. chiamata programmatica)
-// parte dal centro dello schermo.
-let _ultimaOrigineApertura = null;
+// Pokéball: un cerchio che si espande dal punto esatto in cui hai
+// toccato/cliccato il widget (CSS clip-path, nessun asset nuovo). La
+// transizione è dichiarata SEMPRE in CSS (.container.container-visibile,
+// vedi index.html) — qui ci limitiamo a impostare l'origine del cerchio
+// (variabili CSS --pokeball-x/-y) e a spostare le classi, MAI a
+// toccare transition/clip-path a mano: è quello il pattern fragile che
+// causava il blocco a metà (vedi commento CSS per i dettagli).
+const DURATA_ANIMAZIONE_DETTAGLIO_MS = 300;
+let _chiusuraDettaglioTimeout = null;
 
-function _animaAperturaDettaglio(evt) {
-    const container = document.querySelector('.container');
-    if (!container) return;
+function _impostaOrigineAnimazione(container, evt) {
     const schermo = document.getElementById('phoneScreen');
     const rect = schermo ? schermo.getBoundingClientRect() : { left: 0, top: 0, width: window.innerWidth, height: window.innerHeight };
     const x = evt && evt.clientX ? evt.clientX : rect.left + rect.width / 2;
     const y = evt && evt.clientY ? evt.clientY : rect.top + rect.height / 2;
-    _ultimaOrigineApertura = { x, y };
-
-    container.style.transition = 'none';
-    container.style.clipPath = `circle(0% at ${x}px ${y}px)`;
-    requestAnimationFrame(() => {
-        container.style.transition = 'clip-path 0.3s ease';
-        container.style.clipPath = `circle(150% at ${x}px ${y}px)`;
-    });
-}
-
-function _animaChiusuraDettaglio() {
-    const container = document.querySelector('.container');
-    if (!container || !_ultimaOrigineApertura) return;
-    const { x, y } = _ultimaOrigineApertura;
-    container.style.transition = 'clip-path 0.26s ease';
-    container.style.clipPath = `circle(0% at ${x}px ${y}px)`;
+    container.style.setProperty('--pokeball-x', x + 'px');
+    container.style.setProperty('--pokeball-y', y + 'px');
 }
 
 function apriDettaglioWidget(tabId, evt) {
+    clearTimeout(_chiusuraDettaglioTimeout); // annulla un'eventuale chiusura ancora in corso (riapertura rapida)
+
+    const container = document.querySelector('.container');
     switchTab(tabId, null);
     document.body.classList.add('phone-detail-open');
-    _posizionaContainerNelloSchermo();
-    _animaAperturaDettaglio(evt);
+
+    if (container) {
+        _impostaOrigineAnimazione(container, evt);
+        container.classList.add('container-visibile'); // display: normale, cerchio a 0% (stato di partenza dichiarato in CSS)
+        _posizionaContainerNelloSchermo();
+        // Un frame di distacco tra "cerchio a 0%" e "aggiungi la classe che
+        // lo porta a 150%": necessario perché il browser faccia partire
+        // davvero la transizione invece di saltare subito allo stato finale.
+        requestAnimationFrame(() => container.classList.add('container-aperto'));
+    }
     _beep(880, 70);
 }
 
 function chiudiDettaglioWidget() {
-    _animaChiusuraDettaglio();
+    const container = document.querySelector('.container');
+    if (container) container.classList.remove('container-aperto'); // la transizione CSS dichiarata fa il resto (150%→0%)
     _beep(440, 70);
-    document.body.classList.remove('phone-detail-open');
-    renderWidgetHome();
+
+    clearTimeout(_chiusuraDettaglioTimeout);
+    _chiusuraDettaglioTimeout = setTimeout(() => {
+        document.body.classList.remove('phone-detail-open');
+        if (container) container.classList.remove('container-visibile'); // SOLO ora, a transizione finita, torna display:none
+        renderWidgetHome();
+    }, DURATA_ANIMAZIONE_DETTAGLIO_MS);
 }
 
 function _gestisciResizeCornice() {
@@ -751,23 +756,6 @@ function _aggiornaOrologioStatusBar() {
 function _impostaSyncAttivo(attivo) {
     const dot = document.getElementById('phoneSyncDot');
     if (dot) dot.classList.toggle('attivo', attivo);
-}
-
-// ── BARRA LIVELLO (gamification pura, soglie arbitrarie) ─────────────────
-// Nessun significato reale — solo soddisfazione di progresso, come
-// discusso e approvato. 100 carte per livello, arrotondato per difetto;
-// riempimento della barra = percentuale verso il livello successivo.
-function _aggiornaBarraLivello() {
-    const collezione = carteReali.filter(c => c.stato === 'collezione');
-    const qty = collezione.reduce((s, c) => s + (c.qty || 0), 0);
-    const CARTE_PER_LIVELLO = 100;
-    const livello = Math.floor(qty / CARTE_PER_LIVELLO) + 1;
-    const percentuale = Math.round((qty % CARTE_PER_LIVELLO) / CARTE_PER_LIVELLO * 100);
-
-    const testo = document.getElementById('phoneLivelloTesto');
-    const riempimento = document.getElementById('phoneLivelloRiempimento');
-    if (testo) testo.textContent = `Livello ${livello}`;
-    if (riempimento) riempimento.style.width = percentuale + '%';
 }
 
 // ── SUONI RETRO (Web Audio, nessun file esterno) ─────────────────────────
@@ -845,7 +833,6 @@ function avviaPollingWidgetHome() {
     _pollingWidgetInterval = setInterval(() => {
         if (!document.body.classList.contains('phone-detail-open') && !_editModeWidget) {
             renderWidgetHome();
-            _aggiornaBarraLivello();
         }
     }, INTERVALLO_WIDGET_VELOCE_MS);
 
@@ -866,7 +853,6 @@ async function initPhoneShell() {
     _caricaLayoutWidget();
     await renderWidgetHome();
     _aggiornaOrologioStatusBar();
-    _aggiornaBarraLivello();
     setInterval(_aggiornaOrologioStatusBar, 30000);
 
     const iconaSuoni = document.getElementById('iconaSuoniWidgetHome');
