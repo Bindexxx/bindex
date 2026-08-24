@@ -10,14 +10,12 @@
 // (authGetUserId), utils condivisi (_urlImmagineVisualizzabile, escapeHtml).
 //
 // *** COSA MANCA ANCORA, VOLUTAMENTE NON QUI (vedi chat) ***
-// - Modalità "elenco testuale": deve essere IDENTICA alla vista
-//   Visualizzazione attuale — serve ui/cards.ui.js per copiarla esatta
-//   invece di indovinarla. renderBinderElenco() sotto è uno STUB minimo,
-//   solo per non lasciare la UI rotta nel frattempo.
-// - Editor sleeve/retro-carta per-binder (drag/resize dei campi
-//   pokemon/condition/variazione/price): la versione precedente di questo
-//   file lo aveva per l'unico Binder globale — va riportato qui adattato a
-//   binder_id, prossimo passo dedicato.
+// - Modalità "elenco testuale": NON è la stessa funzione di Visualizzazione
+//   (renderViewTable scrive dentro id fissi di quella pagina, non
+//   riusabile da qui senza rifarla generica — vedi nota su
+//   renderBinderElenco più sotto) — è un'implementazione parallela con lo
+//   stesso stile della vista compatta mobile. Visivamente coerente, ma
+//   codice separato.
 // - Effetto "libro sfogliabile" con piega di pagina: DELIBERATAMENTE non
 //   qui, lo farà una sessione con Opus (vedi file di handoff quando ci
 //   arriviamo). Il click su una carta apre per ora la stessa immagine
@@ -26,6 +24,9 @@
 //   ui/cards.ui.js, non questo file — prossimo passo.
 // - Pubblicazione binder sotto approvazione admin: solo colonne DB pronte
 //   (vedi 17_binders_multipli.sql), nessuna UI admin qui.
+// - Markup HTML nuovo (#bindersContenitoriGrid, #binderDettaglioWrap,
+//   pannello Design con #binderCoverStato/#cardBackStage ecc.): non ancora
+//   in index.html, vedi elenco id richiesti in chat.
 
 
 // ── Ingresso dal widget "Binders" (phone.ui.js chiamerà questa) ─────────
@@ -172,6 +173,7 @@ async function apriBinderDettaglio(binderId) {
 
     await _caricaCarteBinderAttivo(binder);
     renderBinderContenuto();
+    await caricaDesignBinderAttivo(); // copertina + sleeve del binder appena aperto
 }
 
 function tornaAllaGrigliaBinders() {
@@ -452,26 +454,127 @@ async function rinominaBinderExtraCorrente(nuovoNome) {
 }
 
 
-// ── "Design" — copertina personalizzata per-binder ───────────────────────
-// Porta dello stesso meccanismo già esistente (upload → conversione PNG →
-// stato 'pending' → richiesta di moderazione) ma con path/slot agganciati
-// al binder aperto (_binderAttivo) invece che unici per utente. La
-// pipeline di conversione HEIC→PNG viveva nel vecchio binder.ui.js in un
-// punto che non ho ancora letto per intero — vedi TODO in cima al file, la
-// porto nel prossimo passo insieme all'editor sleeve. Questa funzione
-// presume che 'pngBlob' arrivi già pronto da quella pipeline.
-async function caricaCopertinaBinderAttivo(pngBlob) {
-    const userId = await authGetUserId();
-    const binder = _bindersElenco.find(b => String(b.id) === String(_binderAttivo));
-    if (!userId || !binder) return { error: new Error('Binder non attivo') };
 
-    const path = `${userId}/${binder.id}/binder_cover`;
+
+// ── "Design" — copertina e sleeve personalizzate, PER BINDER ────────────
+// Porta completa del vecchio meccanismo (era unico per utente, ora è per
+// binder — path, slot e metadata sempre agganciati a _binderAttivo).
+// Stesso identico comportamento di conversione/upload/moderazione/galleria
+// default, stesso editor drag/resize per i 4 campi della sleeve.
+
+async function caricaDesignBinderAttivo() {
+    await caricaCopertinaBinderAttivoStato();
+    await caricaSleeveBinderAttivoStato();
+}
+
+// ── Copertina ─────────────────────────────────────────────────────────
+function _convertiImmagineCopertina(file) {
+    return new Promise((resolve, reject) => {
+        const url = URL.createObjectURL(file);
+        const img = new Image();
+        img.onload = () => {
+            URL.revokeObjectURL(url);
+            const canvas = document.createElement('canvas');
+            canvas.width = BINDER_COVER_W;
+            canvas.height = BINDER_COVER_H;
+            const ctx = canvas.getContext('2d');
+            const scala = Math.max(BINDER_COVER_W / img.width, BINDER_COVER_H / img.height);
+            const wScalata = img.width * scala;
+            const hScalata = img.height * scala;
+            const dx = (BINDER_COVER_W - wScalata) / 2;
+            const dy = (BINDER_COVER_H - hScalata) / 2;
+            ctx.drawImage(img, dx, dy, wScalata, hScalata);
+            canvas.toBlob((blob) => {
+                if (!blob) { reject(new Error('Conversione non riuscita.')); return; }
+                resolve(blob);
+            }, 'image/png');
+        };
+        img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('FORMATO_NON_LEGGIBILE')); };
+        img.src = url;
+    });
+}
+
+async function caricaCopertinaBinderAttivoStato() {
+    const statoEl = document.getElementById('binderCoverStato');
+    const previewEl = document.getElementById('binderCoverPreview');
+    const errEl = document.getElementById('binderCoverError');
+    if (!statoEl || !previewEl) return; // pannello Design non ancora nel DOM
+    errEl.style.display = 'none';
+
+    const userId = await authGetUserId();
+    if (!userId || !_binderAttivo) { statoEl.textContent = 'Apri un binder per gestirne la copertina.'; return; }
+
+    const { data: media, error } = await userMediaGet(userId, _binderAttivo, 'binder_cover');
+    if (error) { statoEl.textContent = 'Errore nel controllare lo stato: ' + error.message; return; }
+
+    if (!media) {
+        statoEl.textContent = 'Nessuna copertina caricata ancora per questo binder.';
+        previewEl.innerHTML = '<i class="fa-solid fa-image" style="color:var(--text-muted);"></i>';
+        return;
+    }
+
+    let previewUrl = null;
+    if (media.source === 'default') {
+        const { data: pub } = storageDefaultAssetPublicUrl(media.storage_path);
+        previewUrl = pub?.publicUrl || null;
+    } else {
+        const { data: signed } = await storageSignedUrlUserMedia(media.storage_path);
+        previewUrl = signed?.signedUrl || null;
+    }
+    if (previewUrl) previewEl.innerHTML = `<img src="${previewUrl}" style="width:100%; height:100%; object-fit:cover;">`;
+
+    if (media.source === 'default') {
+        statoEl.innerHTML = '<span style="color:var(--success); font-weight:600;">✅ Sfondo predefinito selezionato</span>';
+    } else if (media.status === 'pending') {
+        statoEl.innerHTML = '<span style="color:#b8860b; font-weight:600;">⏳ In revisione da un admin — nel frattempo la copertina resta quella di prima (o quella generica)</span>';
+    } else if (media.status === 'approved') {
+        statoEl.innerHTML = '<span style="color:var(--success); font-weight:600;">✅ Approvata</span>';
+    } else if (media.status === 'rejected') {
+        statoEl.innerHTML = '<span style="color:var(--danger); font-weight:600;">❌ Rifiutata' + (media.admin_note ? ' — ' + escapeHtml(media.admin_note) : '') + '</span>';
+    }
+}
+
+async function gestisciUploadCopertinaBinderAttivo(event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const errEl = document.getElementById('binderCoverError');
+    errEl.style.display = 'none';
+
+    const userId = await authGetUserId();
+    if (!userId || !_binderAttivo) { errEl.textContent = 'Apri un binder prima di caricare una copertina.'; errEl.style.display = 'block'; return; }
+
+    let pngBlob;
+    try {
+        pngBlob = await _convertiImmagineCopertina(file);
+    } catch (e) {
+        errEl.textContent = e.message === 'FORMATO_NON_LEGGIBILE'
+            ? '❌ Il tuo dispositivo ha salvato questa foto in un formato che il sito non riesce a leggere (capita spesso con le foto scattate su iPhone, formato HEIC). Su iPhone: Impostazioni → Foto → Formato foto → scegli "Più compatibile", oppure scegli "Più piccola" quando condividi/esporti la foto. Poi riprova.'
+            : '❌ Errore nella conversione dell\'immagine: ' + e.message;
+        errEl.style.display = 'block';
+        event.target.value = '';
+        return;
+    }
+
+    const { error } = await _salvaCopertinaBinderAttivo(pngBlob);
+    if (error) { errEl.textContent = '❌ ' + error.message; errEl.style.display = 'block'; event.target.value = ''; return; }
+
+    event.target.value = '';
+    await caricaCopertinaBinderAttivoStato();
+    await renderGrigliaBinders(); // aggiorna anche la miniatura nella griglia contenitori
+}
+
+// Upload + registrazione (path per-binder) + richiesta di moderazione.
+async function _salvaCopertinaBinderAttivo(pngBlob) {
+    const userId = await authGetUserId();
+    if (!userId || !_binderAttivo) return { error: new Error('Nessun binder aperto') };
+
+    const path = `${userId}/${_binderAttivo}/binder_cover`;
     const { error: errUpload } = await storageUploadUserMedia(path, pngBlob);
     if (errUpload) return { error: errUpload };
 
     const { data: mediaRow, error: errUpsert } = await userMediaUpsertELeggi({
         user_id: userId,
-        binder_id: binder.id,
+        binder_id: _binderAttivo,
         slot: 'binder_cover',
         storage_path: path,
         source: 'upload',
@@ -485,18 +588,27 @@ async function caricaCopertinaBinderAttivo(pngBlob) {
     const { error: errRichiesta } = await creaRichiestaPendente(userId, 'photo_upload', { media_id: mediaRow.id });
     if (errRichiesta) console.error('Copertina registrata ma richiesta non collegata:', errRichiesta.message);
 
-    _coperturaBinderCache.delete(binder.id); // forza ri-risoluzione al prossimo render della griglia
+    _coperturaBinderCache.delete(_binderAttivo);
     return { error: null };
 }
 
-async function selezionaCopertinaDefaultBinderAttivo(filename) {
+function toggleGalleriaDefaultCopertinaBinderAttivo() {
+    const wrap = document.getElementById('binderCoverGalleriaWrap');
+    const show = wrap.style.display === 'none';
+    wrap.style.display = show ? 'block' : 'none';
+    if (show) _caricaGalleriaDefault('binder_cover', 'binderCoverGalleriaGrid', selezionaDefaultCopertinaBinderAttivo);
+}
+
+async function selezionaDefaultCopertinaBinderAttivo(filename) {
+    const errEl = document.getElementById('binderCoverError');
+    errEl.style.display = 'none';
+
     const userId = await authGetUserId();
-    const binder = _bindersElenco.find(b => String(b.id) === String(_binderAttivo));
-    if (!userId || !binder) return { error: new Error('Binder non attivo') };
+    if (!userId || !_binderAttivo) { errEl.textContent = 'Apri un binder prima.'; errEl.style.display = 'block'; return; }
 
     const { error } = await userMediaUpsert({
         user_id: userId,
-        binder_id: binder.id,
+        binder_id: _binderAttivo,
         slot: 'binder_cover',
         storage_path: `binder_cover/${filename}`,
         source: 'default',
@@ -505,8 +617,340 @@ async function selezionaCopertinaDefaultBinderAttivo(filename) {
         reviewed_at: null,
         reviewed_by: null,
     });
-    if (error) return { error };
+    if (error) { errEl.textContent = '❌ Errore: ' + error.message; errEl.style.display = 'block'; return; }
 
-    _coperturaBinderCache.delete(binder.id);
-    return { error: null };
+    document.getElementById('binderCoverGalleriaWrap').style.display = 'none';
+    _coperturaBinderCache.delete(_binderAttivo);
+    await caricaCopertinaBinderAttivoStato();
+    await renderGrigliaBinders();
+}
+
+
+// ── Sleeve (retro carta) — stesso editor drag/resize di sempre, i campi
+// pokemon/condition/variazione/price sono UI pura (nessuna chiamata
+// Supabase), portati invariati. Solo caricamento/salvataggio diventano
+// per-binder. _cardBackFieldState resta condiviso (un solo editor alla
+// volta può essere aperto, quello del binder corrente). ─────────────────
+function _convertiImmagineCardBack(file) {
+    return new Promise((resolve, reject) => {
+        const url = URL.createObjectURL(file);
+        const img = new Image();
+        img.onload = () => {
+            URL.revokeObjectURL(url);
+            const canvas = document.createElement('canvas');
+            canvas.width = CARD_BACK_W;
+            canvas.height = CARD_BACK_H;
+            const ctx = canvas.getContext('2d');
+            const scala = Math.max(CARD_BACK_W / img.width, CARD_BACK_H / img.height);
+            const wScalata = img.width * scala;
+            const hScalata = img.height * scala;
+            const dx = (CARD_BACK_W - wScalata) / 2;
+            const dy = (CARD_BACK_H - hScalata) / 2;
+            ctx.drawImage(img, dx, dy, wScalata, hScalata);
+            canvas.toBlob((blob) => {
+                if (!blob) { reject(new Error('Conversione non riuscita.')); return; }
+                resolve(blob);
+            }, 'image/png');
+        };
+        img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('FORMATO_NON_LEGGIBILE')); };
+        img.src = url;
+    });
+}
+
+function applyCardBackFieldState(fieldKey) {
+    const el = document.getElementById('cardBackField-' + fieldKey);
+    const s = _cardBackFieldState[fieldKey];
+    if (!el || !s) return;
+    el.style.left = s.left + '%';
+    el.style.top = s.top + '%';
+    el.querySelector('.cardback-field-content').style.transform = `scale(${s.scale})`;
+}
+
+function _cardBackCurrentStageScale() {
+    const stage = document.getElementById('cardBackStage');
+    return stage.getBoundingClientRect().width / CARD_BACK_W;
+}
+
+function _cardBackClampIntoStage(fieldKey) {
+    const el = document.getElementById('cardBackField-' + fieldKey);
+    const s = _cardBackFieldState[fieldKey];
+    const content = el.querySelector('.cardback-field-content');
+    const naturalW = content.scrollWidth;
+    const naturalH = content.scrollHeight;
+    const scaledW = naturalW * s.scale;
+    const scaledH = naturalH * s.scale;
+    let leftPx = (s.left / 100) * CARD_BACK_W;
+    let topPx = (s.top / 100) * CARD_BACK_H;
+    leftPx = Math.max(0, Math.min(leftPx, CARD_BACK_W - scaledW));
+    topPx = Math.max(0, Math.min(topPx, CARD_BACK_H - scaledH));
+    s.left = (leftPx / CARD_BACK_W) * 100;
+    s.top = (topPx / CARD_BACK_H) * 100;
+    applyCardBackFieldState(fieldKey);
+}
+
+function _cardBackRescale() {
+    const stageWrap = document.getElementById('cardBackStageWrap');
+    const stage = document.getElementById('cardBackStage');
+    if (!stageWrap || !stage || stageWrap.clientWidth === 0) return;
+    const scale = stageWrap.clientWidth / CARD_BACK_W;
+    stage.style.transform = `scale(${scale})`;
+    stageWrap.style.height = (CARD_BACK_H * scale) + 'px';
+}
+window.addEventListener('resize', _cardBackRescale);
+
+function _initCardBackDragHandlers() {
+    if (_cardBackDragInitDone) return;
+    _cardBackDragInitDone = true;
+
+    document.querySelectorAll('.cardback-field').forEach(field => {
+        const fieldKey = field.dataset.field;
+        let dragging = false;
+        let startX = 0, startY = 0, startLeftPx = 0, startTopPx = 0;
+
+        function onDragStart(e) {
+            if (e.target.closest('.cardback-resize-handle')) return;
+            dragging = true;
+            field.classList.add('dragging');
+            field.setPointerCapture(e.pointerId);
+            startX = e.clientX;
+            startY = e.clientY;
+            startLeftPx = (_cardBackFieldState[fieldKey].left / 100) * CARD_BACK_W;
+            startTopPx = (_cardBackFieldState[fieldKey].top / 100) * CARD_BACK_H;
+            e.preventDefault();
+        }
+        function onDragMove(e) {
+            if (!dragging) return;
+            const scale = _cardBackCurrentStageScale();
+            const dx = (e.clientX - startX) / scale;
+            const dy = (e.clientY - startY) / scale;
+            _cardBackFieldState[fieldKey].left = ((startLeftPx + dx) / CARD_BACK_W) * 100;
+            _cardBackFieldState[fieldKey].top = ((startTopPx + dy) / CARD_BACK_H) * 100;
+            _cardBackClampIntoStage(fieldKey);
+        }
+        function onDragEnd() {
+            if (!dragging) return;
+            dragging = false;
+            field.classList.remove('dragging');
+        }
+        field.addEventListener('pointerdown', onDragStart);
+        field.addEventListener('pointermove', onDragMove);
+        field.addEventListener('pointerup', onDragEnd);
+        field.addEventListener('pointercancel', onDragEnd);
+
+        const resizeHandle = field.querySelector('.cardback-resize-handle');
+        let resizing = false;
+        let startScale = 1;
+
+        function onResizeStart(e) {
+            e.stopPropagation();
+            resizing = true;
+            field.classList.add('resizing');
+            resizeHandle.setPointerCapture(e.pointerId);
+            startScale = _cardBackFieldState[fieldKey].scale;
+            startX = e.clientX;
+            startY = e.clientY;
+            e.preventDefault();
+        }
+        function onResizeMove(e) {
+            if (!resizing) return;
+            const scale = _cardBackCurrentStageScale();
+            const dx = (e.clientX - startX) / scale;
+            const delta = dx / 150;
+            let newScale = startScale + delta;
+            newScale = Math.max(0.4, Math.min(2.5, newScale));
+            _cardBackFieldState[fieldKey].scale = newScale;
+            _cardBackClampIntoStage(fieldKey);
+        }
+        function onResizeEnd() {
+            if (!resizing) return;
+            resizing = false;
+            field.classList.remove('resizing');
+        }
+        resizeHandle.addEventListener('pointerdown', onResizeStart);
+        resizeHandle.addEventListener('pointermove', onResizeMove);
+        resizeHandle.addEventListener('pointerup', onResizeEnd);
+        resizeHandle.addEventListener('pointercancel', onResizeEnd);
+    });
+}
+
+async function caricaSleeveBinderAttivoStato() {
+    const statoEl = document.getElementById('cardBackStato');
+    const previewEl = document.getElementById('cardBackPreview');
+    const editorWrap = document.getElementById('cardBackEditorWrap');
+    if (!statoEl || !previewEl || !editorWrap) return; // pannello Design non ancora nel DOM
+    document.getElementById('cardBackError').style.display = 'none';
+
+    const userId = await authGetUserId();
+    if (!userId || !_binderAttivo) { statoEl.textContent = 'Apri un binder per gestirne la sleeve.'; return; }
+
+    const { data: media, error } = await userMediaGet(userId, _binderAttivo, 'card_back');
+    if (error) { statoEl.textContent = 'Errore nel controllare lo stato: ' + error.message; return; }
+
+    if (!media) {
+        statoEl.textContent = 'Nessuna sleeve caricata ancora per questo binder — verrà mostrato il retro di sistema.';
+        previewEl.innerHTML = '<i class="fa-solid fa-image" style="color:var(--text-muted);"></i>';
+        editorWrap.style.display = 'none';
+        _cardBackFieldState = null;
+        return;
+    }
+
+    let previewUrl = null;
+    if (media.source === 'default') {
+        const { data: pub } = storageDefaultAssetPublicUrl(media.storage_path);
+        previewUrl = pub?.publicUrl || null;
+    } else {
+        const { data: signed } = await storageSignedUrlUserMedia(media.storage_path);
+        previewUrl = signed?.signedUrl || null;
+    }
+    if (previewUrl) {
+        previewEl.innerHTML = `<img src="${previewUrl}" style="width:100%; height:100%; object-fit:cover;">`;
+        document.getElementById('cardBackBgImg').src = previewUrl;
+    }
+
+    if (media.source === 'default') {
+        statoEl.innerHTML = '<span style="color:var(--success); font-weight:600;">✅ Sfondo predefinito selezionato</span>';
+    } else if (media.status === 'pending') {
+        statoEl.innerHTML = '<span style="color:#b8860b; font-weight:600;">⏳ In revisione da un admin — la vedi solo tu, gli altri vedono il retro di sistema nel frattempo</span>';
+    } else if (media.status === 'approved') {
+        statoEl.innerHTML = '<span style="color:var(--success); font-weight:600;">✅ Approvata</span>';
+    } else if (media.status === 'rejected') {
+        statoEl.innerHTML = '<span style="color:var(--danger); font-weight:600;">❌ Rifiutata' + (media.admin_note ? ' — ' + escapeHtml(media.admin_note) : '') + '</span>';
+    }
+
+    _cardBackFieldState = media.metadata ? JSON.parse(JSON.stringify(media.metadata)) : JSON.parse(JSON.stringify(DEFAULT_STATE_CARD_BACK));
+    Object.keys(DEFAULT_STATE_CARD_BACK).forEach(applyCardBackFieldState);
+    editorWrap.style.display = 'block';
+    _initCardBackDragHandlers();
+    _cardBackRescale();
+    document.getElementById('cardBackPosStato').textContent = '';
+}
+
+async function gestisciUploadSleeveBinderAttivo(event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const errEl = document.getElementById('cardBackError');
+    errEl.style.display = 'none';
+
+    const userId = await authGetUserId();
+    if (!userId || !_binderAttivo) { errEl.textContent = 'Apri un binder prima di caricare una sleeve.'; errEl.style.display = 'block'; return; }
+
+    let pngBlob;
+    try {
+        pngBlob = await _convertiImmagineCardBack(file);
+    } catch (e) {
+        errEl.textContent = e.message === 'FORMATO_NON_LEGGIBILE'
+            ? '❌ Il tuo dispositivo ha salvato questa foto in un formato che il sito non riesce a leggere (capita spesso con le foto scattate su iPhone, formato HEIC). Su iPhone: Impostazioni → Foto → Formato foto → scegli "Più compatibile", oppure scegli "Più piccola" quando condividi/esporti la foto. Poi riprova.'
+            : '❌ Errore nella conversione dell\'immagine: ' + e.message;
+        errEl.style.display = 'block';
+        event.target.value = '';
+        return;
+    }
+
+    const path = `${userId}/${_binderAttivo}/card_back`;
+    const { error: errUpload } = await storageUploadUserMedia(path, pngBlob);
+    if (errUpload) { errEl.textContent = '❌ Errore nel caricamento: ' + errUpload.message; errEl.style.display = 'block'; event.target.value = ''; return; }
+
+    // Ogni nuova sleeve riparte con le posizioni di default (stessa
+    // assunzione dichiarata nel vecchio file: un'immagine nuova ha
+    // probabilmente una composizione diversa dalla precedente).
+    const { data: mediaRow, error: errUpsert } = await userMediaUpsertELeggi({
+        user_id: userId,
+        binder_id: _binderAttivo,
+        slot: 'card_back',
+        storage_path: path,
+        source: 'upload',
+        status: 'pending',
+        admin_note: null,
+        reviewed_at: null,
+        reviewed_by: null,
+        metadata: DEFAULT_STATE_CARD_BACK,
+    });
+    if (errUpsert) { errEl.textContent = '❌ Foto caricata ma non registrata: ' + errUpsert.message; errEl.style.display = 'block'; event.target.value = ''; return; }
+
+    const { error: errRichiesta } = await creaRichiestaPendente(userId, 'photo_upload', { media_id: mediaRow.id });
+    if (errRichiesta) console.error('Media registrato ma richiesta non collegata:', errRichiesta.message);
+
+    event.target.value = '';
+    await caricaSleeveBinderAttivoStato();
+}
+
+// Salva SOLO il metadata (posizioni) sulla riga già esistente — non
+// richiede nuova approvazione admin (quella riguarda l'immagine).
+async function salvaPosizioniSleeveBinderAttivo() {
+    const statoEl = document.getElementById('cardBackPosStato');
+    if (!_cardBackFieldState || !_binderAttivo) return;
+
+    const userId = await authGetUserId();
+    if (!userId) { statoEl.textContent = 'Sessione non valida.'; return; }
+
+    statoEl.textContent = 'Salvataggio…';
+    const { error } = await userMediaUpdateMetadata(userId, _binderAttivo, 'card_back', _cardBackFieldState);
+    statoEl.textContent = error ? ('❌ Errore: ' + error.message) : '✅ Posizioni salvate.';
+}
+
+function ripristinaPosizioniSleeveBinderAttivoDefault() {
+    if (!_cardBackFieldState) return;
+    _cardBackFieldState = JSON.parse(JSON.stringify(DEFAULT_STATE_CARD_BACK));
+    Object.keys(DEFAULT_STATE_CARD_BACK).forEach(applyCardBackFieldState);
+    document.getElementById('cardBackPosStato').textContent = 'Posizioni ripristinate ai valori di default. Ricordati di premere "Salva posizioni".';
+}
+
+function toggleGalleriaDefaultSleeveBinderAttivo() {
+    const wrap = document.getElementById('cardBackGalleriaWrap');
+    const show = wrap.style.display === 'none';
+    wrap.style.display = show ? 'block' : 'none';
+    if (show) _caricaGalleriaDefault('card_back', 'cardBackGalleriaGrid', selezionaDefaultSleeveBinderAttivo);
+}
+
+async function selezionaDefaultSleeveBinderAttivo(filename) {
+    const errEl = document.getElementById('cardBackError');
+    errEl.style.display = 'none';
+
+    const userId = await authGetUserId();
+    if (!userId || !_binderAttivo) { errEl.textContent = 'Apri un binder prima.'; errEl.style.display = 'block'; return; }
+
+    const { error } = await userMediaUpsert({
+        user_id: userId,
+        binder_id: _binderAttivo,
+        slot: 'card_back',
+        storage_path: `card_back/${filename}`,
+        source: 'default',
+        status: 'approved',
+        admin_note: null,
+        reviewed_at: null,
+        reviewed_by: null,
+        metadata: DEFAULT_STATE_CARD_BACK,
+    });
+    if (error) { errEl.textContent = '❌ Errore: ' + error.message; errEl.style.display = 'block'; return; }
+
+    document.getElementById('cardBackGalleriaWrap').style.display = 'none';
+    await caricaSleeveBinderAttivoStato();
+}
+
+// ── Galleria sfondi predefiniti (condivisa copertina/sleeve) ────────────
+// Bucket pubblico 'default-assets', due cartelle: card_back/ e
+// binder_cover/ — asset già curati, niente moderazione (status:'approved'
+// diretto). Invariata dal vecchio file.
+async function _caricaGalleriaDefault(prefix, gridElId, onSelect) {
+    const gridEl = document.getElementById(gridElId);
+    gridEl.innerHTML = '<span style="font-size:0.75rem; color:var(--text-muted);">Caricamento…</span>';
+
+    const { data, error } = await storageListDefaultAssets(prefix);
+    if (error) { gridEl.innerHTML = '<span style="font-size:0.75rem; color:var(--danger);">Errore: ' + error.message + '</span>'; return; }
+
+    const files = (data || []).filter(f => f.name && !f.name.startsWith('.'));
+    if (!files.length) { gridEl.innerHTML = '<span style="font-size:0.75rem; color:var(--text-muted);">Nessun default disponibile ancora.</span>'; return; }
+
+    gridEl.innerHTML = '';
+    files.forEach(f => {
+        const { data: pub } = storageDefaultAssetPublicUrl(`${prefix}/${f.name}`);
+        const img = document.createElement('img');
+        img.src = pub.publicUrl;
+        img.title = f.name;
+        img.style.cssText = 'width:60px; height:84px; object-fit:cover; border-radius:6px; cursor:pointer; border:2px solid transparent;';
+        img.onmouseenter = () => { img.style.borderColor = 'var(--primary)'; };
+        img.onmouseleave = () => { img.style.borderColor = 'transparent'; };
+        img.onclick = () => onSelect(f.name);
+        gridEl.appendChild(img);
+    });
 }
