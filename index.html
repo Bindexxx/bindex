@@ -514,20 +514,20 @@
             justify-content: center;
         }
 
-        /* FIX 3 (Claudio: "è enorme, non ci siamo... non lo voglio a
-           schermo intero su desktop"): il giro precedente (background-
-           size:cover a piena finestra) risolveva lo spazio sprecato ma
-           ingrandiva la cornice fino a riempire tutto il monitor — sbagliato,
-           doveva restare un mockup di dimensioni contenute su desktop.
-           Si torna quindi a un fit "contain" (formula min() = adatta la
-           cornice alla finestra mantenendo le proporzioni ESATTE
-           dell'immagine, MAI deformata, MAI ritagliata) — su schermo
-           touch (telefono vero) riempie naturalmente lo spazio disponibile
-           come un'app; su desktop (mouse, "pointer:fine") in più viene
-           limitata a una dimensione da mockup con max-height/max-width,
-           centrata nella pagina invece di occupare tutto il monitor. Le
-           percentuali --phone-screen-* tornano statiche per orientamento
-           (nessun ritaglio = nessun bisogno di ricalcolarle a runtime). */
+        /* FIX 4 (Claudio: "resta incollata ai bordi superiori/inferiori,
+           si deforma lo stesso"): nel giro precedente il tetto massimo
+           desktop (800px) era una regola max-height/max-width SEPARATA,
+           scollegata dalla formula che calcola l'altra dimensione — quando
+           scattava, larghezza e altezza smettevano di essere proporzionate
+           tra loro (es. altezza restava a 100% toccando i bordi, mentre
+           la larghezza veniva tagliata a 800px) e l'immagine si stirava di
+           nuovo. Qui il tetto è dentro la STESSA formula min() di
+           entrambe le dimensioni (terzo valore, già convertito con lo
+           stesso rapporto dell'immagine) — quale che sia il valore che
+           "vince" il min(), larghezza e altezza restano SEMPRE
+           proporzionate esattamente come l'immagine originale, mai
+           deformata, mai incollata a un bordo senza il corrispondente
+           sull'altro asse. */
         #phoneFrameBox {
             position: relative;
             height: min(100%, 100vw * 1777 / 885);
@@ -540,13 +540,24 @@
             }
         }
         /* Solo su desktop (mouse reale, non touch): tetto massimo perché
-           resti un mockup, non riempia il monitor. Valori facilmente
-           regolabili se vuoi il mockup più grande/piccolo. */
+           resti un mockup, non riempia il monitor — 800px sull'asse
+           lungo (altezza in verticale, larghezza in orizzontale), con
+           l'asse corto ricavato dallo stesso rapporto dell'immagine
+           (885/1777 e 941/1672) così i due valori restano sempre
+           coerenti tra loro. Cambia solo questo numero (800) se vuoi il
+           mockup più grande/piccolo — NON aggiungere di nuovo una regola
+           max-height/max-width separata, riaprirebbe lo stesso bug. */
         @media (pointer: fine) {
-            #phoneFrameBox { max-height: 800px; }
+            #phoneFrameBox {
+                height: min(100%, 100vw * 1777 / 885, 800px);
+                width: min(100%, 100vh * 885 / 1777, 398.5px);
+            }
         }
         @media (pointer: fine) and (orientation: landscape) {
-            #phoneFrameBox { max-width: 800px; }
+            #phoneFrameBox {
+                height: min(100%, 100vw * 941 / 1672, 450.24px);
+                width: min(100%, 100vh * 1672 / 941, 800px);
+            }
         }
 
         .phone-frame-bg {
