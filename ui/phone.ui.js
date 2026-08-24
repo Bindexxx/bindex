@@ -400,6 +400,7 @@ function toggleModificaWidgetHome() {
 let _dragState = null;
 let _resizeState = null;
 let _peekTimeout = null;
+let _riordinoInCorso = false;
 
 function _attivaDragEResize() {
     document.querySelectorAll('.widget-tile[data-widget-id]').forEach(tile => {
@@ -410,90 +411,202 @@ function _attivaDragEResize() {
     });
 }
 
+// ── RIDIMENSIONAMENTO ─────────────────────────────────────────────────
+// FIX (Claudio: "macchinoso e impreciso, non si capisce il senso, si
+// finisce per farlo 4x4 senza volerlo"): la versione precedente sommava
+// insieme lo spostamento orizzontale e verticale in un unico numero e
+// ciclava attraverso 4 taglie fisse ad ogni soglia di 40px superata anche
+// nella STESSA gestualità continua — trascinando in una direzione sola,
+// avanzava ripetutamente nel ciclo, "scappando" fino a 2×2. Ora larghezza
+// e altezza sono due assi INDIPENDENTI, calcolati direttamente dalla
+// posizione del dito rispetto all'angolo in alto a sinistra della
+// tessera (stessa logica dei quadratini di ridimensionamento su Android:
+// il bordo segue il dito 1:1, non "a scatti"), quindi trascinare a
+// destra allarga, trascinare in basso allunga, in diagonale fa entrambe
+// le cose insieme — mai l'una al posto dell'altra.
 function _onResizeHandlePointerDown(e) {
     e.stopPropagation();
     e.preventDefault();
     const id = e.currentTarget.dataset.widgetId;
-    _resizeState = { id, startX: e.clientX, startY: e.clientY };
+    const tile = document.querySelector(`.widget-tile[data-widget-id="${id}"]`);
+    const grid = document.getElementById('phoneWidgetGrid');
+    const w = _layoutWidget.find(x => x.id === id);
+    if (!tile || !grid || !w) return;
+
+    const tileRect = tile.getBoundingClientRect();
+    const gridStyle = getComputedStyle(grid);
+    const numColonneGriglia = gridStyle.gridTemplateColumns.split(' ').filter(Boolean).length;
+    const gap = parseFloat(gridStyle.columnGap) || 0;
+    const rowGap = parseFloat(gridStyle.rowGap) || 0;
+
+    // Dimensione di UNA cella dedotta dalla tessera stessa (che oggi
+    // occupa 1-2 celle in ciascun asse): più affidabile che ricalcolare a
+    // mano le colonne in px.
+    const colSpanAttuale = (w.size === '2x1' || w.size === '2x2') ? 2 : 1;
+    const rowSpanAttuale = (w.size === '1x2' || w.size === '2x2') ? 2 : 1;
+    const cellW = (tileRect.width - gap * (colSpanAttuale - 1)) / colSpanAttuale;
+    const cellH = (tileRect.height - rowGap * (rowSpanAttuale - 1)) / rowSpanAttuale;
+
+    _resizeState = {
+        id, originLeft: tileRect.left, originTop: tileRect.top,
+        cellW, cellH, gap, rowGap,
+        maxColSpan: numColonneGriglia >= 2 ? 2 : 1,
+    };
+    tile.classList.add('widget-tile-resizing');
     window.addEventListener('pointermove', _onResizeHandlePointerMove);
     window.addEventListener('pointerup', _onResizeHandlePointerUp, { once: true });
 }
 
 function _onResizeHandlePointerMove(e) {
     if (!_resizeState) return;
-    const dx = e.clientX - _resizeState.startX;
-    const dy = e.clientY - _resizeState.startY;
-    // Soglia di 40px prima di considerare il gesto un "passo" di
-    // ridimensionamento — evita di ciclare la taglia per un tremolio.
-    if (Math.abs(dx) < 40 && Math.abs(dy) < 40) return;
+    const { id, originLeft, originTop, cellW, cellH, gap, rowGap, maxColSpan } = _resizeState;
 
-    const w = _layoutWidget.find(x => x.id === _resizeState.id);
-    if (!w) return;
-    const idxAttuale = TAGLIE_CICLO.indexOf(w.size);
-    const cresce = dx + dy > 0;
-    const nuovoIdx = Math.max(0, Math.min(TAGLIE_CICLO.length - 1, idxAttuale + (cresce ? 1 : -1)));
-    if (TAGLIE_CICLO[nuovoIdx] !== w.size) {
-        w.size = TAGLIE_CICLO[nuovoIdx];
-        _resizeState.startX = e.clientX;
-        _resizeState.startY = e.clientY;
+    // Quante celle sono "coperte" dalla posizione del dito, arrotondato
+    // alla cella più vicina — segue il movimento in tempo reale, ogni
+    // asse per conto suo.
+    const distX = e.clientX - originLeft + gap / 2;
+    const distY = e.clientY - originTop + rowGap / 2;
+    const colSpan = Math.max(1, Math.min(maxColSpan, Math.round(distX / (cellW + gap))));
+    const rowSpan = Math.max(1, Math.min(2, Math.round(distY / (cellH + rowGap))));
+
+    const nuovaTaglia = `${colSpan}x${rowSpan}`;
+    const w = _layoutWidget.find(x => x.id === id);
+    if (w && w.size !== nuovaTaglia) {
+        w.size = nuovaTaglia;
         _salvaLayoutWidget();
         renderWidgetHome();
-        _attivaDragEResize();
+        const nuovaTile = document.querySelector(`.widget-tile[data-widget-id="${id}"]`);
+        if (nuovaTile) nuovaTile.classList.add('widget-tile-resizing');
     }
 }
 
 function _onResizeHandlePointerUp() {
+    if (_resizeState) {
+        const tile = document.querySelector(`.widget-tile[data-widget-id="${_resizeState.id}"]`);
+        if (tile) tile.classList.remove('widget-tile-resizing');
+    }
     _resizeState = null;
     window.removeEventListener('pointermove', _onResizeHandlePointerMove);
 }
 
+// ── DRAG & DROP (riordino) ────────────────────────────────────────────
+// FIX (Claudio: "innaturale, sistema per assomigliare a iPhone/Android"):
+// prima la tessera trascinata restava FERMA nella griglia (solo scala +
+// ombra) finché il dito non entrava nell'area di un'altra — lo scambio
+// avveniva di scatto con un ri-render completo, senza che nulla seguisse
+// davvero il dito. Ora: un "fantasma" (clone della tessera, posizione
+// fissa) segue il puntatore 1:1 in tempo reale; la tessera originale
+// diventa invisibile ma mantiene il suo posto in griglia (per non far
+// saltare il layout); quando il fantasma passa sopra un'altra tessera,
+// l'ordine cambia e le tessere si RIPOSIZIONANO CON UN'ANIMAZIONE
+// (tecnica FLIP: misura le posizioni prima, cambia l'ordine, anima dalla
+// vecchia posizione alla nuova) invece di scattare — stesso effetto di
+// "far posto" che si vede spostando le icone su iPhone/Android.
 function _onWidgetPointerDown(e) {
     if (e.target.closest('.widget-edit-controls') || e.target.closest('.widget-resize-handle')) return;
     const tile = e.currentTarget;
     const id = tile.dataset.widgetId;
 
-    // Tocco lungo (peek) — solo se poi NON si trasforma in un vero drag
-    // (annullato in _onWidgetPointerMove appena il dito si sposta).
+    // Tocco lungo (peek) — annullato in _onWidgetPointerMove appena il
+    // gesto si trasforma in un vero drag.
     _peekTimeout = setTimeout(() => { _mostraPeek(id, tile); _vibraSeSupportato(8); }, 480);
 
-    _dragState = { id, tile, startX: e.clientX, startY: e.clientY, iniziato: false };
+    const rect = tile.getBoundingClientRect();
+    _dragState = {
+        id, startX: e.clientX, startY: e.clientY,
+        rectLeft: rect.left, rectTop: rect.top, rectWidth: rect.width, rectHeight: rect.height,
+        iniziato: false, ghost: null,
+    };
     window.addEventListener('pointermove', _onWidgetPointerMove);
     window.addEventListener('pointerup', _onWidgetPointerUp, { once: true });
 }
 
+function _avviaDragVero(tile) {
+    clearTimeout(_peekTimeout);
+    _nascondiPeek();
+    _dragState.iniziato = true;
+    _vibraSeSupportato(12);
+
+    const ghost = tile.cloneNode(true);
+    ghost.classList.add('widget-tile-ghost');
+    ghost.style.position = 'fixed';
+    ghost.style.left = _dragState.rectLeft + 'px';
+    ghost.style.top = _dragState.rectTop + 'px';
+    ghost.style.width = _dragState.rectWidth + 'px';
+    ghost.style.height = _dragState.rectHeight + 'px';
+    ghost.style.margin = '0';
+    ghost.style.pointerEvents = 'none';
+    document.body.appendChild(ghost);
+    _dragState.ghost = ghost;
+
+    tile.classList.add('widget-tile-nascosta');
+}
+
 function _onWidgetPointerMove(e) {
     if (!_dragState) return;
-    const dx = Math.abs(e.clientX - _dragState.startX);
-    const dy = Math.abs(e.clientY - _dragState.startY);
+    const dx = e.clientX - _dragState.startX;
+    const dy = e.clientY - _dragState.startY;
 
     if (!_dragState.iniziato) {
-        if (dx < 10 && dy < 10) return; // ancora un tocco fermo, non un drag
-        clearTimeout(_peekTimeout);
-        _nascondiPeek();
-        _dragState.iniziato = true;
-        _dragState.tile.classList.add('widget-tile-dragging');
-        _vibraSeSupportato(12);
+        if (Math.abs(dx) < 10 && Math.abs(dy) < 10) return; // ancora un tocco fermo, non un drag
+        const tileAttuale = document.querySelector(`.widget-tile[data-widget-id="${_dragState.id}"]`);
+        if (!tileAttuale) { _dragState = null; return; }
+        _avviaDragVero(tileAttuale);
     }
 
-    // Individua su quale altra tessera è passato il dito/mouse, e scambia
-    // subito la posizione nell'array — il ri-render successivo mostra lo
-    // scambio, semplice e robusto (nessuna libreria di drag&drop esterna).
+    // Il fantasma segue il dito/mouse esattamente, in tempo reale.
+    _dragState.ghost.style.transform = `translate(${dx}px, ${dy}px) scale(1.05)`;
+
+    if (_riordinoInCorso) return; // un riordino con animazione è già in corso, aspetta che finisca
     const sotto = document.elementFromPoint(e.clientX, e.clientY);
     const tileSotto = sotto ? sotto.closest('.widget-tile[data-widget-id]') : null;
-    if (tileSotto && tileSotto !== _dragState.tile) {
+    if (tileSotto && tileSotto.dataset.widgetId !== _dragState.id) {
         const idA = _dragState.id;
         const idB = tileSotto.dataset.widgetId;
         const visibili = _layoutWidget.filter(w => w.visibile);
         const idxA = _layoutWidget.indexOf(visibili.find(w => w.id === idA));
         const idxB = _layoutWidget.indexOf(visibili.find(w => w.id === idB));
-        if (idxA >= 0 && idxB >= 0) {
-            [_layoutWidget[idxA], _layoutWidget[idxB]] = [_layoutWidget[idxB], _layoutWidget[idxA]];
-            _salvaLayoutWidget();
-            renderWidgetHome();
-            const nuovaTile = document.querySelector(`.widget-tile[data-widget-id="${idA}"]`);
-            if (nuovaTile) { nuovaTile.classList.add('widget-tile-dragging'); _dragState.tile = nuovaTile; }
-        }
+        if (idxA >= 0 && idxB >= 0) _riordinaConAnimazione(idxA, idxB);
     }
+}
+
+// Tecnica FLIP (First-Last-Invert-Play): cattura le posizioni ATTUALI di
+// tutte le tessere, scambia l'ordine nell'array, ri-renderizza (async,
+// per questo la guardia _riordinoInCorso), poi ogni tessera parte dalla
+// SUA vecchia posizione e anima verso quella nuova via transform —
+// risultato: le altre tessere scivolano per fare spazio, non scattano.
+async function _riordinaConAnimazione(idxA, idxB) {
+    _riordinoInCorso = true;
+
+    const primaRect = {};
+    document.querySelectorAll('.widget-tile[data-widget-id]').forEach(t => {
+        primaRect[t.dataset.widgetId] = t.getBoundingClientRect();
+    });
+
+    [_layoutWidget[idxA], _layoutWidget[idxB]] = [_layoutWidget[idxB], _layoutWidget[idxA]];
+    _salvaLayoutWidget();
+    await renderWidgetHome();
+
+    const idTrascinato = _dragState ? _dragState.id : null;
+    document.querySelectorAll('.widget-tile[data-widget-id]').forEach(t => {
+        const id = t.dataset.widgetId;
+        if (id === idTrascinato) { t.classList.add('widget-tile-nascosta'); return; }
+        const prima = primaRect[id];
+        if (!prima) return;
+        const dopo = t.getBoundingClientRect();
+        const spostX = prima.left - dopo.left;
+        const spostY = prima.top - dopo.top;
+        if (spostX || spostY) {
+            t.style.transition = 'none';
+            t.style.transform = `translate(${spostX}px, ${spostY}px)`;
+            requestAnimationFrame(() => {
+                t.style.transition = 'transform 0.22s ease';
+                t.style.transform = '';
+            });
+        }
+    });
+
+    _riordinoInCorso = false;
 }
 
 function _onWidgetPointerUp() {
@@ -501,8 +614,9 @@ function _onWidgetPointerUp() {
     _nascondiPeek();
     if (_dragState && _dragState.iniziato) {
         _vibraSeSupportato(6);
+        if (_dragState.ghost) _dragState.ghost.remove();
         const tile = document.querySelector(`.widget-tile[data-widget-id="${_dragState.id}"]`);
-        if (tile) tile.classList.remove('widget-tile-dragging');
+        if (tile) tile.classList.remove('widget-tile-nascosta');
     }
     _dragState = null;
     window.removeEventListener('pointermove', _onWidgetPointerMove);
@@ -519,7 +633,7 @@ function _mostraPeek(id, tileEl) {
     overlay.style.top = Math.max(8, rect.top - 10) + 'px';
     overlay.style.display = 'block';
 
-    Promise.resolve(def.bloccato ? def.preview() : def.preview()).then(anteprima => {
+    Promise.resolve(def.preview()).then(anteprima => {
         const el = document.getElementById('widgetPeekRighe');
         if (el) el.innerHTML = (anteprima.righe || []).map(r => `<span>${r}</span>`).join('<br>');
     }).catch(() => {});
