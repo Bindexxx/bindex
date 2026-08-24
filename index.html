@@ -652,17 +652,26 @@
         /* FIX (Claudio: "lo snap è troppo meccanico"): "mandatory" +
            "always" forzano uno scatto rigido immediato appena superi una
            soglia minima, senza lasciare respiro al gesto. "proximity" +
-           "normal" lasciano che sia il motore di scroll nativo (lo stesso
-           usato per qualunque scroll normale, con la sua accelerazione/
-           decelerazione naturale) a decidere quando agganciarsi, molto
-           più simile alla sensazione di un vero cambio schermata
-           iPhone/Android. */
+           "normal" invece di "always" lascia che sia il motore di scroll
+           nativo (accelerazione/decelerazione naturale) a gestire il
+           gesto senza fermarsi di scatto ad ogni istante.
+
+           CORREZIONE (Claudio, screenshot: "si fondono le due pagine
+           insieme invece che passare da una all'altra") — avevo cambiato
+           anche "mandatory" in "proximity" per ammorbidire ulteriormente,
+           ma "proximity" NON garantisce di fermarsi esattamente su una
+           pagina: puoi restare a metà, con le due pagine mescolate in
+           vista contemporaneamente — esattamente il bug in foto.
+           "mandatory" garantisce sempre l'aggancio pieno a una pagina
+           (mai una via di mezzo); l'unica leva sicura per la morbidezza
+           resta "normal" al posto di "always" su scroll-snap-stop, che
+           NON tocca questa garanzia. */
         #phonePagineWrap {
             position: absolute;
             top: var(--phone-barra-stato-h, 2.5rem);
             left: 0; right: 0; bottom: 0;
             overflow-y: auto;
-            scroll-snap-type: y proximity;
+            scroll-snap-type: y mandatory;
             scroll-behavior: smooth;
             /* FIX (Claudio: "si vedono due barre di scrolling"): questo
                contenitore serve solo per lo scatto tra le 2 pagine, non
