@@ -92,10 +92,6 @@ const CATALOGO_WIDGET = {
             return { righe: [`${prodotti.length} prodotti`, inEvidenza.name || ''] };
         },
     },
-    impostazioni: {
-        titolo: 'Impostazioni', icona: 'fa-gear',
-        preview: () => ({ righe: ['Account, tema, estensione'] }),
-    },
 
     ultima_carta: {
         titolo: 'Ultima carta', icona: 'fa-clock-rotate-left',
@@ -209,7 +205,7 @@ const CATALOGO_WIDGET = {
     },
 };
 
-const ORDINE_WIDGET_DEFAULT = ['visualizzazione', 'inserimento', 'prezzi', 'scambio', 'wishlist', 'binder', 'sealed', 'impostazioni'];
+const ORDINE_WIDGET_DEFAULT = ['visualizzazione', 'inserimento', 'prezzi', 'scambio', 'wishlist', 'binder', 'sealed'];
 const MAX_WIDGET_VISIBILI = 10;
 const TAGLIE_CICLO = ['1x1', '2x1', '1x2', '2x2']; // ordine di ciclo del ridimensionamento
 
@@ -228,14 +224,14 @@ function _caricaLayoutWidget() {
     try { salvato = JSON.parse(prefWidgetLayoutGet() || 'null'); } catch (_) { salvato = null; }
 
     if (!Array.isArray(salvato) || salvato.length === 0) {
-        _layoutWidget = ORDINE_WIDGET_DEFAULT.map(id => ({ id, visibile: true, size: '1x1' }));
+        _layoutWidget = ORDINE_WIDGET_DEFAULT.map(id => ({ id, visibile: true, size: '1x1', mini: false }));
         return;
     }
     const validi = salvato
         .filter(w => CATALOGO_WIDGET[w.id])
-        .map(w => ({ id: w.id, visibile: !!w.visibile, size: TAGLIE_CICLO.includes(w.size) ? w.size : '1x1' }));
+        .map(w => ({ id: w.id, visibile: !!w.visibile, size: TAGLIE_CICLO.includes(w.size) ? w.size : '1x1', mini: !!w.mini }));
     Object.keys(CATALOGO_WIDGET).forEach(id => {
-        if (!validi.find(w => w.id === id)) validi.push({ id, visibile: false, size: '1x1' });
+        if (!validi.find(w => w.id === id)) validi.push({ id, visibile: false, size: '1x1', mini: false });
     });
     _layoutWidget = validi;
 }
@@ -304,7 +300,7 @@ async function renderWidgetHome() {
         const azioneClick = _editModeWidget || def.decorativo ? '' : `onclick="_eseguiAzioneWidget('${w.id}', event)"`;
 
         return `
-            <div class="widget-tile ${classeStato} ${classeCascata} widget-size-${w.size}" ${stileRitardo} data-widget-id="${w.id}" data-widget-index="${indice}" ${azioneClick}>
+            <div class="widget-tile ${classeStato} ${classeCascata} widget-size-${w.size} ${w.mini ? 'widget-tile-mini' : ''}" ${stileRitardo} data-widget-id="${w.id}" data-widget-index="${indice}" ${azioneClick}>
                 ${controlliEdit}
                 ${badge}
                 <i class="fa-solid ${def.icona} widget-tile-icon"></i>
@@ -468,16 +464,32 @@ function _onResizeHandlePointerMove(e) {
 
     // Quante celle sono "coperte" dalla posizione del dito, arrotondato
     // alla cella più vicina — segue il movimento in tempo reale, ogni
-    // asse per conto suo.
+    // asse per conto suo. Qui NON clampiamo subito a un minimo di 1: il
+    // valore "grezzo" (anche 0 o negativo se trascini molto verso
+    // l'angolo opposto) ci serve per sapere se l'utente sta chiedendo di
+    // rimpicciolire OLTRE il minimo normale (Claudio: "possono essere
+    // rimpiccioliti fino a diventare solo icone come su iphone/android").
     const distX = e.clientX - originLeft + gap / 2;
     const distY = e.clientY - originTop + rowGap / 2;
-    const colSpan = Math.max(1, Math.min(maxColSpan, Math.round(distX / (cellW + gap))));
-    const rowSpan = Math.max(1, Math.min(2, Math.round(distY / (cellH + rowGap))));
+    const colSpanGrezzo = Math.round(distX / (cellW + gap));
+    const rowSpanGrezzo = Math.round(distY / (cellH + rowGap));
 
-    const nuovaTaglia = `${colSpan}x${rowSpan}`;
     const w = _layoutWidget.find(x => x.id === id);
-    if (w && w.size !== nuovaTaglia) {
+    if (!w) return;
+
+    // Sotto lo zero su entrambi gli assi (l'utente ha trascinato la
+    // maniglia oltre l'angolo opposto della cella) → modalità icona:
+    // stessa cella 1×1, ma il contenuto si riduce a sola icona (vedi
+    // .widget-tile-mini in index.html). Altrimenti dimensione normale,
+    // ed uscire da mini se prima lo era.
+    const vuoleMini = colSpanGrezzo <= 0 && rowSpanGrezzo <= 0;
+    const colSpan = Math.max(1, Math.min(maxColSpan, colSpanGrezzo));
+    const rowSpan = Math.max(1, Math.min(2, rowSpanGrezzo));
+    const nuovaTaglia = vuoleMini ? '1x1' : `${colSpan}x${rowSpan}`;
+
+    if (w.size !== nuovaTaglia || w.mini !== vuoleMini) {
         w.size = nuovaTaglia;
+        w.mini = vuoleMini;
         _salvaLayoutWidget();
         renderWidgetHome();
         const nuovaTile = document.querySelector(`.widget-tile[data-widget-id="${id}"]`);
@@ -871,6 +883,23 @@ function _gestisciScrollPagine() {
     const indice = Math.round(wrap.scrollTop / Math.max(wrap.clientHeight, 1));
     _paginaAttivaTelefono = indice === 0 ? 'home' : 'widget';
     _aggiornaTastoFisico();
+    _aggiornaMatitaBarraGlobale();
+}
+
+// Matita (modifica/riordina/ridimensiona widget) nella barra di stato
+// globale — visibile SOLO sulla pagina widget (Claudio: "quando scrolli
+// fino ai widget nella barra deve apparire la matita"); se stai
+// modificando e torni sulla Home, esce anche dalla modalità modifica
+// (non avrebbe senso restare in modifica senza vedere i widget).
+function _aggiornaMatitaBarraGlobale() {
+    const btn = document.getElementById('btnModificaWidgetHome');
+    if (!btn) return;
+    btn.classList.toggle('nascosto-in-home', _paginaAttivaTelefono !== 'widget');
+    if (_paginaAttivaTelefono !== 'widget' && _editModeWidget) {
+        _editModeWidget = false;
+        btn.classList.remove('attivo');
+        renderWidgetHome();
+    }
 }
 
 // Bottone fisico unico — tre stati, vedi commento CSS su
@@ -924,6 +953,7 @@ async function initPhoneShell() {
     const paginaWrap = document.getElementById('phonePagineWrap');
     if (paginaWrap) paginaWrap.addEventListener('scroll', _gestisciScrollPagine, { passive: true });
     _aggiornaTastoFisico();
+    _aggiornaMatitaBarraGlobale();
 
     // Animazione di "accensione" — una sola volta, al caricamento.
     const frameBox = document.getElementById('phoneFrameBox');
