@@ -619,29 +619,84 @@
         #phoneWidgetGrid {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
+            grid-auto-rows: 108px;
             gap: 0.7rem;
         }
         @media (orientation: landscape) {
             #phoneWidgetGrid { grid-template-columns: repeat(4, 1fr); }
         }
 
+        /* Taglie multiple (Claudio: "ridimensionamento libero") — 4 preset,
+           ciclati trascinando la maniglia in basso a destra (vedi
+           _gestisciResizeHandlePointerDown in ui/phone.ui.js). grid-auto-
+           rows fisso sopra fa sì che 2 righe = esattamente il doppio di 1,
+           quindi i widget più grandi si allineano sempre alla griglia. */
+        .widget-size-2x1 { grid-column: span 2; }
+        .widget-size-1x2 { grid-row: span 2; }
+        .widget-size-2x2 { grid-column: span 2; grid-row: span 2; }
+
         .widget-tile {
             position: relative;
-            background-color: var(--card-bg);
+            /* Texture vetro-metallo leggera (Claudio: "un tocco di texture/
+               riflesso"), coerente col materiale della cornice — un
+               riflesso diagonale sottile, mai un vero gradiente vistoso. */
+            background:
+                linear-gradient(155deg, color-mix(in srgb, var(--card-bg) 92%, #fff 8%) 0%, var(--card-bg) 45%, color-mix(in srgb, var(--card-bg) 94%, #000 6%) 100%);
             border: 1px solid var(--border-color);
+            border-top-color: color-mix(in srgb, var(--border-color) 60%, #fff 40%);
             border-radius: 16px;
             padding: 0.9rem 0.8rem;
             box-shadow: var(--shadow-soft);
             cursor: pointer;
             min-height: 96px;
             display: flex; flex-direction: column; gap: 0.3rem;
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+            touch-action: none; /* i gesti (drag/peek) sono gestiti a mano via Pointer Events */
+            opacity: 0; transform: translateY(8px); /* stato di partenza per la cascata d'ingresso */
+        }
+        .widget-tile.widget-tile-entrata {
+            animation: widgetEntrata 0.32s ease forwards;
+        }
+        @keyframes widgetEntrata {
+            to { opacity: 1; transform: translateY(0); }
         }
         .widget-tile:active { transform: scale(0.97); }
         .widget-tile-allerta { border-color: var(--danger); }
+        .widget-tile-ok { border-color: var(--success, #2e7d32); }
         .widget-tile-icon { color: var(--primary); font-size: 1.1rem; }
         .widget-tile-titolo { font-weight: 800; font-size: 0.82rem; color: var(--text-dark); }
         .widget-tile-righe { display: flex; flex-direction: column; font-size: 0.72rem; color: var(--text-muted); font-weight: 600; }
         .widget-tile-allerta .widget-tile-righe { color: var(--danger); }
+        .widget-tile-ok .widget-tile-righe { color: var(--success, #2e7d32); }
+
+        /* Badge numerico stile Pokédex, sostituisce il numero in riga per i
+           conteggi (Claudio: "cerchietto stile Pokédex"). */
+        .widget-badge {
+            position: absolute; top: 0.5rem; right: 0.5rem;
+            min-width: 20px; height: 20px; padding: 0 4px;
+            border-radius: 10px;
+            background: var(--primary); color: #fff;
+            font-size: 0.68rem; font-weight: 800;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .widget-tile-allerta .widget-badge { background: var(--danger); }
+
+        /* Miniatura carta dentro i widget con anteprima immagine (Claudio:
+           "sì, miniature anche in home") — bordo colorato in base alla
+           rarità SE il campo esiste sulla carta (card.rarita), altrimenti
+           bordo neutro: nessun rischio se il campo non esiste nel DB (da
+           confermare, vedi nota a fine consegna). */
+        .widget-tile-thumb-row { display: flex; gap: 0.6rem; align-items: center; }
+        .widget-tile-thumb {
+            width: 40px; height: 56px; border-radius: 6px; object-fit: cover;
+            border: 2px solid var(--border-color); flex-shrink: 0;
+            background: var(--bg-color);
+        }
+        .widget-tile-thumb-r-comune { border-color: #9e9e9e; }
+        .widget-tile-thumb-r-non_comune { border-color: #4caf50; }
+        .widget-tile-thumb-r-rara { border-color: #2196f3; }
+        .widget-tile-thumb-r-ultra_rara { border-color: #9c27b0; }
+        .widget-tile-thumb-r-secret { border-color: #ffb300; }
 
         .widget-tile-aggiungi {
             align-items: center; justify-content: center;
@@ -652,6 +707,7 @@
         .widget-edit-controls {
             position: absolute; top: 0.4rem; right: 0.4rem;
             display: flex; gap: 0.3rem;
+            z-index: 2;
         }
         .widget-edit-controls button {
             width: 22px; height: 22px; border-radius: 50%;
@@ -661,6 +717,55 @@
         }
         .widget-edit-controls button:disabled { opacity: 0.3; cursor: default; }
         .widget-edit-remove { color: var(--danger) !important; border-color: var(--danger) !important; }
+
+        /* Maniglia di ridimensionamento — solo in modalità modifica, angolo
+           in basso a destra, stile "grip" industriale coerente con la
+           cornice. */
+        .widget-resize-handle {
+            position: absolute; bottom: 0.3rem; right: 0.3rem;
+            width: 22px; height: 22px; border-radius: 6px;
+            background: var(--bg-color); border: 1px solid var(--border-color);
+            color: var(--text-muted); font-size: 0.7rem;
+            display: flex; align-items: center; justify-content: center;
+            cursor: nwse-resize; touch-action: none; z-index: 2;
+        }
+
+        /* Stato "sollevato" durante il trascinamento (Claudio: "sì,
+           sollevamento leggero") — niente cambio di layout qui, solo
+           l'aspetto: il riposizionamento vero avviene ricalcolando
+           l'ordine dell'array e ri-renderizzando (vedi ui/phone.ui.js). */
+        .widget-tile.widget-tile-dragging {
+            opacity: 0.9;
+            transform: scale(1.04);
+            box-shadow: 0 10px 22px rgba(0,0,0,0.28);
+            z-index: 5;
+        }
+        .widget-tile.widget-tile-drop-target { outline: 2px dashed var(--primary); outline-offset: 2px; }
+
+        /* Peek: anteprima al tocco lungo, senza aprire il popup fullscreen
+           (Claudio: "sì, entrambe" — peek + vibrazione). */
+        #widgetPeekOverlay {
+            position: fixed; z-index: 13; display: none;
+            background: var(--card-bg); border: 1px solid var(--border-color);
+            border-radius: 14px; padding: 0.9rem; box-shadow: var(--shadow-soft);
+            min-width: 160px; max-width: 220px; pointer-events: none;
+        }
+        #widgetPeekOverlay .widget-tile-titolo { margin-bottom: 0.2rem; }
+
+        /* Densità (Claudio: "sì, toggle compatto/comodo") — un solo
+           interruttore che comprime padding/font-size di tutta la griglia
+           in un colpo solo. */
+        #phoneWidgetHomeWrap.densita-compatta #phoneWidgetGrid { grid-auto-rows: 82px; gap: 0.5rem; }
+        #phoneWidgetHomeWrap.densita-compatta .widget-tile { padding: 0.6rem 0.6rem; min-height: 70px; gap: 0.15rem; }
+        #phoneWidgetHomeWrap.densita-compatta .widget-tile-icon { font-size: 0.95rem; }
+        #phoneWidgetHomeWrap.densita-compatta .widget-tile-titolo { font-size: 0.72rem; }
+        #phoneWidgetHomeWrap.densita-compatta .widget-tile-righe { font-size: 0.62rem; }
+
+        #btnDensitaWidgetHome {
+            background: var(--card-bg); border: 1px solid var(--border-color);
+            color: var(--text-muted); border-radius: 10px; padding: 0.4rem 0.6rem;
+            cursor: pointer; font-size: 0.85rem; margin-right: 0.4rem;
+        }
 
         /* Overlay dettaglio: .container viene agganciata al rettangolo
            schermo della cornice — non spostata nel DOM (zero rischio sui
@@ -2048,6 +2153,9 @@
                             <img src="favicon.ico" alt="Favicon">
                             <span class="logo-text">CardSync Pro</span>
                         </div>
+                        <button id="btnDensitaWidgetHome" onclick="toggleDensitaWidgetHome()" title="Densità compatta/comoda">
+                            <i class="fa-solid fa-table-cells-large"></i>
+                        </button>
                         <button id="btnModificaWidgetHome" onclick="toggleModificaWidgetHome()" title="Personalizza i widget">
                             <i class="fa-solid fa-pen"></i>
                         </button>
@@ -2057,6 +2165,8 @@
             </div>
         </div>
     </div>
+
+    <div id="widgetPeekOverlay"></div>
 
     <button id="btnIndietroDettaglioWidget" onclick="chiudiDettaglioWidget()">
         <i class="fa-solid fa-arrow-left"></i> Indietro
