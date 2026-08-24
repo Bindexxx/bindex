@@ -486,17 +486,21 @@
         body { padding-left: 0 !important; }
 
         /* Rettangolo "schermo" ritagliato dentro l'immagine cornice —
-           valori di PARTENZA misurati pixel per pixel dalle due immagini
-           fornite (non a occhio): base_V.png (verticale) e base_O.png
-           (orizzontale). Questi 4 sono i default prima che JS calcoli i
-           valori reali (vedi sotto) — restano come fallback e come unica
-           fonte delle proporzioni originali dell'immagine, usate dal
-           calcolo dinamico in ui/phone.ui.js (_ricalcolaLayoutCornice). */
+           misure reali prese pixel per pixel dalle due immagini fornite
+           (non a occhio): base_V.png (verticale) e base_O.png
+           (orizzontale). Se in futuro cambia l'immagine cornice con
+           proporzioni diverse, queste 4 percentuali per orientamento sono
+           l'UNICO punto da aggiornare. */
         :root {
-            --phone-screen-top: 9.2%;
-            --phone-screen-bottom: 9.3%;
-            --phone-screen-left: 17.6%;
-            --phone-screen-right: 13.6%;
+            --phone-screen-top-v: 9.2%;
+            --phone-screen-bottom-v: 9.3%;
+            --phone-screen-left-v: 17.6%;
+            --phone-screen-right-v: 13.6%;
+
+            --phone-screen-top-o: 16.3%;
+            --phone-screen-bottom-o: 18.8%;
+            --phone-screen-left-o: 10.2%;
+            --phone-screen-right-o: 10.1%;
         }
 
         #phoneShell {
@@ -505,28 +509,44 @@
             z-index: 10;
             background-color: var(--bg-color);
             overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
-        /* FIX 2/2 (segnalato da Claudio, screenshot 2026-08-23 "è
-           schiacciato... sistemare la larghezza"): la versione precedente
-           adattava la cornice per intero dentro la finestra (nessun
-           ritaglio, formula min()) — corretto per non deformare/sbordare,
-           ma su una finestra desktop tipica (16:9 o più larga) l'immagine
-           orizzontale (proporzioni 3:2) restava piccola al centro con
-           parecchio spazio vuoto ai lati. Qui la cornice riempie SEMPRE
-           tutta la finestra (width/height:100%, background-size:cover) —
-           l'eccesso di bordo decorativo sopra/sotto (o ai lati, se la
-           finestra è più stretta dell'immagine) viene ritagliato in modo
-           centrato, MAI lo schermo dei widget: le percentuali dello
-           schermo vengono ricalcolate a runtime da JS in base al ritaglio
-           reale (vedi _ricalcolaLayoutCornice in ui/phone.ui.js), quindi
-           restano sempre allineate ai pixel veri, con qualunque proporzione
-           di finestra. NON tornare a percentuali fisse per orientamento
-           qui: riaprirebbe lo stesso problema. */
+        /* FIX 3 (Claudio: "è enorme, non ci siamo... non lo voglio a
+           schermo intero su desktop"): il giro precedente (background-
+           size:cover a piena finestra) risolveva lo spazio sprecato ma
+           ingrandiva la cornice fino a riempire tutto il monitor — sbagliato,
+           doveva restare un mockup di dimensioni contenute su desktop.
+           Si torna quindi a un fit "contain" (formula min() = adatta la
+           cornice alla finestra mantenendo le proporzioni ESATTE
+           dell'immagine, MAI deformata, MAI ritagliata) — su schermo
+           touch (telefono vero) riempie naturalmente lo spazio disponibile
+           come un'app; su desktop (mouse, "pointer:fine") in più viene
+           limitata a una dimensione da mockup con max-height/max-width,
+           centrata nella pagina invece di occupare tutto il monitor. Le
+           percentuali --phone-screen-* tornano statiche per orientamento
+           (nessun ritaglio = nessun bisogno di ricalcolarle a runtime). */
         #phoneFrameBox {
             position: relative;
-            width: 100%;
-            height: 100%;
+            height: min(100%, 100vw * 1777 / 885);
+            width: min(100%, 100vh * 885 / 1777);
+        }
+        @media (orientation: landscape) {
+            #phoneFrameBox {
+                height: min(100%, 100vw * 1024 / 1536);
+                width: min(100%, 100vh * 1536 / 1024);
+            }
+        }
+        /* Solo su desktop (mouse reale, non touch): tetto massimo perché
+           resti un mockup, non riempia il monitor. Valori facilmente
+           regolabili se vuoi il mockup più grande/piccolo. */
+        @media (pointer: fine) {
+            #phoneFrameBox { max-height: 800px; }
+        }
+        @media (pointer: fine) and (orientation: landscape) {
+            #phoneFrameBox { max-width: 800px; }
         }
 
         .phone-frame-bg {
@@ -534,7 +554,7 @@
             inset: 0;
             background-repeat: no-repeat;
             background-position: center;
-            background-size: cover;
+            background-size: 100% 100%; /* il box ha già le proporzioni esatte dell'immagine: riempie senza deformare né ritagliare */
             pointer-events: none;
             z-index: 2;
         }
@@ -547,17 +567,23 @@
 
         #phoneScreen {
             position: absolute;
-            top: var(--phone-screen-top);
-            bottom: var(--phone-screen-bottom);
-            left: var(--phone-screen-left);
-            right: var(--phone-screen-right);
+            top: var(--phone-screen-top-v);
+            bottom: var(--phone-screen-bottom-v);
+            left: var(--phone-screen-left-v);
+            right: var(--phone-screen-right-v);
             z-index: 1;
             border-radius: 22px;
             overflow: hidden;
             background-color: var(--bg-color);
         }
         @media (orientation: landscape) {
-            #phoneScreen { border-radius: 14px; }
+            #phoneScreen {
+                top: var(--phone-screen-top-o);
+                bottom: var(--phone-screen-bottom-o);
+                left: var(--phone-screen-left-o);
+                right: var(--phone-screen-right-o);
+                border-radius: 14px;
+            }
         }
 
         #phoneWidgetHomeWrap {
@@ -645,8 +671,6 @@
         #btnIndietroDettaglioWidget {
             display: none;
             position: fixed;
-            top: calc(var(--phone-screen-top) + 0.6rem);
-            left: calc(var(--phone-screen-left) + 0.8rem);
             z-index: 12;
             background: var(--primary); color: #fff; border: none;
             border-radius: 30px; padding: 0.45rem 0.9rem;
@@ -1991,12 +2015,16 @@
          (max 10, riordinabile, salvata per-dispositivo). Ogni widget apre
          a schermo intero, dentro il rettangolo schermo della cornice,
          esattamente la view-section che apriva il vecchio menu laterale —
-         vedi ui/phone.ui.js. #phoneFrameBox riempie sempre tutta la
-         finestra (fix overflow + fix "schiacciato", vedi commenti CSS su
-         #phoneFrameBox) — le percentuali --phone-screen-* sono calcolate a
-         runtime da _ricalcolaLayoutCornice() in ui/phone.ui.js: NON
-         aggiungere elementi qui dentro con posizionamento assoluto senza
-         passare da quelle stesse variabili, o si perde l'allineamento. ═══ -->
+         vedi ui/phone.ui.js. #phoneFrameBox ha le proporzioni ESATTE
+         dell'immagine (mai deformata/ritagliata), con un tetto massimo
+         solo su desktop perché resti un mockup e non riempia il monitor
+         (vedi commenti CSS su #phoneFrameBox) — le percentuali
+         --phone-screen-* sono statiche per orientamento. NON aggiungere
+         elementi qui dentro con posizionamento assoluto in px/% assoluti:
+         .container e il tasto Indietro si posizionano leggendo il
+         rettangolo REALE di #phoneScreen via JS (vedi
+         _posizionaContainerNelloSchermo in ui/phone.ui.js) — fai lo
+         stesso per qualunque nuovo elemento dello stesso tipo. ═══ -->
     <div id="phoneShell">
         <div id="phoneFrameBox">
             <div class="phone-frame-bg" id="phoneFrameV"></div>
