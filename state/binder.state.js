@@ -53,3 +53,11 @@
         // griglia dei contenitori (le signed URL durano 1h, la griglia si
         // ridisegna spesso durante drag&drop/resize della home widget).
         let _coperturaBinderCache = new Map();
+
+        // Id del binder tipo 'extra' dell'utente — garantito (get-or-create)
+        // sia da caricaCarteReali() in ui/cards.ui.js (serve per popolare
+        // _idsNelBinder ad ogni caricamento carte, indipendentemente dal
+        // widget Binders) sia da apriWidgetBinders() qui. Un solo punto,
+        // calcolato una volta, riusato da entrambi — evita due binder
+        // 'extra' creati per una race condition tra i due caricamenti.
+        let _binderExtraId = null;
