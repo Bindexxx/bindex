@@ -37,3 +37,12 @@ async function userSettingsUpsertTabPredefinita(userId, valore) {
         owner_id: userId, tab_predefinita: valore, aggiornato_il: new Date().toISOString(),
     });
 }
+
+// Multi-Binder (2026-08-25): 'immagini' o 'elenco', globale per utente —
+// vedi 18_preferenza_binder_modalita.sql. Sincronizzata tra dispositivi,
+// per questo vive qui e non in data/preferences.repository.js.
+async function userSettingsUpsertBinderModalita(userId, modalita) {
+    return supabaseClient.from('preferenze_utente').upsert({
+        owner_id: userId, binder_modalita_visualizzazione: modalita, aggiornato_il: new Date().toISOString(),
+    });
+}

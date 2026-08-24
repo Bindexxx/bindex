@@ -48,6 +48,18 @@ async function binderLocationMaterializza(userId, locationValore) {
         .single();
 }
 
+// Come binderLocationMaterializza ma per TUTTE le location in un colpo
+// solo — usata all'apertura del widget Binders per evitare N round-trip
+// (una per ogni valore di data/locations.repository.js:locationsList).
+async function binderLocationMaterializzaBatch(userId, nomiLocation) {
+    if (!nomiLocation || nomiLocation.length === 0) return { data: [], error: null };
+    const righe = nomiLocation.map(nome => ({ owner_id: userId, tipo: 'location', location_valore: nome, nome }));
+    return supabaseClient
+        .from('binders')
+        .upsert(righe, { onConflict: 'owner_id,tipo,location_valore' })
+        .select();
+}
+
 // Il binder wishlist è unico per utente ma il vincolo DB NON lo garantisce
 // (location_valore è null per questo tipo, NULL <> NULL in un vincolo
 // unique standard — vedi nota nel file SQL). Deduplica quindi qui, lato
