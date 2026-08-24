@@ -465,6 +465,20 @@
             max-width: 1550px;
             margin: 1.2rem auto;
             padding: 0 1rem;
+            /* FIX (Claudio: "le pagine aperte vanno riadattate alla
+               larghezza"): il sito ha già un sistema responsive completo
+               (tabelle→schede, filtri impilati, griglie adattive) ma era
+               agganciato a @media (max-width:...), cioè alla larghezza
+               della FINESTRA del browser — su desktop la finestra resta
+               larga anche se .container ora è confinato dentro la
+               cornice stretta del telefono, quindi quel responsive non
+               scattava mai. container-type qui sotto rende .container
+               stesso un contenitore misurabile, così le regole
+               @container più sotto reagiscono alla larghezza VERA dello
+               schermo del telefono, qualunque sia la finestra del
+               browser. */
+            container-type: inline-size;
+            container-name: pagina;
         }
 
         .view-section { display: none; }
@@ -741,17 +755,20 @@
             cursor: nwse-resize; touch-action: none; z-index: 2;
         }
 
-        /* Stato "sollevato" durante il trascinamento (Claudio: "sì,
-           sollevamento leggero") — niente cambio di layout qui, solo
-           l'aspetto: il riposizionamento vero avviene ricalcolando
-           l'ordine dell'array e ri-renderizzando (vedi ui/phone.ui.js). */
-        .widget-tile.widget-tile-dragging {
-            opacity: 0.9;
-            transform: scale(1.04);
-            box-shadow: 0 10px 22px rgba(0,0,0,0.28);
-            z-index: 5;
+        /* Drag & drop (Claudio: "sistema la meccanica e l'animazione per
+           assomigliare a iPhone/Android") — il "fantasma" (clone fisso
+           che segue il dito) e la tessera originale nascosta durante il
+           trascinamento, vedi _avviaDragVero in ui/phone.ui.js. */
+        .widget-tile-ghost {
+            z-index: 60;
+            box-shadow: 0 14px 28px rgba(0,0,0,0.32);
+            opacity: 0.96;
+            cursor: grabbing;
         }
-        .widget-tile.widget-tile-drop-target { outline: 2px dashed var(--primary); outline-offset: 2px; }
+        .widget-tile-nascosta { opacity: 0; pointer-events: none; }
+
+        /* Evidenza durante il ridimensionamento (maniglia trascinata). */
+        .widget-tile-resizing { outline: 2px solid var(--primary); outline-offset: -2px; }
 
         /* Peek: anteprima al tocco lungo, senza aprire il popup fullscreen
            (Claudio: "sì, entrambe" — peek + vibrazione). */
@@ -874,7 +891,7 @@
             box-shadow: var(--shadow-soft);
         }
 
-        @media (min-width: 768px) {
+        @container pagina (min-width: 768px) {
             .toolbar {
                 flex-direction: row;
                 align-items: center;
@@ -892,7 +909,7 @@
             width: 100%;
         }
 
-        @media (min-width: 768px) {
+        @container pagina (min-width: 768px) {
             .search-box { width: 320px; }
         }
 
@@ -914,7 +931,7 @@
             width: 100%;
         }
 
-        @media (min-width: 768px) {
+        @container pagina (min-width: 768px) {
             .filters { width: auto; }
         }
 
@@ -976,7 +993,7 @@
            tecnica CSS pura, senza cambiare l'HTML generato da JS — ogni <td>
            diventa una riga "etichetta: valore" dentro una card, usando
            data-label per l'etichetta (aggiunta al markup via ::before). */
-        @media (max-width: 768px) {
+        @container pagina (max-width: 768px) {
             .card-panel { overflow-x: visible; padding: 0.5rem; }
             table { min-width: 0; }
             thead { position: absolute; top: -9999px; left: -9999px; }
@@ -1742,7 +1759,7 @@
         }
 
         .testo-esteso { white-space: normal; }
-        @media (max-width: 480px) {
+        @container pagina (max-width: 480px) {
             /* Sotto i 480px lo spazio è poco: mostra solo l'etichetta breve
                ("Colleziona", "Wishlist") e nascondi la parte descrittiva tra
                parentesi, invece di farla traboccare o accavallare. */
@@ -1832,7 +1849,7 @@
         .binder-grid-3x4 { grid-template-columns: repeat(4, 1fr); max-width: 820px; margin-left: auto; margin-right: auto; }
         .binder-grid-4x4 { grid-template-columns: repeat(4, 1fr); max-width: 820px; margin-left: auto; margin-right: auto; }
 
-        @media (max-width: 640px) {
+        @container pagina (max-width: 640px) {
             /* Sotto i 640px il layout 3x3 mostra al massimo 3 colonne (già
                il suo numero naturale di colonne, invariato). I due layout a
                4 colonne (4×4 e "4×3"/chiave interna 3x4) NON hanno più un
@@ -1855,7 +1872,7 @@
            o caricaAttivitaRecentiHome() è stata toccata: solo attributi class
            aggiunti agli elementi generati, il markup e la logica restano
            identici. Vedi DECISIONI_SESSIONE_BINDER.txt sez. 3novies. */
-        @media (max-width: 768px) {
+        @container pagina (max-width: 768px) {
             /* "In primo piano" — dopo test su dispositivo: le 3 categorie
                restano AFFIANCATE (come su desktop, non impilate), ma ogni
                categoria mostra solo la SUA prima carta (quella più
