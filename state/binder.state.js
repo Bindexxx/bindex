@@ -30,7 +30,9 @@
         let _cardBackFieldState = null;
         let _cardBackDragInitDone = false;
         const BINDER_LAYOUT_ETICHETTE = { '2x2': '2×2', '3x3': '3×3', '3x4': '4×3', '4x4': '4×4' };
-        let _modificheBinderPendenti = new Map();
+        // Multi-Binder (2026-08-25): _modificheBinderPendenti rimossa — era
+        // usata solo dal modale "Aggiungi/gestisci carte nel Binder" (A6),
+        // rimosso perché orfano (vedi index.html). Zero riferimenti rimasti.
 
         // ── Multi-Binder (2026-08-25): griglia dei contenitori ──────────────
         // _bindersElenco: righe della tabella 'binders' dell'utente (tipo,
