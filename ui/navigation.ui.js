@@ -202,7 +202,20 @@
                 if (tabId === 'prezzi' && !_locationCaricate) caricaListaLocationCheckbox();
                 if (tabId === 'inserimento' && !_locationComuneCaricata) caricaSelectLocationComune();
                 if (tabId === 'inserimento') caricaCarteConProblemi();
-                if (tabId === 'binder') { renderBinder(); caricaBinderCoverStato(); caricaCardBackStato(); }
+                // Multi-Binder (2026-08-25): questa riga chiamava renderBinder(),
+                // caricaBinderCoverStato(), caricaCardBackStato() — nomi della
+                // versione a binder-singolo, non esistono più da quando il
+                // sistema è diventato Multi-Binder. Causavano un ReferenceError
+                // qui dentro switchTab() ad ogni apertura della tab 'binder' (e
+                // quindi anche al login, se l'ultima tab attiva salvata era
+                // 'binder') — bug segnalato da Claudio, mai notato prima perché
+                // nessuno aveva ancora letto questo file per intero.
+                // Il caricamento dati del Multi-Binder oggi passa SEMPRE da
+                // apriWidgetBinders() (data/ui/binder.ui.js), chiamata da
+                // ui/phone.ui.js:apriDettaglioWidget() subito DOPO switchTab —
+                // non va richiamata anche qui, altrimenti si carica due volte
+                // ad ogni apertura.
+                if (tabId === 'binder') { /* caricamento dati gestito da apriDettaglioWidget() in ui/phone.ui.js */ }
                 if (tabId === 'home') { caricaAvvisiHome(); caricaUltimaSincronizzazioneHome(); caricaAttivitaRecentiHome(); renderBinderInPrimoPianoHome(); }
             } else {
                 filterTable();
