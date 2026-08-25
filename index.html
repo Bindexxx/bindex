@@ -3670,21 +3670,16 @@
         </div>
     </div>
 
-    <!-- A6: MODALE AGGIUNGI/GESTISCI CARTE NEL BINDER — stesso stile del
-         modale Cerca ovunque (input + lista, min 2 caratteri). Mostra TUTTE
-         le carte in collezione che matchano la ricerca, comprese quelle già
-         nel Binder (checkbox pre-spuntata) — un solo pulsante "Applica" alla
-         fine calcola aggiunte/rimozioni insieme, con conferma solo se ci
-         sono rimozioni tra i cambiamenti. -->
-    <div id="aggiungiCarteBinderModal" class="modal-overlay" onclick="chiudiAggiungiCarteBinder()">
-        <div class="modal-content" style="max-width: 440px; text-align:left;" onclick="event.stopPropagation()">
-            <button class="close-modal-btn" onclick="chiudiAggiungiCarteBinder()"><i class="fa-solid fa-xmark"></i></button>
-            <h3 style="font-weight: 800; margin-bottom: 0.8rem;"><i class="fa-solid fa-layer-group" style="color: var(--primary);"></i> Aggiungi carte al Binder</h3>
-            <input type="text" id="aggiungiCarteBinderInput" placeholder="Nome o codice carta..." oninput="eseguiRicercaAggiungiCarteBinder(this.value)" style="margin-bottom: 0.8rem;">
-            <div id="aggiungiCarteBinderRisultati" style="max-height: 45vh; overflow-y: auto; margin-bottom: 0.8rem;"></div>
-            <button type="button" class="btn-main" style="width:100%;" id="aggiungiCarteBinderApplicaBtn" onclick="applicaModificheBinder()" disabled>Applica</button>
-        </div>
-    </div>
+    <!-- Multi-Binder (2026-08-25): il vecchio modale "Aggiungi/gestisci
+         carte nel Binder" (A6) è stato RIMOSSO — era orfano, chiamava 3
+         funzioni mai esistite dopo il refactoring Multi-Binder
+         (chiudiAggiungiCarteBinder, eseguiRicercaAggiungiCarteBinder,
+         applicaModificheBinder), segnalato dalla sessione Opus. Stesso
+         bisogno già coperto dal bottone "Aggiungi al Binder" per singola
+         carta e dall'azione bulk in Visualizzazione (ui/cards.ui.js,
+         toggleBinderMembership/aggiungiSelezionateAlBinder), agganciati al
+         binder 'extra'. Nessuna funzionalità persa, solo markup morto
+         rimosso. -->
 
     <!-- MODALE FOTO DETTAGLIO -->
     <div id="fotoModal" class="modal-overlay">
