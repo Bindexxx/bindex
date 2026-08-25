@@ -2382,6 +2382,144 @@
             font-size: 1.4rem;
         }
 
+        /* ═══════════════════════════════════════════════════════════════
+           LIBRO SFOGLIABILE — sessione Opus, 2026-08-25. Sostituisce la
+           griglia statica come modalità "immagini" del widget Binders.
+           Cerniera 3D rigida (rotateY attorno al dorso) con ombra che
+           segue l'angolo: la curvatura della pagina è simulata con la
+           luce, non con la geometria — una piega davvero deformabile
+           richiederebbe canvas/WebGL.
+           NESSUNA misura in px qui: larghezza/altezza di scena, lati e
+           foglio le imposta _libroMisura() in ui/binder.ui.js leggendo il
+           rettangolo reale (dentro la cornice telefono le @media sulla
+           finestra non scattano — vedi container-type su .container).
+           ═══════════════════════════════════════════════════════════════ */
+        .libro-wrap {
+            width: 100%;
+            margin-top: 1.2rem;
+            /* Il trascinamento orizzontale gira pagina, quello verticale
+               deve restare allo scroll/scroll-snap della cornice telefono. */
+            touch-action: pan-y;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        .libro-scena {
+            position: relative;
+            margin: 0 auto;
+            perspective: 1800px;
+        }
+        /* A facciata singola il foglio che rientra da sinistra deve essere
+           tagliato dal bordo (non c'è una pagina di sinistra dove atterrare):
+           è voluto, si vede la pagina entrare dal bordo come in un libro
+           tenuto in mano. */
+        .libro-modo-singola { overflow: hidden; }
+
+        .libro-lato {
+            position: absolute;
+            top: 0;
+            left: 0;
+            overflow: hidden;
+            background: var(--card-bg);
+        }
+        .libro-lato-sx { border-radius: 8px 2px 2px 8px; box-shadow: inset -16px 0 24px -16px rgba(0,0,0,0.45), 0 6px 18px rgba(0,0,0,0.14); }
+        .libro-lato-dx { border-radius: 2px 8px 8px 2px; box-shadow: inset 16px 0 24px -16px rgba(0,0,0,0.45), 0 6px 18px rgba(0,0,0,0.14); }
+        .libro-modo-singola .libro-lato-dx { border-radius: 10px; box-shadow: 0 8px 22px rgba(0,0,0,0.18); }
+        /* Nessuna faccia da mostrare da quel lato (libro chiuso, o finito):
+           niente carta bianca sospesa nel vuoto. */
+        .libro-lato-spento { background: transparent; box-shadow: none; }
+
+        .libro-foglio {
+            position: absolute;
+            top: 0;
+            transform-origin: left center;
+            transform-style: preserve-3d;
+            will-change: transform;
+            z-index: 5;
+            display: none;
+        }
+        .libro-foglio.girando { transition: transform 620ms cubic-bezier(0.22, 0.61, 0.36, 1); }
+        .libro-foglio.in-trascinamento { transition: none; }
+
+        .libro-faccia {
+            position: absolute;
+            inset: 0;
+            overflow: hidden;
+            backface-visibility: hidden;
+            -webkit-backface-visibility: hidden;
+            background: var(--card-bg);
+            border-radius: 2px 8px 8px 2px;
+        }
+        .libro-faccia-retro { transform: rotateY(180deg); }
+
+        /* Ombra della piega: durante il trascinamento l'opacità arriva da JS
+           (--libro-ombra, calcolata sull'angolo reale); durante il giro
+           automatico ci pensa il keyframe qui sotto, che sovrascrive il
+           valore inline per tutta la durata dell'animazione. */
+        .libro-faccia::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            background: linear-gradient(to right, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0.12) 38%, rgba(0,0,0,0) 70%);
+            opacity: var(--libro-ombra, 0);
+        }
+        @keyframes libroOmbraGiro {
+            0%   { opacity: 0; }
+            50%  { opacity: 0.5; }
+            100% { opacity: 0; }
+        }
+        .libro-foglio.girando .libro-faccia::after {
+            animation: libroOmbraGiro 620ms cubic-bezier(0.22, 0.61, 0.36, 1);
+        }
+
+        .libro-pagina-griglia {
+            display: grid;
+            gap: 6px;
+            padding: 10px;
+        }
+        /* Le tasche riusano .binder-slot (stesso rapporto 63/88, stesso
+           fallback, stessi badge): qui solo gli aggiustamenti di scala,
+           dentro una pagina sono più piccole che nella vecchia griglia. */
+        .libro-pagina-griglia .binder-slot { border-radius: 6px; }
+        .libro-pagina-griglia .binder-slot-empty { font-size: 0.95rem; border-width: 1px; }
+        .libro-pagina-griglia .binder-slot-filled:hover { transform: none; } /* dentro il libro il sollevamento disturba il trascinamento */
+        .libro-pagina-griglia .binder-slot img { -webkit-user-drag: none; user-drag: none; }
+
+        .libro-pagina-numero {
+            position: absolute;
+            left: 0; right: 0; bottom: 1px;
+            text-align: center;
+            font-size: 0.62rem;
+            color: var(--text-muted);
+            pointer-events: none;
+        }
+
+        .libro-copertina { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; overflow: hidden; background: var(--bg-color); }
+        .libro-copertina img { width: 100%; height: 100%; object-fit: cover; -webkit-user-drag: none; }
+        .libro-copertina i { font-size: 2.4rem; color: var(--text-muted); }
+        .libro-copertina-etichetta {
+            position: absolute;
+            left: 0; right: 0; bottom: 0;
+            padding: 0.5rem 0.6rem;
+            background: linear-gradient(to top, rgba(0,0,0,0.65) 0%, rgba(0,0,0,0) 100%);
+            color: #fff;
+            font-weight: 800;
+            font-size: 0.85rem;
+            text-align: center;
+        }
+
+        /* Risguardo: l'interno della copertina, e il riempitivo dell'ultima
+           facciata dispari. Volutamente vuoto — la sleeve NON si vede qui,
+           si vede solo girando una carta in primo piano. */
+        .libro-risguardo {
+            position: absolute;
+            inset: 0;
+            background:
+                repeating-linear-gradient(135deg, rgba(0,0,0,0.028) 0 2px, rgba(0,0,0,0) 2px 7px),
+                var(--bg-color);
+        }
+
         .binder-pagination {
             display: flex;
             align-items: center;
@@ -3090,6 +3228,28 @@
                             <button type="button" class="binder-layout-btn" data-layout="4x4" onclick="cambiaLayoutBinder('4x4')">4×4</button>
                         </div>
                         <span style="font-size:0.72rem; color:var(--text-muted);">Per aggiungere carte al tuo binder personale, usa "Aggiungi al Binder" da Visualizzazione.</span>
+                    </div>
+
+                    <!-- LIBRO SFOGLIABILE (Opus, 2026-08-25) — modalità
+                         "immagini". Tutto il contenuto (facce, tasche,
+                         copertina) è generato da renderBinderLibro() in
+                         ui/binder.ui.js: qui c'è solo lo scheletro. Le
+                         dimensioni di scena/lati/foglio sono impostate in px
+                         via JS leggendo la larghezza REALE del wrap (dentro
+                         la cornice telefono le @media sulla finestra non
+                         valgono), quindi non metterle qui in CSS.
+                         #binderGrid qui sotto resta al suo posto, non più
+                         usato: è il rollback immediato alla vecchia griglia
+                         statica (vedi renderBinderContenuto). -->
+                    <div id="binderLibroWrap" class="libro-wrap" style="display:none;">
+                        <div class="libro-scena" id="binderLibroScena">
+                            <div class="libro-lato libro-lato-sx" id="binderLibroSx"></div>
+                            <div class="libro-lato libro-lato-dx" id="binderLibroDx"></div>
+                            <div class="libro-foglio" id="binderLibroFoglio">
+                                <div class="libro-faccia libro-faccia-fronte" id="binderLibroFronte"></div>
+                                <div class="libro-faccia libro-faccia-retro" id="binderLibroRetro"></div>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="binder-grid" id="binderGrid"></div>
