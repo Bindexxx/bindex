@@ -393,19 +393,30 @@
         }
 
 
-        // Calcola la pagina esatta del Binder dove si trova la carta (stesso
-        // ordinamento automatico di renderBinder: tutte le carte di
-        // collezione, comprese le Sealed, ordinate per data di inserimento)
-        // e ci naviga direttamente.
-        function vaiAllaCartaNelBinder(cardId) {
+        // Multi-Binder (2026-08-25): riscritta. Prima calcolava _binderPagina
+        // su TUTTA la collezione (tutte le location mescolate) e apriva la
+        // sezione con un semplice switchTab, senza mai caricare i dati dei
+        // binder — bug pre-esistente al libro sfogliabile, segnalato dalla
+        // sessione Opus (§5.1 del riepilogo). Ora: apre davvero il binder a
+        // cui la carta appartiene (priorità alla location, stessa logica già
+        // scritta in ui/modals.ui.js per la sleeve — _binderDiAppartenenzaSeNoto
+        // — riusata qui, non riscritta), e la pagina è calcolata SOLO sulle
+        // carte di quel binder specifico.
+        async function vaiAllaCartaNelBinder(cardId) {
             chiudiImmagineIngrandita();
+            const card = carteReali.find(c => String(c.id) === String(cardId));
+            if (!card) return;
+
+            await apriDettaglioWidget('binder', null); // ui/phone.ui.js — apre la sezione E garantisce/carica _bindersElenco
+
+            const idBinder = _binderDiAppartenenzaSeNoto(card); // ui/modals.ui.js
+            if (!idBinder) return; // binder non determinabile: resta sulla griglia contenitori, meglio di niente
+
+            await apriBinderDettaglio(idBinder); // ui/binder.ui.js — carica _carteBinderAttivoCache del binder giusto
+
             const layout = BINDER_LAYOUTS[_binderLayout] || BINDER_LAYOUTS['3x3'];
             const perPagina = layout.cols * layout.rows;
-            const carte = carteReali
-                .filter(c => c.stato === 'collezione')
-                .slice()
-                .sort((a, b) => new Date(a.createdAt || 0) - new Date(b.createdAt || 0));
-            const indice = carte.findIndex(c => String(c.id) === String(cardId));
+            const indice = _carteBinderAttivoCache.findIndex(c => String(c.id) === String(cardId));
             _binderPagina = indice >= 0 ? Math.floor(indice / perPagina) : 0;
-            switchTab('binder', document.getElementById('mNav-binder'));
+            renderBinderContenuto();
         }

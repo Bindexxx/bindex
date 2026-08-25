@@ -409,10 +409,15 @@ function renderBinderElenco() {
 
     contenitore.innerHTML = carte.map(card => {
         const idAttr = String(card.id).replace(/'/g, "\\'");
+        const idBinderAttr = String(_binderAttivo).replace(/'/g, "\\'");
         const nomeAttr = escapeHtml(card.name || '');
         const immagineSrc = _urlImmagineVisualizzabile(card.immagine);
+        // Coerenza col libro (sessione Opus, 2026-08-25): passa direttamente
+        // a apriFlipCardHome con il binderId, non a apriImmagineIngrandita
+        // (che non accetta il parametro) — così anche in modalità elenco si
+        // vede la sleeve del binder corrente, non il retro di sistema.
         const thumb = immagineSrc
-            ? `<img src="${immagineSrc}" alt="" class="riga-compatta-thumb" loading="lazy" onclick="apriImmagineIngrandita('${idAttr}')" onerror="this.style.display='none';">`
+            ? `<img src="${immagineSrc}" alt="" class="riga-compatta-thumb" loading="lazy" onclick="apriFlipCardHome('${idAttr}', { binderId: '${idBinderAttr}' })" onerror="this.style.display='none';">`
             : '';
         return `
             <div class="riga-compatta">

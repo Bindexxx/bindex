@@ -693,7 +693,7 @@ function _impostaOrigineAnimazione(container, evt) {
     container.style.setProperty('--pokeball-y', y + 'px');
 }
 
-function apriDettaglioWidget(tabId, evt) {
+async function apriDettaglioWidget(tabId, evt) {
     clearTimeout(_chiusuraDettaglioTimeout); // annulla un'eventuale chiusura ancora in corso (riapertura rapida)
 
     const container = document.querySelector('.container');
@@ -704,9 +704,12 @@ function apriDettaglioWidget(tabId, evt) {
     // carica nulla — serve chiamare apriWidgetBinders() (garantisce i
     // binder, li legge, disegna la griglia contenitori) ogni volta che si
     // arriva qui, sia dal click diretto sul widget "Binders" sia da un
-    // redirect (es. "Prossima azione" → tabSuggerito:'binder'). Un solo
-    // punto invece di ripeterlo in ogni 'azione' che porta qui.
-    if (tabId === 'binder') apriWidgetBinders();
+    // redirect (es. "Prossima azione" → tabSuggerito:'binder', o
+    // "Vai al binder" da una carta in ui/home.ui.js). Ora AWAIT-ata (prima
+    // era fire-and-forget): chi chiama questa funzione con await sa quando
+    // _bindersElenco è davvero pronto — i chiamanti che non fanno await
+    // continuano a funzionare come prima, la promise si risolve comunque.
+    if (tabId === 'binder') await apriWidgetBinders();
 
     if (container) {
         _impostaOrigineAnimazione(container, evt);
