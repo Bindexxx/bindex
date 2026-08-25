@@ -329,7 +329,25 @@
         // — placeholder ragionevole, da aggiustare se Claudio preferisce
         // altro.
 
-        function apriFlipCardHome(id) {
+        // OPUS 2026-08-25 (libro sfogliabile del Binder): secondo parametro
+        // OPZIONALE, aggiunto senza toccare nessuno dei punti di chiamata
+        // esistenti (che continuano a passare solo l'id e a comportarsi
+        // esattamente come prima).
+        //   opzioni.binderId            → di QUALE binder mostrare la sleeve
+        //                                 sul retro. Serve perché dal
+        //                                 Multi-Binder in poi la sleeve non è
+        //                                 più unica per utente ma per binder
+        //                                 (user_media.binder_id, vedi
+        //                                 17_binders_multipli.sql). Se non
+        //                                 passato, renderRetroCartaOwner prova
+        //                                 a dedurlo dalla location della carta
+        //                                 e, se non ci riesce, mostra il retro
+        //                                 di sistema.
+        //   opzioni.nascondiVaiAlBinder → nasconde il bottone "Vai al binder"
+        //                                 (richiesta di Claudio: se la carta è
+        //                                 stata aperta da DENTRO il binder,
+        //                                 quel bottone non ha senso).
+        function apriFlipCardHome(id, opzioni = {}) {
             const card = carteReali.find(c => String(c.id) === String(id));
             if (!card) return;
 
@@ -352,8 +370,14 @@
             document.getElementById('flipCardStats').innerHTML = `
                 <div style="font-size:0.78rem; opacity:0.9;"><code style="background:none; color:inherit; padding:0;">${card.code}</code> · ${card.location || '—'}</div>
             `;
-            document.getElementById('flipCardBinderBtn').onclick = (e) => { e.stopPropagation(); vaiAllaCartaNelBinder(card.id); };
-            renderRetroCartaOwner(card);
+            // La visibilità va SEMPRE riscritta, non solo nascosta: il modale
+            // è unico e condiviso — senza questo ripristino, una singola
+            // apertura dal libro lo lascerebbe nascosto per sempre anche a
+            // tutti gli altri punti di ingresso.
+            const btnVaiAlBinder = document.getElementById('flipCardBinderBtn');
+            btnVaiAlBinder.style.display = opzioni.nascondiVaiAlBinder ? 'none' : '';
+            btnVaiAlBinder.onclick = (e) => { e.stopPropagation(); vaiAllaCartaNelBinder(card.id); };
+            renderRetroCartaOwner(card, opzioni.binderId || null);
 
             document.getElementById('immagineModal').style.display = 'flex';
 
