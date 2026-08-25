@@ -59,29 +59,27 @@ const CATALOGO_WIDGET = {
             return { righe: [`${lista.length} da aggiornare`, lista[0].name || ''], stato: 'allerta' };
         },
     },
-    scambio: {
-        titolo: 'Scambio', icona: 'fa-right-left',
-        preview: () => {
-            const n = carteReali.filter(c => c.stato === 'collezione' && c.location === 'SCAMBIO').length;
-            return { righe: [`${n} in scambio`] };
-        },
-    },
-    wishlist: {
-        titolo: 'Wishlist', icona: 'fa-heart',
-        // Stesso identico filtro "sotto obiettivo" di caricaAvvisiHome in
-        // home.ui.js — replicato qui (dati già in carteReali, nessuna
-        // query nuova), non indovinato.
-        preview: () => {
-            const tutte = carteReali.filter(c => c.tabella === 'wishlist');
-            const sottoObiettivo = tutte.filter(c => c.prezzoObiettivo != null && c.price > 0 && c.price <= c.prezzoObiettivo);
-            const righe = [`${tutte.length} desiderate`];
-            if (sottoObiettivo.length > 0) righe.push(`🎯 ${sottoObiettivo.length} sotto obiettivo`);
-            return { righe, stato: sottoObiettivo.length > 0 ? 'ok' : undefined };
-        },
-    },
+    // Multi-Binder (2026-08-25): 'scambio' e 'wishlist' come widget home
+    // separati sono stati rimossi — puntavano a switchTab('scambio'/
+    // 'wishlist'), view-section che non esistono più in index.html (solo 5
+    // restano: visualizzazione/inserimento/prezzi/binder/impostazioni).
+    // Erano già inattivi prima di questa sessione. Il loro contenuto vive
+    // ora dentro il widget "Binders" sotto, come binder dedicati.
     binder: {
-        titolo: 'Binder', icona: 'fa-book-open',
-        preview: () => ({ righe: ['In primo piano'] }),
+        titolo: 'Binders', icona: 'fa-layer-group',
+        // Zero query nuove (stessa filosofia degli altri preview): conta le
+        // location distinte già presenti in carteReali + 2 fissi (Wishlist
+        // + il binder 'extra', che esistono sempre una volta garantiti) —
+        // è una STIMA del numero di binder, non il conteggio esatto letto
+        // da bindersQueryTutti() (quello lo fa apriWidgetBinders() appena
+        // aperto il widget, qui servirebbe una query in più solo per
+        // l'anteprima e non vale il costo).
+        preview: () => {
+            const locationDistinte = new Set(
+                carteReali.filter(c => c.tabella === 'carte' && c.stato === 'collezione' && c.location).map(c => c.location)
+            ).size;
+            return { righe: [`${locationDistinte + 2} binder`] };
+        },
     },
     sealed: {
         titolo: 'Sealed', icona: 'fa-box-archive',
@@ -154,7 +152,7 @@ const CATALOGO_WIDGET = {
             if (codaErrori > 0) return { righe: [`${codaErrori} carte da correggere`], stato: 'allerta', tabSuggerito: 'inserimento' };
 
             const wishlistSottoTarget = carteReali.filter(c => c.tabella === 'wishlist' && c.prezzoObiettivo != null && c.price > 0 && c.price <= c.prezzoObiettivo);
-            if (wishlistSottoTarget.length > 0) return { righe: [`${wishlistSottoTarget.length} in wishlist sotto obiettivo`], stato: 'ok', tabSuggerito: 'wishlist' };
+            if (wishlistSottoTarget.length > 0) return { righe: [`${wishlistSottoTarget.length} in wishlist sotto obiettivo`], stato: 'ok', tabSuggerito: 'binder' };
 
             const lista = (typeof _elencoPrezziScaduti !== 'undefined' && _elencoPrezziScaduti) ? _elencoPrezziScaduti : [];
             if (lista.length > 0) return { righe: [`${lista.length} prezzi da aggiornare`], stato: 'allerta', tabSuggerito: 'prezzi' };
@@ -205,7 +203,7 @@ const CATALOGO_WIDGET = {
     },
 };
 
-const ORDINE_WIDGET_DEFAULT = ['visualizzazione', 'inserimento', 'prezzi', 'scambio', 'wishlist', 'binder', 'sealed'];
+const ORDINE_WIDGET_DEFAULT = ['visualizzazione', 'inserimento', 'prezzi', 'binder', 'sealed'];
 const MAX_WIDGET_VISIBILI = 10;
 const TAGLIE_CICLO = ['1x1', '2x1', '1x2', '2x2']; // ordine di ciclo del ridimensionamento
 
@@ -701,6 +699,14 @@ function apriDettaglioWidget(tabId, evt) {
     const container = document.querySelector('.container');
     switchTab(tabId, null);
     document.body.classList.add('phone-detail-open');
+
+    // Multi-Binder (2026-08-25): la view-section 'binder' da sola non
+    // carica nulla — serve chiamare apriWidgetBinders() (garantisce i
+    // binder, li legge, disegna la griglia contenitori) ogni volta che si
+    // arriva qui, sia dal click diretto sul widget "Binders" sia da un
+    // redirect (es. "Prossima azione" → tabSuggerito:'binder'). Un solo
+    // punto invece di ripeterlo in ogni 'azione' che porta qui.
+    if (tabId === 'binder') apriWidgetBinders();
 
     if (container) {
         _impostaOrigineAnimazione(container, evt);
