@@ -171,9 +171,56 @@ async function apriBinderDettaglio(binderId) {
     const titoloEl = document.getElementById('binderDettaglioTitolo');
     if (titoloEl) titoloEl.textContent = binder.nome || '';
 
+    // Rinomina: solo tipo 'extra'. Pubblicazione libera (2026-08-25): solo
+    // location diverse da SCAMBIO, e 'extra' — Wishlist/Scambio sono
+    // sempre pubblici (forzato dal trigger DB), il controllo lì sarebbe
+    // fuorviante. NOTA: non esiste ancora una pagina pubblica che consumi
+    // leggi_binder_pubblico() per binder location/extra generici (solo
+    // scambio.html/wishlist.html esistono oggi) — il toggle imposta
+    // davvero stato_pubblicazione in DB, ma senza una pagina che la legga
+    // non produce ancora un link condivisibile visitabile. Segnalato a
+    // Claudio, prossimo passo se lo vuole.
+    const rinominaWrap = document.getElementById('binderRinominaWrap');
+    if (rinominaWrap) rinominaWrap.style.display = binder.tipo === 'extra' ? 'flex' : 'none';
+    if (binder.tipo === 'extra') {
+        const inputRinomina = document.getElementById('binderRinominaInput');
+        if (inputRinomina) inputRinomina.value = binder.nome || '';
+    }
+
+    const pubblicazioneWrap = document.getElementById('binderPubblicazioneWrap');
+    const eGiaPubblicoFisso = binder.tipo === 'wishlist' || (binder.tipo === 'location' && binder.location_valore === 'SCAMBIO');
+    if (pubblicazioneWrap) {
+        pubblicazioneWrap.style.display = eGiaPubblicoFisso ? 'none' : 'flex';
+        const checkbox = document.getElementById('binderPubblicazioneCheckbox');
+        if (checkbox) checkbox.checked = binder.stato_pubblicazione === 'pubblico';
+    }
+
     await _caricaCarteBinderAttivo(binder);
     renderBinderContenuto();
     await caricaDesignBinderAttivo(); // copertina + sleeve del binder appena aperto
+}
+
+// Pubblicazione libera (2026-08-25) — nessuna approvazione admin, vedi
+// 19_binder_pubblicazione_libera.sql. Il trigger DB ignora comunque questo
+// update per wishlist/SCAMBIO (sempre pubblici), ma la UI non mostra il
+// controllo su quei due tipi (vedi apriBinderDettaglio sopra), quindi in
+// pratica questa funzione viene chiamata solo dove ha davvero effetto.
+async function impostaPubblicazioneBinderAttivo(pubblico) {
+    const binder = _bindersElenco.find(b => String(b.id) === String(_binderAttivo));
+    if (!binder) return;
+
+    const userId = await authGetUserId();
+    if (!userId) return;
+
+    const { error } = await binderImpostaPubblicazione(userId, binder.id, pubblico);
+    if (error) {
+        console.error('impostaPubblicazioneBinderAttivo:', error.message);
+        const checkbox = document.getElementById('binderPubblicazioneCheckbox');
+        if (checkbox) checkbox.checked = !pubblico; // rollback visivo se la scrittura fallisce
+        return;
+    }
+    binder.stato_pubblicazione = pubblico ? 'pubblico' : 'privato';
+    binder.condivisibile = pubblico;
 }
 
 function tornaAllaGrigliaBinders() {
@@ -358,10 +405,17 @@ async function toggleBinderMembership(id) {
 function _aggiornaBottoniBinderToggle(id) {
     const idAttr = String(id);
     const nelBinder = _idsNelBinder.has(idAttr);
+
+    // Nome vero del binder extra se già noto in questa sessione (il widget
+    // Binders potrebbe non essere mai stato aperto — _bindersElenco resta
+    // vuoto in quel caso, e va bene così, si usa il testo generico).
+    const binderExtra = Array.isArray(_bindersElenco) ? _bindersElenco.find(b => String(b.id) === String(_binderExtraId)) : null;
+    const nomeBinder = binderExtra && binderExtra.nome ? escapeHtml(binderExtra.nome) : 'Binder';
+
     document.querySelectorAll(`.btn-binder-toggle[data-id="${idAttr}"]`).forEach((btn) => {
         btn.innerHTML = nelBinder
-            ? '<i class="fa-solid fa-layer-group"></i> Rimuovi dal Binder'
-            : '<i class="fa-solid fa-layer-group"></i> Aggiungi al Binder';
+            ? `<i class="fa-solid fa-layer-group"></i> Rimuovi da "${nomeBinder}"`
+            : `<i class="fa-solid fa-layer-group"></i> Aggiungi a "${nomeBinder}"`;
         btn.classList.remove('binder-toggle-flash');
         void btn.offsetWidth;
         btn.classList.add('binder-toggle-flash');
