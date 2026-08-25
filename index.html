@@ -3077,6 +3077,19 @@
                         </button>
                     </div>
 
+                    <!-- Pubblicazione libera (2026-08-25) — nessuna approvazione
+                         admin, vedi 19_binder_pubblicazione_libera.sql. Mostrata
+                         via JS solo per i binder che l'utente può davvero
+                         decidere (location diverse da SCAMBIO, extra) — Wishlist
+                         e Scambio sono sempre pubblici, il controllo qui non
+                         avrebbe senso e resta nascosto. -->
+                    <div id="binderPubblicazioneWrap" style="display:none; margin-bottom:1rem; align-items:center; gap:0.6rem;">
+                        <label style="display:inline-flex; align-items:center; gap:0.5rem; cursor:pointer; font-size:0.82rem; font-weight:700;">
+                            <input type="checkbox" id="binderPubblicazioneCheckbox" onchange="impostaPubblicazioneBinderAttivo(this.checked)">
+                            Rendi pubblico (link condivisibile)
+                        </label>
+                    </div>
+
                     <!-- Toggle immagini/elenco — preferenza per-utente -->
                     <div class="binder-modalita-toggle">
                         <button type="button" class="binder-modalita-btn" data-modalita="immagini" onclick="impostaModalitaBinder('immagini')"><i class="fa-solid fa-images"></i> Immagini</button>
