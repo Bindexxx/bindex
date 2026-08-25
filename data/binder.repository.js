@@ -106,6 +106,20 @@ async function binderExtraRinomina(userId, binderId, nuovoNome) {
         .eq('tipo', 'extra');
 }
 
+// Pubblicazione libera (2026-08-25, vedi 19_binder_pubblicazione_libera.sql)
+// — nessuna approvazione admin, il proprietario decide da sé. Per i binder
+// wishlist/SCAMBIO il trigger DB ignora comunque questo update e forza
+// sempre 'pubblico' — questa funzione può essere chiamata anche su quei
+// binder senza effetto (non serve che la UI li escluda per sicurezza, ma è
+// comunque più chiaro non mostrare il controllo lì, vedi ui/binder.ui.js).
+async function binderImpostaPubblicazione(userId, binderId, pubblico) {
+    return supabaseClient
+        .from('binders')
+        .update({ stato_pubblicazione: pubblico ? 'pubblico' : 'privato', condivisibile: pubblico })
+        .eq('id', binderId)
+        .eq('owner_id', userId);
+}
+
 // Carte di un binder-location: lettura diretta da 'carte', NON da
 // binder_carte — i binder-location non hanno righe di appartenenza, sono
 // sempre lo specchio in tempo reale di carte.location. Stessa colonna
