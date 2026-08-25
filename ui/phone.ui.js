@@ -700,17 +700,6 @@ async function apriDettaglioWidget(tabId, evt) {
     switchTab(tabId, null);
     document.body.classList.add('phone-detail-open');
 
-    // Multi-Binder (2026-08-25): la view-section 'binder' da sola non
-    // carica nulla — serve chiamare apriWidgetBinders() (garantisce i
-    // binder, li legge, disegna la griglia contenitori) ogni volta che si
-    // arriva qui, sia dal click diretto sul widget "Binders" sia da un
-    // redirect (es. "Prossima azione" → tabSuggerito:'binder', o
-    // "Vai al binder" da una carta in ui/home.ui.js). Ora AWAIT-ata (prima
-    // era fire-and-forget): chi chiama questa funzione con await sa quando
-    // _bindersElenco è davvero pronto — i chiamanti che non fanno await
-    // continuano a funzionare come prima, la promise si risolve comunque.
-    if (tabId === 'binder') await apriWidgetBinders();
-
     if (container) {
         _impostaOrigineAnimazione(container, evt);
         container.classList.add('container-visibile'); // display: normale, cerchio a 0% (stato di partenza dichiarato in CSS)
@@ -722,6 +711,22 @@ async function apriDettaglioWidget(tabId, evt) {
     }
     _beep(880, 70);
     _aggiornaTastoFisico();
+
+    // Multi-Binder (2026-08-25): il caricamento dati va SEMPRE dopo
+    // l'apertura visiva, mai prima — un bug introdotto in un fix precedente
+    // metteva questo await PRIMA del blocco container sopra: un qualunque
+    // errore in apriWidgetBinders() interrompeva la funzione lì, il
+    // container non si apriva mai e da fuori sembrava che il click non
+    // facesse nulla (bug segnalato da Claudio). Ora è dopo, e in try/catch:
+    // un errore nel caricamento non deve mai impedire l'apertura della
+    // sezione, al massimo la mostra vuota.
+    if (tabId === 'binder') {
+        try {
+            await apriWidgetBinders();
+        } catch (e) {
+            console.error('apriDettaglioWidget: errore caricando i binder:', e);
+        }
+    }
 }
 
 function chiudiDettaglioWidget() {
