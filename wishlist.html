@@ -526,6 +526,15 @@
     <script src="ui/wishlist.ui.js"></script>
     <script>
 
+        // Fix 26/08/2026: creazione del client Supabase mancante — mai
+        // presente su questa pagina in questa sessione (stesso bug #9 già
+        // trovato e corretto su binder-pubblico.html). config/supabase.js
+        // definisce solo URL/chiave, la creazione spetta a ogni pagina.
+        // Pagina pubblica anonima → client leggero, nessuna sessione persistita.
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+            auth: { persistSession: false, autoRefreshToken: false }
+        });
+
         // ── AVVIO ────────────────────────────────────────────────────────
         applicaTemaCondiviso();
         caricaCatalogo();
