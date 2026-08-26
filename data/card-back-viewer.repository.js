@@ -18,13 +18,18 @@ async function cardBackViewerLeggiApprovata(ownerUserId, binderId) {
 // Usata da scambio.ui.js/wishlist.ui.js per sapere di quale binder
 // chiedere la sleeve, dato che sono pagine pubbliche senza sessione.
 async function cardBackViewerLeggiBinderIdOwner(ownerUserId, tipo, locationValore) {
-    const { data, error } = await supabaseClient.rpc('leggi_binder_id_owner', {
-        p_owner_id: ownerUserId,
-        p_tipo: tipo,
-        p_location_valore: locationValore || null
-    });
-    if (error) { console.error('cardBackViewerLeggiBinderIdOwner:', error); return null; }
-    return data || null;
+    try {
+        const { data, error } = await supabaseClient.rpc('leggi_binder_id_owner', {
+            p_owner_id: ownerUserId,
+            p_tipo: tipo,
+            p_location_valore: locationValore || null
+        });
+        if (error) { console.error('cardBackViewerLeggiBinderIdOwner:', error); return null; }
+        return data || null;
+    } catch (e) {
+        console.error('cardBackViewerLeggiBinderIdOwner:', e);
+        return null;
+    }
 }
 
 function cardBackViewerDefaultPublicUrl(path) {
