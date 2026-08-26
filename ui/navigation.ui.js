@@ -276,11 +276,37 @@
         // riferimento. Entrambe le pagine sono pensate per chi NON ha e non
         // avrà mai un account CardSync Pro: nessun login richiesto — solo i
         // dati previsti dalla rispettiva RLS pubblica su Supabase.
+        // Multi-Binder (2026-08-25): quando si condivide da dentro il
+        // dettaglio di un binder, currentMode vale 'binder' (impostato da
+        // switchTab) — non basta più a scegliere la pagina, serve sapere
+        // QUALE binder è aperto. Wishlist e Scambio mappano alle pagine
+        // pubbliche reali già esistenti (stesso link di sempre). Per
+        // qualunque altro tipo (location diversa da SCAMBIO, extra) non
+        // esiste ancora una pagina pubblica dedicata — leggi_binder_pubblico
+        // oggi non è nemmeno leggibile per il tipo 'extra' — quindi si
+        // ritorna null: i pulsanti di condivisione in ui/binder.ui.js
+        // restano nascosti per quei binder, non generano un link rotto.
+        function _paginaPubblicaBinderAttivo() {
+            const binder = (typeof _bindersElenco !== 'undefined' && Array.isArray(_bindersElenco))
+                ? _bindersElenco.find(b => String(b.id) === String(_binderAttivo))
+                : null;
+            if (!binder) return null;
+            if (binder.tipo === 'wishlist') return 'wishlist.html';
+            if (binder.tipo === 'location' && binder.location_valore === 'SCAMBIO') return 'scambio.html';
+            return null; // nessuna pagina pubblica generica ancora — vedi commento sopra
+        }
+
         async function _linkPubblicoCondivisione() {
             const sessione = await authGetSession();
             const userId = sessione?.user?.id;
             if (!userId) return null;
-            const pagina = currentMode === 'wishlist' ? 'wishlist.html' : (currentMode === 'sealed' ? 'sealed.html' : 'scambio.html');
+            let pagina;
+            if (currentMode === 'binder') {
+                pagina = _paginaPubblicaBinderAttivo();
+                if (!pagina) return null; // binder senza pagina pubblica dedicata, vedi sopra
+            } else {
+                pagina = currentMode === 'wishlist' ? 'wishlist.html' : (currentMode === 'sealed' ? 'sealed.html' : 'scambio.html');
+            }
             const url = new URL(pagina + '?u=' + encodeURIComponent(userId), window.location.href);
             // Chi apre il link vede lo stesso tema che hai scelto tu sul tuo
             // dispositivo — non c'è login per chi riceve il link, quindi
@@ -293,7 +319,7 @@
             // testo di "Copia riepilogo" su wishlist.html ("Carte che potrei
             // procurare a [Nome]"), senza nessuna nuova chiamata a Supabase
             // né esporre l'email completa, solo un nome leggibile.
-            if (currentMode === 'wishlist' && sessione?.user?.email) {
+            if (pagina === 'wishlist.html' && sessione?.user?.email) {
                 url.searchParams.set('nome', _nomeDaEmail(sessione.user.email));
             }
             return url.href;

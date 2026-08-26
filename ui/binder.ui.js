@@ -171,40 +171,54 @@ async function apriBinderDettaglio(binderId) {
     const titoloEl = document.getElementById('binderDettaglioTitolo');
     if (titoloEl) titoloEl.textContent = binder.nome || '';
 
-    // Rinomina: solo tipo 'extra'. Pubblicazione libera (2026-08-25): solo
-    // location diverse da SCAMBIO, e 'extra' — Wishlist/Scambio sono
-    // sempre pubblici (forzato dal trigger DB), il controllo lì sarebbe
-    // fuorviante. NOTA: non esiste ancora una pagina pubblica che consumi
-    // leggi_binder_pubblico() per binder location/extra generici (solo
-    // scambio.html/wishlist.html esistono oggi) — il toggle imposta
-    // davvero stato_pubblicazione in DB, ma senza una pagina che la legga
-    // non produce ancora un link condivisibile visitabile. Segnalato a
-    // Claudio, prossimo passo se lo vuole.
-    const rinominaWrap = document.getElementById('binderRinominaWrap');
-    if (rinominaWrap) rinominaWrap.style.display = binder.tipo === 'extra' ? 'flex' : 'none';
     if (binder.tipo === 'extra') {
         const inputRinomina = document.getElementById('binderRinominaInput');
         if (inputRinomina) inputRinomina.value = binder.nome || '';
     }
 
-    const pubblicazioneWrap = document.getElementById('binderPubblicazioneWrap');
-    const eGiaPubblicoFisso = binder.tipo === 'wishlist' || (binder.tipo === 'location' && binder.location_valore === 'SCAMBIO');
-    if (pubblicazioneWrap) {
-        pubblicazioneWrap.style.display = eGiaPubblicoFisso ? 'none' : 'flex';
-        const checkbox = document.getElementById('binderPubblicazioneCheckbox');
-        if (checkbox) checkbox.checked = binder.stato_pubblicazione === 'pubblico';
-    }
+    _aggiornaControlliRinominaPubblicazioneCondivisione(binder);
 
     await _caricaCarteBinderAttivo(binder);
     renderBinderContenuto();
     await caricaDesignBinderAttivo(); // copertina + sleeve del binder appena aperto
 }
 
+// Rinomina: solo tipo 'extra'. Pubblicazione libera (2026-08-25): solo
+// location diverse da SCAMBIO, e 'extra' — Wishlist/Scambio sono sempre
+// pubblici (forzato dal trigger DB), il controllo lì sarebbe fuorviante.
+// Condivisione: mostrata SOLO se il binder è pubblico E ha una pagina
+// pubblica reale (Wishlist, Scambio — vedi _paginaPubblicaBinderAttivo in
+// ui/navigation.ui.js). Per gli altri tipi non esiste ancora una pagina
+// pubblica generica: mostrare i bottoni produrrebbe un link rotto, si
+// mostra invece una nota. Fattorizzata qui perché va rieseguita anche
+// subito dopo il toggle pubblicazione, non solo all'apertura del binder.
+function _aggiornaControlliRinominaPubblicazioneCondivisione(binder) {
+    const rinominaWrap = document.getElementById('binderRinominaWrap');
+    if (rinominaWrap) rinominaWrap.style.display = binder.tipo === 'extra' ? 'flex' : 'none';
+
+    const eGiaPubblicoFisso = binder.tipo === 'wishlist' || (binder.tipo === 'location' && binder.location_valore === 'SCAMBIO');
+    const pubblicazioneWrap = document.getElementById('binderPubblicazioneWrap');
+    if (pubblicazioneWrap) {
+        pubblicazioneWrap.style.display = eGiaPubblicoFisso ? 'none' : 'flex';
+        const checkbox = document.getElementById('binderPubblicazioneCheckbox');
+        if (checkbox) checkbox.checked = binder.stato_pubblicazione === 'pubblico';
+    }
+
+    const haPaginaPubblica = binder.tipo === 'wishlist' || (binder.tipo === 'location' && binder.location_valore === 'SCAMBIO');
+    const ePubblico = binder.stato_pubblicazione === 'pubblico';
+
+    const condivisioneWrap = document.getElementById('binderCondivisioneWrap');
+    if (condivisioneWrap) condivisioneWrap.style.display = (ePubblico && haPaginaPubblica) ? 'flex' : 'none';
+
+    const condivisioneNonDisponibileWrap = document.getElementById('binderCondivisioneNonDisponibileWrap');
+    if (condivisioneNonDisponibileWrap) condivisioneNonDisponibileWrap.style.display = (ePubblico && !haPaginaPubblica) ? 'block' : 'none';
+}
+
 // Pubblicazione libera (2026-08-25) — nessuna approvazione admin, vedi
 // 19_binder_pubblicazione_libera.sql. Il trigger DB ignora comunque questo
 // update per wishlist/SCAMBIO (sempre pubblici), ma la UI non mostra il
-// controllo su quei due tipi (vedi apriBinderDettaglio sopra), quindi in
-// pratica questa funzione viene chiamata solo dove ha davvero effetto.
+// controllo su quei due tipi (vedi sopra), quindi in pratica questa
+// funzione viene chiamata solo dove ha davvero effetto.
 async function impostaPubblicazioneBinderAttivo(pubblico) {
     const binder = _bindersElenco.find(b => String(b.id) === String(_binderAttivo));
     if (!binder) return;
@@ -221,6 +235,7 @@ async function impostaPubblicazioneBinderAttivo(pubblico) {
     }
     binder.stato_pubblicazione = pubblico ? 'pubblico' : 'privato';
     binder.condivisibile = pubblico;
+    _aggiornaControlliRinominaPubblicazioneCondivisione(binder);
 }
 
 function tornaAllaGrigliaBinders() {
@@ -270,6 +285,13 @@ function renderBinderContenuto() {
         avvisoEl.style.display = forzaElenco ? 'block' : 'none';
         if (forzaElenco) avvisoEl.textContent = `Questo binder ha più di ${SOGLIA_BINDER_SOLO_ELENCO} carte: solo la modalità elenco è disponibile qui dentro.`;
     }
+
+    // Il selettore layout (2×2/3×3/4×3/4×4) ha senso solo in modalità
+    // immagini — il libro lo usa ancora per decidere quante tasche per
+    // pagina (scelta di Opus), l'elenco non ha nessuna paginazione a
+    // griglia. Nascosto qui, non serve toccare ogni singolo bottone.
+    const layoutSwitcher = document.querySelector('.binder-layout-switcher');
+    if (layoutSwitcher) layoutSwitcher.style.display = modalitaEffettiva === 'elenco' ? 'none' : 'flex';
 
     if (modalitaEffettiva === 'elenco') {
         renderBinderElenco();
