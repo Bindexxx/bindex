@@ -3112,11 +3112,31 @@
                     </div>
                     <p id="binderSoglioAvviso" style="display:none; font-size:0.75rem; color:var(--text-muted); background:var(--bg-color); border-radius:8px; padding:0.5rem 0.7rem; margin-bottom:0.8rem;"></p>
 
-                    <!-- Design: copertina + sleeve del binder aperto -->
+                    <!-- Design: nome + copertina + sleeve del binder aperto -->
                     <details class="settings-card" style="margin-bottom: 1.2rem; padding: 1rem;">
                         <summary style="cursor:pointer; font-weight:700; font-size:0.9rem; display:flex; align-items:center; gap:0.5rem;">
                             <i class="fa-solid fa-wand-magic-sparkles" style="color: var(--primary);"></i> Design del binder
                         </summary>
+
+                        <!-- Nome con approvazione admin (2026-08-25) — stessa
+                             metodologia di copertina/sleeve, vedi
+                             21_binder_nome_con_approvazione.sql. NON sostituisce
+                             la rinomina immediata del binder 'extra' più sopra
+                             (#binderRinominaWrap, senza moderazione) — le due
+                             convivono, segnalato a Claudio. -->
+                        <div class="settings-card" style="margin: 1rem 0; padding: 1rem;">
+                            <h4 style="margin: 0 0 0.5rem; font-size: 0.9rem; font-weight: 700; display:flex; align-items:center; gap:0.5rem;">
+                                <i class="fa-solid fa-signature" style="color: var(--primary);"></i> Nome
+                            </h4>
+                            <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+                                <input type="text" id="binderNomeInput" placeholder="Nome del binder" style="flex:1; min-width:160px; padding:0.5rem 0.7rem; border-radius:8px; border:1px solid var(--border-color); font-size:0.85rem;">
+                                <button type="button" class="btn-secondary" style="padding:0.5rem 0.9rem; font-size:0.8rem;" onclick="proponiNomeBinderAttivo()">
+                                    <i class="fa-solid fa-paper-plane"></i> Proponi
+                                </button>
+                            </div>
+                            <div id="binderNomeStato" style="font-size:0.8rem; color:var(--text-muted); margin-top:0.5rem;">Caricamento stato…</div>
+                            <div id="binderNomeError" style="display:none; color:var(--danger); font-size:0.78rem; margin-top:0.4rem;"></div>
+                        </div>
 
                         <div class="settings-card" style="margin: 1rem 0; padding: 1rem;">
                             <h4 style="margin: 0 0 0.5rem; font-size: 0.9rem; font-weight: 700; display:flex; align-items:center; gap:0.5rem;">
@@ -3128,6 +3148,7 @@
                                 </div>
                                 <div style="flex:1; min-width:180px;">
                                     <div id="binderCoverStato" style="font-size:0.8rem; color:var(--text-muted); margin-bottom:0.5rem;">Caricamento stato…</div>
+
                                     <label class="btn-secondary" id="binderCoverUploadLabel" style="display:inline-flex; align-items:center; gap:0.5rem; padding:0.55rem 0.9rem; font-size:0.8rem; cursor:pointer;">
                                         <i class="fa-solid fa-upload"></i> Carica foto
                                         <input type="file" id="binderCoverInput" accept="image/*" style="display:none;" onchange="gestisciUploadCopertinaBinderAttivo(event)">
