@@ -65,8 +65,14 @@ function adminQueryLogAdminEsportazione() {
 }
 
 // ── Copia pubblica foto approvate (bucket immaginivisibili) ──────────
+// Multi-Binder (2026-08-25): aggiunto binder_id alla select — prima del
+// Multi-Binder c'era un solo binder per utente, quindi il path pubblico
+// era per-utente; ora serve sapere DI QUALE binder è la copertina/sleeve,
+// altrimenti la copia pubblica del secondo binder approvato sovrascrive
+// quella del primo. Vedi _sincronizzaCopiaPubblica in
+// ui/admin-requests.ui.js, unico punto che usa questo dato.
 async function adminMediaStoragePath(mediaId) {
-    return supabaseClient.from('user_media').select('storage_path').eq('id', mediaId).single();
+    return supabaseClient.from('user_media').select('storage_path, binder_id').eq('id', mediaId).single();
 }
 async function adminSignedUrlUserMedia(storagePath, scadenzaSecondi) {
     return supabaseClient.storage.from('user-media').createSignedUrl(storagePath, scadenzaSecondi);
@@ -77,7 +83,7 @@ async function adminUploadImmaginiVisibili(path, blob) {
 async function adminMediaApprovatiDaSincronizzare() {
     return supabaseClient
         .from('user_media')
-        .select('id, user_id, slot')
+        .select('id, user_id, slot, binder_id')
         .eq('status', 'approved')
         .eq('source', 'upload')
         .in('slot', ['card_back', 'binder_cover']);
