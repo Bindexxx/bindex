@@ -139,8 +139,7 @@
             margin: 1.2rem auto 0;
             padding: 0 1rem;
             aspect-ratio: 1024 / 300;
-            background-size: cover;
-            background-position: center;
+            object-fit: cover;
             border-radius: 16px;
         }
 
@@ -354,7 +353,7 @@
         <p class="stat-riepilogo" id="statRiepilogo"></p>
     </header>
 
-    <div class="copertina-banner" id="copertinaBinderBanner"></div>
+    <img class="copertina-banner" id="copertinaBinderBanner" alt="">
 
     <!-- MODALE IMMAGINE INGRANDITA / FLIP-CARD -->
     <div id="immagineModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:200; align-items:center; justify-content:center;" onclick="chiudiImmagineIngrandita()">
