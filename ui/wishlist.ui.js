@@ -65,10 +65,15 @@ async function caricaCatalogo() {
     // Fix 26/08/2026 (24_card_back_binder_id.sql): il retro carta con
     // sleeve personalizzata è per-binder, non più per-owner — risolviamo
     // qui il binder_id del binder tipo='wishlist' di questo owner, usato
-    // più sotto da renderRetroCartaViewer. Se fallisce, _ownerBinderId
-    // resta null: il viewer cade sul default di sistema, nessun blocco
-    // per il resto della pagina.
-    _ownerBinderId = await cardBackViewerLeggiBinderIdOwner(userId, 'wishlist');
+    // più sotto da renderRetroCartaViewer. In try/catch: un fallimento qui
+    // NON deve mai bloccare il caricamento del catalogo sottostante, che è
+    // la funzionalità primaria della pagina.
+    try {
+        _ownerBinderId = await cardBackViewerLeggiBinderIdOwner(userId, 'wishlist');
+    } catch (e) {
+        console.error('risoluzione binder Wishlist:', e);
+        _ownerBinderId = null;
+    }
 
     // Dalla v4.8: non si legge più direttamente la tabella 'wishlist' (in
     // precedenza leggibile per intero da chiunque tramite anon key, non

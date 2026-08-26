@@ -62,11 +62,15 @@ async function caricaCatalogo() {
     // Fix 26/08/2026 (24_card_back_binder_id.sql): il retro carta con
     // sleeve personalizzata è per-binder, non più per-owner — risolviamo
     // qui il binder_id del binder location='SCAMBIO' di questo owner,
-    // usato più sotto da renderRetroCartaViewer. Se la risoluzione fallisce
-    // (RPC assente/errore), _ownerBinderId resta null: il viewer cade sul
-    // default di sistema, nessuna eccezione bloccante per il resto della
-    // pagina.
-    _ownerBinderId = await cardBackViewerLeggiBinderIdOwner(userId, 'location', 'SCAMBIO');
+    // usato più sotto da renderRetroCartaViewer. In try/catch: un
+    // fallimento qui NON deve mai bloccare il caricamento del catalogo
+    // sottostante, che è la funzionalità primaria della pagina.
+    try {
+        _ownerBinderId = await cardBackViewerLeggiBinderIdOwner(userId, 'location', 'SCAMBIO');
+    } catch (e) {
+        console.error('risoluzione binder SCAMBIO:', e);
+        _ownerBinderId = null;
+    }
 
     // Dalla v4.8: non si legge più direttamente la tabella 'carte' (in
     // precedenza le carte in scambio di TUTTI gli utenti erano leggibili
