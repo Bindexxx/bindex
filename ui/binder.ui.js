@@ -204,14 +204,14 @@ function _aggiornaControlliRinominaPubblicazioneCondivisione(binder) {
         if (checkbox) checkbox.checked = binder.stato_pubblicazione === 'pubblico';
     }
 
-    const haPaginaPubblica = binder.tipo === 'wishlist' || (binder.tipo === 'location' && binder.location_valore === 'SCAMBIO');
+    const haPaginaPubblica = true; // Multi-Binder + 22_binder_pubblico_generico.sql: ogni tipo ha ormai una pagina (dedicata o generica)
     const ePubblico = binder.stato_pubblicazione === 'pubblico';
 
     const condivisioneWrap = document.getElementById('binderCondivisioneWrap');
     if (condivisioneWrap) condivisioneWrap.style.display = (ePubblico && haPaginaPubblica) ? 'flex' : 'none';
 
     const condivisioneNonDisponibileWrap = document.getElementById('binderCondivisioneNonDisponibileWrap');
-    if (condivisioneNonDisponibileWrap) condivisioneNonDisponibileWrap.style.display = (ePubblico && !haPaginaPubblica) ? 'block' : 'none';
+    if (condivisioneNonDisponibileWrap) condivisioneNonDisponibileWrap.style.display = 'none'; // non serve più, ogni binder pubblico è condivisibile
 }
 
 // Pubblicazione libera (2026-08-25) — nessuna approvazione admin, vedi

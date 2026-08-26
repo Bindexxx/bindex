@@ -281,33 +281,35 @@
         // switchTab) — non basta più a scegliere la pagina, serve sapere
         // QUALE binder è aperto. Wishlist e Scambio mappano alle pagine
         // pubbliche reali già esistenti (stesso link di sempre). Per
-        // qualunque altro tipo (location diversa da SCAMBIO, extra) non
-        // esiste ancora una pagina pubblica dedicata — leggi_binder_pubblico
-        // oggi non è nemmeno leggibile per il tipo 'extra' — quindi si
-        // ritorna null: i pulsanti di condivisione in ui/binder.ui.js
-        // restano nascosti per quei binder, non generano un link rotto.
+        // qualunque altro tipo pubblico (location diversa da SCAMBIO,
+        // extra) ora punta a binder-pubblico.html, la nuova pagina generica
+        // (22_binder_pubblico_generico.sql + leggi_binder_pubblico(p_binder_id)).
         function _paginaPubblicaBinderAttivo() {
             const binder = (typeof _bindersElenco !== 'undefined' && Array.isArray(_bindersElenco))
                 ? _bindersElenco.find(b => String(b.id) === String(_binderAttivo))
                 : null;
             if (!binder) return null;
-            if (binder.tipo === 'wishlist') return 'wishlist.html';
-            if (binder.tipo === 'location' && binder.location_valore === 'SCAMBIO') return 'scambio.html';
-            return null; // nessuna pagina pubblica generica ancora — vedi commento sopra
+            if (binder.tipo === 'wishlist') return { pagina: 'wishlist.html' };
+            if (binder.tipo === 'location' && binder.location_valore === 'SCAMBIO') return { pagina: 'scambio.html' };
+            if (binder.stato_pubblicazione === 'pubblico') return { pagina: 'binder-pubblico.html', binderId: binder.id };
+            return null;
         }
 
         async function _linkPubblicoCondivisione() {
             const sessione = await authGetSession();
             const userId = sessione?.user?.id;
             if (!userId) return null;
-            let pagina;
+            let pagina, binderIdExtra;
             if (currentMode === 'binder') {
-                pagina = _paginaPubblicaBinderAttivo();
-                if (!pagina) return null; // binder senza pagina pubblica dedicata, vedi sopra
+                const target = _paginaPubblicaBinderAttivo();
+                if (!target) return null; // binder senza pagina pubblica dedicata, vedi sopra
+                pagina = target.pagina;
+                binderIdExtra = target.binderId;
             } else {
                 pagina = currentMode === 'wishlist' ? 'wishlist.html' : (currentMode === 'sealed' ? 'sealed.html' : 'scambio.html');
             }
             const url = new URL(pagina + '?u=' + encodeURIComponent(userId), window.location.href);
+            if (binderIdExtra) url.searchParams.set('binder', binderIdExtra);
             // Chi apre il link vede lo stesso tema che hai scelto tu sul tuo
             // dispositivo — non c'è login per chi riceve il link, quindi
             // niente localStorage da leggere: il tema viaggia nell'URL.
