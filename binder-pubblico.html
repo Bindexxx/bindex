@@ -440,6 +440,12 @@
     <script>
 
         // ── AVVIO ────────────────────────────────────────────────────────
+        // Client "leggero" — stesse opzioni di scambio.html/wishlist.html/
+        // sealed.html (vedi commento in config/supabase.js): pagina pubblica
+        // anonima, nessuna sessione da persistere.
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+            auth: { persistSession: false, autoRefreshToken: false }
+        });
         applicaTemaCondiviso();
         caricaCatalogo();
     </script>
