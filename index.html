@@ -3090,6 +3090,21 @@
                         </label>
                     </div>
 
+                    <!-- Condivisione (2026-08-25) — riusa lo stesso modale QR
+                         globale già esistente (#qrModal, openQrModal/
+                         copyShareLink/condividiLinkNativo in
+                         ui/navigation.ui.js), nessun modale nuovo. Mostrato
+                         via JS solo quando il binder è pubblico E ha una
+                         pagina pubblica reale (Wishlist, Scambio). -->
+                    <div id="binderCondivisioneWrap" style="display:none; align-items:center; gap:0.5rem; margin-bottom:1rem; flex-wrap:wrap;">
+                        <button type="button" class="btn-main" style="padding:0.5rem 0.9rem; font-size:0.8rem;" onclick="openQrModal()">
+                            <i class="fa-solid fa-qrcode"></i> Condividi
+                        </button>
+                    </div>
+                    <p id="binderCondivisioneNonDisponibileWrap" style="display:none; font-size:0.72rem; color:var(--text-muted); margin-bottom:1rem;">
+                        Binder pubblico, ma non c'è ancora una pagina dedicata per condividerlo — solo Wishlist e Scambio hanno un link oggi.
+                    </p>
+
                     <!-- Toggle immagini/elenco — preferenza per-utente -->
                     <div class="binder-modalita-toggle">
                         <button type="button" class="binder-modalita-btn" data-modalita="immagini" onclick="impostaModalitaBinder('immagini')"><i class="fa-solid fa-images"></i> Immagini</button>
