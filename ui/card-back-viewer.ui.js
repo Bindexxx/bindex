@@ -6,11 +6,18 @@
 //
 // Questa pagina è sempre pubblica/anonima (nessuna sessione): non
 // mostriamo MAI una sleeve pending o rejected, solo 'approved' — via RPC
-// leggi_card_back_approvata() (06_rpc_leggi_card_back_approvata.sql), che
-// filtra lato server. Fallback: nessuna riga approvata → default di
-// sistema (default-assets/card_back/defaultcard.png) → se anche quello
-// fallisce, .cbd-wrap resta nascosto e si vede il semplice sfondo
-// var(--primary) di prima (nessuna regressione).
+// leggi_card_back_approvata(p_owner_id, p_binder_id) (24_card_back_binder_id.sql),
+// che filtra lato server per owner E per binder specifico. Fallback:
+// nessuna riga approvata per quel binder → default di sistema
+// (default-assets/card_back/defaultcard.png) → se anche quello fallisce,
+// .cbd-wrap resta nascosto e si vede il semplice sfondo var(--primary) di
+// prima (nessuna regressione).
+//
+// Fix 26/08/2026: con Multi-Binder ogni binder ha la propria sleeve — non
+// esiste più "la sleeve dell'owner", solo "la sleeve di questo binder
+// dell'owner". Ogni pagina (scambio.ui.js/wishlist.ui.js) risolve il
+// binder_id giusto (via leggi_binder_id_owner) in _ownerBinderId prima di
+// aprire il flip-modal.
 //
 // L'UNICA differenza reale tra scambio.html e wishlist.html era il testo
 // del campo "variazione" (scambio: "Disponibili: N", wishlist: "Obiettivo:
@@ -18,8 +25,8 @@
 // ciascuna pagina definisce nel proprio ui/*.ui.js (scambio.ui.js /
 // wishlist.ui.js). Tutto il resto è identico.
 //
-// Dipende da: _ownerUserId (state della pagina), _cbdTestoVariazione
-// (definita nel file ui/*.ui.js della pagina), e da
+// Dipende da: _ownerUserId e _ownerBinderId (state della pagina),
+// _cbdTestoVariazione (definita nel file ui/*.ui.js della pagina), e da
 // data/card-back-viewer.repository.js (cardBackViewerLeggiApprovata,
 // cardBackViewerDefaultPublicUrl, cardBackViewerImmaginiVisibiliPublicUrl).
 
@@ -41,27 +48,23 @@ async function renderRetroCartaViewer(card) {
         let sleeveUrl = null;
         let fieldState = DEFAULT_STATE_CARD_BACK;
 
-        if (_ownerUserId) {
-            const media = await cardBackViewerLeggiApprovata(_ownerUserId);
+        if (_ownerUserId && _ownerBinderId) {
+            const media = await cardBackViewerLeggiApprovata(_ownerUserId, _ownerBinderId);
 
             if (media) {
-                // FASE 4-bis (20/08/2026): le sleeve 'upload' approvate hanno
-                // una copia pubblica in 'immaginivisibili/carta/{ownerId}.png',
-                // creata da admin.html al momento dell'approvazione
-                // (07_schema_bucket_immaginivisibili.sql). Se la copia non
-                // esiste ancora (approvazione fatta prima di questa modifica e
-                // mai risincronizzata), l'immagine risulterà rotta e si cade
-                // comunque sul default di sistema sotto.
+                // Path pubblico per-binder (fix 26/08/2026): la copia in
+                // 'immaginivisibili' viene scritta da admin.html come
+                // carta/{ownerId}/{binderId}.png (vedi
+                // _sincronizzaCopiaPubblica in admin-requests.ui.js).
                 //
-                // FASE 4-ter (20/08/2026): il path pubblico è sempre lo stesso
-                // file — senza cache-buster il browser continua a servire la
-                // versione vecchia dalla cache anche dopo una nuova
-                // approvazione. Aggiungo "?v=reviewed_at" (cambia SOLO quando
-                // viene davvero approvata una nuova versione).
+                // Cache-buster: il path pubblico è sempre lo stesso file per
+                // quel binder — senza "?v=reviewed_at" il browser continua a
+                // servire la versione vecchia dalla cache anche dopo una
+                // nuova approvazione.
                 if (media.source === 'default') {
                     sleeveUrl = cardBackViewerDefaultPublicUrl(media.storage_path);
                 } else {
-                    const pubUrl = cardBackViewerImmaginiVisibiliPublicUrl(`carta/${_ownerUserId}.png`);
+                    const pubUrl = cardBackViewerImmaginiVisibiliPublicUrl(`carta/${_ownerUserId}/${_ownerBinderId}.png`);
                     sleeveUrl = pubUrl ? (pubUrl + '?v=' + encodeURIComponent(media.reviewed_at || '')) : null;
                 }
                 fieldState = media.metadata || DEFAULT_STATE_CARD_BACK;

@@ -299,9 +299,9 @@ document.getElementById('btn-nascondi-gestite').addEventListener('click', (ev) =
 // manuale sotto). Legge il file dal bucket privato 'user-media' (qui
 // l'admin ha già i permessi, vedi policy "admin legge tutti i file"
 // in 03_schema_ban_media_logs.sql) e lo ricarica in 'immaginivisibili'
-// a un path fisso per utente+slot, sovrascrivendo l'eventuale copia
-// precedente — un solo file pubblico per utente per slot, coerente
-// con user_media (nessuna cronologia).
+// a un path fisso per utente+binder+slot (fix 26/08/2026), sovrascrivendo
+// l'eventuale copia precedente — un solo file pubblico per binder per
+// slot, coerente con user_media (nessuna cronologia).
 async function _sincronizzaCopiaPubblica(mediaId, slot, ownerUserId) {
     const { data: media, error: errMedia } = await adminMediaStoragePath(mediaId);
     if (errMedia || !media) throw new Error(errMedia?.message || 'media non trovato');
@@ -314,16 +314,15 @@ async function _sincronizzaCopiaPubblica(mediaId, slot, ownerUserId) {
     const blob = await risposta.blob();
 
     const cartella = slot === 'card_back' ? 'carta' : 'binder';
-    // Multi-Binder (2026-08-25): path per-binder, non più solo per-utente —
-    // con più binder per utente, un solo file per utente per slot faceva
-    // sì che approvare la copertina del secondo binder sovrascrivesse
-    // quella del primo nel bucket pubblico. media.binder_id null SOLO per
-    // righe orfane pre-Multi-Binder (mai scritte da codice attuale): in
-    // quel caso resta il vecchio path per-utente, non c'è nient'altro a
-    // cui agganciarle.
-    const destPath = media.binder_id
-        ? `${cartella}/${ownerUserId}/${media.binder_id}.png`
-        : `${cartella}/${ownerUserId}.png`;
+    // Fix 26/08/2026: rimosso il fallback al vecchio path per-utente.
+    // Ogni binder ha sempre la propria copertina/sleeve — media.binder_id
+    // deve essere sempre valorizzato per qualunque riga scritta dal codice
+    // attuale (vedi binder.ui.js). Se manca, è un dato incoerente: meglio
+    // fallire rumorosamente qui che scrivere silenziosamente un path
+    // ambiguo/per-utente che nessun lettore (card-back-viewer.ui.js) cerca
+    // più.
+    if (!media.binder_id) throw new Error(`user_media ${mediaId}: binder_id mancante, impossibile sincronizzare`);
+    const destPath = `${cartella}/${ownerUserId}/${media.binder_id}.png`;
     const { error: errUpload } = await adminUploadImmaginiVisibili(destPath, blob);
     if (errUpload) throw errUpload;
 }
