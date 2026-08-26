@@ -556,8 +556,61 @@ async function rinominaBinderExtraCorrente(nuovoNome) {
 // default, stesso editor drag/resize per i 4 campi della sleeve.
 
 async function caricaDesignBinderAttivo() {
+    await caricaNomeBinderAttivoStato();
     await caricaCopertinaBinderAttivoStato();
     await caricaSleeveBinderAttivoStato();
+}
+
+// ── Nome (con approvazione admin) ────────────────────────────────────
+// Stessa metodologia di copertina/sleeve — vedi 21_binder_nome_con_
+// approvazione.sql. Il nome VISIBILE (binder.nome, già mostrato nel titolo
+// e nella griglia contenitori) non cambia finché admin_process_pending_
+// request non approva nome_proposto.
+async function caricaNomeBinderAttivoStato() {
+    const statoEl = document.getElementById('binderNomeStato');
+    const inputEl = document.getElementById('binderNomeInput');
+    if (!statoEl || !inputEl) return; // pannello Design non ancora nel DOM
+    document.getElementById('binderNomeError').style.display = 'none';
+
+    const binder = _bindersElenco.find(b => String(b.id) === String(_binderAttivo));
+    if (!binder) { statoEl.textContent = 'Apri un binder per proporne il nome.'; return; }
+
+    inputEl.value = binder.nome_proposto && binder.nome_stato === 'pending' ? binder.nome_proposto : (binder.nome || '');
+
+    if (!binder.nome_stato || binder.nome_stato === 'approved') {
+        statoEl.innerHTML = '<span style="color:var(--success); font-weight:600;">✅ Nome attuale approvato</span>';
+    } else if (binder.nome_stato === 'pending') {
+        statoEl.innerHTML = `<span style="color:#b8860b; font-weight:600;">⏳ "${escapeHtml(binder.nome_proposto || '')}" in revisione da un admin — nel frattempo resta visibile "${escapeHtml(binder.nome || '')}"</span>`;
+    } else if (binder.nome_stato === 'rejected') {
+        statoEl.innerHTML = '<span style="color:var(--danger); font-weight:600;">❌ Proposta rifiutata' + (binder.nome_admin_note ? ' — ' + escapeHtml(binder.nome_admin_note) : '') + '</span>';
+    }
+}
+
+async function proponiNomeBinderAttivo() {
+    const inputEl = document.getElementById('binderNomeInput');
+    const errEl = document.getElementById('binderNomeError');
+    errEl.style.display = 'none';
+    const nuovoNome = (inputEl.value || '').trim();
+
+    const binder = _bindersElenco.find(b => String(b.id) === String(_binderAttivo));
+    if (!binder) return;
+
+    if (!nuovoNome) { errEl.textContent = 'Il nome non può essere vuoto.'; errEl.style.display = 'block'; return; }
+    if (nuovoNome === binder.nome) { errEl.textContent = 'È già il nome attuale.'; errEl.style.display = 'block'; return; }
+
+    const userId = await authGetUserId();
+    if (!userId) return;
+
+    const { error: errProponi } = await binderProponiNome(userId, binder.id, nuovoNome);
+    if (errProponi) { errEl.textContent = '❌ ' + errProponi.message; errEl.style.display = 'block'; return; }
+
+    binder.nome_proposto = nuovoNome;
+    binder.nome_stato = 'pending';
+
+    const { error: errRichiesta } = await creaRichiestaPendente(userId, 'binder_nome', { binder_id: binder.id, nome_proposto: nuovoNome });
+    if (errRichiesta) console.error('Nome proposto ma richiesta non collegata:', errRichiesta.message);
+
+    await caricaNomeBinderAttivoStato();
 }
 
 // ── Copertina ─────────────────────────────────────────────────────────

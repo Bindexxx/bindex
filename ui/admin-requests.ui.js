@@ -8,6 +8,7 @@
 function _etichettaTipoRichiesta(type, slot) {
   if (type === 'password_reset') return 'Reset password';
   if (type === 'username_change') return 'Cambio username';
+  if (type === 'binder_nome') return 'Nome Binder'; // 21_binder_nome_con_approvazione.sql
   if (type === 'photo_upload') {
     // FASE 4-bis (20/08/2026): prima era genericamente "Foto Binder" per
     // qualsiasi slot — da quando esiste anche card_back (Fase 2) va
@@ -118,6 +119,9 @@ function renderRichieste() {
     if (r.type === 'username_change' && r.payload?.nuovo_username) {
       dettaglio = `<div class="meta">→ nuovo username: <b>${escAttr(r.payload.nuovo_username)}</b></div>`;
     }
+    if (r.type === 'binder_nome' && r.payload?.nome_proposto) {
+      dettaglio = `<div class="meta">→ nuovo nome binder: <b>${escAttr(r.payload.nome_proposto)}</b></div>`;
+    }
     const urlFoto = r.type === 'photo_upload' ? _mappaAnteprimaFotoRichieste[r.payload?.media_id] : null;
     const slotFoto = r.type === 'photo_upload' ? _mappaSlotRichieste[r.payload?.media_id] : null;
 
@@ -155,6 +159,9 @@ function renderRichieste() {
       if (azione === 'approve' && tipo === 'photo_upload') {
         const etichettaConferma = slotFoto === 'card_back' ? 'come retro carta personalizzato' : 'come copertina del Binder';
         if (!confirm(`Approvare questa foto ${etichettaConferma}?`)) return;
+      }
+      if (azione === 'approve' && tipo === 'binder_nome') {
+        if (!confirm('Approvare il nuovo nome per questo binder?')) return;
       }
 
       let nota = null;
