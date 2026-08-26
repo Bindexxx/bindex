@@ -314,7 +314,16 @@ async function _sincronizzaCopiaPubblica(mediaId, slot, ownerUserId) {
     const blob = await risposta.blob();
 
     const cartella = slot === 'card_back' ? 'carta' : 'binder';
-    const destPath = `${cartella}/${ownerUserId}.png`;
+    // Multi-Binder (2026-08-25): path per-binder, non più solo per-utente —
+    // con più binder per utente, un solo file per utente per slot faceva
+    // sì che approvare la copertina del secondo binder sovrascrivesse
+    // quella del primo nel bucket pubblico. media.binder_id null SOLO per
+    // righe orfane pre-Multi-Binder (mai scritte da codice attuale): in
+    // quel caso resta il vecchio path per-utente, non c'è nient'altro a
+    // cui agganciarle.
+    const destPath = media.binder_id
+        ? `${cartella}/${ownerUserId}/${media.binder_id}.png`
+        : `${cartella}/${ownerUserId}.png`;
     const { error: errUpload } = await adminUploadImmaginiVisibili(destPath, blob);
     if (errUpload) throw errUpload;
 }

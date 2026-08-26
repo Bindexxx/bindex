@@ -45,6 +45,7 @@ async function caricaCatalogo() {
     }
 
     const nomeBinder = info[0].nome || 'Binder';
+    _ownerUserId = info[0].owner_id;
     document.title = 'CardSync Pro — ' + nomeBinder;
     document.getElementById('titoloBinder').textContent = nomeBinder;
 
@@ -91,25 +92,24 @@ async function _caricaCopertinaBinder(binderId) {
         const { data: pub } = supabaseClient.storage.from('default-assets').getPublicUrl(copertina.storage_path);
         url = pub?.publicUrl || null;
     } else {
-        url = copertina.storage_path; // la RPC ritorna già un path risolvibile solo per gli 'approved'; vedi nota sotto
+        // Upload personalizzato: NON più illeggibile qui — l'admin, quando
+        // approva, sincronizza una copia nel bucket pubblico
+        // 'immaginivisibili' (vedi _sincronizzaCopiaPubblica in
+        // ui/admin-requests.ui.js), path per-binder
+        // binder/{ownerId}/{binderId}.png. getPublicUrl() qui non verifica
+        // che il file esista davvero (es. mai stato approvato/sincronizzato)
+        // — l'onerror sul tag <img> nasconde il banner in quel caso, non
+        // un placeholder rotto.
+        const { data: pub } = supabaseClient.storage.from('immaginivisibili').getPublicUrl(`binder/${_ownerUserId}/${binderId}.png`);
+        url = pub?.publicUrl || null;
     }
-    // NOTA: per il bucket privato 'user-media' servirebbe una signed URL,
-    // che richiede una chiamata storage autenticata — un visitatore
-    // anonimo non può generarla. leggi_media_binder_pubblico ritorna lo
-    // storage_path grezzo per le foto caricate dall'utente: senza una
-    // funzione dedicata che generi la signed URL lato server (SECURITY
-    // DEFINER), qui la copertina "upload" personalizzata non è mostrabile
-    // pubblicamente — solo quelle scelte dalla galleria default (source:
-    // 'default', bucket pubblico) lo sono. Segnalato a Claudio: se vuole
-    // anche le copertine caricate visibili pubblicamente, serve una RPC in
-    // più (signed URL generata server-side).
-    if (copertina.source !== 'default') return;
+    if (!url) return;
 
     const banner = document.getElementById('copertinaBinderBanner');
-    if (banner && url) {
-        banner.style.backgroundImage = `url('${url}')`;
-        banner.style.display = 'block';
-    }
+    if (!banner) return;
+    banner.onerror = () => { banner.style.display = 'none'; };
+    banner.src = url;
+    banner.style.display = 'block';
 }
 
 function renderLista() {
@@ -192,17 +192,23 @@ async function _renderSleeve(card) {
             const { data: pub } = supabaseClient.storage.from('default-assets').getPublicUrl(riga.storage_path);
             _sleeveRisolta = pub?.publicUrl ? { url: pub.publicUrl, metadata: riga.metadata } : false;
         } else {
-            // Upload personalizzato: stesso limite della copertina, vedi
-            // _caricaCopertinaBinder — nessuna signed URL generabile da
-            // anonimo senza una RPC dedicata. Sleeve non mostrabile qui,
-            // resta il retro var(--primary) di sempre.
-            _sleeveRisolta = false;
+            // Upload personalizzato: bucket pubblico 'immaginivisibili',
+            // cartella 'carta' (stessa convenzione di _sincronizzaCopiaPubblica
+            // in ui/admin-requests.ui.js). Se non è mai stata sincronizzata
+            // (mai approvata prima di questa modifica), il file semplicemente
+            // non esiste nel bucket — l'onerror sull'<img> del retro carta
+            // (già gestito dal fallback var(--primary) di sempre) copre quel
+            // caso senza bisogno di verificarlo qui.
+            const { data: pub } = supabaseClient.storage.from('immaginivisibili').getPublicUrl(`carta/${_ownerUserId}/${_binderId}.png`);
+            _sleeveRisolta = pub?.publicUrl ? { url: pub.publicUrl, metadata: riga.metadata } : false;
         }
     }
 
     if (!_sleeveRisolta) return; // resta il semplice sfondo var(--primary), nessuna regressione
 
-    document.getElementById('cbdBgImg').src = _sleeveRisolta.url;
+    const cbdBgImg = document.getElementById('cbdBgImg');
+    cbdBgImg.onerror = () => { wrap.style.display = 'none'; };
+    cbdBgImg.src = _sleeveRisolta.url;
     const posizioni = (_sleeveRisolta.metadata && typeof _sleeveRisolta.metadata === 'object') ? _sleeveRisolta.metadata : DEFAULT_STATE_CARD_BACK;
 
     _cbdScrivi('pokemon', card.name || '');
