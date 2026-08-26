@@ -120,6 +120,20 @@ async function binderImpostaPubblicazione(userId, binderId, pubblico) {
         .eq('owner_id', userId);
 }
 
+// Nome con approvazione admin (2026-08-25, vedi 21_binder_nome_con_
+// approvazione.sql) — stessa metodologia di copertina/sleeve: il nome
+// VISIBILE (colonna 'nome') non cambia finché admin_process_pending_request
+// non approva. Applicabile a QUALUNQUE tipo di binder (a differenza di
+// binderExtraRinomina sopra, che resta la rinomina immediata del solo
+// binder 'extra', invariata — le due convivono, vedi nota in chat).
+async function binderProponiNome(userId, binderId, nomeProposto) {
+    return supabaseClient
+        .from('binders')
+        .update({ nome_proposto: nomeProposto, nome_stato: 'pending', nome_admin_note: null })
+        .eq('id', binderId)
+        .eq('owner_id', userId);
+}
+
 // Carte di un binder-location: lettura diretta da 'carte', NON da
 // binder_carte — i binder-location non hanno righe di appartenenza, sono
 // sempre lo specchio in tempo reale di carte.location. Stessa colonna
