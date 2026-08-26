@@ -203,11 +203,21 @@ async function storageListDefaultAssets(prefix) {
     return supabaseClient.storage.from('default-assets').list(prefix);
 }
 
-// ── RPC pubbliche (nuove, vedi 17_binders_multipli.sql) ──────────────────
-// Lettura carte di un binder-location pubblico (oggi in pratica solo
-// 'SCAMBIO', vedi trigger DB) da parte di un visitatore anonimo.
-async function bindersLeggiPubblico(ownerUserId, locationValore) {
-    return supabaseClient.rpc('leggi_binder_pubblico', { p_owner_id: ownerUserId, p_location_valore: locationValore });
+// ── RPC pubbliche (vedi 17_binders_multipli.sql, generalizzata in
+// 22_binder_pubblico_generico.sql) ────────────────────────────────────
+// Lettura carte di un binder pubblico (location O extra — wishlist non
+// passa da qui, ha già leggi_wishlist_condivisa/wishlist.html dedicati) da
+// parte di un visitatore anonimo. Firma cambiata: prima (ownerId,
+// locationValore), ora un solo binderId — funziona per qualunque tipo.
+async function bindersLeggiPubblico(binderId) {
+    return supabaseClient.rpc('leggi_binder_pubblico', { p_binder_id: binderId });
+}
+
+// Intestazione della pagina pubblica (nome/tipo) — separata dalla lettura
+// carte sopra, così un binder pubblico ma vuoto si distingue da un binder
+// non più pubblico (link scaduto/revocato).
+async function bindersLeggiInfoPubblico(binderId) {
+    return supabaseClient.rpc('leggi_binder_pubblico_info', { p_binder_id: binderId });
 }
 
 // Copertina/sleeve approvate di un binder pubblico — unico varco pubblico
