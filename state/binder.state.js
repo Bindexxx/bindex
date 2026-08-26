@@ -11,7 +11,7 @@
         const BINDER_LAYOUTS = {
             '2x2': { cols: 2, rows: 2 },
             '3x3': { cols: 3, rows: 3 },
-            '3x4': { cols: 3, rows: 4 }, // 3 colonne × 4 righe
+            '3x4': { cols: 4, rows: 3 }, // etichetta "4×3": 4 colonne (orizzontali) × 3 righe (verticali) — nome chiave storico invariato per non rompere prefBinderLayoutGet() già salvati, corretti solo i valori (erano invertiti: prima cols:3,rows:4, cioè l'opposto di quanto mostrato in etichetta)
             '4x4': { cols: 4, rows: 4 },
         };
         const CHIAVE_BINDER_LAYOUT = 'cardsync_binder_layout';
