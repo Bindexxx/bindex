@@ -1,0 +1,20 @@
+// ── data/binder-pubblico.repository.js ───────────────────────────────────
+// Query specifiche di binder-pubblico.html — solo le RPC pubbliche
+// necessarie, stesso pattern minimale di scambio.repository.js/
+// wishlist.repository.js (un repository piccolo e dedicato per pagina
+// pubblica, non il binder.repository.js del sito privato: quello ha
+// decine di funzioni autenticate che qui non servono).
+//
+// Dipende da: supabaseClient.
+
+async function binderPubblicoLeggiInfo(binderId) {
+    return supabaseClient.rpc('leggi_binder_pubblico_info', { p_binder_id: binderId });
+}
+
+async function binderPubblicoLeggiCarte(binderId) {
+    return supabaseClient.rpc('leggi_binder_pubblico', { p_binder_id: binderId });
+}
+
+async function binderPubblicoLeggiMedia(binderId) {
+    return supabaseClient.rpc('leggi_media_binder_pubblico', { p_binder_id: binderId });
+}
