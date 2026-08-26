@@ -5,5 +5,6 @@
 
         let carte = [];
         let _binderId = null;
+        let _ownerUserId = null;
         let _flipCardTimeout = null;
         let _sleeveRisolta = null; // { url, metadata } oppure null se non c'è/non ancora richiesta
