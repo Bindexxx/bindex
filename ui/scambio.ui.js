@@ -2,8 +2,23 @@
 // Logica UI specifica di scambio.html: caricamento catalogo, rendering
 // lista, flip-card, riepilogo selezione.
 //
-// Dipende da: data/scambio.repository.js, state/scambio.state.js,
-// utils/shared-public.js, ui/card-back-viewer.ui.js.
+// Dipende da: data/scambio.repository.js, data/binder-pubblico.repository.js,
+// state/scambio.state.js, utils/shared-public.js, ui/card-back-viewer.ui.js,
+// ui/binder-flipbook.ui.js (motore del libro sfogliabile, condiviso —
+// aggiunto 26/08/2026).
+
+// Attiva l'overlay di selezione/quantità anche dentro la modalità Sfoglia
+// (libro) — di default false nel modulo condiviso (binder-pubblico.html
+// non ha selezione). Assegnazione, non "let": la variabile è già
+// dichiarata in ui/binder-flipbook.ui.js, caricato prima di questo file.
+_libroSelezionabile = true;
+
+// Bridge di stato per ui/binder-flipbook.ui.js, che si aspetta questi nomi
+// (stessi usati da binder-pubblico.ui.js/.state.js, mai avuti su questa
+// pagina prima d'ora). Nota aperta dalla sessione precedente: andrebbero
+// propriamente in state/scambio.state.js, mai fornito in questa sessione.
+let _binderId = null;
+let _binderInfo = null;
 
 // A16: flip-modal — mostra prima il fronte (immagine reale), poi gira da
 // sola dopo una breve pausa rivelando nome/codice/prezzo/note. Stesso
@@ -71,6 +86,23 @@ async function caricaCatalogo() {
         console.error('risoluzione binder SCAMBIO:', e);
         _ownerBinderId = null;
     }
+    _binderId = _ownerBinderId; // bridge per ui/binder-flipbook.ui.js
+
+    // Info binder (nome/tipo/location_valore) + copertina — servono al
+    // libro sfogliabile (etichetta copertina, banner in header). Non
+    // bloccante: se fallisce, il libro usa comunque il fallback a icona
+    // già previsto dal modulo condiviso.
+    if (_ownerBinderId) {
+        try {
+            const { data: info } = await binderPubblicoLeggiInfo(_ownerBinderId);
+            if (info && info.length) {
+                _binderInfo = { nome: info[0].nome, tipo: info[0].tipo, location_valore: info[0].location_valore };
+                _caricaCopertinaBinder(_ownerBinderId); // non bloccante, si aggiorna da sola quando pronta
+            }
+        } catch (e) {
+            console.error('info binder SCAMBIO:', e);
+        }
+    }
 
     // Dalla v4.8: non si legge più direttamente la tabella 'carte' (in
     // precedenza le carte in scambio di TUTTI gli utenti erano leggibili
@@ -109,6 +141,7 @@ async function caricaCatalogo() {
         `${carte.length} cart${carte.length === 1 ? 'a disponibile' : 'e disponibili'}`;
 
     renderLista();
+    impostaModalitaBinderPubblico('elenco');
 }
 
 function renderLista() {

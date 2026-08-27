@@ -2,8 +2,21 @@
 // Logica UI specifica di wishlist.html: caricamento catalogo, rendering
 // lista, flip-card, riepilogo selezione.
 //
-// Dipende da: data/wishlist.repository.js, state/wishlist.state.js,
-// utils/shared-public.js, ui/card-back-viewer.ui.js.
+// Dipende da: data/wishlist.repository.js, data/binder-pubblico.repository.js,
+// state/wishlist.state.js, utils/shared-public.js, ui/card-back-viewer.ui.js,
+// ui/binder-flipbook.ui.js (motore del libro sfogliabile, condiviso —
+// aggiunto 26/08/2026).
+
+// Attiva l'overlay di selezione/quantità anche dentro la modalità Sfoglia
+// (libro) — di default false nel modulo condiviso (binder-pubblico.html
+// non ha selezione). Assegnazione, non "let": la variabile è già
+// dichiarata in ui/binder-flipbook.ui.js, caricato prima di questo file.
+_libroSelezionabile = true;
+
+// Bridge di stato per ui/binder-flipbook.ui.js — vedi stesso commento in
+// scambio.ui.js.
+let _binderId = null;
+let _binderInfo = null;
 
 // A16: flip-modal — mostra prima il fronte (immagine reale), poi gira da
 // sola dopo una breve pausa rivelando nome/codice/prezzo/obiettivo/note.
@@ -74,6 +87,22 @@ async function caricaCatalogo() {
         console.error('risoluzione binder Wishlist:', e);
         _ownerBinderId = null;
     }
+    _binderId = _ownerBinderId; // bridge per ui/binder-flipbook.ui.js
+
+    // Info binder (nome/tipo/location_valore) + copertina — servono al
+    // libro sfogliabile. Non bloccante: se fallisce, il libro usa comunque
+    // il fallback a icona già previsto dal modulo condiviso.
+    if (_ownerBinderId) {
+        try {
+            const { data: info } = await binderPubblicoLeggiInfo(_ownerBinderId);
+            if (info && info.length) {
+                _binderInfo = { nome: info[0].nome, tipo: info[0].tipo, location_valore: info[0].location_valore };
+                _caricaCopertinaBinder(_ownerBinderId); // non bloccante
+            }
+        } catch (e) {
+            console.error('info binder Wishlist:', e);
+        }
+    }
 
     // Dalla v4.8: non si legge più direttamente la tabella 'wishlist' (in
     // precedenza leggibile per intero da chiunque tramite anon key, non
@@ -112,6 +141,7 @@ async function caricaCatalogo() {
         `${carte.length} cart${carte.length === 1 ? 'a desiderata' : 'e desiderate'}`;
 
     renderLista();
+    impostaModalitaBinderPubblico('elenco');
 }
 
 function renderLista() {
