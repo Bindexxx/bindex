@@ -290,7 +290,15 @@
                 : null;
             if (!binder) return null;
             if (binder.tipo === 'wishlist') return { pagina: 'wishlist.html' };
-            if (binder.tipo === 'location' && binder.location_valore === 'SCAMBIO') return { pagina: 'scambio.html' };
+            // FASE 1 CONSOLIDAMENTO (26/08/2026): rimosso il caso speciale
+            // per SCAMBIO (location_valore === 'SCAMBIO') che puntava a
+            // scambio.html — ora ricade nel ramo generico subito sotto.
+            // Sicuro: trg_binders_forza_condivisione forza SEMPRE
+            // stato_pubblicazione='pubblico' sui binder SCAMBIO (verificato
+            // via pg_get_triggerdef), quindi la condizione sotto è
+            // sempre vera per loro. wishlist.html resta invariata (Fase 2,
+            // non ancora pronta: leggi_binder_pubblico non copre ancora
+            // tipo 'wishlist').
             if (binder.stato_pubblicazione === 'pubblico') return { pagina: 'binder-pubblico.html', binderId: binder.id };
             return null;
         }

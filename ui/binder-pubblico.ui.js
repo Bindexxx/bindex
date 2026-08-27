@@ -1,21 +1,32 @@
 // ── ui/binder-pubblico.ui.js ─────────────────────────────────────────────
 // Logica UI di binder-pubblico.html — la pagina pubblica GENERICA per
-// binder di tipo 'location' (diversi da SCAMBIO, che ha già scambio.html)
-// ed 'extra' (mai avuto una pagina pubblica prima d'ora). Wishlist e
-// Scambio NON passano da qui, hanno le loro pagine dedicate.
+// binder di tipo 'location' (inclusa SCAMBIO dalla Fase 1, 26/08/2026) ed
+// 'extra'. Wishlist non passa ancora da qui (Fase 2, richiede prima
+// un'estensione della RPC leggi_binder_pubblico — vedi nota su
+// _binderPubblicoESelezionabile più sotto).
 //
-// A differenza di scambio.ui.js/wishlist.ui.js: nessuna selezione/quantità/
-// "copia riepilogo" — qui non c'è un flusso di trattativa, solo una
-// vetrina in sola lettura del binder condiviso. La sleeve del retro carta
-// è letta qui direttamente (leggi_media_binder_pubblico), NON tramite
-// ui/card-back-viewer.ui.js: quel file non è stato verificato in questa
-// sessione (probabilmente precede il Multi-Binder), meglio autosufficiente.
+// FASE 1 CONSOLIDAMENTO (26/08/2026): selezione/quantità/"copia riepilogo"
+// ora condizionali — attivi SOLO per binder SCAMBIO (location_valore ===
+// 'SCAMBIO'), stesso comportamento che prima viveva solo su scambio.html
+// (ora ritirata). Per ogni altro tipo resta la vetrina in sola lettura di
+// sempre. La sleeve del retro carta è letta qui direttamente
+// (leggi_media_binder_pubblico), NON tramite ui/card-back-viewer.ui.js:
+// quel file non è stato verificato in questa sessione (probabilmente
+// precede il Multi-Binder), meglio autosufficiente.
 //
 // Dipende da: data/binder-pubblico.repository.js, state/binder-pubblico.state.js,
-// utils/shared-public.js (applicaTemaCondiviso, _urlImmagineVisualizzabile, escapeHtml),
-// ui/binder-flipbook.ui.js (motore del libro sfogliabile, estratto da qui
-// il 26/08/2026 — vedi commento in quel file per l'elenco completo delle
-// funzioni spostate: copertina, toggle Elenco/Sfoglia, motore libro).
+// utils/shared-public.js (applicaTemaCondiviso, _urlImmagineVisualizzabile, escapeHtml,
+// toggleSelezione, modificaQty, aggiornaTotale), ui/binder-flipbook.ui.js
+// (motore del libro sfogliabile, estratto da qui il 26/08/2026 — vedi
+// commento in quel file per l'elenco completo delle funzioni spostate:
+// copertina, toggle Elenco/Sfoglia, motore libro).
+
+// Vero SOLO per il tipo di binder che oggi supporta selezione/riepilogo —
+// oggi solo Scambio (Fase 1). Quando la Fase 2 (Wishlist) sarà pronta,
+// aggiungere qui: || (_binderInfo.tipo === 'wishlist').
+function _binderPubblicoESelezionabile() {
+    return !!(_binderInfo && _binderInfo.tipo === 'location' && _binderInfo.location_valore === 'SCAMBIO');
+}
 
 // Stesse posizioni di default dell'editor privato (state/binder.state.js:
 // DEFAULT_STATE_CARD_BACK) — copiate qui perché questa pagina non carica
@@ -53,6 +64,19 @@ async function caricaCatalogo() {
     document.title = 'CardSync Pro — ' + nomeBinder;
     document.getElementById('titoloBinder').textContent = nomeBinder;
 
+    // FASE 1 CONSOLIDAMENTO: selezione+riepilogo attivi solo per Scambio —
+    // vedi _binderPubblicoESelezionabile in cima al file. _libroSelezionabile
+    // è già dichiarata in ui/binder-flipbook.ui.js (assegnazione, non "let").
+    const selezionabile = _binderPubblicoESelezionabile();
+    _libroSelezionabile = selezionabile;
+    document.body.classList.toggle('binder-pubblico-selezionabile', selezionabile);
+    const barraTotale = document.getElementById('barraTotale');
+    if (barraTotale) barraTotale.style.display = selezionabile ? 'flex' : 'none';
+    const sottotitolo = document.getElementById('sottotitoloBinder');
+    if (sottotitolo) sottotitolo.textContent = selezionabile
+        ? 'Seleziona le carte che ti interessano — il totale si aggiorna da solo.'
+        : 'Vetrina pubblica — sola lettura.';
+
     _caricaCopertinaBinder(binderId); // non bloccante, si aggiorna da sola quando pronta
 
     const { data, error } = await binderPubblicoLeggiCarte(binderId);
@@ -67,7 +91,14 @@ async function caricaCatalogo() {
         code: r.codice || '',
         lang: r.lingua || 'IT',
         cond: r.condizione || 'NM',
-        qty: r.qty || 1,
+        // FASE 1 CONSOLIDAMENTO (26/08/2026): rinominato da 'qty' a
+        // 'qtyDisponibile' — stessa convenzione di scambio.ui.js/
+        // wishlist.ui.js. Necessario perché modificaQty() in
+        // utils/shared-public.js legge carta.qtyDisponibile SENZA
+        // fallback (a differenza di binder-flipbook.ui.js, che già
+        // gestisce entrambi i nomi) — con 'qty' il bottone "+" avrebbe
+        // silenziosamente prodotto NaN quando la selezione è attiva.
+        qtyDisponibile: r.qty || 1,
         price: r.prezzo != null ? Number(r.prezzo) : 0,
         notes: r.note || '',
         immagine: r.immagine || null,
@@ -100,8 +131,39 @@ function renderLista() {
         return;
     }
 
+    const selezionabile = _binderPubblicoESelezionabile();
+
+    // FASE 1 CONSOLIDAMENTO: stesso markup di scambio.ui.js quando
+    // selezionabile — checkbox + qty-control al posto del semplice badge
+    // ×N della vetrina di sola lettura.
     container.innerHTML = filtrate.map(c => {
         const immagineSrc = _urlImmagineVisualizzabile(c.immagine);
+        if (selezionabile) {
+            const selezionata = selezioni[c.id] > 0;
+            const qtyAttuale = selezioni[c.id] || 0;
+            return `
+                <div class="card-row ${selezionata ? 'selected' : ''}" id="row-${c.id}">
+                    <input type="checkbox" class="card-checkbox" ${selezionata ? 'checked' : ''}
+                           onchange="toggleSelezione('${c.id}', this.checked)">
+                    ${immagineSrc ? `<img src="${immagineSrc}" alt="" class="card-thumb" onclick="event.stopPropagation(); apriFlipCard('${c.id}')" onerror="this.style.display='none';">` : ''}
+                    <div class="card-info">
+                        <div class="card-name">${escapeHtml(c.name)}${c.code ? ` <span style="color:var(--text-muted); font-weight:600;">(${c.code})</span>` : ''}</div>
+                        <div class="card-meta">
+                            <span class="badge">${c.lang}</span>
+                            <span class="badge">${c.cond}</span>
+                            <span class="badge">Disp. ${c.qtyDisponibile}</span>
+                            ${c.notes ? `<span class="badge">✨ ${escapeHtml(c.notes)}</span>` : ''}
+                        </div>
+                    </div>
+                    <div class="qty-control">
+                        <button class="qty-btn" onclick="modificaQty('${c.id}', -1)" ${qtyAttuale <= 0 ? 'disabled' : ''}>-</button>
+                        <span class="qty-value">${qtyAttuale}</span>
+                        <button class="qty-btn" onclick="modificaQty('${c.id}', 1)" ${qtyAttuale >= c.qtyDisponibile ? 'disabled' : ''}>+</button>
+                    </div>
+                    <div class="card-price">${formattaEuro(c.price)}<small>cad.</small></div>
+                </div>
+            `;
+        }
         return `
             <div class="card-row">
                 ${immagineSrc ? `<img src="${immagineSrc}" alt="" class="card-thumb" onclick="apriFlipCard('${c.id}')" onerror="this.style.display='none';">` : ''}
@@ -110,7 +172,7 @@ function renderLista() {
                     <div class="card-meta">
                         <span class="badge">${c.lang}</span>
                         <span class="badge">${c.cond}</span>
-                        ${c.qty > 1 ? `<span class="badge">×${c.qty}</span>` : ''}
+                        ${c.qtyDisponibile > 1 ? `<span class="badge">×${c.qtyDisponibile}</span>` : ''}
                         ${c.notes ? `<span class="badge">✨ ${escapeHtml(c.notes)}</span>` : ''}
                     </div>
                 </div>
@@ -118,6 +180,35 @@ function renderLista() {
             </div>
         `;
     }).join('');
+}
+
+// FASE 1 CONSOLIDAMENTO: porta di copiaRiepilogo() da scambio.ui.js —
+// stesso identico testo, stesso comportamento (clipboard + fallback alert).
+// Chiamata solo dal bottone #btnCopiaRiepilogo, mostrato solo quando
+// _binderPubblicoESelezionabile() è vero (vedi caricaCatalogo/binder-
+// pubblico.html).
+function copiaRiepilogo() {
+    const righe = [];
+    let totale = 0;
+    carte.forEach(c => {
+        const q = selezioni[c.id] || 0;
+        if (q > 0) {
+            righe.push(`${q}x ${c.name}${c.code ? ' (' + c.code + ')' : ''} — ${formattaEuro(c.price * q)}`);
+            totale += q * c.price;
+        }
+    });
+    if (righe.length === 0) return;
+
+    const testo = `Carte che mi interessano per lo scambio:\n\n${righe.join('\n')}\n\nTotale: ${formattaEuro(totale)}`;
+
+    navigator.clipboard.writeText(testo).then(() => {
+        const btn = document.getElementById('btnCopiaRiepilogo');
+        const originale = btn.innerHTML;
+        btn.innerHTML = '<i class="fa-solid fa-check"></i> Copiato!';
+        setTimeout(() => { btn.innerHTML = originale; }, 1800);
+    }).catch(() => {
+        alert(testo); // fallback se il clipboard non è disponibile (es. http non sicuro)
+    });
 }
 
 // ── Flip-card con sleeve del binder (autosufficiente, vedi banner in cima) ─
@@ -188,7 +279,12 @@ async function _renderSleeve(card) {
 
     _cbdScrivi('pokemon', card.name || '');
     _cbdScrivi('condition', card.cond || '');
-    _cbdScrivi('variazione', card.notes || '');
+    // FASE 1 CONSOLIDAMENTO: su Scambio il campo "variazione" della sleeve
+    // mostra la quantità disponibile (stesso identico testo di
+    // _cbdTestoVariazione in scambio.ui.js), non le note — le note restano
+    // comunque visibili sul fronte carta (flipCardStats, poco sopra). Per
+    // gli altri tipi (location/extra) resta il comportamento originale.
+    _cbdScrivi('variazione', _binderPubblicoESelezionabile() ? ('Disponibili: ' + (card.qtyDisponibile != null ? card.qtyDisponibile : '')) : (card.notes || ''));
     _cbdScrivi('price', formattaEuro(card.price));
 
     Object.keys(DEFAULT_STATE_CARD_BACK).forEach(chiave => {
