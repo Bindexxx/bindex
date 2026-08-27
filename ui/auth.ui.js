@@ -42,6 +42,27 @@
             menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
         }
 
+        // TEMPORANEO (26/08/2026): secondo punto d'accesso allo stesso
+        // identico logout già presente in mostraUtenteLoggato() sopra
+        // (bottone #profiloMenuLogout nel menu Profilo/avatar). Aggiunto
+        // perché quel menu risulta non raggiungibile/visibile nella
+        // visualizzazione attuale — causa non ancora diagnosticata in
+        // questa sessione (richiede di guardare come #profiloAvatar/
+        // #profiloMenu vengono mostrati nel layout "smartphone simulato").
+        // DA RIMUOVERE quando quel problema sarà risolto: a quel punto il
+        // logout torna ad avere un solo punto d'accesso, come prima.
+        async function logoutDaImpostazioni() {
+            const email = document.getElementById('profiloMenuEmail')?.textContent || '';
+            if (!confirm('Uscire da CardSync Pro' + (email ? ' (' + email + ')' : '') + '?')) return;
+            await authLogout();
+            // Azzera la tab ricordata (per-dispositivo) — dispositivo
+            // condiviso tra il gruppo, il prossimo login non deve
+            // ritrovarsi nella stessa schermata di chi ha appena fatto
+            // logout. Vedi data/preferences.repository.js.
+            prefActiveTabClear();
+            location.reload();
+        }
+
         document.addEventListener('click', (e) => {
             if (!e.target.closest('.profilo-container')) {
                 const menu = document.getElementById('profiloMenu');
