@@ -11,4 +11,7 @@
         let _modalita = 'elenco';
         let _flipCardTimeout = null;
         let _sleeveRisolta = null; // { url, metadata } oppure null se non c'è/non ancora richiesta
-        let _copertinaRisolta = null; // url oppure false (già tentata, non trovata) — cache per il libro
+        // _copertinaRisolta: SPOSTATA in ui/binder-flipbook.ui.js il 26/08/2026
+        // (estrazione del motore libro, condiviso ora anche da scambio/wishlist)
+        // — dichiararla anche qui causerebbe un errore di parsing per
+        // doppia dichiarazione "let" nello stesso scope globale di pagina.
