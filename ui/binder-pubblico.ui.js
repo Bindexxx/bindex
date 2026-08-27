@@ -21,11 +21,13 @@
 // commento in quel file per l'elenco completo delle funzioni spostate:
 // copertina, toggle Elenco/Sfoglia, motore libro).
 
-// Vero SOLO per il tipo di binder che oggi supporta selezione/riepilogo —
-// oggi solo Scambio (Fase 1). Quando la Fase 2 (Wishlist) sarà pronta,
-// aggiungere qui: || (_binderInfo.tipo === 'wishlist').
+// Vero per i tipi di binder che supportano selezione/riepilogo — Scambio
+// (Fase 1) e Wishlist (Fase 2, 26/08/2026: leggi_binder_pubblico estesa,
+// vedi 27_leggi_binder_pubblico_wishlist.sql).
 function _binderPubblicoESelezionabile() {
-    return !!(_binderInfo && _binderInfo.tipo === 'location' && _binderInfo.location_valore === 'SCAMBIO');
+    if (!_binderInfo) return false;
+    if (_binderInfo.tipo === 'wishlist') return true;
+    return _binderInfo.tipo === 'location' && _binderInfo.location_valore === 'SCAMBIO';
 }
 
 // Stesse posizioni di default dell'editor privato (state/binder.state.js:
@@ -99,6 +101,11 @@ async function caricaCatalogo() {
         // gestisce entrambi i nomi) — con 'qty' il bottone "+" avrebbe
         // silenziosamente prodotto NaN quando la selezione è attiva.
         qtyDisponibile: r.qty || 1,
+        // FASE 2 CONSOLIDAMENTO: prezzo_obiettivo ora restituito da
+        // leggi_binder_pubblico per qualunque tipo (null per location/
+        // extra, valorizzato per wishlist) — vedi
+        // 27_leggi_binder_pubblico_wishlist.sql.
+        prezzoObiettivo: r.prezzo_obiettivo != null ? Number(r.prezzo_obiettivo) : null,
         price: r.prezzo != null ? Number(r.prezzo) : 0,
         notes: r.note || '',
         immagine: r.immagine || null,
@@ -132,10 +139,12 @@ function renderLista() {
     }
 
     const selezionabile = _binderPubblicoESelezionabile();
+    const eWishlist = _binderInfo && _binderInfo.tipo === 'wishlist';
 
-    // FASE 1 CONSOLIDAMENTO: stesso markup di scambio.ui.js quando
-    // selezionabile — checkbox + qty-control al posto del semplice badge
-    // ×N della vetrina di sola lettura.
+    // FASE 1/2 CONSOLIDAMENTO: stesso markup di scambio.ui.js/wishlist.ui.js
+    // quando selezionabile — checkbox + qty-control al posto del semplice
+    // badge ×N della vetrina di sola lettura. Wording del badge quantità e
+    // badge obiettivo prezzo differenziati per tipo (eWishlist).
     container.innerHTML = filtrate.map(c => {
         const immagineSrc = _urlImmagineVisualizzabile(c.immagine);
         if (selezionabile) {
@@ -151,7 +160,8 @@ function renderLista() {
                         <div class="card-meta">
                             <span class="badge">${c.lang}</span>
                             <span class="badge">${c.cond}</span>
-                            <span class="badge">Disp. ${c.qtyDisponibile}</span>
+                            <span class="badge">${eWishlist ? 'Vuole' : 'Disp.'} ${c.qtyDisponibile}</span>
+                            ${eWishlist && c.prezzoObiettivo != null ? `<span class="badge">🎯 max ${formattaEuro(c.prezzoObiettivo)}</span>` : ''}
                             ${c.notes ? `<span class="badge">✨ ${escapeHtml(c.notes)}</span>` : ''}
                         </div>
                     </div>
@@ -183,10 +193,11 @@ function renderLista() {
 }
 
 // FASE 1 CONSOLIDAMENTO: porta di copiaRiepilogo() da scambio.ui.js —
-// stesso identico testo, stesso comportamento (clipboard + fallback alert).
-// Chiamata solo dal bottone #btnCopiaRiepilogo, mostrato solo quando
-// _binderPubblicoESelezionabile() è vero (vedi caricaCatalogo/binder-
-// pubblico.html).
+// FASE 1/2 CONSOLIDAMENTO: porta di copiaRiepilogo() da scambio.ui.js/
+// wishlist.ui.js — stesso identico testo per tipo, stesso comportamento
+// (clipboard + fallback alert). Chiamata solo dal bottone
+// #btnCopiaRiepilogo, mostrato solo quando _binderPubblicoESelezionabile()
+// è vero (vedi caricaCatalogo/binder-pubblico.html).
 function copiaRiepilogo() {
     const righe = [];
     let totale = 0;
@@ -199,7 +210,20 @@ function copiaRiepilogo() {
     });
     if (righe.length === 0) return;
 
-    const testo = `Carte che mi interessano per lo scambio:\n\n${righe.join('\n')}\n\nTotale: ${formattaEuro(totale)}`;
+    const eWishlist = _binderInfo && _binderInfo.tipo === 'wishlist';
+    let intestazione;
+    if (eWishlist) {
+        // Stesso identico testo di copiaRiepilogo() in wishlist.ui.js —
+        // _nomeProprietarioWishlist arriva dal parametro ?nome= dell'URL
+        // (state/binder-pubblico.state.js), impostato da
+        // _linkPubblicoCondivisione() in ui/navigation.ui.js.
+        intestazione = _nomeProprietarioWishlist
+            ? `Carte che potrei procurare a ${_nomeProprietarioWishlist}:`
+            : `Carte dalla wishlist che potrei procurargli/le:`;
+    } else {
+        intestazione = `Carte che mi interessano per lo scambio:`;
+    }
+    const testo = `${intestazione}\n\n${righe.join('\n')}\n\nTotale: ${formattaEuro(totale)}`;
 
     navigator.clipboard.writeText(testo).then(() => {
         const btn = document.getElementById('btnCopiaRiepilogo');
@@ -225,9 +249,14 @@ async function apriFlipCard(id) {
     frontImg.src = immagineSrc || '';
     if (!immagineSrc) frontImg.style.display = 'none';
 
+    // FASE 2 CONSOLIDAMENTO: riga "Vuole: N" sul fronte carta per Wishlist
+    // (stesso testo di apriFlipCard in wishlist.ui.js) — assente per gli
+    // altri tipi, come prima.
+    const eWishlist = _binderInfo && _binderInfo.tipo === 'wishlist';
     document.getElementById('flipCardStats').innerHTML = `
         <div style="font-weight:800; font-size:0.95rem; margin-bottom:0.2rem;">${escapeHtml(card.name)}</div>
         <div style="font-size:0.78rem; opacity:0.85; margin-bottom:0.6rem;"><code style="background:none; color:inherit; padding:0;">${card.code}</code></div>
+        ${eWishlist ? `<div style="font-size:0.85rem;">Vuole: <strong>${card.qtyDisponibile}</strong></div>` : ''}
         ${card.notes ? `<div style="font-size:0.78rem; opacity:0.85; margin-top:0.4rem;">✨ ${escapeHtml(card.notes)}</div>` : ''}
     `;
     await _renderSleeve(card);
@@ -279,12 +308,19 @@ async function _renderSleeve(card) {
 
     _cbdScrivi('pokemon', card.name || '');
     _cbdScrivi('condition', card.cond || '');
-    // FASE 1 CONSOLIDAMENTO: su Scambio il campo "variazione" della sleeve
-    // mostra la quantità disponibile (stesso identico testo di
-    // _cbdTestoVariazione in scambio.ui.js), non le note — le note restano
-    // comunque visibili sul fronte carta (flipCardStats, poco sopra). Per
-    // gli altri tipi (location/extra) resta il comportamento originale.
-    _cbdScrivi('variazione', _binderPubblicoESelezionabile() ? ('Disponibili: ' + (card.qtyDisponibile != null ? card.qtyDisponibile : '')) : (card.notes || ''));
+    // FASE 1/2 CONSOLIDAMENTO: campo "variazione" della sleeve differenziato
+    // per tipo — Scambio: quantità disponibile (_cbdTestoVariazione di
+    // scambio.ui.js), Wishlist: prezzo obiettivo (_cbdTestoVariazione di
+    // wishlist.ui.js), altri tipi: note, come da sempre.
+    let testoVariazione;
+    if (_binderInfo && _binderInfo.tipo === 'wishlist') {
+        testoVariazione = card.prezzoObiettivo != null ? ('Obiettivo: ' + formattaEuro(card.prezzoObiettivo)) : '';
+    } else if (_binderPubblicoESelezionabile()) {
+        testoVariazione = 'Disponibili: ' + (card.qtyDisponibile != null ? card.qtyDisponibile : '');
+    } else {
+        testoVariazione = card.notes || '';
+    }
+    _cbdScrivi('variazione', testoVariazione);
     _cbdScrivi('price', formattaEuro(card.price));
 
     Object.keys(DEFAULT_STATE_CARD_BACK).forEach(chiave => {

@@ -289,17 +289,17 @@
                 ? _bindersElenco.find(b => String(b.id) === String(_binderAttivo))
                 : null;
             if (!binder) return null;
-            if (binder.tipo === 'wishlist') return { pagina: 'wishlist.html' };
-            // FASE 1 CONSOLIDAMENTO (26/08/2026): rimosso il caso speciale
-            // per SCAMBIO (location_valore === 'SCAMBIO') che puntava a
-            // scambio.html — ora ricade nel ramo generico subito sotto.
-            // Sicuro: trg_binders_forza_condivisione forza SEMPRE
-            // stato_pubblicazione='pubblico' sui binder SCAMBIO (verificato
-            // via pg_get_triggerdef), quindi la condizione sotto è
-            // sempre vera per loro. wishlist.html resta invariata (Fase 2,
-            // non ancora pronta: leggi_binder_pubblico non copre ancora
-            // tipo 'wishlist').
-            if (binder.stato_pubblicazione === 'pubblico') return { pagina: 'binder-pubblico.html', binderId: binder.id };
+            // FASE 2 CONSOLIDAMENTO (26/08/2026): rimosso anche il caso
+            // speciale per Wishlist -> wishlist.html, stesso trattamento
+            // di SCAMBIO in Fase 1. leggi_binder_pubblico ora copre anche
+            // tipo='wishlist' (27_leggi_binder_pubblico_wishlist.sql) —
+            // trg_binders_forza_condivisione forza SEMPRE
+            // stato_pubblicazione='pubblico' anche per questo tipo, quindi
+            // la condizione sotto è sempre vera anche per Wishlist.
+            // 'tipo' esposto nel risultato: serve a _linkPubblicoCondivisione
+            // per decidere se aggiungere il parametro ?nome= (prima
+            // decideva guardando solo pagina==='wishlist.html').
+            if (binder.stato_pubblicazione === 'pubblico') return { pagina: 'binder-pubblico.html', binderId: binder.id, tipo: binder.tipo };
             return null;
         }
 
@@ -307,12 +307,13 @@
             const sessione = await authGetSession();
             const userId = sessione?.user?.id;
             if (!userId) return null;
-            let pagina, binderIdExtra;
+            let pagina, binderIdExtra, tipoBinderExtra;
             if (currentMode === 'binder') {
                 const target = _paginaPubblicaBinderAttivo();
                 if (!target) return null; // binder senza pagina pubblica dedicata, vedi sopra
                 pagina = target.pagina;
                 binderIdExtra = target.binderId;
+                tipoBinderExtra = target.tipo;
             } else {
                 pagina = currentMode === 'wishlist' ? 'wishlist.html' : (currentMode === 'sealed' ? 'sealed.html' : 'scambio.html');
             }
@@ -329,7 +330,13 @@
             // testo di "Copia riepilogo" su wishlist.html ("Carte che potrei
             // procurare a [Nome]"), senza nessuna nuova chiamata a Supabase
             // né esporre l'email completa, solo un nome leggibile.
-            if (pagina === 'wishlist.html' && sessione?.user?.email) {
+            // FASE 2 CONSOLIDAMENTO (26/08/2026): condizione estesa da
+            // "pagina === 'wishlist.html'" (solo la vecchia pagina
+            // dedicata) a includere anche il nuovo percorso generico
+            // binder-pubblico.html quando il binder aperto è di tipo
+            // wishlist — altrimenti il nome del proprietario non
+            // arriverebbe più a copiaRiepilogo() sul nuovo percorso.
+            if ((pagina === 'wishlist.html' || tipoBinderExtra === 'wishlist') && sessione?.user?.email) {
                 url.searchParams.set('nome', _nomeDaEmail(sessione.user.email));
             }
             return url.href;
