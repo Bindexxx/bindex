@@ -10,7 +10,13 @@
 //   - aver popolato `carte` (stesso shape ovunque: id, name, code,
 //     immagine, price, notes, qty/qtyDisponibile)
 //   - aver impostato `_binderId` e `_ownerUserId`
-//   - aver impostato `_binderInfo` = { nome, tipo, location_valore }
+//   - aver impostato `_binderInfo` = { nome, tipo, location_valore, layout }
+//   - aver dichiarato (con "let", nello state.js della pagina) `_binderPagina`
+//     (numero, default 0) e `_modalita` (stringa, default 'elenco') — LETTE
+//     da questo modulo prima di essere mai scritte su una pagina nuova, un
+//     semplice "let" mancante è un ReferenceError immediato, non un
+//     valore undefined silenzioso (bug reale, trovato e corretto il
+//     26/08/2026 su scambio.html/wishlist.html: mancavano entrambe).
 //     (usato per l'etichetta/icona di copertina)
 //   - definito `apriFlipCard(id)` (chiamata da _libroClickCarta — già
 //     presente in tutte e tre le pagine con firma identica)
