@@ -14,8 +14,8 @@
             '3x4': { cols: 4, rows: 3 }, // etichetta "4×3": 4 colonne (orizzontali) × 3 righe (verticali) — nome chiave storico invariato per non rompere prefBinderLayoutGet() già salvati, corretti solo i valori (erano invertiti: prima cols:3,rows:4, cioè l'opposto di quanto mostrato in etichetta)
             '4x4': { cols: 4, rows: 4 },
         };
-        const CHIAVE_BINDER_LAYOUT = 'cardsync_binder_layout';
-        let _binderLayout = BINDER_LAYOUTS[prefBinderLayoutGet()] ? prefBinderLayoutGet() : '3x3';
+        const CHIAVE_BINDER_LAYOUT = 'cardsync_binder_layout'; // NON PIÙ USATA per il layout (fix 26/08/2026, ora per-binder su DB) — lasciata per rollback sicuro, nessun codice la legge/scrive più
+        let _binderLayout = '3x3'; // valore reale impostato per-binder da apriBinderDettaglio() in ui/binder.ui.js
         let _binderPagina = 0;
         const BINDER_COVER_W = 1024;
         const BINDER_COVER_H = 1419;
