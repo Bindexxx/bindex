@@ -199,7 +199,14 @@ async function apriBinderDettaglio(binderId) {
 // subito dopo il toggle pubblicazione, non solo all'apertura del binder.
 function _aggiornaControlliRinominaPubblicazioneCondivisione(binder) {
     const rinominaWrap = document.getElementById('binderRinominaWrap');
-    if (rinominaWrap) rinominaWrap.style.display = binder.tipo === 'extra' ? 'flex' : 'none';
+    // TEMPORANEO (Claudio, 26/08/2026): bypass disattivato, consolidato su
+    // approvazione admin per QUALUNQUE tipo di binder (era doppio
+    // meccanismo, mai unificato — vedi compilato). rinominaBinderExtraCorrente()
+    // e binderExtraRinomina() (data/binder.repository.js) restano definite
+    // e intatte, solo irraggiungibili dall'UI — rollback a una riga se
+    // serve. Bloccato anche lato DB, non solo qui: vedi trigger
+    // trg_binders_blocca_rinomina_diretta in 26_binder_nome_blocco_diretto.sql.
+    if (rinominaWrap) rinominaWrap.style.display = 'none';
 
     const eGiaPubblicoFisso = binder.tipo === 'wishlist' || (binder.tipo === 'location' && binder.location_valore === 'SCAMBIO');
     const pubblicazioneWrap = document.getElementById('binderPubblicazioneWrap');
