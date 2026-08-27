@@ -142,6 +142,18 @@ function binderLocationQueryCarte(userId, locationValore) {
     return supabaseClient.from('carte').select('*').eq('owner_id', userId).eq('location', locationValore).eq('stato', 'collezione').order('nome');
 }
 
+// Layout della griglia (2x2/3x3/3x4/4x4) — ora per-binder (fix 26/08/2026,
+// vedi 25_binder_layout_per_binder.sql), non più una preferenza globale
+// per dispositivo. Nessun default applicativo qui: la colonna ha
+// DEFAULT '3x3' lato DB.
+async function binderAggiornaLayout(userId, binderId, layout) {
+    return supabaseClient
+        .from('binders')
+        .update({ layout })
+        .eq('id', binderId)
+        .eq('owner_id', userId);
+}
+
 // ── binder_carte (solo per binder tipo 'extra') ──────────────────────────
 // Le righe qui sotto devono sempre includere binder_id quando riferite al
 // nuovo sistema — { owner_id, carta_id, binder_id }.
