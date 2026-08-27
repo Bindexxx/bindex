@@ -239,13 +239,13 @@
 
         /* Profilo, in cima alla sidebar (sostituisce l'avatar che prima
            stava nell'angolo in alto a destra dell'header). */
-        .profilo-container { position: relative; flex-shrink: 0; margin-bottom: 0.8rem; }
+        .profilo-container { position: relative; flex-shrink: 0; }
 
         .profilo-avatar {
-            width: 38px; height: 38px; border-radius: 50%;
+            width: 28px; height: 28px; border-radius: 8px;
             background-color: var(--primary); color: white;
             border: none; cursor: pointer;
-            font-weight: 800; font-size: 0.95rem;
+            font-weight: 800; font-size: 0.85rem;
             display: flex; align-items: center; justify-content: center;
         }
 
@@ -2570,16 +2570,6 @@
             <button class="sidebar-mobile-close" onclick="closeDrawer()" aria-label="Chiudi menu"><i class="fa-solid fa-xmark"></i></button>
         </div>
 
-        <div class="profilo-container" id="profiloContainer">
-            <button class="profilo-avatar" id="profiloAvatar" onclick="toggleMenuProfilo()" aria-label="Profilo">?</button>
-            <div class="profilo-menu" id="profiloMenu" style="display:none;">
-                <div class="profilo-menu-nome" id="profiloMenuNome">—</div>
-                <div class="profilo-menu-email" id="profiloMenuEmail">—</div>
-                <button class="profilo-menu-logout" id="profiloMenuCambioUsername" onclick="apriModaleCambioUsername()" style="color:var(--text-muted); margin-bottom:0.4rem; padding-bottom:0.4rem; border-bottom:1px solid var(--border-color);"><i class="fa-solid fa-pen"></i> Cambia username</button>
-                <button class="profilo-menu-logout" id="profiloMenuLogout"><i class="fa-solid fa-right-from-bracket"></i> Esci</button>
-            </div>
-        </div>
-
         <nav class="sidebar-nav">
             <!-- A10 (Dashboard e Home) — Stage 1, primo pezzo: solo voce di
                  navigazione + contenitore vuoto, nessun dato ancora. Diventa
@@ -2692,6 +2682,15 @@
                         <button id="btnImpostazioniBarra" onclick="apriDettaglioWidget('impostazioni', event)" title="Impostazioni">
                             <i class="fa-solid fa-gear"></i>
                         </button>
+                        <div class="profilo-container" id="profiloContainer">
+                            <button class="profilo-avatar" id="profiloAvatar" onclick="toggleMenuProfilo()" aria-label="Profilo"><i class="fa-solid fa-user"></i></button>
+                            <div class="profilo-menu" id="profiloMenu" style="display:none; right: 0; left: auto;">
+                                <div class="profilo-menu-nome" id="profiloMenuNome">—</div>
+                                <div class="profilo-menu-email" id="profiloMenuEmail">—</div>
+                                <button class="profilo-menu-logout" id="profiloMenuCambioUsername" onclick="apriModaleCambioUsername()" style="color:var(--text-muted); margin-bottom:0.4rem; padding-bottom:0.4rem; border-bottom:1px solid var(--border-color);"><i class="fa-solid fa-pen"></i> Cambia username</button>
+                                <button class="profilo-menu-logout" id="profiloMenuLogout"><i class="fa-solid fa-right-from-bracket"></i> Esci</button>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 <div id="phonePushBanner"><i class="fa-solid fa-bell"></i><span id="phonePushBannerTesto"></span></div>
