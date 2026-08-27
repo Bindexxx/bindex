@@ -18,6 +18,13 @@
         // di default: la vetrina generica (location/extra) non la usa mai,
         // resta un oggetto vuoto innocuo.
         let selezioni = {};
+        // FASE 2 CONSOLIDAMENTO (26/08/2026): nome del proprietario della
+        // wishlist, passato nell'URL dal sito privato — stesso identico
+        // pattern di state/wishlist.state.js (ora ritirato dal flusso di
+        // condivisione, ma il file resta sul server per rollback). Link
+        // vecchi/altri tipi di binder senza questo parametro restano
+        // compatibili: null, testo generico di fallback in copiaRiepilogo().
+        const _nomeProprietarioWishlist = new URLSearchParams(window.location.search).get('nome');
         // _copertinaRisolta: SPOSTATA in ui/binder-flipbook.ui.js il 26/08/2026
         // (estrazione del motore libro, condiviso ora anche da scambio/wishlist)
         // — dichiararla anche qui causerebbe un errore di parsing per
