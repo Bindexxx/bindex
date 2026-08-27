@@ -89,6 +89,13 @@ function impostaModalitaBinderPubblico(modalita) {
     } else {
         if (searchBox) searchBox.style.display = 'none';
         if (lista) lista.style.display = 'none';
+        // Fix 26/08/2026: la paginazione veniva solo NASCOSTA entrando in
+        // 'elenco' (riga sopra), mai MOSTRATA entrando in 'libro' — restava
+        // bloccata al display:none di partenza del markup HTML. Bug
+        // preesistente, mai notato su binder-pubblico.html (origine di
+        // questo codice), diventato visibile ora che scambio.html/
+        // wishlist.html usano lo stesso modulo.
+        if (paginazione) paginazione.style.display = '';
         renderBinderLibro();
     }
 }
