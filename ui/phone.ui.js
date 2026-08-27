@@ -192,10 +192,28 @@ const CATALOGO_WIDGET = {
         azione: () => { currentMode = 'scambio'; openQrModal(); },
     },
 
-    // ── BLOCCATO: dati statici finché non leggo il file mancante ──────────
+    // Sbloccato (Claudio, 2026-08-27): queue.ui.js letto per intero in
+    // questa sessione. Zero query proprie: legge _numNuoviMatchScambio/
+    // _numNuoviMatchWishlist, due variabili di modulo scritte da
+    // aggiornaBadgeMatch() (queue.ui.js) — funzione che prima girava una
+    // sola volta al login e ora è agganciata anche al polling lento (60s,
+    // vedi avviaPollingWidgetHome qui sotto). Scelta esplicita di
+    // Claudio: "la cosa più semplice e affidabile quando avremo anche più
+    // utenti" — niente interrogazione delle RPC di match ogni 15s per
+    // ogni utente col widget attivo.
     match: {
-        titolo: 'Match trovati', icona: 'fa-handshake', bloccato: true,
-        preview: () => ({ righe: ['In attesa di verifica'] }),
+        titolo: 'Match trovati', icona: 'fa-handshake',
+        preview: () => {
+            const scambio = typeof _numNuoviMatchScambio !== 'undefined' ? _numNuoviMatchScambio : 0;
+            const wishlist = typeof _numNuoviMatchWishlist !== 'undefined' ? _numNuoviMatchWishlist : 0;
+            const totale = scambio + wishlist;
+            if (totale === 0) return { righe: ['Nessuna novità'] };
+            return { righe: [`${totale} nuov${totale === 1 ? 'a' : 'e'} corrispondenz${totale === 1 ? 'a' : 'e'}`], stato: 'ok' };
+        },
+        // Le vecchie tab Scambio/Wishlist non esistono più come
+        // view-section dedicate dopo il Multi-Binder — il contenuto vive
+        // ora dentro Binders (binder tipizzati Scambio/Wishlist).
+        azione: (dati, evt) => { apriDettaglioWidget('binder', evt); },
     },
     // Sbloccato (Claudio, 2026-08-27): extension.ui.js letto per intero in
     // questa sessione. _chiediVersioneEstensione()/_chiediAiutaGruppoEstensione()
@@ -891,8 +909,16 @@ function avviaPollingWidgetHome() {
         _impostaSyncAttivo(true);
         try {
             await caricaAvvisiHome();
+            // Prima di questa sessione, aggiornaBadgeMatch() (queue.ui.js)
+            // girava una sola volta al login (_avviaSitoDopoAccesso in
+            // auth.ui.js) e mai più — i pallini restavano fermi per tutta
+            // la sessione. Agganciata qui allo stesso ciclo di
+            // caricaAvvisiHome() per il widget "Match trovati" (Claudio:
+            // "la cosa più semplice e affidabile quando avremo anche più
+            // utenti" — niente query extra sul ciclo veloce a 15s).
+            await aggiornaBadgeMatch();
             await _controllaNotifichePush();
-        } catch (e) { console.error('Errore polling avvisi (widget prezzi/inserimento):', e); }
+        } catch (e) { console.error('Errore polling avvisi (widget prezzi/inserimento/match):', e); }
         _impostaSyncAttivo(false);
         renderWidgetHome();
     }, INTERVALLO_WIDGET_LENTO_MS);

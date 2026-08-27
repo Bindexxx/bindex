@@ -18,6 +18,14 @@
         // altrui — restituiscono solo i match trovati (vedi
         // match_e_immagini.sql per i dettagli).
 
+        // Letti da ui/phone.ui.js (widget Home "Match trovati", sbloccato
+        // 2026-08-27) — scritti SOLO da aggiornaBadgeMatch() qui sotto, mai
+        // interrogati direttamente dal widget: una query in meno ogni 15s,
+        // scelta esplicita di Claudio pensando alla scalabilità con più
+        // utenti nel gruppo.
+        let _numNuoviMatchScambio = 0;
+        let _numNuoviMatchWishlist = 0;
+
         // Sistema "letto/non letto": ogni match ha una chiave stabile
         // (coppia di id che non cambia tra un controllo e l'altro) —
         // salviamo su localStorage quali abbiamo già visto, così il
@@ -220,6 +228,9 @@
             const nuoviScambio = (dataScambio || []).filter(m => !visti.has(_chiaveMatch(m, 'scambio')));
             const nuoviWishlist = (dataWishlist || []).filter(m => !visti.has(_chiaveMatch(m, 'wishlist')));
             const { count: alertPrezzoNonVisti } = _contaAlertPrezzoNonVisti();
+
+            _numNuoviMatchScambio = nuoviScambio.length;
+            _numNuoviMatchWishlist = nuoviWishlist.length;
 
             _aggiornaPallinoMenu('scambio', nuoviScambio.length);
             // Il pallino Wishlist conta ENTRAMBE le cose: match trovati +
