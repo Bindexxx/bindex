@@ -192,14 +192,41 @@ const CATALOGO_WIDGET = {
         azione: () => { currentMode = 'scambio'; openQrModal(); },
     },
 
-    // ── BLOCCATI: dati statici finché non leggo i file mancanti ──────────
+    // ── BLOCCATO: dati statici finché non leggo il file mancante ──────────
     match: {
         titolo: 'Match trovati', icona: 'fa-handshake', bloccato: true,
         preview: () => ({ righe: ['In attesa di verifica'] }),
     },
+    // Sbloccato (Claudio, 2026-08-27): extension.ui.js letto per intero in
+    // questa sessione. _chiediVersioneEstensione()/_chiediAiutaGruppoEstensione()
+    // già esistenti lì, stessa tolleranza timeout (1.2s, mai blocca il
+    // render della home) delle altre chiamate verso l'estensione — zero
+    // query nuove, stessa filosofia degli altri widget.
     estensione: {
-        titolo: 'Estensione', icona: 'fa-plug', bloccato: true,
-        preview: () => ({ righe: ['In attesa di verifica'] }),
+        titolo: 'Estensione', icona: 'fa-plug',
+        preview: async () => {
+            const versione = await _chiediVersioneEstensione();
+            if (!versione) return { righe: ['Non rilevata'], rilevata: false };
+            const aiutaGruppo = await _chiediAiutaGruppoEstensione();
+            return {
+                righe: [`v${versione}`, aiutaGruppo ? 'Aiuta il gruppo: attivo' : 'Aiuta il gruppo: no'],
+                stato: aiutaGruppo ? 'ok' : undefined,
+                rilevata: true,
+            };
+        },
+        // Click: porta l'estensione in primo piano (stessa funzione già
+        // usata dal bottone "Apri l'app" in sidebar — vedi
+        // _mandaAperturaAppAEstensione in extension.ui.js). Se non
+        // rilevata, apre Impostazioni invece: lì ci sono le istruzioni
+        // d'installazione, non ha senso provare ad "aprire" qualcosa che
+        // non c'è.
+        azione: async (dati, evt) => {
+            if (dati && dati.rilevata) {
+                await _mandaAperturaAppAEstensione();
+            } else {
+                apriDettaglioWidget('impostazioni', evt);
+            }
+        },
     },
 };
 
