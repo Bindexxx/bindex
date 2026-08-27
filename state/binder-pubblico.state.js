@@ -11,6 +11,13 @@
         let _modalita = 'elenco';
         let _flipCardTimeout = null;
         let _sleeveRisolta = null; // { url, metadata } oppure null se non c'è/non ancora richiesta
+        // selezioni: aggiunta 26/08/2026 (Fase 1 consolidamento Scambio →
+        // binder-pubblico.html) — richiesta da utils/shared-public.js
+        // (toggleSelezione/modificaQty/aggiornaTotale) e da
+        // ui/binder-flipbook.ui.js quando _libroSelezionabile=true. Vuoto
+        // di default: la vetrina generica (location/extra) non la usa mai,
+        // resta un oggetto vuoto innocuo.
+        let selezioni = {};
         // _copertinaRisolta: SPOSTATA in ui/binder-flipbook.ui.js il 26/08/2026
         // (estrazione del motore libro, condiviso ora anche da scambio/wishlist)
         // — dichiararla anche qui causerebbe un errore di parsing per
