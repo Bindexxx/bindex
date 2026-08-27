@@ -3490,6 +3490,13 @@
                 <label style="display:block; font-size: 0.72rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.3rem;">NUOVA PASSWORD</label>
                 <input type="password" id="nuovaPasswordInput" placeholder="Almeno 6 caratteri" style="margin-bottom: 1rem;">
                 <button class="btn-main" onclick="cambiaPassword()"><i class="fa-solid fa-key"></i> Cambia Password</button>
+
+                <!-- TEMPORANEO (26/08/2026): duplica il logout già presente
+                     nel menu Profilo (#profiloMenu), non raggiungibile/
+                     visibile nella visualizzazione attuale — vedi commento
+                     su logoutDaImpostazioni() in ui/auth.ui.js. DA
+                     RIMUOVERE quando quel problema sarà risolto. -->
+                <button class="btn-secondary" style="margin-top:0.8rem;" onclick="logoutDaImpostazioni()"><i class="fa-solid fa-right-from-bracket"></i> Esci</button>
             </div>
 
             <!-- CONTATTI E BUG REPORT -->
