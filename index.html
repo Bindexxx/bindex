@@ -780,13 +780,13 @@
         #phoneBarraStato .phone-lcd { font-size: 0.7rem; color: var(--text-muted); }
         #phoneBarraStato .phone-sync-dot { margin-right: 0.3rem; }
         .phone-barra-stato-destra { display: flex; align-items: center; gap: 0.4rem; margin-left: auto; }
-        .phone-barra-stato-destra button {
+        .phone-barra-stato-destra > button {
             background: var(--card-bg); border: 1px solid var(--border-color);
             color: var(--text-muted); border-radius: 8px; width: 28px; height: 28px;
             display: flex; align-items: center; justify-content: center;
             cursor: pointer; font-size: 0.8rem;
         }
-        .phone-barra-stato-destra button.attivo { background: var(--primary); color: #fff; border-color: var(--primary); }
+        .phone-barra-stato-destra > button.attivo { background: var(--primary); color: #fff; border-color: var(--primary); }
         /* Suoni/densità/matita: visibili solo sulla pagina widget (Claudio:
            "quando sei in visuale widget") — vedi _aggiornaMatitaBarraGlobale
            in ui/phone.ui.js, che ora gestisce tutti e tre insieme.
@@ -802,8 +802,22 @@
            JS aggiungesse/togliesse. I bottoni restavano visibili anche
            quando la classe c'era davvero. Corretto scrivendo la regola di
            nascondimento con la STESSA "forma" di selettore (classe
-           contenitore + elemento + classe), così ora vince per davvero. */
-        .phone-barra-stato-destra button.nascosto-in-home { display: none; }
+           contenitore + elemento + classe), così ora vince per davvero.
+
+           FIX (26/08/2026, Claudio: "Cambia username/Esci sforano dalla
+           tendina e dai tasti"): questa regola usava un selettore
+           DISCENDENTE (spazio), quindi catturava QUALUNQUE <button>
+           annidato dentro .phone-barra-stato-destra a qualsiasi
+           profondità — non solo i 4 bottoni diretti per cui era stata
+           scritta. Da quando #profiloContainer (avatar + tendina menu
+           profilo) vive qui dentro, anche #profiloAvatar e i due bottoni
+           dentro #profiloMenu venivano forzati a 28x28px con testo/icona
+           che uscivano dal riquadro. Cambiato da discendente a figlio
+           diretto (>) su tutte e tre le regole di questo blocco: ora si
+           applicano solo ai bottoni diretti della barra (suoni/densità/
+           matita/impostazioni), mai a quelli annidati dentro la tendina
+           profilo. */
+        .phone-barra-stato-destra > button.nascosto-in-home { display: none; }
 
         .phone-sync-dot {
             width: 9px; height: 9px; border-radius: 50%;
