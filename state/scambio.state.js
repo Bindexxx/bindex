@@ -21,3 +21,11 @@ let _flipCardTimeout = null;
 let _ownerBinderId = null;
 let _binderId = null;
 let _binderInfo = null;
+// Aggiunti ORA (26/08/2026, fix crash "_binderPagina is not defined"):
+// dimenticati nel giro precedente quando ho consolidato _binderId/
+// _binderInfo qui. Entrambi richiesti da ui/binder-flipbook.ui.js — la
+// prima è letta PRIMA di essere mai scritta su questa pagina
+// (_libroKDaPagina(_binderPagina) dentro renderBinderLibro), quindi senza
+// "let" qui è un ReferenceError vero, non un semplice valore undefined.
+let _binderPagina = 0;
+let _modalita = 'elenco';

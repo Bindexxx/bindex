@@ -21,6 +21,10 @@ let _flipCardTimeout = null;
 let _ownerBinderId = null;
 let _binderId = null;
 let _binderInfo = null;
+// Aggiunti ORA (26/08/2026, fix crash "_binderPagina is not defined") —
+// vedi stesso commento in state/scambio.state.js.
+let _binderPagina = 0;
+let _modalita = 'elenco';
 
 // A16: nome del proprietario della wishlist, passato nell'URL dal sito
 // privato (stesso pattern già usato per tema/dark-mode) — nessuna nuova
