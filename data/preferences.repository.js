@@ -17,6 +17,11 @@ function prefDarkModeSet(isDark) { localStorage.setItem('darkMode', isDark); }
 
 function prefActiveTabGet() { return localStorage.getItem('activeTab'); }
 function prefActiveTabSet(tabId) { localStorage.setItem('activeTab', tabId); }
+// Aggiunta 26/08/2026: usata dal logout per non far ritrovare al prossimo
+// che accede su questo dispositivo (condiviso tra il gruppo) la stessa
+// schermata di chi ha appena fatto logout. Stesso idioma di
+// prefEntryDraftClear() qui sotto.
+function prefActiveTabClear() { localStorage.removeItem('activeTab'); }
 
 function prefEntryDraftGet() { return localStorage.getItem('cardsync_entry_draft'); }
 function prefEntryDraftSet(draftJson) { localStorage.setItem('cardsync_entry_draft', draftJson); }
