@@ -13,13 +13,6 @@
 // dichiarata in ui/binder-flipbook.ui.js, caricato prima di questo file.
 _libroSelezionabile = true;
 
-// Bridge di stato per ui/binder-flipbook.ui.js, che si aspetta questi nomi
-// (stessi usati da binder-pubblico.ui.js/.state.js, mai avuti su questa
-// pagina prima d'ora). Nota aperta dalla sessione precedente: andrebbero
-// propriamente in state/scambio.state.js, mai fornito in questa sessione.
-let _binderId = null;
-let _binderInfo = null;
-
 // A16: flip-modal — mostra prima il fronte (immagine reale), poi gira da
 // sola dopo una breve pausa rivelando nome/codice/prezzo/note. Stesso
 // concetto già esteso a tutto il sito privato in A15 e a Wishlist in A16,
@@ -98,6 +91,14 @@ async function caricaCatalogo() {
             if (info && info.length) {
                 _binderInfo = { nome: info[0].nome, tipo: info[0].tipo, location_valore: info[0].location_valore };
                 _caricaCopertinaBinder(_ownerBinderId); // non bloccante, si aggiorna da sola quando pronta
+                // Titolo dinamico (26/08/2026): "Vediamo se mi piace" —
+                // Claudio non ha ancora confermato definitivamente questo
+                // comportamento, tenerlo d'occhio nel test. Fallback al
+                // testo statico originale se _binderInfo.nome è vuoto.
+                if (_binderInfo.nome) {
+                    document.title = 'CardSync Pro — ' + _binderInfo.nome;
+                    document.getElementById('titoloBinder').textContent = _binderInfo.nome;
+                }
             }
         } catch (e) {
             console.error('info binder SCAMBIO:', e);
