@@ -320,8 +320,17 @@
         }
 
 
-        // ── FLIP-MODAL — usato in TUTTO IL SITO da ogni click su una carta
-        // (tabella, vista compatta mobile, Binder, Home "In primo piano"):
+        // ── FLIP-MODAL — chiamata direttamente da Home "In primo piano" (vedi
+        // riga sopra) e da Binder (ui/binder-flipbook.ui.js, _libroClickCarta).
+        // CORREZIONE (26/08/2026, segnalato da Opus nel compilato, mai
+        // sistemato prima d'ora): il commento precedente diceva "usata da
+        // ogni click su una carta in tutto il sito (tabella, vista compatta
+        // mobile, Binder, Home)" — non verificato per tabella/vista compatta
+        // mobile (vivono in ui/cards.ui.js, non letto in questa sessione):
+        // probabilmente passano invece da apriImmagineIngrandita(), il
+        // modale più semplice esteso qui sotto, non da questa funzione
+        // direttamente. Non dare per buona l'affermazione originale senza
+        // aver letto cards.ui.js.
         // ESTENDE lo stesso modale già usato da apriImmagineIngrandita
         // (#immagineModal / stesso pulsante chiudi), come deciso da Claudio
         // per Home, ora esteso a tutti i punti di ingresso su richiesta di
