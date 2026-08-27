@@ -38,7 +38,7 @@ function escapeHtml(str) {
 
 function toggleSelezione(id, checked) {
     selezioni[id] = checked ? 1 : 0;
-    renderLista();
+    _refreshVistaCorrente();
     aggiornaTotale();
 }
 
@@ -48,8 +48,26 @@ function modificaQty(id, delta) {
     const attuale = selezioni[id] || 0;
     const nuova = Math.max(0, Math.min(carta.qtyDisponibile, attuale + delta));
     selezioni[id] = nuova;
-    renderLista();
+    _refreshVistaCorrente();
     aggiornaTotale();
+}
+
+// Fix 26/08/2026: con l'introduzione della selezione anche dentro il libro
+// sfogliabile (scambio.html/wishlist.html), un cambio di selezione deve
+// aggiornare la vista ATTIVA — se è il libro, ridisegnare la pagina
+// corrente (_libroDisegnaStatico), non la lista nascosta. Pagine senza
+// libro (sealed.html, che usa questo stesso file) o senza selezione
+// (binder-pubblico.html) non hanno _modalita/_libro definiti: i controlli
+// typeof le lasciano sul vecchio comportamento (renderLista), nessuna
+// regressione per loro.
+function _refreshVistaCorrente() {
+    if (typeof _modalita !== 'undefined' && _modalita === 'libro'
+        && typeof _libro !== 'undefined' && _libro
+        && typeof _libroDisegnaStatico === 'function') {
+        _libroDisegnaStatico();
+    } else {
+        renderLista();
+    }
 }
 
 function aggiornaTotale() {
