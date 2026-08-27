@@ -168,6 +168,11 @@ async function apriBinderDettaglio(binderId) {
     const binder = _bindersElenco.find(b => String(b.id) === String(binderId));
     if (!binder) return;
 
+    // Fix 26/08/2026: layout per-binder, non più preferenza globale per
+    // dispositivo (vedi 25_binder_layout_per_binder.sql). binder.layout
+    // arriva già valorizzato da bindersQueryTutti (select('*')).
+    _binderLayout = BINDER_LAYOUTS[binder.layout] ? binder.layout : '3x3';
+
     const titoloEl = document.getElementById('binderDettaglioTitolo');
     if (titoloEl) titoloEl.textContent = binder.nome || '';
 
@@ -526,11 +531,20 @@ function binderPaginaIndietro() {
     _binderPagina--;
     renderBinderContenuto();
 }
-function cambiaLayoutBinder(layout) {
+// Fix 26/08/2026: il layout è ora per-binder, salvato su DB (vedi
+// 25_binder_layout_per_binder.sql) — non più prefBinderLayoutSet
+// (localStorage globale per dispositivo). Update ottimistico: la UI si
+// ridisegna subito, un eventuale errore di rete viene solo loggato (stesso
+// pattern soft-fail già usato per la copertina) — non vale la pena
+// bloccare l'utente per un fallimento di scrittura su un cambio di layout.
+async function cambiaLayoutBinder(layout) {
     if (!BINDER_LAYOUTS[layout]) return;
     _binderLayout = layout;
-    prefBinderLayoutSet(layout);
     renderBinderContenuto();
+    const userId = await authGetUserId();
+    if (!userId) return;
+    const { error } = await binderAggiornaLayout(userId, _binderAttivo, layout);
+    if (error) console.error('Errore nel salvare il layout del binder:', error.message);
 }
 
 

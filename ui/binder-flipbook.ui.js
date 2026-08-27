@@ -115,7 +115,19 @@ const LIBRO_SOGLIA_DRAG_PX = 8;
 const LIBRO_PAD_PAGINA = 10;
 const LIBRO_GAP_TASCHE = 6;
 const LIBRO_ALTEZZA_NUMERO = 16;
-const LIBRO_LAYOUT = { cols: 3, rows: 3 }; // fisso — pagina pubblica, nessun selettore
+// Fix 26/08/2026: layout non più fisso 3×3 — ogni binder ha il proprio
+// (vedi 25_binder_layout_per_binder.sql), letto da _binderInfo.layout
+// impostato dalla pagina chiamante. Stessa identica tabella di
+// state/binder.state.js (duplicata qui perché le pagine pubbliche non
+// caricano quel file) — NON riordinare/rinominare le chiavi: sono nomi
+// storici, i valori cols/rows sono quelli corretti (vedi bug #3 nel
+// compilato: la chiave '3x4' ha cols:4,rows:3, non l'opposto).
+const BINDER_LAYOUTS = {
+    '2x2': { cols: 2, rows: 2 },
+    '3x3': { cols: 3, rows: 3 },
+    '3x4': { cols: 4, rows: 3 },
+    '4x4': { cols: 4, rows: 4 },
+};
 
 let _libro = null;
 let _libroObserver = null;
@@ -131,7 +143,7 @@ function renderBinderLibro() {
     if (!wrap) { console.error('renderBinderLibro: manca #binderLibroWrap'); return; }
     wrap.style.display = 'block';
 
-    const layout = LIBRO_LAYOUT;
+    const layout = BINDER_LAYOUTS[_binderInfo && _binderInfo.layout] || BINDER_LAYOUTS['3x3'];
     const carteOrdinate = carte; // già ordinate per nome dalla RPC pubblica
 
     _libro = {
