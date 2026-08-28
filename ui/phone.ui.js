@@ -948,10 +948,12 @@ function _ballSincronizzaToggleImpostazioni() {
 //   - stopPropagation, o il tocco farebbe partire ANCHE la cattura da 2,6s
 //     e l'apertura del widget;
 //   - in modalità modifica non deve fare nulla: lì si trascina e si ridimensiona;
-//   - le azioni sono solo quelle verificate esistenti (apriFlipCardHome,
-//     apriDettaglioWidget). Un filtro pre-applicato ("mostrami solo questa
-//     location") richiederebbe funzioni di cards.ui.js/prices.ui.js, file
-//     MAI letti: il gancio è pronto in _ballAzioneRiga, ma non invento nomi.
+//   - le azioni chiamano solo funzioni VERIFICATE nei file reali:
+//       apriFlipCardHome(id)          → ui/home.ui.js
+//       apriModalePrezziScaduti()     → ui/prices.ui.js r.212
+//       filterTable() + #filterLocation → ui/cards.ui.js r.803-833
+//     ognuna protetta da un typeof: se un domani sparisse, la riga smette
+//     di funzionare ma non butta giù la home.
 function _ballAzioneRiga(evt, tipo, valore) {
     if (evt) evt.stopPropagation();
     if (_editModeWidget) return;
@@ -960,14 +962,39 @@ function _ballAzioneRiga(evt, tipo, valore) {
         case 'carta':
             if (typeof apriFlipCardHome === 'function') apriFlipCardHome(valore);
             break;
+
         case 'tab':
             apriDettaglioWidget(valore, evt);
             break;
-        // GANCIO per quando avremo letto cards.ui.js / prices.ui.js: qui
-        // andrà l'apertura CON filtro già applicato (per location, per
-        // prezzo scaduto...). Finché non è verificato, apre la sezione.
+
+        // Elenco completo delle carte con prezzo da aggiornare: esiste già
+        // come modale nel sito, con nomi, codici e data dell'ultimo
+        // controllo. Non apriamo la sezione Prezzi: la modale dice di più
+        // ed è esattamente ciò che serve dopo aver toccato quella riga.
+        case 'prezzi-scaduti':
+            if (typeof apriModalePrezziScaduti === 'function') apriModalePrezziScaduti();
+            else apriDettaglioWidget('prezzi', evt);
+            break;
+
+        // Location: apre Visualizzazione GIÀ FILTRATA su quella posizione.
+        // filterTable() legge il valore dalla tendina #filterLocation
+        // (popolata da caricaCarteReali con le location realmente presenti),
+        // quindi il filtro si imposta scrivendo lì e richiamandola.
+        // Il filtro va applicato DOPO l'apertura: switchTab ridisegna la
+        // sezione, e farlo prima verrebbe sovrascritto.
         case 'location':
             apriDettaglioWidget('visualizzazione', evt);
+            setTimeout(() => {
+                const select = document.getElementById('filterLocation');
+                if (!select || typeof filterTable !== 'function') return;
+                // Se quella location non è tra le opzioni (dato cambiato nel
+                // frattempo), meglio non filtrare che filtrare a vuoto
+                // lasciando una tabella misteriosamente deserta.
+                const esiste = Array.from(select.options).some(o => o.value === valore);
+                if (!esiste) return;
+                select.value = valore;
+                filterTable();
+            }, 60);
             break;
     }
 }
@@ -1004,7 +1031,7 @@ const _ballCORPI = {
         let blocco = _ballBarra(perc, 'Aggiornati', `${aggiornati}/${totale}`, `_ballAzioneRiga(event,'tab','prezzi')`);
         if (d.lista && d.lista.length) {
             blocco += '<div class="ball-elenco">' + d.lista.slice(0, 3).map(v =>
-                `<div class="ball-riga ball-riga-clic" onclick="_ballAzioneRiga(event,'tab','prezzi')">
+                `<div class="ball-riga ball-riga-clic" onclick="_ballAzioneRiga(event,'prezzi-scaduti')">
                     <span class="ball-punto"></span><span class="ball-nome">${v}</span>
                  </div>`).join('') + '</div>';
         }
