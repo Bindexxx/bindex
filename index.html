@@ -3788,6 +3788,34 @@
             </div>
         </div>
 
+        <div id="condividi" class="view-section">
+            <div class="settings-card" style="max-width: 700px;">
+                <h3 style="margin-bottom: 0.3rem; color: var(--text-dark); display: flex; align-items: center; gap: 0.6rem; font-size: 1.15rem; font-weight: 800;">
+                    <i class="fa-solid fa-share-nodes" style="color: var(--primary);"></i> Condividi
+                </h3>
+                <p style="font-size: 0.78rem; color: var(--text-muted); margin-bottom: 1.2rem;">
+                    Scegli cosa condividere — link, QR o condivisione nativa.
+                </p>
+                <div id="condividiLista"></div>
+
+                <!-- Pannello di condivisione, comparso solo dopo aver
+                     scelto una riga qui sopra — vedi _condividiElementoWidget
+                     in ui/phone.ui.js. Non è #qrModal (quello dipende dallo
+                     stato globale di navigazione, pensato per "il binder che
+                     hai aperto ora"): qui serve condividere una cosa scelta
+                     da una lista, senza navigarci dentro — pannello proprio,
+                     stessa libreria QRCode già caricata nel sito. -->
+                <div id="condividiPannelloShare" style="display:none; margin-top:1.2rem; padding-top:1.2rem; border-top:1px solid var(--border-color);">
+                    <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.9rem;">
+                        <input type="text" id="condividiLinkInput" readonly style="flex:1;">
+                        <button type="button" class="btn-secondary" onclick="_copiaLinkCondividiWidget()" title="Copia link"><i class="fa-solid fa-copy"></i></button>
+                    </div>
+                    <div id="condividiQrContainer" style="display:flex; justify-content:center; margin-bottom:0.9rem;"></div>
+                    <button type="button" class="btn-main" id="condividiBtnNativo" style="display:none; width:100%;" onclick="_condividiNativoWidget()"><i class="fa-solid fa-share-nodes"></i> Condividi</button>
+                </div>
+            </div>
+        </div>
+
         <div id="impostazioni" class="view-section">
             <div class="settings-card">
                 <h3 style="margin-bottom: 1rem; color: var(--text-dark); display: flex; align-items: center; gap: 0.6rem; font-size: 1.15rem; font-weight: 800;">
