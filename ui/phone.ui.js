@@ -29,39 +29,121 @@
 // arrivare ai widget, non più il contrario), non ha più senso aprirla
 // come un dettaglio da un widget. Vedi #phoneHomePage in index.html e
 // initPhoneShell qui sotto per lo spostamento del nodo #home.
-// ── LETTURA DEL CODICE CARTA ─────────────────────────────────────────────
-// Ricava set, numero e totale dal campo 'codice'. Il formato NON è definito
-// da nessuna parte nel sito (nessun placeholder, nessuna validazione): qui
-// si riconoscono i modi più diffusi di scriverlo, e in caso di dubbio si
-// restituisce null — meglio un widget che dice "codici non riconosciuti"
-// che uno che mostra percentuali inventate.
+// ── LIBRERIA DEI SET ─────────────────────────────────────────────────────
+// Il codice carta è nella forma "SIGLA NUMERO" — es. "ASC 123" = carta 123
+// di Ascesa Eroica. La sigla identifica l'espansione; il numero da solo non
+// dice quante carte la compongono.
 //
-// Riconosciuti:
-//   "045/198"        → set ricavato dal totale (198)
-//   "SV3 045/198"    → set 'SV3'
-//   "SV3-045/198"    → set 'SV3'
-//   "PAL 45"         → set 'PAL', totale ignoto (escluso dai conteggi)
-// Il set senza sigla usa il totale come nome ("Set da 198"): due espansioni
-// con lo stesso numero di carte finirebbero insieme. È un compromesso
-// dichiarato, non un errore nascosto — con una sigla vera non succede.
+// PERCHÉ SERVE QUESTA TABELLA (Claudio): il denominatore che si vede sulle
+// carte ("123/167") è il conteggio STAMPATO, non il totale reale — oltre
+// quel numero ci sono le secret rare. Calcolare l'avanzamento su 167
+// significherebbe mostrare "104%" a chi possiede anche le secret.
+// Servono quindi due numeri per ogni set: quante carte nel set base e
+// quante in tutto.
+//
+// STATO: vuota di proposito. Riempirla con dati inventati sarebbe peggio
+// che non averla — vedi le domande poste a Claudio a fine sessione su dove
+// farla vivere (tabella Supabase o file statico) e da dove prendere i
+// totali. Finché è vuota, il widget Set mostra quante carte hai per
+// espansione SENZA percentuali: un dato vero e utile, invece di una
+// percentuale su un totale sbagliato.
+//
+// Forma di ogni voce:
+//   SIGLA: { nome: 'Nome esteso', base: 167, totale: 190 }
+//     base   = carte del set principale (il denominatore stampato)
+//     totale = base + secret rare e aggiunte
+// La libreria vera vive in data/sets.library.js, generato da
+// genera-libreria-set.html e caricato PRIMA di questo file in index.html.
+// Qui restano solo le voci scritte a mano: servono da rete di sicurezza se
+// quel file manca (non ancora generato, oppure caricamento fallito).
+const _ballLIBRERIA_MANUALE = {
+    // ASC — Ascesa Eroica (Ascended Heroes), 30/01/2026. Numeri verificati
+    // su fonti pubbliche concordi: 217 carte nel set principale, 78 secret
+    // rare, 295 in totale. È il caso esatto per cui questa libreria esiste:
+    // una carta "ASC 123/217" appartiene a un set che ne ha 295, quindi
+    // calcolare l'avanzamento sul 217 stampato darebbe oltre il 100% a chi
+    // le possiede tutte.
+    ASC: { nome: 'Ascesa Eroica', base: 217, totale: 295 }
+};
+
+// Le voci generate hanno la precedenza su quelle manuali: se un domani il
+// file automatico correggerà un numero scritto a mano, vince il dato
+// aggiornato dalla fonte.
+const _ballLIBRERIA_SET = Object.assign(
+    {},
+    _ballLIBRERIA_MANUALE,
+    (typeof CARDSYNC_SET_LIBRARY !== 'undefined' && CARDSYNC_SET_LIBRARY) ? CARDSYNC_SET_LIBRARY : {}
+);
+
+
+// Ricava sigla e numero dal codice carta.
+//
+// REGOLA (tarata sui 1143 codici reali della collezione, non su ipotesi):
+// l'ULTIMA sequenza numerica è il numero della carta; tutto ciò che la
+// precede identifica il set, sottoinsiemi compresi. Copre il 97% delle
+// carte (98 sigle su 100), contro l'80% di una regex "sigla + numero".
+//
+// Esempi reali risolti da questa regola:
+//   "ASC 251"       → ASC / 251
+//   "PAR164"        → PAR / 164        (senza spazio)
+//   "XASC123"       → XASC / 123
+//   "BRS TG04"      → BRS-TG / 4       (Trainer Gallery: numerazione a sé)
+//   "CRZ GG22"      → CRZ-GG / 22      (Galarian Gallery)
+//   "CEL TR 15"     → CEL-TR / 15      (sottoinsieme Team Rocket)
+//   "PPS8 SCR 107"  → PPS8-SCR / 107
+//   "MCD25 5"       → MCD25 / 5        (McDonald's, uno per anno)
+//   "SM-P 47"       → SM-P / 47        (promo)
+//
+// I sottoinsiemi restano set DISTINTI apposta: una Trainer Gallery ha una
+// propria numerazione e un proprio totale, sommarla al set principale
+// falserebbe entrambi gli avanzamenti.
+//
+// NON riconosciuti, per ora: "MFB" e "PR" (28+1 carte) — codici senza
+// numero, quindi senza posizione in un set. Vanno chiariti con Claudio.
+//
+// CASO AMBIGUO NOTO: "SV9033" viene letto come SV9 / 33. Potrebbe essere
+// il set giapponese SV9 carta 033 (interpretazione scelta) oppure SV carta
+// 9033. Sono 9 carte: se la lettura è sbagliata, si corregge qui.
+// VARIANTI POKÉ BALL / MASTER BALL (Claudio): le sigle che iniziano per X
+// — XASC, XPRE, XBLK, XWHT, XJTG, XMEG, XDRI, XPFL, 255 carte in tutto —
+// NON sono set a sé: sono le stesse carte del set base con il pattern
+// Poké Ball o Master Ball al posto del reverse normale.
+// "XASC 123" è la carta 123 di Ascesa Eroica, non una carta in più.
+//
+// Per l'avanzamento del set vanno quindi ricondotte al set base, altrimenti
+// ASC comparirebbe come due espansioni distinte e nessuna delle due
+// risulterebbe mai completa. La variante resta comunque nota (campo
+// 'variante'), utile se un giorno vorrai contare il master set — cioè tutte
+// le varianti — invece del solo set base.
+function _ballSetBase(testa) {
+    const m = testa.match(/^X([A-Z]{2,6})(-.*)?$/);
+    if (!m) return { set: testa, variante: null };
+    return { set: m[1] + (m[2] || ''), variante: 'ball' };
+}
+
 function _ballLeggiCodice(codice) {
     if (!codice) return null;
     const t = String(codice).trim().toUpperCase();
 
-    // numero/totale, con sigla facoltativa davanti
-    // La sigla deve COMINCIARE con una lettera: senza questo vincolo, su
-    // "045/198" il gruppo facoltativo si mangiava le prime due cifre e il
-    // numero della carta diventava 5 invece di 45 (trovato eseguendo il
-    // lettore su codici di prova, non a occhio).
-    const m = t.match(/^(?:([A-Z][A-Z0-9]{1,7})[\s\-_]*)?(\d{1,3})\s*\/\s*(\d{1,3})$/);
+    const m = t.match(/^(.*?)[\s\-_]*(\d{1,3})$/);
     if (m) {
-        const sigla = m[1] || null;
-        const totale = parseInt(m[3], 10);
-        return {
-            set: sigla || `Set da ${totale}`,
-            numero: parseInt(m[2], 10),
-            totale
-        };
+        // Spazi e trattini interni diventano un separatore unico, così
+        // "CEL TR 15" e "CEL-TR-15" finiscono nello stesso set.
+        const testa = m[1].trim().replace(/^[\s\-_]+|[\s\-_]+$/g, '').replace(/[\s\-_]+/g, '-');
+        if (testa && /[A-Z]/.test(testa)) {
+            const b = _ballSetBase(testa);
+            return { set: b.set, variante: b.variante, numero: parseInt(m[2], 10) };
+        }
+    }
+
+    // Set SENZA numerazione, es. "MFB" (My First Battle, 28 carte) e "PR".
+    // Claudio: quelle carte un numero non ce l'hanno proprio. Restituiamo
+    // comunque il set con numero null: così le carte non spariscono dal
+    // conteggio delle espansioni, ma non entrano in nessun avanzamento —
+    // senza numerazione non esiste un "quante ne mancano".
+    if (/^[A-Z][A-Z\-]{0,7}$/.test(t)) {
+        const b = _ballSetBase(t);
+        return { set: b.set, variante: b.variante, numero: null };
     }
     return null;
 }
@@ -473,23 +555,42 @@ const CATALOGO_WIDGET = {
                 const letto = _ballLeggiCodice(c.code);
                 if (!letto) return;
                 riconosciute++;
-                const k = letto.set;
-                if (!set[k]) set[k] = { nome: k, possedute: new Set(), totale: letto.totale || 0 };
-                set[k].possedute.add(letto.numero);
-                if (letto.totale > set[k].totale) set[k].totale = letto.totale;
+                if (!set[letto.set]) set[letto.set] = { numeri: new Set(), senzaNumero: 0 };
+                // Le carte con numero si contano per numeri DISTINTI: la
+                // stessa carta posseduta in versione normale e Poké Ball
+                // vale uno solo ai fini del set completo.
+                if (letto.numero != null) set[letto.set].numeri.add(letto.numero);
+                else set[letto.set].senzaNumero++;
             });
-            const voci = Object.values(set)
-                .filter(s => s.totale > 0)
-                .map(s => ({ nome: s.nome, hai: s.possedute.size, totale: s.totale, perc: Math.min(100, (s.possedute.size / s.totale) * 100) }))
-                .sort((a, b) => b.perc - a.perc);
+
+            const voci = Object.entries(set).map(([sigla, conteggio]) => {
+                const info = _ballLIBRERIA_SET[sigla];
+                const hai = conteggio.numeri.size + conteggio.senzaNumero;
+                return {
+                    sigla,
+                    nome: info ? info.nome : sigla,
+                    hai,
+                    // Un set senza numerazione (MFB) non ha avanzamento
+                    // possibile: si mostra solo quante carte hai.
+                    senzaNumerazione: conteggio.numeri.size === 0 && conteggio.senzaNumero > 0,
+                    // Il totale c'è solo se il set è in libreria: senza,
+                    // niente percentuale (mai un avanzamento su un totale
+                    // che non conosciamo).
+                    totale: info ? info.totale : null,
+                    perc: info && info.totale && conteggio.numeri.size > 0
+                        ? Math.min(100, (conteggio.numeri.size / info.totale) * 100)
+                        : null
+                };
+            }).sort((a, b) => (b.perc ?? -1) - (a.perc ?? -1) || b.hai - a.hai);
 
             if (voci.length === 0) {
-                return { righe: [riconosciute === 0 ? 'Codici non riconosciuti' : 'Nessun set completabile'], dati: { voci: [], riconosciute } };
+                return { righe: [riconosciute === 0 ? 'Codici non riconosciuti' : 'Nessun set'], dati: { voci: [], riconosciute, inLibreria: 0 } };
             }
-            const migliore = voci[0];
+            const inLibreria = voci.filter(v => v.totale).length;
+            const prima = voci[0];
             return {
-                righe: [`${migliore.nome}: ${migliore.hai}/${migliore.totale}`],
-                dati: { voci, riconosciute }
+                righe: [prima.totale ? `${prima.nome}: ${prima.hai}/${prima.totale}` : `${voci.length} espansioni`],
+                dati: { voci, riconosciute, inLibreria }
             };
         },
         tab: 'visualizzazione',
@@ -1405,20 +1506,33 @@ const _ballCORPI = {
         if (!d) return { inline: '', blocco: '' };
         if (!d.voci || !d.voci.length) {
             return {
-                inline: '<p class="ball-k-tit">Set</p>' +
-                        '<div class="ball-k-mid">—</div>' +
-                        `<span class="ball-k-lab">${d.riconosciute ? 'nessun set completabile' : 'codici non riconosciuti'}</span>`,
+                inline: '<p class="ball-k-tit">Set</p><div class="ball-k-mid">—</div>' +
+                        `<span class="ball-k-lab">${d.riconosciute ? 'nessuna espansione' : 'codici non riconosciuti'}</span>`,
                 blocco: ''
             };
         }
-        const m = d.voci[0];
+        const prima = d.voci[0];
+
+        // Con il set in libreria si mostra l'avanzamento; senza, si mostra
+        // quante carte hai — mai una percentuale su un totale ignoto.
         const inline =
             '<p class="ball-k-tit">Set</p>' +
-            `<div class="ball-k-big ball-k-mono">${Math.round(m.perc)}%</div>` +
-            `<span class="ball-k-lab">${m.nome} · ${m.totale - m.hai} alla fine</span>`;
-        const blocco = d.voci.slice(0, 4).map(v =>
-            _ballRigaBarra(v.nome, `${v.hai}/${v.totale}`, v.perc,
-                `_ballAzioneRiga(event,'tab','visualizzazione')`)).join('');
+            ((prima.totale && prima.perc != null)
+                ? `<div class="ball-k-big ball-k-mono">${Math.round(prima.perc)}%</div>` +
+                  `<span class="ball-k-lab">${prima.nome} · ${prima.totale - prima.hai} alla fine</span>`
+                : `<div class="ball-k-big ball-k-mono">${d.voci.length}</div>` +
+                  `<span class="ball-k-lab">espansioni · ${prima.nome} in testa</span>`);
+
+        const blocco = d.voci.slice(0, 4).map(v => (v.totale && v.perc != null)
+            ? _ballRigaBarra(v.nome, `${v.hai}/${v.totale}`, v.perc, `_ballAzioneRiga(event,'tab','visualizzazione')`)
+            : `<div class="ball-riga ball-clic" onclick="_ballAzioneRiga(event,'tab','visualizzazione')">
+                   <span class="ball-nome">${v.nome}</span><span class="ball-dato">${v.hai} carte</span>
+               </div>`
+        ).join('') +
+        // Se nessun set è in libreria è giusto dirlo, invece di lasciare
+        // pensare che l'avanzamento non esista.
+        (d.inLibreria === 0 ? '<span class="ball-k-lab ball-attesa">Avanzamento non disponibile: libreria set da compilare</span>' : '');
+
         return { inline, blocco };
     },
 
