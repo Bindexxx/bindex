@@ -683,7 +683,10 @@ const CATALOGO_WIDGET = {
 };
 
 const ORDINE_WIDGET_DEFAULT = ['visualizzazione', 'inserimento', 'prezzi', 'binder', 'sealed'];
-const MAX_WIDGET_VISIBILI = 10;
+// TEMPORANEO (Claudio, 2026-08-28): nessun limite, per poter provare tutti
+// i widget del catalogo insieme in home. Da RIPRISTINARE a 10 quando finito
+// — è l'unica riga da cambiare, usata solo qui sotto e in _mostraWidget().
+const MAX_WIDGET_VISIBILI = Infinity;
 const TAGLIE_CICLO = ['1x1', '2x1', '1x2', '2x2']; // ordine di ciclo del ridimensionamento
 
 let _layoutWidget = null; // [{id, visibile, size}], ordine = ordine di visualizzazione
