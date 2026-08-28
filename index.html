@@ -840,7 +840,24 @@
             gap: 0.7rem;
         }
         @media (orientation: landscape) {
-            #phoneWidgetGrid { grid-template-columns: repeat(4, 1fr); }
+            /* Opzione B (Claudio, 2026-08-28): elastica invece di colonne
+               fisse. Prima erano 4 colonne rigide (repeat(4, 1fr)): su
+               schermi larghi ogni cella diventava molto più larga della
+               sfera fissa (--ball-misura: 90px), che restava centrata in
+               mezzo a un vuoto. Ora ogni colonna sta tra 90px (mai sotto,
+               la sfera non si schiaccia mai) e 110px (mai sopra, niente
+               più celle enormi) — il browser ne mette quante ce ne stanno.
+               Su un landscape tipico ne escono 6 per riga; su schermi più
+               stretti scende a 5/4 da sola senza andare in overflow; su
+               desktop molto larghi (la cornice landscape non ha un tetto
+               massimo come quella verticale, per restare agganciata ai
+               bordi) può salirne anche di più — accettato come trade-off,
+               vedi discussione in sessione. justify-content: center evita
+               che l'ultima riga incompleta si accalchi a sinistra. */
+            #phoneWidgetGrid {
+                grid-template-columns: repeat(auto-fill, minmax(90px, 110px));
+                justify-content: center;
+            }
         }
 
         /* Taglie multiple (Claudio: "ridimensionamento libero") — 4 preset,
