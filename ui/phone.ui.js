@@ -2696,12 +2696,11 @@ async function renderPaginaMatch() {
         testo: `<strong>${escapeHtml(m.mio_nome)}</strong> (tua, in Wishlist${m.mio_prezzo_obiettivo != null ? `, fino a ${Number(m.mio_prezzo_obiettivo).toFixed(2)} €` : ''}) — ce l'ha in Scambio a ${Number(m.altro_prezzo || 0).toFixed(2)} €`,
     }));
 
-    // APERTO: "nascondi" non filtra ancora nulla — _matchNascostiSet() è
-    // un segnaposto (Set vuoto) finché non verifichiamo lo schema di
-    // preferenze_utente (Claudio, 2026-08-28, risposta 2: deve essere
-    // per-utente, non per-dispositivo — non riuso prefMatchVistiGet, che
-    // è localStorage).
-    const nascosti = _matchNascostiSet();
+    // Collegato a preferenze_utente.match_nascosti (migration 30,
+    // eseguita) — persistente per-utente, non per-dispositivo (Claudio,
+    // 2026-08-28, risposta 2: non riusa prefMatchVistiGet, che è
+    // localStorage e quindi per-dispositivo).
+    const nascosti = await _matchNascostiSet(userId);
     const tutte = [...righeScambio, ...righeWishlist].filter(r => !nascosti.has(r.chiave));
 
     if (tutte.length === 0) {
@@ -2729,21 +2728,34 @@ async function renderPaginaMatch() {
         </div>`).join('');
 }
 
-// APERTO — segnaposto in attesa della verifica su preferenze_utente
-// (query di verifica proposta a Claudio, 2026-08-28). Set sempre vuoto:
-// oggi "nascondi" non nasconde nulla dopo un ricaricamento.
-function _matchNascostiSet() {
-    return new Set();
+// Legge preferenze_utente.match_nascosti (migration 30) e lo trasforma
+// in un Set di chiavi — stesso pattern di lettura di userSettingsGet già
+// usato altrove nel sito, nessuna query nuova inventata.
+async function _matchNascostiSet(userId) {
+    if (!userId) return new Set();
+    try {
+        const { data, error } = await userSettingsGet(userId);
+        if (error || !data || !data.match_nascosti) return new Set();
+        return new Set(JSON.parse(data.match_nascosti));
+    } catch (e) {
+        console.error('_matchNascostiSet: errore lettura/parsing:', e);
+        return new Set();
+    }
 }
 
-// APERTO — segnaposto: nessuna scrittura reale finché non c'è la colonna
-// verificata. Nasconde solo per QUESTA sessione di render (esperienza
-// immediata "ha funzionato"), ma torna a comparire al prossimo refresh —
-// dichiarato onestamente nell'alert, non spacciato per persistente.
-function _nascondiMatch(chiave, evt) {
+// Nasconde subito la riga (feedback immediato, prima ancora che il
+// salvataggio finisca) e scrive per davvero su preferenze_utente —
+// persistente per-utente, sopravvive a refresh e cambio dispositivo.
+async function _nascondiMatch(chiave, evt) {
     const tile = evt?.currentTarget?.closest('.widget-picker-riga');
     if (tile) tile.style.display = 'none';
-    console.warn('_nascondiMatch: nasconde solo in questa sessione, persistenza non ancora collegata a preferenze_utente (chiave:', chiave, ')');
+
+    const userId = await authGetUserId();
+    if (!userId) return;
+    const attuali = await _matchNascostiSet(userId);
+    attuali.add(chiave);
+    const { error } = await userSettingsUpsertMatchNascosti(userId, [...attuali]);
+    if (error) console.error('_nascondiMatch: errore salvataggio:', error.message);
 }
 
 // Stesso schema URL di _linkPubblicoCondivisione (navigation.ui.js):
