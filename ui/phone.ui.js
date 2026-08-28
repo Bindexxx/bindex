@@ -68,12 +68,40 @@ const _ballLIBRERIA_MANUALE = {
 
 // Le voci generate hanno la precedenza su quelle manuali: se un domani il
 // file automatico correggerà un numero scritto a mano, vince il dato
-// aggiornato dalla fonte.
-const _ballLIBRERIA_SET = Object.assign(
+// aggiornato dalla fonte. Le voci lette dalla tabella Supabase, quando
+// arrivano, hanno la precedenza su entrambe (vedi _ballCaricaLibreriaDaDb).
+let _ballLIBRERIA_SET = Object.assign(
     {},
     _ballLIBRERIA_MANUALE,
     (typeof CARDSYNC_SET_LIBRARY !== 'undefined' && CARDSYNC_SET_LIBRARY) ? CARDSYNC_SET_LIBRARY : {}
 );
+
+// Sovrascrive la libreria con la tabella 'set_espansioni' (migration 28),
+// che è la fonte aggiornabile senza toccare il repository del sito.
+// Se la tabella non c'è ancora, non risponde o è vuota, NON si tocca
+// niente: resta la libreria dal file statico. Una libreria un po' più
+// vecchia è sempre meglio di nessuna libreria.
+async function _ballCaricaLibreriaDaDb() {
+    if (typeof setEspansioniLeggiTutte !== 'function') return;
+    try {
+        const righe = await setEspansioniLeggiTutte();
+        if (!righe || !righe.length) return;
+
+        const daDb = {};
+        righe.forEach(r => {
+            if (!r.sigla || !r.carte_totali) return;
+            daDb[String(r.sigla).toUpperCase()] = {
+                nome: r.nome || r.sigla,
+                base: r.carte_base ?? null,
+                totale: r.carte_totali
+            };
+        });
+        _ballLIBRERIA_SET = Object.assign({}, _ballLIBRERIA_SET, daDb);
+        renderWidgetHome();
+    } catch (e) {
+        console.error('Libreria set da DB:', e);
+    }
+}
 
 
 // Ricava sigla e numero dal codice carta.
@@ -2646,6 +2674,9 @@ async function initPhoneShell() {
     // già calcolate dall'ultimo render.
     if (BALL_ATTIVA) {
         _ballApplicaClasseAnimazioni();
+        // Non bloccante: la home si disegna subito con la libreria dal file
+        // statico, e si aggiorna da sola se la tabella risponde.
+        _ballCaricaLibreriaDaDb();
         _ballAvviaSemaforo();
         _ballOsservaTema();
         _ballSincronizzaToggleImpostazioni();
