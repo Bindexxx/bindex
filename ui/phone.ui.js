@@ -41,8 +41,23 @@ const CATALOGO_WIDGET = {
             const ultime = collezione.slice()
                 .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
                 .slice(0, 4)
-                .map(c => ({ id: c.id, nome: c.name || '', immagine: c.immagine }));
-            return { righe: [`${n} carte totali`], dati: { totale: n, ultime } };
+                .map(c => ({ id: c.id, nome: c.name || '', immagine: c.immagine, rarita: c.rarita }));
+
+            // Andamento VERO degli inserimenti negli ultimi 14 giorni, per
+            // la sparkline: quante carte sono entrate ogni giorno. Dato già
+            // in memoria (createdAt), nessuna query nuova.
+            const GIORNI = 14;
+            const oggi = new Date(); oggi.setHours(0, 0, 0, 0);
+            const serie = new Array(GIORNI).fill(0);
+            collezione.forEach(c => {
+                if (!c.createdAt) return;
+                const d = new Date(c.createdAt); d.setHours(0, 0, 0, 0);
+                const scarto = Math.round((oggi - d) / 86400000);
+                if (scarto >= 0 && scarto < GIORNI) serie[GIORNI - 1 - scarto]++;
+            });
+            const aggiunteRecenti = serie.reduce((a, b) => a + b, 0);
+
+            return { righe: [`${n} carte totali`], dati: { totale: n, ultime, serie, aggiunteRecenti } };
         },
     },
     inserimento: {
@@ -65,11 +80,17 @@ const CATALOGO_WIDGET = {
             const lista = (typeof _elencoPrezziScaduti !== 'undefined' && _elencoPrezziScaduti) ? _elencoPrezziScaduti : [];
             // Totale su cui calcolare la quota di aggiornati: le carte in
             // collezione con un prezzo. Nessuna query nuova, solo carteReali.
-            const conPrezzo = carteReali.filter(c => c.stato === 'collezione' && c.price != null).length;
+            const inCollezione = carteReali.filter(c => c.stato === 'collezione');
+            const conPrezzo = inCollezione.filter(c => c.price != null).length;
+            // Valore complessivo: prezzo per quantità, dati già in memoria.
+            const valore = inCollezione.reduce((tot, c) => tot + (Number(c.price) || 0) * (Number(c.qty) || 1), 0);
             const dati = {
                 scaduti: lista.length,
                 totale: Math.max(conPrezzo, lista.length),
-                lista: lista.slice(0, 3).map(v => v.name || '—')
+                valore,
+                // 'ultimoTesto' è la forma confermata di _elencoPrezziScaduti
+                // (vedi apriModalePrezziScaduti in ui/prices.ui.js r.212).
+                lista: lista.slice(0, 3).map(v => ({ nome: v.name || '—', quando: v.ultimoTesto || '' }))
             };
             if (lista.length === 0) return { righe: ['Tutti aggiornati'], stato: 'ok', dati };
             return { righe: [`${lista.length} da aggiornare`, lista[0].name || ''], stato: 'allerta', dati };
@@ -879,10 +900,17 @@ function _ballAvviaSemaforo() {
 // non basterebbe.
 function _ballOsservaTema() {
     if (!window.MutationObserver) return;
-    let ultimo = document.body.className;
+    // Solo queste tre classi cambiano l'aspetto delle sfere. Guardare
+    // l'intera className farebbe ridisegnare tutto anche per classi che non
+    // c'entrano nulla — per esempio 'senza-anim-widget', che aggiungiamo noi
+    // stessi e provocherebbe un secondo render inutile.
+    const rilevanti = ['dark-mode', 'theme-verde', 'theme-pokemon'];
+    const leggi = () => rilevanti.filter(c => document.body.classList.contains(c)).join(',');
+    let ultimo = leggi();
     new MutationObserver(() => {
-        if (document.body.className === ultimo) return;
-        ultimo = document.body.className;
+        const ora = leggi();
+        if (ora === ultimo) return;
+        ultimo = ora;
         _ballSvutaCache();
         renderWidgetHome();
     }).observe(document.body, { attributes: true, attributeFilter: ['class'] });
@@ -894,7 +922,15 @@ function toggleAnimWidget(attive) {
     prefAnimWidgetSet(attive);
     const riga = document.getElementById('rigaAnimCattura');
     if (riga) riga.style.opacity = attive ? '1' : '0.45';
+    _ballApplicaClasseAnimazioni();
     renderWidgetHome();
+}
+
+// Con le animazioni spente non deve restare NIENTE che si muova da solo:
+// cattura e semaforo li fermano già le due funzioni _ballAnimazioni*, ma il
+// riflesso olografico delle miniature è puro CSS e va fermato da qui.
+function _ballApplicaClasseAnimazioni() {
+    document.body.classList.toggle('senza-anim-widget', !prefAnimWidgetGet());
 }
 function toggleAnimCattura(attiva) { prefAnimCatturaSet(attiva); }
 function toggleScritteBall(attive) { prefScritteBallSet(attive); _ballSvutaCache(); renderWidgetHome(); }
@@ -999,24 +1035,107 @@ function _ballAzioneRiga(evt, tipo, valore) {
     }
 }
 
-function _ballBarra(percento, etichetta, valore, azione) {
+// ── MINIATURA DI UNA CARTA ───────────────────────────────────────────────
+// Ricalcata su miniCarta() del mockup (cardsync.js r.516): rettangolo con
+// gradiente, una barra chiara in alto al posto dell'illustrazione e una
+// sottile in basso al posto del testo, angoli morbidi e ombra leggera.
+//
+// DIFFERENZA VOLUTA dal mockup: lì le carte erano finte, qui esistono
+// davvero. Quando c'è l'immagine la mostriamo — vale più di un rettangolo
+// colorato — e il disegno di Opus resta come RIPIEGO per le carte senza
+// immagine, dove finora c'era un'icona grigia.
+//
+// Il colore del ripiego non è casuale ad ogni render: è derivato dal nome
+// della carta, così la stessa carta ha sempre la sua tinta e la striscia
+// non "sfarfalla" ad ogni giro di polling.
+function _ballTintaDaNome(nome) {
+    let h = 0;
+    const t = String(nome || '');
+    for (let i = 0; i < t.length; i++) h = (h * 31 + t.charCodeAt(i)) % 360;
+    return `hsl(${h}, 52%, 58%)`;
+}
+
+function _ballMiniCarta(c) {
+    const titolo = String(c.nome || '').replace(/"/g, '&quot;');
+    const clic = `onclick="_ballAzioneRiga(event,'carta','${c.id}')"`;
+
+    // Holo scorrevole: nel mockup segnala le carte speciali. Qui dipende dal
+    // campo 'rarita', che al 27/08/2026 NON esiste nello schema (verificato
+    // in sessione precedente su information_schema.columns) — quindi oggi
+    // non si accende su nulla e non costa niente. Se un giorno il campo
+    // arriverà, si accenderà da solo sulle carte rare.
+    const speciale = c.rarita && /rara|ultra|secret|holo/i.test(String(c.rarita));
+    const classi = 'ball-mini' + (speciale ? ' holo' : '');
+
+    if (c.immagine) {
+        const url = _urlImmagineVisualizzabile(c.immagine, 96) || '';
+        // Se l'immagine non carica, resta visibile il ripiego disegnato che
+        // sta sotto: nessun buco grigio.
+        return `<span class="${classi}" style="background:linear-gradient(150deg, ${_ballTintaDaNome(c.nome)}, rgba(0,0,0,.35))" title="${titolo}" ${clic}>
+                    <i></i><u></u>
+                    <img src="${url}" alt="" onerror="this.remove();">
+                </span>`;
+    }
+    return `<span class="${classi}" style="background:linear-gradient(150deg, ${_ballTintaDaNome(c.nome)}, rgba(0,0,0,.35))" title="${titolo}" ${clic}><i></i><u></u></span>`;
+}
+
+// ── COMPONENTI VISIVI, ricalcati dal mockup ──────────────────────────────
+// Tipografia e componenti vengono da cardsync.css: k-tit (titolo), k-big
+// (dato principale, 25px), k-mid, k-lab (etichetta piccola), pill, barra,
+// riga, sparkline, stat-griglia, pulsante azione.
+//
+// NOMI PREFISSATI: nel mockup si chiamano .riga, .nome, .dato, .pill,
+// .stat, .azione — nomi generici che nel CSS globale del sito sono GIÀ
+// usati 17 volte. Prefissati con ball- mantenendo proprietà identiche.
+
+// Sparkline SVG, identica a sparkline() del mockup (cardsync.js r.522):
+// area sfumata sotto e linea sopra, tracciato normalizzato su min/max.
+function _ballSparkline(serie, colore) {
+    if (!serie || serie.length < 2) return '';
+    const min = Math.min(...serie), max = Math.max(...serie);
+    const span = (max - min) || 1;
+    const punti = serie.map((v, i) => {
+        const x = (i / (serie.length - 1)) * 100;
+        const y = 30 - ((v - min) / span) * 26;
+        return x.toFixed(1) + ',' + y.toFixed(1);
+    });
+    return `<svg class="ball-spark" viewBox="0 0 100 34" preserveAspectRatio="none">
+        <polygon points="0,34 ${punti.join(' ')} 100,34" fill="${colore}" opacity=".16"/>
+        <polyline points="${punti.join(' ')}" fill="none" stroke="${colore}" stroke-width="2.4"
+                  stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/>
+    </svg>`;
+}
+
+// Riga con barra di avanzamento (come il corpo 'set' del mockup).
+function _ballRigaBarra(nome, dato, percento, azione) {
     const p = Math.max(0, Math.min(100, percento));
-    const clic = azione ? ` onclick="${azione}" class="ball-riga ball-riga-clic"` : ' class="ball-riga"';
+    const clic = azione ? ` onclick="${azione}" class="ball-riga-set ball-clic"` : ' class="ball-riga-set"';
     return `<div${clic}>
-        <div class="ball-riga-testa"><span>${etichetta}</span><b>${valore}</b></div>
-        <div class="ball-barra"><i style="width:${p}%"></i></div>
+        <div class="ball-riga"><span class="ball-nome">${nome}</span><span class="ball-dato">${dato}</span></div>
+        <div class="ball-barra-out"><div class="ball-barra-in" style="width:${p}%"></div></div>
     </div>`;
 }
 
-function _ballChip(testo, azione, forte) {
-    const clic = azione ? ` onclick="${azione}"` : '';
-    return `<span class="ball-chip${forte ? ' forte' : ''}"${clic}>${testo}</span>`;
+// Riga semplice nome + valore/i.
+function _ballRiga(nome, ...dati) {
+    return `<div class="ball-riga">
+        <span class="ball-nome">${nome}</span>
+        ${dati.map(d => `<span class="ball-dato">${d}</span>`).join('')}
+    </div>`;
+}
+
+function _ballPill(testo, acceso) {
+    return `<span class="ball-pill${acceso ? ' acceso' : ''}">${testo}</span>`;
+}
+
+function _ballPulsante(testo, azione) {
+    return `<button type="button" class="ball-azione" onclick="${azione}">${testo}</button>`;
 }
 
 // ── I QUATTRO CORPI ──────────────────────────────────────────────────────
 const _ballCORPI = {
-    // Prezzi: quanti sono aggiornati sul totale, e quali chiedono attenzione.
-    // Ogni carta scaduta è una riga a sé, toccabile.
+    // Prezzi: quanti chiedono attenzione, quanto vale la collezione, la
+    // quota di aggiornati come barra e le carte scadute come righe.
     prezzi: (d) => {
         if (!d) return { inline: '', blocco: '' };
         const scaduti = d.scaduti || 0;
@@ -1024,59 +1143,81 @@ const _ballCORPI = {
         const aggiornati = Math.max(0, totale - scaduti);
         const perc = totale > 0 ? (aggiornati / totale) * 100 : 100;
 
-        const inline = scaduti === 0
-            ? `<div class="ball-cifra ok">${totale}</div><div class="ball-sotto">tutti aggiornati</div>`
-            : `<div class="ball-cifra allerta">${scaduti}</div><div class="ball-sotto">da aggiornare</div>`;
+        const inline =
+            '<p class="ball-k-tit">Prezzi</p>' +
+            `<div class="ball-k-big ball-k-mono${scaduti > 0 ? ' giu' : ' su'}">${scaduti > 0 ? scaduti : totale}</div>` +
+            `<span class="ball-k-lab">${scaduti > 0 ? 'da aggiornare' : 'tutti aggiornati'}</span>` +
+            (d.valore ? `<span class="ball-k-lab">€ ${d.valore.toLocaleString('it-IT', { maximumFractionDigits: 0 })} in collezione</span>` : '');
 
-        let blocco = _ballBarra(perc, 'Aggiornati', `${aggiornati}/${totale}`, `_ballAzioneRiga(event,'tab','prezzi')`);
+        let blocco =
+            '<div class="ball-barra-testo"><span>Aggiornati</span><span>' + aggiornati + '/' + totale + '</span></div>' +
+            `<div class="ball-barra-out"><div class="ball-barra-in" style="width:${perc.toFixed(1)}%"></div></div>`;
+
         if (d.lista && d.lista.length) {
-            blocco += '<div class="ball-elenco">' + d.lista.slice(0, 3).map(v =>
-                `<div class="ball-riga ball-riga-clic" onclick="_ballAzioneRiga(event,'prezzi-scaduti')">
-                    <span class="ball-punto"></span><span class="ball-nome">${v}</span>
+            blocco += '<div class="ball-riga-set">' + d.lista.slice(0, 3).map(v =>
+                `<div class="ball-riga ball-clic" onclick="_ballAzioneRiga(event,'prezzi-scaduti')">
+                    <span class="ball-nome">${v.nome}</span><span class="ball-dato">${v.quando}</span>
                  </div>`).join('') + '</div>';
+            blocco += _ballPulsante('Vedi tutte', `_ballAzioneRiga(event,'prezzi-scaduti')`);
         }
         return { inline, blocco };
     },
 
-    // Visualizzazione: il totale, e le ultime carte entrate in collezione
-    // come miniature — ognuna apre la sua scheda.
+    // Visualizzazione: il totale, l'andamento vero degli inserimenti degli
+    // ultimi 14 giorni come sparkline, e le ultime carte entrate.
     visualizzazione: (d) => {
         if (!d) return { inline: '', blocco: '' };
-        const inline = `<div class="ball-cifra">${(d.totale || 0).toLocaleString('it-IT')}</div><div class="ball-sotto">carte in collezione</div>`;
+        const inline =
+            '<p class="ball-k-tit">Collezione</p>' +
+            `<div class="ball-k-big ball-k-mono">${(d.totale || 0).toLocaleString('it-IT')}</div>` +
+            '<span class="ball-k-lab">carte in collezione</span>' +
+            (d.aggiunteRecenti ? `<span class="ball-k-lab su">+${d.aggiunteRecenti} negli ultimi 14 giorni</span>` : '');
+
         let blocco = '';
+        if (d.serie && d.serie.length > 1) blocco += _ballSparkline(d.serie, 'var(--accent)');
         if (d.ultime && d.ultime.length) {
-            blocco = '<div class="ball-miniature">' + d.ultime.map(c =>
-                `<div class="ball-mini ball-riga-clic" onclick="_ballAzioneRiga(event,'carta','${c.id}')" title="${(c.nome || '').replace(/"/g, '&quot;')}">
-                    ${c.immagine ? `<img src="${_urlImmagineVisualizzabile(c.immagine, 96) || ''}" alt="" onerror="this.style.display='none';">` : '<i class="fa-solid fa-image"></i>'}
-                 </div>`).join('') + '</div>';
+            blocco += '<div class="ball-strip">' + d.ultime.map(c => _ballMiniCarta(c)).join('') + '</div>' +
+                      '<span class="ball-k-lab">Ultime aggiunte</span>';
         }
         return { inline, blocco };
     },
 
-    // Location: dove stanno davvero le carte. Una barra per posto, in scala
-    // sulla location più piena.
+    // Location: quante posizioni, e una barra per ciascuna delle più piene,
+    // in scala sulla maggiore. Ogni riga apre la collezione già filtrata.
     location: (d) => {
         if (!d || !d.voci || !d.voci.length) return { inline: '', blocco: '' };
         const massimo = d.voci[0][1] || 1;
-        const inline = `<div class="ball-cifra">${d.voci.length}</div><div class="ball-sotto">${d.voci.length === 1 ? 'posizione' : 'posizioni'}</div>`;
+        const prima = d.voci[0];
+        const inline =
+            '<p class="ball-k-tit">Location</p>' +
+            `<div class="ball-k-big ball-k-mono">${d.voci.length}</div>` +
+            `<span class="ball-k-lab">${d.voci.length === 1 ? 'posizione' : 'posizioni'} · più piena ${prima[0]}</span>`;
+
         const blocco = d.voci.slice(0, 4).map(([nome, n]) =>
-            _ballBarra((n / massimo) * 100, nome, n, `_ballAzioneRiga(event,'location','${String(nome).replace(/'/g, "\\'")}')`)
+            _ballRigaBarra(nome, n, (n / massimo) * 100,
+                `_ballAzioneRiga(event,'location','${String(nome).replace(/'/g, "\\'")}')`)
         ).join('');
         return { inline, blocco };
     },
 
-    // Match: scambio e wishlist separati, perché sono due cose diverse e
-    // portano a due letture diverse della stessa pagina.
+    // Match: il totale, e i due tipi come riquadri di statistica separati —
+    // scambio e wishlist sono due cose diverse.
     match: (d) => {
         if (!d) return { inline: '', blocco: '' };
-        const totale = (d.scambio || 0) + (d.wishlist || 0);
-        const inline = totale === 0
-            ? '<div class="ball-cifra">0</div><div class="ball-sotto">nessuna novità</div>'
-            : `<div class="ball-cifra ok">${totale}</div><div class="ball-sotto">${totale === 1 ? 'corrispondenza' : 'corrispondenze'}</div>`;
-        const blocco = '<div class="ball-chips">' +
-            _ballChip(`Scambio ${d.scambio || 0}`, `_ballAzioneRiga(event,'tab','binder')`, (d.scambio || 0) > 0) +
-            _ballChip(`Wishlist ${d.wishlist || 0}`, `_ballAzioneRiga(event,'tab','binder')`, (d.wishlist || 0) > 0) +
-            '</div>';
+        const scambio = d.scambio || 0, wishlist = d.wishlist || 0;
+        const totale = scambio + wishlist;
+        const inline =
+            '<p class="ball-k-tit">Match trovati</p>' +
+            `<div class="ball-k-big ball-k-mono${totale > 0 ? ' su' : ''}">${totale}</div>` +
+            `<span class="ball-k-lab">${totale === 0 ? 'nessuna novità' : (totale === 1 ? 'corrispondenza' : 'corrispondenze')}</span>` +
+            (totale > 0 ? _ballPill('da vedere', true) : '');
+
+        const blocco =
+            '<div class="ball-stat-griglia">' +
+                `<div class="ball-stat ball-clic" onclick="_ballAzioneRiga(event,'tab','binder')"><b>${scambio}</b><span>Scambio</span></div>` +
+                `<div class="ball-stat ball-clic" onclick="_ballAzioneRiga(event,'tab','binder')"><b>${wishlist}</b><span>Wishlist</span></div>` +
+            '</div>' +
+            (totale > 0 ? _ballPulsante('Apri Binders', `_ballAzioneRiga(event,'tab','binder')`) : '');
         return { inline, blocco };
     }
 };
@@ -1934,6 +2075,7 @@ async function initPhoneShell() {
     // muovere le ball non richiede di rileggere niente, usa le attenzioni
     // già calcolate dall'ultimo render.
     if (BALL_ATTIVA) {
+        _ballApplicaClasseAnimazioni();
         _ballAvviaSemaforo();
         _ballOsservaTema();
         _ballSincronizzaToggleImpostazioni();
