@@ -317,18 +317,30 @@ const CATALOGO_WIDGET = {
     },
 
     ultima_carta: {
-        titolo: 'Ultima carta', icona: 'fa-clock-rotate-left',
-        // Stesso ordinamento di caricaAttivitaRecentiHome in home.ui.js
-        // (createdAt decrescente), qui solo la prima — dati già in
-        // carteReali. Click apre il flip-modal esistente (apriFlipCardHome
-        // in home.ui.js), non un popup nuovo.
-        preview: () => {
-            const collezione = carteReali.filter(c => c.stato === 'collezione');
-            if (collezione.length === 0) return { righe: ['Nessuna carta'] };
-            const ultima = collezione.slice().sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))[0];
-            return { righe: [ultima.name || ''], immagine: ultima.immagine, cardId: ultima.id, rarita: ultima.rarita };
+        titolo: 'Vetrina', icona: 'fa-star', multiIstanza: true,
+        // TRASFORMATO (Claudio, 2026-08-28): da "ultima carta entrata" a
+        // vetrina di carte preferite scelte a mano — vedi ricerca carte più
+        // sotto (_apriRicercaCartaVetrina). Copie multiple: ogni riga di
+        // _layoutWidget con questo id ha il proprio 'cartaId', il widget
+        // catalogo resta UNO SOLO — vedi 'multiIstanza' sopra.
+        // Riceve la riga di layout (w) come parametro: è l'unico modo per
+        // sapere QUALE carta mostrare, dato che più copie condividono lo
+        // stesso 'id' di catalogo. Tutti gli altri 18 widget ignorano
+        // questo parametro, nessuna modifica per loro.
+        preview: (w) => {
+            if (!w || w.cartaId == null) return { righe: ['Scegli una carta'], dati: { vuoto: true } };
+            const carta = carteReali.find(c => String(c.id) === String(w.cartaId));
+            if (!carta) return { righe: ['Carta non più disponibile'], dati: { vuoto: true } };
+            return { righe: [carta.name || ''], immagine: carta.immagine, cardId: carta.id, rarita: carta.rarita };
         },
-        azione: (dati) => { if (dati && dati.cardId != null) apriFlipCardHome(dati.cardId); },
+        // Stato vuoto (mai scelta, o cancellata nel frattempo): il tap
+        // apre la ricerca invece del flip-modal. 'w' è il terzo parametro
+        // che _eseguiAzioneWidget passa ora a TUTTE le azioni (gli altri
+        // 18 widget lo ignorano, retrocompatibile).
+        azione: (dati, punto, w) => {
+            if (dati && dati.vuoto) { if (w) _apriRicercaCartaVetrina(w.instanceId); return; }
+            if (dati && dati.cardId != null) apriFlipCardHome(dati.cardId);
+        },
     },
     // RIMOSSO (Claudio, 2026-08-28): "Carta del giorno", ritenuto inutile.
     // Voci orfane in _ballTITOLI_BREVI/_ballASPETTO lasciate intatte —
@@ -419,7 +431,7 @@ const CATALOGO_WIDGET = {
     // render della home) delle altre chiamate verso l'estensione — zero
     // query nuove, stessa filosofia degli altri widget.
     estensione: {
-        titolo: 'Estensione', icona: 'fa-plug',
+        titolo: 'Estensione', icona: 'fa-link',
         preview: async () => {
             const versione = await _chiediVersioneEstensione();
             if (!versione) return { righe: ['Non rilevata'], rilevata: false, dati: { rilevata: false } };
@@ -469,7 +481,7 @@ const CATALOGO_WIDGET = {
             const top = coll.slice()
                 .sort((a, b) => (Number(b.price) || 0) - (Number(a.price) || 0))
                 .slice(0, 3)
-                .map(c => ({ nome: c.name || '—', valore: Number(c.price) || 0, id: c.id }));
+                .map(c => ({ nome: c.name || '—', valore: Number(c.price) || 0, id: c.id, immagine: c.immagine, rarita: c.rarita }));
             const media = coll.length ? valore / coll.length : 0;
             return {
                 righe: [`€ ${valore.toLocaleString('it-IT', { maximumFractionDigits: 0 })}`],
@@ -492,7 +504,7 @@ const CATALOGO_WIDGET = {
                 righe: [`${doppie.length} carte in più copie`],
                 dati: {
                     titoli: doppie.length, copieExtra, valoreExtra,
-                    lista: doppie.slice(0, 3).map(c => ({ nome: c.name || '—', qty: Number(c.qty) || 1, id: c.id }))
+                    lista: doppie.slice(0, 3).map(c => ({ nome: c.name || '—', qty: Number(c.qty) || 1, id: c.id, immagine: c.immagine, rarita: c.rarita }))
                 }
             };
         },
@@ -548,21 +560,7 @@ const CATALOGO_WIDGET = {
         tab: 'visualizzazione',
     },
 
-    lingue: {
-        titolo: 'Lingue', icona: 'fa-language',
-        preview: () => {
-            const coll = carteReali.filter(c => c.stato === 'collezione');
-            const conteggi = {};
-            coll.forEach(c => { const k = c.lang || '—'; conteggi[k] = (conteggi[k] || 0) + 1; });
-            const voci = Object.entries(conteggi).sort((a, b) => b[1] - a[1]);
-            if (!voci.length) return { righe: ['Nessuna carta'], dati: { voci: [], totale: 0 } };
-            return {
-                righe: [`${voci.length} lingu${voci.length === 1 ? 'a' : 'e'} · ${voci[0][0]} in testa`],
-                dati: { voci, totale: coll.length }
-            };
-        },
-        tab: 'visualizzazione',
-    },
+    // RIMOSSO (Claudio, 2026-08-28): "Lingue".
 
     // ── SET / ESPANSIONI ─────────────────────────────────────────────────
     // Avanzamento verso il set completo, dedotto dal CODICE della carta.
@@ -667,22 +665,49 @@ let _resizeCorniceTimeout = null;
 let _cartaDelGiornoId = null;
 let _primoRenderWidgetFatto = false; // per la cascata d'ingresso, una sola volta per sessione
 
+// Identificatore univoco di RIGA in _layoutWidget — non l'id di catalogo:
+// da quando "Vetrina" può avere più copie con lo stesso id ('ultima_carta'),
+// serve una chiave che distingua ciascuna copia. Usato in data-widget-id
+// al posto di w.id per drag/resize/nascondi — vedi renderWidgetHome.
+function _nuovoInstanceId() {
+    return 'w_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8);
+}
+
 // ── LAYOUT: caricamento/salvataggio per-dispositivo ──────────────────────
 function _caricaLayoutWidget() {
     let salvato = null;
     try { salvato = JSON.parse(prefWidgetLayoutGet() || 'null'); } catch (_) { salvato = null; }
 
     if (!Array.isArray(salvato) || salvato.length === 0) {
-        _layoutWidget = ORDINE_WIDGET_DEFAULT.map(id => ({ id, visibile: true, size: '1x1', mini: false }));
+        _layoutWidget = ORDINE_WIDGET_DEFAULT.map(id => ({ id, instanceId: _nuovoInstanceId(), visibile: true, size: '1x1', mini: false, cartaId: null }));
         return;
     }
+    let generatoQualcheId = false;
     const validi = salvato
         .filter(w => CATALOGO_WIDGET[w.id])
-        .map(w => ({ id: w.id, visibile: !!w.visibile, size: TAGLIE_CICLO.includes(w.size) ? w.size : '1x1', mini: !!w.mini }));
-    Object.keys(CATALOGO_WIDGET).forEach(id => {
-        if (!validi.find(w => w.id === id)) validi.push({ id, visibile: false, size: '1x1', mini: false });
+        .map(w => {
+            if (!w.instanceId) generatoQualcheId = true; // layout salvato PRIMA di questa sessione: assegna una volta, si salva sotto
+            return {
+                id: w.id,
+                instanceId: w.instanceId || _nuovoInstanceId(),
+                visibile: !!w.visibile,
+                size: TAGLIE_CICLO.includes(w.size) ? w.size : '1x1',
+                mini: !!w.mini,
+                cartaId: w.cartaId != null ? w.cartaId : null,
+            };
+        });
+    // Bootstrap a riga singola SOLO per i widget normali: le copie di un
+    // widget multiIstanza (Vetrina) nascono esclusivamente dal picker
+    // "Aggiungi", mai automaticamente — un id simile qui creerebbe una
+    // copia vuota e invisibile che nessuno ha chiesto.
+    Object.entries(CATALOGO_WIDGET).forEach(([id, def]) => {
+        if (def.multiIstanza) return;
+        if (!validi.find(w => w.id === id)) validi.push({ id, instanceId: _nuovoInstanceId(), visibile: false, size: '1x1', mini: false, cartaId: null });
     });
     _layoutWidget = validi;
+    // Persiste subito gli instanceId appena generati per un layout vecchio,
+    // così al prossimo giro non li rigenera (restano stabili tra i render).
+    if (generatoQualcheId) _salvaLayoutWidget();
 }
 
 function _salvaLayoutWidget() {
@@ -961,7 +986,7 @@ const _ballTITOLI_BREVI = {
     prezzi: 'Prezzi',
     binder: 'Binders',
     sealed: 'Sealed',
-    ultima_carta: 'Ultima',
+    ultima_carta: 'Preferita',
     carta_del_giorno: 'Del giorno',
     gruppo_attivo: 'Gruppo',
     location: 'Location',
@@ -1440,9 +1465,10 @@ function _ballTintaDaNome(nome) {
     return `hsl(${h}, 52%, 58%)`;
 }
 
-function _ballMiniCarta(c) {
+function _ballMiniCarta(c, badge) {
     const titolo = String(c.nome || '').replace(/"/g, '&quot;');
     const clic = `onclick="_ballAzioneRiga(event,'carta','${c.id}')"`;
+    const badgeHtml = badge ? `<b class="ball-mini-badge">${badge}</b>` : '';
 
     // Holo scorrevole: nel mockup segnala le carte speciali. Qui dipende dal
     // campo 'rarita', che al 27/08/2026 NON esiste nello schema (verificato
@@ -1459,9 +1485,10 @@ function _ballMiniCarta(c) {
         return `<span class="${classi}" style="background:linear-gradient(150deg, ${_ballTintaDaNome(c.nome)}, rgba(0,0,0,.35))" title="${titolo}" ${clic}>
                     <i></i><u></u>
                     <img src="${url}" alt="" onerror="this.remove();">
+                    ${badgeHtml}
                 </span>`;
     }
-    return `<span class="${classi}" style="background:linear-gradient(150deg, ${_ballTintaDaNome(c.nome)}, rgba(0,0,0,.35))" title="${titolo}" ${clic}><i></i><u></u></span>`;
+    return `<span class="${classi}" style="background:linear-gradient(150deg, ${_ballTintaDaNome(c.nome)}, rgba(0,0,0,.35))" title="${titolo}" ${clic}><i></i><u></u>${badgeHtml}</span>`;
 }
 
 // ── COMPONENTI VISIVI, ricalcati dal mockup ──────────────────────────────
@@ -1584,10 +1611,7 @@ const _ballCORPI = {
             `<span class="ball-k-lab">${d.pezzi} pezzi · media ${eur(d.media)}</span>`;
         let blocco = '';
         if (d.top && d.top.length) {
-            blocco = '<div class="ball-riga-set">' + d.top.map(c =>
-                `<div class="ball-riga ball-clic" onclick="_ballAzioneRiga(event,'carta','${c.id}')">
-                    <span class="ball-nome">${c.nome}</span><span class="ball-dato">${eur(c.valore)}</span>
-                 </div>`).join('') + '</div>' +
+            blocco = '<div class="ball-strip">' + d.top.map(c => _ballMiniCarta(c)).join('') + '</div>' +
                 '<span class="ball-k-lab">Le più preziose</span>';
         }
         return { inline, blocco };
@@ -1602,10 +1626,8 @@ const _ballCORPI = {
             (d.valoreExtra > 0 ? `<span class="ball-k-lab su">€ ${Math.round(d.valoreExtra).toLocaleString('it-IT')} scambiabili</span>` : '');
         let blocco = '';
         if (d.lista && d.lista.length) {
-            blocco = '<div class="ball-riga-set">' + d.lista.map(c =>
-                `<div class="ball-riga ball-clic" onclick="_ballAzioneRiga(event,'carta','${c.id}')">
-                    <span class="ball-nome">${c.nome}</span><span class="ball-dato">×${c.qty}</span>
-                 </div>`).join('') + '</div>';
+            blocco = '<div class="ball-strip">' + d.lista.map(c => _ballMiniCarta(c, '×' + c.qty)).join('') + '</div>' +
+                '<span class="ball-k-lab">Le carte doppie</span>';
         }
         return { inline, blocco };
     },
@@ -1867,9 +1889,9 @@ async function renderWidgetHome() {
         if (!def) return '';
         let anteprima = { righe: ['—'] };
         if (!def.bloccato) {
-            try { anteprima = await def.preview(); } catch (e) { console.error('Errore preview widget ' + w.id + ':', e); }
+            try { anteprima = await def.preview(w); } catch (e) { console.error('Errore preview widget ' + w.id + ':', e); }
         } else {
-            anteprima = def.preview();
+            anteprima = def.preview(w);
         }
 
         const classeStato = anteprima.stato === 'allerta' ? 'widget-tile-allerta' : (anteprima.stato === 'ok' ? 'widget-tile-ok' : '');
@@ -1880,9 +1902,9 @@ async function renderWidgetHome() {
             <div class="widget-edit-controls" onclick="event.stopPropagation()">
                 <button type="button" onclick="_spostaWidget(${indice}, -1)" title="Sposta su" ${indice === 0 ? 'disabled' : ''}><i class="fa-solid fa-arrow-up"></i></button>
                 <button type="button" onclick="_spostaWidget(${indice}, 1)" title="Sposta giù" ${indice === visibili.length - 1 ? 'disabled' : ''}><i class="fa-solid fa-arrow-down"></i></button>
-                <button type="button" onclick="_nascondiWidget('${w.id}')" title="Rimuovi dalla home" class="widget-edit-remove"><i class="fa-solid fa-xmark"></i></button>
+                <button type="button" onclick="_nascondiWidget('${w.instanceId}')" title="Rimuovi dalla home" class="widget-edit-remove"><i class="fa-solid fa-xmark"></i></button>
             </div>
-            <div class="widget-resize-handle" data-widget-id="${w.id}" title="Trascina per ridimensionare"><i class="fa-solid fa-up-right-and-down-left-from-center"></i></div>` : '';
+            <div class="widget-resize-handle" data-widget-id="${w.instanceId}" title="Trascina per ridimensionare"><i class="fa-solid fa-up-right-and-down-left-from-center"></i></div>` : '';
 
         // Badge Pokédex sul primo numero trovato in "righe".
         // CORREZIONE 27/08/2026: la regex era /\d+/ e su "1.284 carte
@@ -1903,7 +1925,7 @@ async function renderWidgetHome() {
             ? `<div class="widget-tile-thumb-row"><img class="widget-tile-thumb${classeRarita}" src="${_urlImmagineVisualizzabile(anteprima.immagine, 96) || ''}" alt="" onerror="this.style.display='none';"></div>`
             : '';
 
-        const azioneClick = _editModeWidget || def.decorativo ? '' : `onclick="_eseguiAzioneWidget('${w.id}', event)"`;
+        const azioneClick = _editModeWidget || def.decorativo ? '' : `onclick="_eseguiAzioneWidget('${w.instanceId}', event)"`;
 
         // ── VISUALE DELLA TESSERA ───────────────────────────────────────
         // Con BALL_ATTIVA la vecchia icona FontAwesome lascia il posto alla
@@ -1941,7 +1963,7 @@ async function renderWidgetHome() {
 
         // Chi ha bisogno di attenzione: letto qui, usato dal semaforo senza
         // rifare nessuna query (i preview sono già stati calcolati sopra).
-        attenzioni[w.id] = _ballChiedeAttenzione(w.id, anteprima);
+        attenzioni[w.instanceId] = _ballChiedeAttenzione(w.id, anteprima);
 
         // ── CORPO DELLA TESSERA ─────────────────────────────────────────
         // 1x1 e mini: solo la sfera, col titolo inciso nella pancia.
@@ -1971,7 +1993,7 @@ async function renderWidgetHome() {
         }
 
         return `
-            <div class="widget-tile ${classeStato} ${classeCascata} widget-size-${w.size} ${w.mini ? 'widget-tile-mini' : ''}" ${stileRitardo} data-widget-id="${w.id}" data-widget-index="${indice}" ${azioneClick}>
+            <div class="widget-tile ${classeStato} ${classeCascata} widget-size-${w.size} ${w.mini ? 'widget-tile-mini' : ''}" ${stileRitardo} data-widget-id="${w.instanceId}" data-widget-index="${indice}" ${azioneClick}>
                 ${controlliEdit}
                 ${badge}
                 <div class="tile-tinta"></div><div class="tile-alone"></div>
@@ -2012,8 +2034,9 @@ async function renderWidgetHome() {
 // presente (riceve gli stessi dati calcolati da preview, per widget come
 // carta del giorno/ultima carta che devono sapere QUALE carta aprire),
 // altrimenti apre come dettaglio la tab indicata in 'tab' o l'id stesso.
-async function _eseguiAzioneWidget(id, evt) {
-    const def = CATALOGO_WIDGET[id];
+async function _eseguiAzioneWidget(instanceId, evt) {
+    const w = _layoutWidget.find(x => x.instanceId === instanceId);
+    const def = w && CATALOGO_WIDGET[w.id];
     if (!def || def.bloccato) return;
 
     // Animazione di cattura PRIMA di aprire. Mai in modalità modifica: lì
@@ -2031,11 +2054,11 @@ async function _eseguiAzioneWidget(id, evt) {
 
     if (def.azione) {
         let dati = null;
-        try { dati = await def.preview(); } catch (_) { dati = null; }
-        def.azione(dati, punto);
+        try { dati = await def.preview(w); } catch (_) { dati = null; }
+        def.azione(dati, punto, w);
         return;
     }
-    apriDettaglioWidget(def.tab || id, punto);
+    apriDettaglioWidget(def.tab || w.id, punto);
 }
 
 function _spostaWidget(indiceVisibile, direzione) {
@@ -2049,24 +2072,39 @@ function _spostaWidget(indiceVisibile, direzione) {
     renderWidgetHome();
 }
 
-function _nascondiWidget(id) {
-    const w = _layoutWidget.find(x => x.id === id);
-    if (w) w.visibile = false;
+function _nascondiWidget(instanceId) {
+    const idx = _layoutWidget.findIndex(x => x.instanceId === instanceId);
+    if (idx < 0) return;
+    const w = _layoutWidget[idx];
+    const def = CATALOGO_WIDGET[w.id];
+    if (def && def.multiIstanza) {
+        _layoutWidget.splice(idx, 1); // istanza effimera: via del tutto, non solo nascosta
+    } else {
+        w.visibile = false;
+    }
     _salvaLayoutWidget();
     renderWidgetHome();
 }
 
+// Picker "Aggiungi": due tipi di voci ora. I widget multiIstanza (Vetrina)
+// compaiono SEMPRE, anche se ne hai già una copia — cliccare ne crea una
+// nuova. I widget normali compaiono solo se attualmente nascosti, come
+// prima (_mostraWidget li riattiva, riga unica già esistente).
 function _apriPickerAggiungiWidget() {
-    const nascosti = _layoutWidget.filter(w => !w.visibile);
+    const nascosti = _layoutWidget.filter(w => !w.visibile && !(CATALOGO_WIDGET[w.id] && CATALOGO_WIDGET[w.id].multiIstanza));
+    const multi = Object.entries(CATALOGO_WIDGET).filter(([, def]) => def.multiIstanza);
+
     const container = document.getElementById('widgetPickerLista');
-    if (nascosti.length === 0) {
-        container.innerHTML = '<p style="text-align:center; color:var(--text-muted); font-size:0.85rem; padding:1rem 0;">Nessun altro widget disponibile.</p>';
-    } else {
-        container.innerHTML = nascosti.map(w => `
-            <div class="widget-picker-riga" onclick="_mostraWidget('${w.id}')">
-                <i class="fa-solid ${CATALOGO_WIDGET[w.id].icona}"></i> ${CATALOGO_WIDGET[w.id].titolo}
-            </div>`).join('');
-    }
+    const vociMulti = multi.map(([id, def]) => `
+        <div class="widget-picker-riga" onclick="_aggiungiIstanzaWidget('${id}')">
+            <i class="fa-solid ${def.icona}"></i> Aggiungi ${def.titolo}
+        </div>`);
+    const vociSingole = nascosti.map(w => `
+        <div class="widget-picker-riga" onclick="_mostraWidget('${w.id}')">
+            <i class="fa-solid ${CATALOGO_WIDGET[w.id].icona}"></i> ${CATALOGO_WIDGET[w.id].titolo}
+        </div>`);
+    const tutte = [...vociMulti, ...vociSingole].join('');
+    container.innerHTML = tutte || '<p style="text-align:center; color:var(--text-muted); font-size:0.85rem; padding:1rem 0;">Nessun altro widget disponibile.</p>';
     document.getElementById('widgetPickerModal').style.display = 'flex';
 }
 
@@ -2081,6 +2119,98 @@ function _mostraWidget(id) {
     if (w) w.visibile = true;
     _salvaLayoutWidget();
     _chiudiPickerAggiungiWidget();
+    renderWidgetHome();
+}
+
+// Crea una nuova copia di un widget multiIstanza (oggi solo Vetrina) e
+// apre subito la ricerca carte per scegliere cosa mostrarci — niente
+// copia vuota abbandonata in giro senza che l'utente sappia cosa farci.
+function _aggiungiIstanzaWidget(id) {
+    const visibiliCount = _layoutWidget.filter(w => w.visibile).length;
+    if (visibiliCount >= MAX_WIDGET_VISIBILI) { alert(`Massimo ${MAX_WIDGET_VISIBILI} widget in home.`); return; }
+    const nuovo = { id, instanceId: _nuovoInstanceId(), visibile: true, size: '1x1', mini: false, cartaId: null };
+    _layoutWidget.push(nuovo);
+    _salvaLayoutWidget();
+    _chiudiPickerAggiungiWidget();
+    renderWidgetHome();
+    _apriRicercaCartaVetrina(nuovo.instanceId);
+}
+
+// ── RICERCA CARTE — per scegliere la carta di una Vetrina ────────────────
+// Stessa identica logica di ricerca già in filterTable() (cards.ui.js):
+// nome o codice, minuscolo, includes — non esiste un modale di selezione
+// carta riutilizzabile nel sito (verificato leggendo cards.ui.js e
+// home.ui.js per intero), quindi questo è un contenitore nuovo ma la
+// LOGICA di ricerca è la stessa a cui sei abituato, non inventata.
+//
+// Ambito: TUTTA carteReali (collezione + wishlist), non solo la
+// collezione — "una carta da tenere d'occhio" può ragionevolmente essere
+// anche una che non possiedi ancora. Dimmi se preferisci restringerlo
+// alla sola collezione.
+let _vetrinaRicercaInstanceId = null;
+
+function _apriRicercaCartaVetrina(instanceId) {
+    _vetrinaRicercaInstanceId = instanceId;
+    const input = document.getElementById('vetrinaRicercaInput');
+    if (input) input.value = '';
+    _renderRicercaCartaVetrina('');
+    document.getElementById('vetrinaRicercaModal').style.display = 'flex';
+    if (input) setTimeout(() => input.focus(), 50);
+}
+
+function _chiudiRicercaCartaVetrina() {
+    document.getElementById('vetrinaRicercaModal').style.display = 'none';
+    _vetrinaRicercaInstanceId = null;
+}
+
+function _filtraRicercaCartaVetrina(valore) {
+    _renderRicercaCartaVetrina(valore);
+}
+
+function _renderRicercaCartaVetrina(valore) {
+    const container = document.getElementById('vetrinaRicercaLista');
+    if (!container) return;
+    const cerca = String(valore || '').toLowerCase().trim();
+
+    // Come filterTable(): senza testo digitato, nessun risultato — evita
+    // di rendere subito una lista con centinaia di righe non richiesta.
+    if (!cerca) {
+        container.innerHTML = '<p style="text-align:center; color:var(--text-muted); font-size:0.85rem; padding:1rem 0;">Scrivi per cercare per nome o codice.</p>';
+        return;
+    }
+
+    const risultati = carteReali
+        .filter(c => (c.name || '').toLowerCase().includes(cerca) || (c.code || '').toLowerCase().includes(cerca))
+        .slice(0, 30); // stessa cautela di _apriPickerAggiungiWidget: lista corta, mai una scrollata infinita
+
+    if (risultati.length === 0) {
+        container.innerHTML = '<p style="text-align:center; color:var(--text-muted); font-size:0.85rem; padding:1rem 0;">Nessuna carta trovata.</p>';
+        return;
+    }
+
+    container.innerHTML = risultati.map(c => {
+        const idAttr = String(c.id).replace(/'/g, "\\'");
+        const nomeAttr = (c.name || '').replace(/"/g, '&quot;');
+        const url = c.immagine ? (_urlImmagineVisualizzabile(c.immagine, 64) || '') : '';
+        const thumb = url
+            ? `<img src="${url}" alt="" style="width:32px; height:44px; object-fit:cover; border-radius:4px; flex-shrink:0;" onerror="this.style.display='none';">`
+            : `<i class="fa-solid fa-image" style="width:32px; text-align:center; color:var(--text-muted); flex-shrink:0;"></i>`;
+        return `
+            <div class="widget-picker-riga" onclick="_selezionaCartaVetrina('${idAttr}')" title="${nomeAttr}">
+                ${thumb}
+                <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${c.name || ''}
+                    <span style="color:var(--text-muted); font-weight:400; font-size:0.78rem;">${c.code ? ' · ' + c.code : ''}</span>
+                </span>
+            </div>`;
+    }).join('');
+}
+
+function _selezionaCartaVetrina(cardId) {
+    if (!_vetrinaRicercaInstanceId) return;
+    const w = _layoutWidget.find(x => x.instanceId === _vetrinaRicercaInstanceId);
+    if (w) w.cartaId = cardId;
+    _salvaLayoutWidget();
+    _chiudiRicercaCartaVetrina();
     renderWidgetHome();
 }
 
@@ -2128,9 +2258,8 @@ function _onResizeHandlePointerDown(e) {
     const id = e.currentTarget.dataset.widgetId;
     const tile = document.querySelector(`.widget-tile[data-widget-id="${id}"]`);
     const grid = document.getElementById('phoneWidgetGrid');
-    const w = _layoutWidget.find(x => x.id === id);
+    const w = _layoutWidget.find(x => x.instanceId === id);
     if (!tile || !grid || !w) return;
-
     const tileRect = tile.getBoundingClientRect();
     const gridStyle = getComputedStyle(grid);
     const numColonneGriglia = gridStyle.gridTemplateColumns.split(' ').filter(Boolean).length;
@@ -2171,7 +2300,7 @@ function _onResizeHandlePointerMove(e) {
     const colSpanGrezzo = Math.round(distX / (cellW + gap));
     const rowSpanGrezzo = Math.round(distY / (cellH + rowGap));
 
-    const w = _layoutWidget.find(x => x.id === id);
+    const w = _layoutWidget.find(x => x.instanceId === id);
     if (!w) return;
 
     // Sotto lo zero su entrambi gli assi (l'utente ha trascinato la
@@ -2278,8 +2407,8 @@ function _onWidgetPointerMove(e) {
         const idA = _dragState.id;
         const idB = tileSotto.dataset.widgetId;
         const visibili = _layoutWidget.filter(w => w.visibile);
-        const idxA = _layoutWidget.indexOf(visibili.find(w => w.id === idA));
-        const idxB = _layoutWidget.indexOf(visibili.find(w => w.id === idB));
+        const idxA = _layoutWidget.indexOf(visibili.find(w => w.instanceId === idA));
+        const idxB = _layoutWidget.indexOf(visibili.find(w => w.instanceId === idB));
         if (idxA >= 0 && idxB >= 0) _riordinaConAnimazione(idxA, idxB);
     }
 }
@@ -2337,8 +2466,9 @@ function _onWidgetPointerUp() {
 }
 
 // ── PEEK — anteprima al tocco lungo, senza aprire il popup fullscreen ────
-function _mostraPeek(id, tileEl) {
-    const def = CATALOGO_WIDGET[id];
+function _mostraPeek(instanceId, tileEl) {
+    const w = _layoutWidget.find(x => x.instanceId === instanceId);
+    const def = w && CATALOGO_WIDGET[w.id];
     if (!def) return;
     const overlay = document.getElementById('widgetPeekOverlay');
     const rect = tileEl.getBoundingClientRect();
@@ -2347,7 +2477,7 @@ function _mostraPeek(id, tileEl) {
     overlay.style.top = Math.max(8, rect.top - 10) + 'px';
     overlay.style.display = 'block';
 
-    Promise.resolve(def.preview()).then(anteprima => {
+    Promise.resolve(def.preview(w)).then(anteprima => {
         const el = document.getElementById('widgetPeekRighe');
         if (el) el.innerHTML = (anteprima.righe || []).map(r => `<span>${r}</span>`).join('<br>');
     }).catch(() => {});
