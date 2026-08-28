@@ -424,10 +424,9 @@ const CATALOGO_WIDGET = {
             if (totale === 0) return { righe: ['Nessuna novità'], dati };
             return { righe: [`${totale} nuov${totale === 1 ? 'a' : 'e'} corrispondenz${totale === 1 ? 'a' : 'e'}`], stato: 'ok', dati };
         },
-        // Le vecchie tab Scambio/Wishlist non esistono più come
-        // view-section dedicate dopo il Multi-Binder — il contenuto vive
-        // ora dentro Binders (binder tipizzati Scambio/Wishlist).
-        azione: (dati, evt) => { apriDettaglioWidget('binder', evt); },
+        // Pagina dedicata costruita 2026-08-28 (prima apriva Binders in
+        // generale, unico punto disponibile all'epoca).
+        azione: (dati, evt) => { apriDettaglioWidget('match', evt); },
     },
     // Sbloccato (Claudio, 2026-08-27): extension.ui.js letto per intero in
     // questa sessione. _chiediVersioneEstensione()/_chiediAiutaGruppoEstensione()
@@ -2534,16 +2533,18 @@ async function apriDettaglioWidget(tabId, evt) {
     clearTimeout(_chiusuraDettaglioTimeout); // annulla un'eventuale chiusura ancora in corso (riapertura rapida)
 
     const container = document.querySelector('.container');
-    if (tabId === 'dafare') {
+    if (tabId === 'dafare' || tabId === 'match') {
         // MAI switchTab() qui: quella funzione ha una whitelist fissa di 5
         // tab (navigation.ui.js r.199) ed è segnata nella memoria di
         // progetto come "deve restare stabile e intoccata" — un bug reale
         // c'è già stato lì in passato. Repliochiamo solo il minimo che
         // switchTab farebbe per una tab in whitelist (nascondi tutte le
-        // view-section, mostra la mia), concordato con Claudio 2026-08-28.
+        // view-section, mostra la mia), concordato con Claudio 2026-08-28
+        // (dafare) e riusato identico per 'match'.
         document.querySelectorAll('.view-section').forEach(sec => sec.classList.remove('active'));
-        document.getElementById('dafare')?.classList.add('active');
-        renderPaginaDaFare();
+        document.getElementById(tabId)?.classList.add('active');
+        if (tabId === 'dafare') renderPaginaDaFare();
+        if (tabId === 'match') renderPaginaMatch();
     } else {
         switchTab(tabId, null);
     }
@@ -2651,6 +2652,111 @@ function _apriVoceDaFare(tab, evt) {
         return;
     }
     apriDettaglioWidget(tab, evt);
+}
+
+// ── PAGINA "MATCH" ────────────────────────────────────────────────────
+// Riusa trovaMatch() e la stessa chiave stabile di _chiaveMatch (entrambe
+// già in queue.ui.js) — zero duplicazione della logica di interrogazione,
+// solo una resa diversa: entrambe le direzioni insieme, raggruppate per
+// persona, righe separate anche per la stessa carta (Claudio, 2026-08-28,
+// risposte 1/3/6).
+async function renderPaginaMatch() {
+    const container = document.getElementById('matchLista');
+    if (!container) return;
+    container.innerHTML = '<p style="text-align:center; color:var(--text-muted); font-size:0.85rem; padding:1rem 0;"><i class="fa-solid fa-spinner fa-spin"></i> Cerco corrispondenze…</p>';
+
+    const userId = await authGetUserId();
+    if (!userId) { container.innerHTML = ''; return; }
+
+    const [{ data: dataScambio, error: errS }, { data: dataWishlist, error: errW }] = await Promise.all([
+        trovaMatch('trova_match_scambio_wishlist', userId),
+        trovaMatch('trova_match_wishlist_scambio', userId),
+    ]);
+    if (errS || errW) {
+        container.innerHTML = `<p style="text-align:center; color:var(--danger); font-size:0.85rem; padding:1rem 0;">Errore nella ricerca match: ${((errS || errW).message)}</p>`;
+        return;
+    }
+
+    // Stessa chiave di _chiaveMatch (queue.ui.js) — non duplicata qui come
+    // funzione a sé per non rischiare che le due si scollino nel tempo,
+    // semplicemente la stessa formula copiata: se cambia una, deve
+    // cambiare anche l'altra (commento su entrambe).
+    const righeScambio = (dataScambio || []).map(m => ({
+        chiave: `${m.mia_carta_id}_${m.altra_wishlist_id}`,
+        persona: (m.altra_email || '').split('@')[0] || 'Utente',
+        ownerAltro: m.altro_owner_id,
+        direzione: 'scambio',
+        testo: `<strong>${escapeHtml(m.mio_nome)}</strong> (tuo, in Scambio, ${Number(m.mio_prezzo || 0).toFixed(2)} €) — lo cerca${m.altro_prezzo_obiettivo != null ? ` fino a ${Number(m.altro_prezzo_obiettivo).toFixed(2)} €` : ''}`,
+    }));
+    const righeWishlist = (dataWishlist || []).map(m => ({
+        chiave: `${m.mia_wishlist_id}_${m.altra_carta_id}`,
+        persona: (m.altra_email || '').split('@')[0] || 'Utente',
+        ownerAltro: m.altro_owner_id,
+        direzione: 'wishlist',
+        testo: `<strong>${escapeHtml(m.mio_nome)}</strong> (tua, in Wishlist${m.mio_prezzo_obiettivo != null ? `, fino a ${Number(m.mio_prezzo_obiettivo).toFixed(2)} €` : ''}) — ce l'ha in Scambio a ${Number(m.altro_prezzo || 0).toFixed(2)} €`,
+    }));
+
+    // APERTO: "nascondi" non filtra ancora nulla — _matchNascostiSet() è
+    // un segnaposto (Set vuoto) finché non verifichiamo lo schema di
+    // preferenze_utente (Claudio, 2026-08-28, risposta 2: deve essere
+    // per-utente, non per-dispositivo — non riuso prefMatchVistiGet, che
+    // è localStorage).
+    const nascosti = _matchNascostiSet();
+    const tutte = [...righeScambio, ...righeWishlist].filter(r => !nascosti.has(r.chiave));
+
+    if (tutte.length === 0) {
+        container.innerHTML = '<p style="text-align:center; color:var(--text-muted); font-size:0.9rem; padding:2rem 0;">Nessuna corrispondenza al momento.</p>';
+        return;
+    }
+
+    const perPersona = {};
+    tutte.forEach(r => { (perPersona[r.persona] ||= []).push(r); });
+
+    container.innerHTML = Object.entries(perPersona).map(([persona, righe]) => `
+        <div style="margin-bottom:1.1rem;">
+            <div style="font-weight:800; font-size:0.85rem; color:var(--primary); margin-bottom:0.4rem;">
+                <i class="fa-solid fa-user"></i> ${escapeHtml(persona)}
+            </div>
+            ${righe.map(r => `
+                <div class="widget-picker-riga" style="align-items:flex-start; flex-wrap:wrap; gap:0.5rem;">
+                    <span style="flex:1; min-width:200px; font-size:0.82rem;">${r.testo}</span>
+                    <div style="display:flex; gap:0.4rem; flex-shrink:0;">
+                        <button type="button" class="btn-secondary" style="font-size:0.72rem; padding:0.35rem 0.55rem;" onclick="event.stopPropagation(); _apriBinderAltruiMatch('${r.ownerAltro}', '${r.direzione}')" title="Vai al binder"><i class="fa-solid fa-layer-group"></i></button>
+                        <button type="button" class="btn-secondary" style="font-size:0.72rem; padding:0.35rem 0.55rem;" onclick="event.stopPropagation(); _contattaPersonaMatch('${r.ownerAltro}')" title="Contatta"><i class="fa-solid fa-comment"></i></button>
+                        <button type="button" class="btn-secondary" style="font-size:0.72rem; padding:0.35rem 0.55rem;" onclick="event.stopPropagation(); _nascondiMatch('${r.chiave}', event)" title="Nascondi"><i class="fa-solid fa-eye-slash"></i></button>
+                    </div>
+                </div>`).join('')}
+        </div>`).join('');
+}
+
+// APERTO — segnaposto in attesa della verifica su preferenze_utente
+// (query di verifica proposta a Claudio, 2026-08-28). Set sempre vuoto:
+// oggi "nascondi" non nasconde nulla dopo un ricaricamento.
+function _matchNascostiSet() {
+    return new Set();
+}
+
+// APERTO — segnaposto: nessuna scrittura reale finché non c'è la colonna
+// verificata. Nasconde solo per QUESTA sessione di render (esperienza
+// immediata "ha funzionato"), ma torna a comparire al prossimo refresh —
+// dichiarato onestamente nell'alert, non spacciato per persistente.
+function _nascondiMatch(chiave, evt) {
+    const tile = evt?.currentTarget?.closest('.widget-picker-riga');
+    if (tile) tile.style.display = 'none';
+    console.warn('_nascondiMatch: nasconde solo in questa sessione, persistenza non ancora collegata a preferenze_utente (chiave:', chiave, ')');
+}
+
+// APERTO — blocca sulla verifica dello schema 'binders' (serve il
+// binder_id dell'altra persona, che le RPC di match oggi non
+// restituiscono). Segnaposto onesto, non un link rotto silenzioso.
+function _apriBinderAltruiMatch(ownerAltro, direzione) {
+    alert('Collegamento diretto al binder in arrivo — verifica dati in corso.');
+}
+
+// Confermato segnaposto da Claudio (2026-08-28, risposta 2): il
+// meccanismo di contatto vero arriverà più avanti.
+function _contattaPersonaMatch(ownerAltro) {
+    alert('Funzione di contatto in arrivo.');
 }
 
 function _gestisciResizeCornice() {
