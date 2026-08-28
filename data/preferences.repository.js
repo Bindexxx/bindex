@@ -66,3 +66,35 @@ function prefWidgetLayoutSet(layoutJson) { localStorage.setItem('cardsyncWidgetL
 // disattivabili con un tap (bottone altoparlante in home).
 function prefSuoniWidgetGet() { const v = localStorage.getItem('cardsyncSuoniWidget'); return v === null ? true : v === 'true'; }
 function prefSuoniWidgetSet(attivi) { localStorage.setItem('cardsyncSuoniWidget', attivi ? 'true' : 'false'); }
+
+// ── GRAFICA POKÉ BALL DEI WIDGET (sessione 2026-08-27) ───────────────────
+// Quattro preferenze per-dispositivo, chiavi letterali qui dentro come
+// 'cardsyncWidgetLayout'/'cardsyncSuoniWidget' qui sopra — di proposito NON
+// usano costanti da state/*.js, così questo file resta l'unico da toccare.
+//
+// NOTA: esiste già prefRiduciAnimazioni() qui sopra, ma governa un'altra
+// cosa (il flash colorato sul prezzo quando lo modifichi — vedi il commento
+// sul toggle in index.html, riga ~3353). Le due cose sono tenute separate
+// apposta: chi vuole i prezzi senza flash non è detto voglia anche i widget
+// immobili. Se un giorno le vorrai unificate, basta far leggere a queste
+// la stessa chiave.
+
+// Spegne TUTTE le animazioni dei widget: cattura, semaforo (scosse e punti
+// esclamativi), cascata d'ingresso. Default: animazioni attive.
+function prefAnimWidgetGet() { const v = localStorage.getItem('cardsyncAnimWidget'); return v === null ? true : v === 'true'; }
+function prefAnimWidgetSet(attive) { localStorage.setItem('cardsyncAnimWidget', attive ? 'true' : 'false'); }
+
+// Spegne SOLO l'animazione di cattura (~2,6s all'apertura di un widget),
+// lasciando vivo il semaforo. Default: cattura attiva.
+function prefAnimCatturaGet() { const v = localStorage.getItem('cardsyncAnimCattura'); return v === null ? true : v === 'true'; }
+function prefAnimCatturaSet(attiva) { localStorage.setItem('cardsyncAnimCattura', attiva ? 'true' : 'false'); }
+
+// Scritte incise sulla pancia della ball (solo widget 1x1). Spente, restano
+// le ball nude: il titolo si legge comunque nella pagina che si apre.
+function prefScritteBallGet() { const v = localStorage.getItem('cardsyncScritteBall'); return v === null ? true : v === 'true'; }
+function prefScritteBallSet(attive) { localStorage.setItem('cardsyncScritteBall', attive ? 'true' : 'false'); }
+
+// Badge numerico in alto a destra sulla tessera. Su 1x1 ripete il dato già
+// inciso nella pancia, quindi qualcuno lo vorrà spento.
+function prefBadgeWidgetGet() { const v = localStorage.getItem('cardsyncBadgeWidget'); return v === null ? true : v === 'true'; }
+function prefBadgeWidgetSet(attivo) { localStorage.setItem('cardsyncBadgeWidget', attivo ? 'true' : 'false'); }
