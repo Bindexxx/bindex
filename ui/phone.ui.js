@@ -362,30 +362,34 @@ const CATALOGO_WIDGET = {
     },
     suggerimento: {
         titolo: 'Prossima azione', icona: 'fa-lightbulb',
-        // Stessa priorità/stessi segnali di _renderAvvisiHome in
-        // home.ui.js (coda errori → wishlist sotto obiettivo → prezzi
-        // scaduti → gruppo al lavoro), qui presa solo la prima voce attiva
-        // invece di mostrarle tutte.
+        // UNIFICATO con "Da fare" (Claudio, 2026-08-28: "saranno la stessa
+        // cosa"). Stessa priorità di sempre (coda errori → prezzi scaduti
+        // → wishlist sotto obiettivo → gruppo al lavoro) ma ora raccoglie
+        // TUTTI i segnali attivi, non solo il primo: il tile mostra solo
+        // il più urgente in testo, 'badge' (letto da renderWidgetHome
+        // invece del numero estratto da 'righe[0]') conta quanti sono
+        // attivi, e 'dati.segnali' è l'elenco completo che legge
+        // renderPaginaDaFare(). Il tap apre sempre la pagina dedicata,
+        // mai più una tab diversa a seconda del segnale.
         preview: async () => {
+            const segnali = [];
             const codaErrori = await _contaCodaErrori();
-            if (codaErrori > 0) return { righe: [`${codaErrori} carte da correggere`], stato: 'allerta', tabSuggerito: 'inserimento' , dati: { testo: `${codaErrori} carte da correggere`, tab: 'inserimento' } };
-
-            const wishlistSottoTarget = carteReali.filter(c => c.tabella === 'wishlist' && c.prezzoObiettivo != null && c.price > 0 && c.price <= c.prezzoObiettivo);
-            if (wishlistSottoTarget.length > 0) return { righe: [`${wishlistSottoTarget.length} in wishlist sotto obiettivo`], stato: 'ok', tabSuggerito: 'binder' , dati: { testo: `${wishlistSottoTarget.length} in wishlist sotto obiettivo`, tab: 'binder' } };
+            if (codaErrori > 0) segnali.push({ id: 'coda_errori', testo: `${codaErrori} carte da correggere`, stato: 'allerta', tab: 'inserimento' });
 
             const lista = (typeof _elencoPrezziScaduti !== 'undefined' && _elencoPrezziScaduti) ? _elencoPrezziScaduti : [];
-            if (lista.length > 0) return { righe: [`${lista.length} prezzi da aggiornare`], stato: 'allerta', tabSuggerito: 'prezzi' , dati: { testo: `${lista.length} prezzi da aggiornare`, tab: 'prezzi' } };
+            if (lista.length > 0) segnali.push({ id: 'prezzi_scaduti', testo: `${lista.length} prezzi da aggiornare`, stato: 'allerta', tab: 'prezzi' });
+
+            const wishlistSottoTarget = carteReali.filter(c => c.tabella === 'wishlist' && c.prezzoObiettivo != null && c.price > 0 && c.price <= c.prezzoObiettivo);
+            if (wishlistSottoTarget.length > 0) segnali.push({ id: 'wishlist_obiettivo', testo: `${wishlistSottoTarget.length} in wishlist sotto obiettivo`, stato: 'ok', tab: 'binder' });
 
             const alLavoro = await _dispositiviAttiviOra();
-            if (alLavoro) return { righe: ['Il gruppo sta lavorando'], tabSuggerito: 'home' , dati: { testo: 'Il gruppo sta lavorando', tab: 'home' } };
+            if (alLavoro) segnali.push({ id: 'gruppo_al_lavoro', testo: 'Il gruppo sta lavorando', stato: undefined, tab: 'home' });
 
-            return { righe: ['Tutto in ordine'], stato: 'ok', tabSuggerito: 'home' , dati: { testo: 'Tutto in ordine', tab: 'home' } };
+            if (segnali.length === 0) return { righe: ['Tutto in ordine'], stato: 'ok', dati: { segnali: [] } };
+            const primo = segnali[0];
+            return { righe: [primo.testo], stato: primo.stato, badge: segnali.length, dati: { segnali } };
         },
-        azione: (dati, evt) => {
-            const tab = (dati && dati.tabSuggerito) || 'home';
-            if (tab === 'home') { _vaiAllaPaginaHome(); return; }
-            apriDettaglioWidget(tab, evt);
-        },
+        azione: (dati, punto) => { apriDettaglioWidget('dafare', punto); },
     },
     // RIMOSSO (Claudio, 2026-08-28): "Orologio".
     // RIMOSSO (Claudio, 2026-08-28): "Aggiungi carta".
@@ -1913,8 +1917,12 @@ async function renderWidgetHome() {
         // separatori di migliaia e decimali.
         // Il badge è anche disattivabile da Impostazioni: su una tessera
         // 1x1 ripete il dato già inciso nella pancia della ball.
+        // 'badge' esplicito (oggi solo 'suggerimento': conta i segnali
+        // attivi, non un numero già dentro il testo) ha la precedenza;
+        // altrimenti resta il comportamento di sempre per tutti gli altri.
         const primoNumero = (anteprima.righe[0] || '').match(/\d[\d.,]*/);
-        const badge = (primoNumero && prefBadgeWidgetGet()) ? `<div class="widget-badge">${primoNumero[0]}</div>` : '';
+        const valoreBadge = anteprima.badge != null ? anteprima.badge : (primoNumero ? primoNumero[0] : null);
+        const badge = (valoreBadge != null && prefBadgeWidgetGet()) ? `<div class="widget-badge">${valoreBadge}</div>` : '';
 
         // Bordo colorato per rarità SOLO se la carta ha davvero un campo
         // 'rarita' valorizzato (mai confermato nello schema in questa
@@ -2526,7 +2534,19 @@ async function apriDettaglioWidget(tabId, evt) {
     clearTimeout(_chiusuraDettaglioTimeout); // annulla un'eventuale chiusura ancora in corso (riapertura rapida)
 
     const container = document.querySelector('.container');
-    switchTab(tabId, null);
+    if (tabId === 'dafare') {
+        // MAI switchTab() qui: quella funzione ha una whitelist fissa di 5
+        // tab (navigation.ui.js r.199) ed è segnata nella memoria di
+        // progetto come "deve restare stabile e intoccata" — un bug reale
+        // c'è già stato lì in passato. Repliochiamo solo il minimo che
+        // switchTab farebbe per una tab in whitelist (nascondi tutte le
+        // view-section, mostra la mia), concordato con Claudio 2026-08-28.
+        document.querySelectorAll('.view-section').forEach(sec => sec.classList.remove('active'));
+        document.getElementById('dafare')?.classList.add('active');
+        renderPaginaDaFare();
+    } else {
+        switchTab(tabId, null);
+    }
     document.body.classList.add('phone-detail-open');
 
     if (container) {
@@ -2570,6 +2590,67 @@ function chiudiDettaglioWidget() {
         if (container) container.classList.remove('container-visibile'); // SOLO ora, a transizione finita, torna display:none
         renderWidgetHome();
     }, DURATA_ANIMAZIONE_DETTAGLIO_MS);
+}
+
+// ── PAGINA "DA FARE" ──────────────────────────────────────────────────
+// Nessuna logica propria sui segnali: riusa CATALOGO_WIDGET.suggerimento
+// .preview(), la stessa fonte già mostrata (in parte) dal tile "Prossima
+// azione" — zero duplicazione, un solo posto dove i 4 segnali sono
+// calcolati (Claudio, 2026-08-28: "da fare e prossima azione saranno la
+// stessa cosa").
+//
+// APERTO: la persistenza "resta barrata 24 ore dopo la risoluzione"
+// (Claudio, risposta 10) non è ancora implementata — richiede
+// data/preferences.repository.js (mai letto in questa sessione) per
+// salvare per-dispositivo quando un segnale si è risolto. Oggi la lista
+// mostra solo i segnali ATTIVI in questo momento; quelli appena risolti
+// spariscono subito invece di restare barrati.
+async function renderPaginaDaFare() {
+    const container = document.getElementById('daFareLista');
+    if (!container) return;
+    container.innerHTML = '<p style="text-align:center; color:var(--text-muted); font-size:0.85rem; padding:1rem 0;">Caricamento…</p>';
+
+    let anteprima;
+    try { anteprima = await CATALOGO_WIDGET.suggerimento.preview(); } catch (e) { console.error('renderPaginaDaFare:', e); anteprima = { dati: { segnali: [] } }; }
+    const segnali = (anteprima.dati && anteprima.dati.segnali) || [];
+
+    if (segnali.length === 0) {
+        container.innerHTML = `
+            <p style="text-align:center; color:var(--text-muted); font-size:0.9rem; padding:2rem 0;">
+                <i class="fa-solid fa-circle-check" style="font-size:1.6rem; display:block; margin-bottom:0.6rem; color:var(--success);"></i>
+                Niente da fare — tutto in ordine.
+            </p>`;
+        return;
+    }
+
+    // Ordine = priorità: preview() li restituisce già in quest'ordine
+    // (coda errori → prezzi scaduti → wishlist sotto obiettivo → gruppo
+    // al lavoro), nessun riordino aggiuntivo qui (Claudio, risposta 12:
+    // "solo per priorità").
+    container.innerHTML = segnali.map(s => {
+        const alta = s.stato === 'allerta';
+        return `
+            <div class="widget-picker-riga" onclick="_apriVoceDaFare('${s.tab}', event)" style="align-items:flex-start;">
+                <i class="fa-regular fa-square" style="color:${alta ? 'var(--danger)' : 'var(--text-muted)'}; margin-top:0.15rem;"></i>
+                <span style="flex:1;">
+                    ${s.testo}
+                    ${alta ? '<span class="badge" style="background-color:var(--danger); color:#fff; margin-left:0.4rem; font-size:0.65rem; vertical-align:middle;">priorità alta</span>' : ''}
+                </span>
+            </div>`;
+    }).join('');
+}
+
+// Riusa apriDettaglioWidget per tutte le destinazioni tranne 'home' (già
+// collaudato, incluso il caricamento dati di Binders quando serve) — la
+// pagina "Da fare" stessa resta aperta nello stesso container, cambia
+// solo la view-section mostrata dentro.
+function _apriVoceDaFare(tab, evt) {
+    if (tab === 'home') {
+        chiudiDettaglioWidget();
+        setTimeout(_vaiAllaPaginaHome, DURATA_ANIMAZIONE_DETTAGLIO_MS);
+        return;
+    }
+    apriDettaglioWidget(tab, evt);
 }
 
 function _gestisciResizeCornice() {
