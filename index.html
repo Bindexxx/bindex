@@ -1195,6 +1195,108 @@
            il confronto con le sfere accanto. */
         .ball-ui .widget-size-1x1 .widget-tile-thumb { width: 62px; height: 86px; }
 
+        /* ── CONTENUTI DELLE TESSERE GRANDI ──────────────────────────────
+           Due slot: "testa" (sfera + titolo + dato saliente, su una riga) e
+           "blocco" (sotto, per barre/elenchi/miniature). Il blocco esiste
+           solo dove c'è altezza: su 2x1 viene nascosto, o schiaccerebbe la
+           riga superiore. */
+        .ball-ui .ball-testa {
+            display: flex; align-items: center; gap: 0.65rem;
+            width: 100%; min-width: 0;
+        }
+        .ball-ui .ball-slot-inline { min-width: 0; flex: 1; }
+        .ball-ui .ball-slot-blocco {
+            width: 100%; margin-top: 0.5rem;
+            display: flex; flex-direction: column; gap: 0.35rem;
+            min-width: 0;
+        }
+        /* 2x1 è largo ma basso: solo la riga superiore. */
+        .ball-ui .widget-size-2x1 .ball-slot-blocco { display: none; }
+        .ball-ui .widget-size-1x2,
+        .ball-ui .widget-size-2x2 { align-items: stretch; justify-content: flex-start; }
+        .ball-ui .widget-size-1x2 .ball-testa,
+        .ball-ui .widget-size-2x2 .ball-testa { flex-shrink: 0; }
+
+        .ball-ui .ball-testa .widget-tile-titolo {
+            font-size: 0.78rem; line-height: 1.15;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .ball-ui .widget-size-2x2 .ball-testa .widget-tile-titolo { font-size: 0.92rem; }
+
+        /* Il dato saliente: grosso, subito leggibile. */
+        .ball-ui .ball-cifra {
+            font-size: 1.45rem; font-weight: 800; line-height: 1.05;
+            color: var(--text-dark); letter-spacing: -0.5px;
+        }
+        .ball-ui .widget-size-2x2 .ball-cifra { font-size: 1.9rem; }
+        .ball-ui .ball-cifra.allerta { color: var(--danger); }
+        .ball-ui .ball-cifra.ok { color: var(--success, #2e7d32); }
+        .ball-ui .ball-sotto {
+            font-size: 0.66rem; font-weight: 600; color: var(--text-muted);
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .ball-ui .ball-righe-testo {
+            display: flex; flex-direction: column;
+            font-size: 0.72rem; color: var(--text-muted); font-weight: 600;
+        }
+
+        /* Righe: barre, elenchi, chip. Quelle toccabili si illuminano al
+           tocco, così è chiaro che sono bersagli a sé e non decorazione. */
+        .ball-ui .ball-riga { display: flex; flex-direction: column; gap: 0.2rem; border-radius: 8px; }
+        .ball-ui .ball-riga-clic { cursor: pointer; padding: 0.15rem 0.25rem; margin: 0 -0.25rem; }
+        .ball-ui .ball-riga-clic:active { background: color-mix(in srgb, var(--primary) 14%, transparent); }
+        .ball-ui .ball-riga-testa {
+            display: flex; justify-content: space-between; align-items: baseline; gap: 0.4rem;
+            font-size: 0.66rem; color: var(--text-muted); font-weight: 600;
+        }
+        .ball-ui .ball-riga-testa span {
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0;
+        }
+        .ball-ui .ball-riga-testa b { color: var(--text-dark); font-weight: 800; flex-shrink: 0; }
+        .ball-ui .ball-barra {
+            height: 5px; border-radius: 3px; overflow: hidden;
+            background: color-mix(in srgb, var(--text-muted) 20%, transparent);
+        }
+        .ball-ui .ball-barra i {
+            display: block; height: 100%; border-radius: 3px;
+            background: linear-gradient(90deg, var(--accent), color-mix(in srgb, var(--accent) 60%, #fff 40%));
+        }
+
+        .ball-ui .ball-elenco { display: flex; flex-direction: column; gap: 0.15rem; }
+        .ball-ui .ball-elenco .ball-riga { flex-direction: row; align-items: center; gap: 0.4rem; }
+        .ball-ui .ball-punto {
+            width: 6px; height: 6px; border-radius: 50%;
+            background: var(--danger); flex-shrink: 0;
+        }
+        .ball-ui .ball-nome {
+            font-size: 0.68rem; font-weight: 600; color: var(--text-dark);
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0;
+        }
+
+        .ball-ui .ball-chips { display: flex; gap: 0.35rem; flex-wrap: wrap; }
+        .ball-ui .ball-chip {
+            font-size: 0.64rem; font-weight: 700; padding: 0.22rem 0.5rem;
+            border-radius: 999px; cursor: pointer;
+            background: color-mix(in srgb, var(--text-muted) 15%, transparent);
+            color: var(--text-muted);
+        }
+        .ball-ui .ball-chip.forte {
+            background: color-mix(in srgb, var(--accent) 22%, transparent);
+            color: var(--text-dark);
+        }
+        .ball-ui .ball-chip:active { transform: scale(0.95); }
+
+        /* Miniature delle ultime carte: ognuna apre la sua scheda. */
+        .ball-ui .ball-miniature { display: flex; gap: 0.35rem; }
+        .ball-ui .ball-mini {
+            flex: 1; aspect-ratio: 5 / 7; border-radius: 5px; overflow: hidden;
+            border: 1px solid var(--border-color); background: var(--bg-color);
+            display: flex; align-items: center; justify-content: center;
+            color: var(--text-muted); font-size: 0.8rem; cursor: pointer;
+        }
+        .ball-ui .ball-mini img { width: 100%; height: 100%; object-fit: cover; }
+        .ball-ui .ball-mini:active { transform: scale(0.94); }
+
         /* Overlay dettaglio: .container viene agganciata al rettangolo
            schermo della cornice — non spostata nel DOM (zero rischio sui
            selettori esistenti). Geometria (top/left/width/height/border-
