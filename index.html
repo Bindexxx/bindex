@@ -1307,7 +1307,11 @@
         }
         .ball-ui .ball-azione:active { opacity: .75; }
 
-        /* Ripiego per gli undici widget non ancora convertiti */
+        /* Widget non ancora collegati (segnaposto gacha): il testo si
+           smorza, così si distingue a colpo d'occhio da un dato vero. */
+        .ball-ui .ball-attesa { color: var(--text-muted); font-weight: 500; }
+
+        /* Ripiego per i widget senza corpo dedicato */
         .ball-ui .ball-righe-testo {
             display: flex; flex-direction: column;
             font-size: 0.72rem; color: var(--text-muted); font-weight: 600;
