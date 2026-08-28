@@ -59,3 +59,15 @@ async function userSettingsUpsertMatchNascosti(userId, chiaviNascoste) {
         aggiornato_il: new Date().toISOString(),
     });
 }
+
+// Aggiunta 2026-08-28 (pagina "Da fare", storico 24h — vedi migration
+// 31_preferenze_dafare_risolti.sql). Stesso pattern di
+// userSettingsUpsertMatchNascosti qui sopra: TEXT con JSON serializzato
+// dal client, letto grezzo da userSettingsGet.
+async function userSettingsUpsertDaFareRisolti(userId, mappaRisolti) {
+    return supabaseClient.from('preferenze_utente').upsert({
+        owner_id: userId,
+        dafare_risolti: JSON.stringify(mappaRisolti || {}),
+        aggiornato_il: new Date().toISOString(),
+    });
+}
