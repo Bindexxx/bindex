@@ -4417,6 +4417,11 @@
     <script src="ui/navigation.ui.js"></script>
     <!-- Dopo home.ui.js/navigation.ui.js: riusa switchTab/_contaCodaErrori/
          _elencoPrezziScaduti/caricaAvvisiHome già definite lì sopra. -->
+    <!-- Libreria delle espansioni (generata da genera-libreria-set.html).
+         Va PRIMA di phone.ui.js, che la legge al caricamento. Se il file
+         manca il sito funziona lo stesso: il widget Set ricade sulle poche
+         voci scritte a mano. -->
+    <script src="data/sets.library.js"></script>
     <script src="ui/phone.ui.js"></script>
 
     <script>
