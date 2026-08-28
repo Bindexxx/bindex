@@ -2685,14 +2685,14 @@ async function renderPaginaMatch() {
         chiave: `${m.mia_carta_id}_${m.altra_wishlist_id}`,
         persona: (m.altra_email || '').split('@')[0] || 'Utente',
         ownerAltro: m.altro_owner_id,
-        direzione: 'scambio',
+        binderAltro: m.altro_binder_id || null, // presente solo dopo la migration 29
         testo: `<strong>${escapeHtml(m.mio_nome)}</strong> (tuo, in Scambio, ${Number(m.mio_prezzo || 0).toFixed(2)} €) — lo cerca${m.altro_prezzo_obiettivo != null ? ` fino a ${Number(m.altro_prezzo_obiettivo).toFixed(2)} €` : ''}`,
     }));
     const righeWishlist = (dataWishlist || []).map(m => ({
         chiave: `${m.mia_wishlist_id}_${m.altra_carta_id}`,
         persona: (m.altra_email || '').split('@')[0] || 'Utente',
         ownerAltro: m.altro_owner_id,
-        direzione: 'wishlist',
+        binderAltro: m.altro_binder_id || null,
         testo: `<strong>${escapeHtml(m.mio_nome)}</strong> (tua, in Wishlist${m.mio_prezzo_obiettivo != null ? `, fino a ${Number(m.mio_prezzo_obiettivo).toFixed(2)} €` : ''}) — ce l'ha in Scambio a ${Number(m.altro_prezzo || 0).toFixed(2)} €`,
     }));
 
@@ -2721,7 +2721,7 @@ async function renderPaginaMatch() {
                 <div class="widget-picker-riga" style="align-items:flex-start; flex-wrap:wrap; gap:0.5rem;">
                     <span style="flex:1; min-width:200px; font-size:0.82rem;">${r.testo}</span>
                     <div style="display:flex; gap:0.4rem; flex-shrink:0;">
-                        <button type="button" class="btn-secondary" style="font-size:0.72rem; padding:0.35rem 0.55rem;" onclick="event.stopPropagation(); _apriBinderAltruiMatch('${r.ownerAltro}', '${r.direzione}')" title="Vai al binder"><i class="fa-solid fa-layer-group"></i></button>
+                        <button type="button" class="btn-secondary" style="font-size:0.72rem; padding:0.35rem 0.55rem;" onclick="event.stopPropagation(); _apriBinderAltruiMatch('${r.ownerAltro}', '${r.binderAltro || ''}')" title="Vai al binder"><i class="fa-solid fa-layer-group"></i></button>
                         <button type="button" class="btn-secondary" style="font-size:0.72rem; padding:0.35rem 0.55rem;" onclick="event.stopPropagation(); _contattaPersonaMatch('${r.ownerAltro}')" title="Contatta"><i class="fa-solid fa-comment"></i></button>
                         <button type="button" class="btn-secondary" style="font-size:0.72rem; padding:0.35rem 0.55rem;" onclick="event.stopPropagation(); _nascondiMatch('${r.chiave}', event)" title="Nascondi"><i class="fa-solid fa-eye-slash"></i></button>
                     </div>
@@ -2746,11 +2746,20 @@ function _nascondiMatch(chiave, evt) {
     console.warn('_nascondiMatch: nasconde solo in questa sessione, persistenza non ancora collegata a preferenze_utente (chiave:', chiave, ')');
 }
 
-// APERTO — blocca sulla verifica dello schema 'binders' (serve il
-// binder_id dell'altra persona, che le RPC di match oggi non
-// restituiscono). Segnaposto onesto, non un link rotto silenzioso.
-function _apriBinderAltruiMatch(ownerAltro, direzione) {
-    alert('Collegamento diretto al binder in arrivo — verifica dati in corso.');
+// Stesso schema URL di _linkPubblicoCondivisione (navigation.ui.js):
+// binder-pubblico.html?u=<owner>&binder=<id>, aperto in nuova scheda come
+// già fa apriAnteprimaLinkCondiviso — nessun meccanismo nuovo inventato.
+// Se binderAltro è vuoto (migration 29 non ancora applicata sul DB, o
+// l'altra persona non ha ancora quel binder materializzato) mostra il
+// segnaposto invece di costruire un link rotto.
+function _apriBinderAltruiMatch(ownerAltro, binderAltro) {
+    if (!ownerAltro || !binderAltro) {
+        alert('Collegamento diretto al binder non ancora disponibile.');
+        return;
+    }
+    const url = new URL('binder-pubblico.html?u=' + encodeURIComponent(ownerAltro), window.location.href);
+    url.searchParams.set('binder', binderAltro);
+    window.open(url.href, '_blank');
 }
 
 // Confermato segnaposto da Claudio (2026-08-28, risposta 2): il
