@@ -33,8 +33,16 @@ const CATALOGO_WIDGET = {
     visualizzazione: {
         titolo: 'Visualizzazione', icona: 'fa-images',
         preview: () => {
-            const n = carteReali.filter(c => c.stato === 'collezione').length;
-            return { righe: [`${n} carte totali`] };
+            const collezione = carteReali.filter(c => c.stato === 'collezione');
+            const n = collezione.length;
+            // 'dati' è AGGIUNTIVO (tessere grandi): 'righe' resta identica,
+            // così 1x1, mini, badge e semaforo non cambiano di una virgola.
+            // Le ultime quattro entrate, stesso ordinamento di ultima_carta.
+            const ultime = collezione.slice()
+                .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
+                .slice(0, 4)
+                .map(c => ({ id: c.id, nome: c.name || '', immagine: c.immagine }));
+            return { righe: [`${n} carte totali`], dati: { totale: n, ultime } };
         },
     },
     inserimento: {
@@ -55,8 +63,16 @@ const CATALOGO_WIDGET = {
         // widget, non un dato nuovo.
         preview: () => {
             const lista = (typeof _elencoPrezziScaduti !== 'undefined' && _elencoPrezziScaduti) ? _elencoPrezziScaduti : [];
-            if (lista.length === 0) return { righe: ['Tutti aggiornati'], stato: 'ok' };
-            return { righe: [`${lista.length} da aggiornare`, lista[0].name || ''], stato: 'allerta' };
+            // Totale su cui calcolare la quota di aggiornati: le carte in
+            // collezione con un prezzo. Nessuna query nuova, solo carteReali.
+            const conPrezzo = carteReali.filter(c => c.stato === 'collezione' && c.price != null).length;
+            const dati = {
+                scaduti: lista.length,
+                totale: Math.max(conPrezzo, lista.length),
+                lista: lista.slice(0, 3).map(v => v.name || '—')
+            };
+            if (lista.length === 0) return { righe: ['Tutti aggiornati'], stato: 'ok', dati };
+            return { righe: [`${lista.length} da aggiornare`, lista[0].name || ''], stato: 'allerta', dati };
         },
     },
     // Multi-Binder (2026-08-25): 'scambio' e 'wishlist' come widget home
@@ -136,9 +152,12 @@ const CATALOGO_WIDGET = {
             const collezione = carteReali.filter(c => c.stato === 'collezione');
             const conteggi = {};
             collezione.forEach(c => { const k = c.location || '—'; conteggi[k] = (conteggi[k] || 0) + 1; });
-            const top = Object.entries(conteggi).sort((a, b) => b[1] - a[1]).slice(0, 2);
+            const ordinate = Object.entries(conteggi).sort((a, b) => b[1] - a[1]);
+            const top = ordinate.slice(0, 2);
             if (top.length === 0) return { righe: ['Nessuna carta'] };
-            return { righe: top.map(([k, v]) => `${k}: ${v}`) };
+            // 'voci' = tutte le posizioni ordinate: le tessere grandi ne
+            // disegnano quattro, le righe di testo restano le prime due.
+            return { righe: top.map(([k, v]) => `${k}: ${v}`), dati: { voci: ordinate } };
         },
     },
     suggerimento: {
@@ -207,8 +226,9 @@ const CATALOGO_WIDGET = {
             const scambio = typeof _numNuoviMatchScambio !== 'undefined' ? _numNuoviMatchScambio : 0;
             const wishlist = typeof _numNuoviMatchWishlist !== 'undefined' ? _numNuoviMatchWishlist : 0;
             const totale = scambio + wishlist;
-            if (totale === 0) return { righe: ['Nessuna novità'] };
-            return { righe: [`${totale} nuov${totale === 1 ? 'a' : 'e'} corrispondenz${totale === 1 ? 'a' : 'e'}`], stato: 'ok' };
+            const dati = { scambio, wishlist };
+            if (totale === 0) return { righe: ['Nessuna novità'], dati };
+            return { righe: [`${totale} nuov${totale === 1 ? 'a' : 'e'} corrispondenz${totale === 1 ? 'a' : 'e'}`], stato: 'ok', dati };
         },
         // Le vecchie tab Scambio/Wishlist non esistono più come
         // view-section dedicate dopo il Multi-Binder — il contenuto vive
@@ -896,6 +916,168 @@ function _ballSincronizzaToggleImpostazioni() {
 }
 
 
+// ═══════════════════════════════════════════════════════════════════════
+// CONTENUTI DELLE TESSERE GRANDI (sessione 2026-08-27, seconda parte)
+// ═══════════════════════════════════════════════════════════════════════
+// Su 1x1 la tessera è la sola sfera col titolo inciso. Sulle taglie grandi
+// (2x1, 1x2, 2x2) c'era finora lo stesso identico contenuto della 1x1 —
+// titolo e una riga di testo — quindi il quadruplo dello spazio non diceva
+// niente di più. Qui ogni widget disegna il proprio contenuto.
+//
+// DUE SLOT, come nella demo di Opus:
+//   inline → accanto alla sfera, riga superiore. C'è su tutte le taglie
+//            grandi, deve stare stretto (su 2x1 è l'unico spazio).
+//   blocco → sotto, per intero. Solo dove c'è altezza: 1x2 e 2x2.
+//
+// Scelta (Claudio: "come secondo te è meglio"): sulle taglie grandi la
+// grafica SOSTITUISCE le righe di testo. Ripetere "7 da aggiornare" sotto
+// una barra che dice già quello è la stessa informazione due volte, e ruba
+// lo spazio che serve alla grafica. Il titolo resta.
+//
+// PER ORA solo quattro widget (Claudio: "facciamone 4 per volta"): Prezzi,
+// Visualizzazione, Location, Match. Tutti gli altri ricadono su _ballCorpoGenerico,
+// che mostra le righe di testo di sempre: nessuna regressione.
+//
+// ZERO QUERY NUOVE: tutto ciò che serve è già in memoria (carteReali,
+// _elencoPrezziScaduti, _numNuoviMatch*). I preview() sono stati estesi con
+// un campo 'dati' AGGIUNTIVO — le 'righe' restano identiche, così le
+// tessere piccole e il semaforo continuano a funzionare come prima.
+
+// Righe cliccabili dentro la tessera (Claudio: "lo voglio").
+// Attenzione a tre cose, tutte gestite qui:
+//   - stopPropagation, o il tocco farebbe partire ANCHE la cattura da 2,6s
+//     e l'apertura del widget;
+//   - in modalità modifica non deve fare nulla: lì si trascina e si ridimensiona;
+//   - le azioni sono solo quelle verificate esistenti (apriFlipCardHome,
+//     apriDettaglioWidget). Un filtro pre-applicato ("mostrami solo questa
+//     location") richiederebbe funzioni di cards.ui.js/prices.ui.js, file
+//     MAI letti: il gancio è pronto in _ballAzioneRiga, ma non invento nomi.
+function _ballAzioneRiga(evt, tipo, valore) {
+    if (evt) evt.stopPropagation();
+    if (_editModeWidget) return;
+    _vibraSeSupportato(8);
+    switch (tipo) {
+        case 'carta':
+            if (typeof apriFlipCardHome === 'function') apriFlipCardHome(valore);
+            break;
+        case 'tab':
+            apriDettaglioWidget(valore, evt);
+            break;
+        // GANCIO per quando avremo letto cards.ui.js / prices.ui.js: qui
+        // andrà l'apertura CON filtro già applicato (per location, per
+        // prezzo scaduto...). Finché non è verificato, apre la sezione.
+        case 'location':
+            apriDettaglioWidget('visualizzazione', evt);
+            break;
+    }
+}
+
+function _ballBarra(percento, etichetta, valore, azione) {
+    const p = Math.max(0, Math.min(100, percento));
+    const clic = azione ? ` onclick="${azione}" class="ball-riga ball-riga-clic"` : ' class="ball-riga"';
+    return `<div${clic}>
+        <div class="ball-riga-testa"><span>${etichetta}</span><b>${valore}</b></div>
+        <div class="ball-barra"><i style="width:${p}%"></i></div>
+    </div>`;
+}
+
+function _ballChip(testo, azione, forte) {
+    const clic = azione ? ` onclick="${azione}"` : '';
+    return `<span class="ball-chip${forte ? ' forte' : ''}"${clic}>${testo}</span>`;
+}
+
+// ── I QUATTRO CORPI ──────────────────────────────────────────────────────
+const _ballCORPI = {
+    // Prezzi: quanti sono aggiornati sul totale, e quali chiedono attenzione.
+    // Ogni carta scaduta è una riga a sé, toccabile.
+    prezzi: (d) => {
+        if (!d) return { inline: '', blocco: '' };
+        const scaduti = d.scaduti || 0;
+        const totale = d.totale || 0;
+        const aggiornati = Math.max(0, totale - scaduti);
+        const perc = totale > 0 ? (aggiornati / totale) * 100 : 100;
+
+        const inline = scaduti === 0
+            ? `<div class="ball-cifra ok">${totale}</div><div class="ball-sotto">tutti aggiornati</div>`
+            : `<div class="ball-cifra allerta">${scaduti}</div><div class="ball-sotto">da aggiornare</div>`;
+
+        let blocco = _ballBarra(perc, 'Aggiornati', `${aggiornati}/${totale}`, `_ballAzioneRiga(event,'tab','prezzi')`);
+        if (d.lista && d.lista.length) {
+            blocco += '<div class="ball-elenco">' + d.lista.slice(0, 3).map(v =>
+                `<div class="ball-riga ball-riga-clic" onclick="_ballAzioneRiga(event,'tab','prezzi')">
+                    <span class="ball-punto"></span><span class="ball-nome">${v}</span>
+                 </div>`).join('') + '</div>';
+        }
+        return { inline, blocco };
+    },
+
+    // Visualizzazione: il totale, e le ultime carte entrate in collezione
+    // come miniature — ognuna apre la sua scheda.
+    visualizzazione: (d) => {
+        if (!d) return { inline: '', blocco: '' };
+        const inline = `<div class="ball-cifra">${(d.totale || 0).toLocaleString('it-IT')}</div><div class="ball-sotto">carte in collezione</div>`;
+        let blocco = '';
+        if (d.ultime && d.ultime.length) {
+            blocco = '<div class="ball-miniature">' + d.ultime.map(c =>
+                `<div class="ball-mini ball-riga-clic" onclick="_ballAzioneRiga(event,'carta','${c.id}')" title="${(c.nome || '').replace(/"/g, '&quot;')}">
+                    ${c.immagine ? `<img src="${_urlImmagineVisualizzabile(c.immagine, 96) || ''}" alt="" onerror="this.style.display='none';">` : '<i class="fa-solid fa-image"></i>'}
+                 </div>`).join('') + '</div>';
+        }
+        return { inline, blocco };
+    },
+
+    // Location: dove stanno davvero le carte. Una barra per posto, in scala
+    // sulla location più piena.
+    location: (d) => {
+        if (!d || !d.voci || !d.voci.length) return { inline: '', blocco: '' };
+        const massimo = d.voci[0][1] || 1;
+        const inline = `<div class="ball-cifra">${d.voci.length}</div><div class="ball-sotto">${d.voci.length === 1 ? 'posizione' : 'posizioni'}</div>`;
+        const blocco = d.voci.slice(0, 4).map(([nome, n]) =>
+            _ballBarra((n / massimo) * 100, nome, n, `_ballAzioneRiga(event,'location','${String(nome).replace(/'/g, "\\'")}')`)
+        ).join('');
+        return { inline, blocco };
+    },
+
+    // Match: scambio e wishlist separati, perché sono due cose diverse e
+    // portano a due letture diverse della stessa pagina.
+    match: (d) => {
+        if (!d) return { inline: '', blocco: '' };
+        const totale = (d.scambio || 0) + (d.wishlist || 0);
+        const inline = totale === 0
+            ? '<div class="ball-cifra">0</div><div class="ball-sotto">nessuna novità</div>'
+            : `<div class="ball-cifra ok">${totale}</div><div class="ball-sotto">${totale === 1 ? 'corrispondenza' : 'corrispondenze'}</div>`;
+        const blocco = '<div class="ball-chips">' +
+            _ballChip(`Scambio ${d.scambio || 0}`, `_ballAzioneRiga(event,'tab','binder')`, (d.scambio || 0) > 0) +
+            _ballChip(`Wishlist ${d.wishlist || 0}`, `_ballAzioneRiga(event,'tab','binder')`, (d.wishlist || 0) > 0) +
+            '</div>';
+        return { inline, blocco };
+    }
+};
+
+// Ripiego per gli undici widget non ancora convertiti: le righe di testo di
+// sempre, così nessuno perde niente mentre procediamo quattro alla volta.
+function _ballCorpoGenerico(anteprima) {
+    return {
+        inline: `<div class="ball-righe-testo">${(anteprima.righe || []).map(r => `<span>${r}</span>`).join('')}</div>`,
+        blocco: ''
+    };
+}
+
+function _ballCorpoWidget(id, anteprima) {
+    const f = _ballCORPI[id];
+    if (!f || !anteprima || !anteprima.dati) return _ballCorpoGenerico(anteprima);
+    try {
+        const c = f(anteprima.dati);
+        // Un corpo vuoto (dati insufficienti) non deve lasciare la tessera
+        // muta: si torna al testo.
+        if (!c || (!c.inline && !c.blocco)) return _ballCorpoGenerico(anteprima);
+        return c;
+    } catch (e) {
+        console.error('Corpo widget ' + id + ':', e);
+        return _ballCorpoGenerico(anteprima);
+    }
+}
+
 // ── RENDER GRIGLIA HOME ──────────────────────────────────────────────────
 async function renderWidgetHome() {
     if (!_layoutWidget) _caricaLayoutWidget();
@@ -992,15 +1174,39 @@ async function renderWidgetHome() {
         // rifare nessuna query (i preview sono già stati calcolati sopra).
         attenzioni[w.id] = _ballChiedeAttenzione(w.id, anteprima);
 
+        // ── CORPO DELLA TESSERA ─────────────────────────────────────────
+        // 1x1 e mini: solo la sfera, col titolo inciso nella pancia.
+        // Taglie grandi: due slot, uno accanto alla sfera e uno sotto (il
+        // secondo solo dove c'è altezza, cioè 1x2 e 2x2 — vedi il CSS).
+        // Con BALL_ATTIVA a false si torna al corpo originale del sito.
+        const grande = BALL_ATTIVA && w.size !== '1x1' && !w.mini;
+        let corpo;
+        if (grande) {
+            const c = _ballCorpoWidget(w.id, anteprima);
+            corpo = `
+                <div class="ball-testa">
+                    ${visuale}
+                    <div class="ball-slot-inline">
+                        <div class="widget-tile-titolo">${def.titolo}</div>
+                        ${c.inline}
+                    </div>
+                </div>
+                ${c.blocco ? `<div class="ball-slot-blocco">${c.blocco}</div>` : ''}
+                ${rigaImmagine}`;
+        } else {
+            corpo = `
+                ${visuale}
+                <div class="widget-tile-titolo">${def.titolo}</div>
+                ${rigaImmagine}
+                <div class="widget-tile-righe">${anteprima.righe.map(r => `<span>${r}</span>`).join('')}</div>`;
+        }
+
         return `
             <div class="widget-tile ${classeStato} ${classeCascata} widget-size-${w.size} ${w.mini ? 'widget-tile-mini' : ''}" ${stileRitardo} data-widget-id="${w.id}" data-widget-index="${indice}" ${azioneClick}>
                 ${controlliEdit}
                 ${badge}
                 <div class="tile-tinta"></div><div class="tile-alone"></div>
-                ${visuale}
-                <div class="widget-tile-titolo">${def.titolo}</div>
-                ${rigaImmagine}
-                <div class="widget-tile-righe">${anteprima.righe.map(r => `<span>${r}</span>`).join('')}</div>
+                ${corpo}
             </div>`;
     }));
 
