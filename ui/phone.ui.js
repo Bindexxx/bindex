@@ -29,6 +29,43 @@
 // arrivare ai widget, non più il contrario), non ha più senso aprirla
 // come un dettaglio da un widget. Vedi #phoneHomePage in index.html e
 // initPhoneShell qui sotto per lo spostamento del nodo #home.
+// ── LETTURA DEL CODICE CARTA ─────────────────────────────────────────────
+// Ricava set, numero e totale dal campo 'codice'. Il formato NON è definito
+// da nessuna parte nel sito (nessun placeholder, nessuna validazione): qui
+// si riconoscono i modi più diffusi di scriverlo, e in caso di dubbio si
+// restituisce null — meglio un widget che dice "codici non riconosciuti"
+// che uno che mostra percentuali inventate.
+//
+// Riconosciuti:
+//   "045/198"        → set ricavato dal totale (198)
+//   "SV3 045/198"    → set 'SV3'
+//   "SV3-045/198"    → set 'SV3'
+//   "PAL 45"         → set 'PAL', totale ignoto (escluso dai conteggi)
+// Il set senza sigla usa il totale come nome ("Set da 198"): due espansioni
+// con lo stesso numero di carte finirebbero insieme. È un compromesso
+// dichiarato, non un errore nascosto — con una sigla vera non succede.
+function _ballLeggiCodice(codice) {
+    if (!codice) return null;
+    const t = String(codice).trim().toUpperCase();
+
+    // numero/totale, con sigla facoltativa davanti
+    // La sigla deve COMINCIARE con una lettera: senza questo vincolo, su
+    // "045/198" il gruppo facoltativo si mangiava le prime due cifre e il
+    // numero della carta diventava 5 invece di 45 (trovato eseguendo il
+    // lettore su codici di prova, non a occhio).
+    const m = t.match(/^(?:([A-Z][A-Z0-9]{1,7})[\s\-_]*)?(\d{1,3})\s*\/\s*(\d{1,3})$/);
+    if (m) {
+        const sigla = m[1] || null;
+        const totale = parseInt(m[3], 10);
+        return {
+            set: sigla || `Set da ${totale}`,
+            numero: parseInt(m[2], 10),
+            totale
+        };
+    }
+    return null;
+}
+
 const CATALOGO_WIDGET = {
     visualizzazione: {
         titolo: 'Visualizzazione', icona: 'fa-images',
@@ -66,7 +103,7 @@ const CATALOGO_WIDGET = {
         // conteggio già mostrato nell'avviso Home, nessuna query duplicata.
         preview: async () => {
             const n = await _contaCodaErrori();
-            return { righe: [n > 0 ? `${n} da correggere` : 'Tutto in ordine'], stato: n > 0 ? 'allerta' : 'ok' };
+            return { righe: [n > 0 ? `${n} da correggere` : 'Tutto in ordine'], stato: n > 0 ? 'allerta' : 'ok', dati: { daCorreggere: n } };
         },
     },
     prezzi: {
@@ -112,19 +149,29 @@ const CATALOGO_WIDGET = {
         // aperto il widget, qui servirebbe una query in più solo per
         // l'anteprima e non vale il costo).
         preview: () => {
-            const locationDistinte = new Set(
-                carteReali.filter(c => c.tabella === 'carte' && c.stato === 'collezione' && c.location).map(c => c.location)
-            ).size;
-            return { righe: [`${locationDistinte + 2} binder`] };
+            const perLocation = {};
+            carteReali.filter(c => c.tabella === 'carte' && c.stato === 'collezione' && c.location)
+                .forEach(c => { perLocation[c.location] = (perLocation[c.location] || 0) + 1; });
+            const locationDistinte = Object.keys(perLocation).length;
+            const voci = Object.entries(perLocation).sort((a, b) => b[1] - a[1]);
+            return { righe: [`${locationDistinte + 2} binder`], dati: { totale: locationDistinte + 2, voci } };
         },
     },
     sealed: {
         titolo: 'Sealed', icona: 'fa-box-archive',
         preview: () => {
             const prodotti = carteReali.filter(c => c.stato === 'collezione' && c.tipo === 'sealed');
-            if (prodotti.length === 0) return { righe: ['Nessun prodotto'] };
-            const inEvidenza = prodotti.slice().sort((a, b) => (b.price || 0) - (a.price || 0))[0];
-            return { righe: [`${prodotti.length} prodotti`, inEvidenza.name || ''] };
+            if (prodotti.length === 0) return { righe: ['Nessun prodotto'], dati: { totale: 0, valore: 0, lista: [] } };
+            const perValore = prodotti.slice().sort((a, b) => (b.price || 0) - (a.price || 0));
+            const inEvidenza = perValore[0];
+            const valore = prodotti.reduce((t, p) => t + (Number(p.price) || 0) * (Number(p.qty) || 1), 0);
+            return {
+                righe: [`${prodotti.length} prodotti`, inEvidenza.name || ''],
+                dati: {
+                    totale: prodotti.length, valore,
+                    lista: perValore.slice(0, 3).map(p => ({ nome: p.name || '—', prezzo: Number(p.price) || 0 }))
+                }
+            };
         },
     },
 
@@ -164,7 +211,7 @@ const CATALOGO_WIDGET = {
         // scelta esplicita di Claudio (privacy), non un elenco nominale.
         preview: async () => {
             const attivo = await _dispositiviAttiviOra();
-            return { righe: [attivo ? 'Qualcuno al lavoro ora' : 'Nessuno al momento'], stato: attivo ? 'ok' : undefined };
+            return { righe: [attivo ? 'Qualcuno al lavoro ora' : 'Nessuno al momento'], stato: attivo ? 'ok' : undefined, dati: { attivo: !!attivo } };
         },
     },
     location: {
@@ -189,18 +236,18 @@ const CATALOGO_WIDGET = {
         // invece di mostrarle tutte.
         preview: async () => {
             const codaErrori = await _contaCodaErrori();
-            if (codaErrori > 0) return { righe: [`${codaErrori} carte da correggere`], stato: 'allerta', tabSuggerito: 'inserimento' };
+            if (codaErrori > 0) return { righe: [`${codaErrori} carte da correggere`], stato: 'allerta', tabSuggerito: 'inserimento' , dati: { testo: `${codaErrori} carte da correggere`, tab: 'inserimento' } };
 
             const wishlistSottoTarget = carteReali.filter(c => c.tabella === 'wishlist' && c.prezzoObiettivo != null && c.price > 0 && c.price <= c.prezzoObiettivo);
-            if (wishlistSottoTarget.length > 0) return { righe: [`${wishlistSottoTarget.length} in wishlist sotto obiettivo`], stato: 'ok', tabSuggerito: 'binder' };
+            if (wishlistSottoTarget.length > 0) return { righe: [`${wishlistSottoTarget.length} in wishlist sotto obiettivo`], stato: 'ok', tabSuggerito: 'binder' , dati: { testo: `${wishlistSottoTarget.length} in wishlist sotto obiettivo`, tab: 'binder' } };
 
             const lista = (typeof _elencoPrezziScaduti !== 'undefined' && _elencoPrezziScaduti) ? _elencoPrezziScaduti : [];
-            if (lista.length > 0) return { righe: [`${lista.length} prezzi da aggiornare`], stato: 'allerta', tabSuggerito: 'prezzi' };
+            if (lista.length > 0) return { righe: [`${lista.length} prezzi da aggiornare`], stato: 'allerta', tabSuggerito: 'prezzi' , dati: { testo: `${lista.length} prezzi da aggiornare`, tab: 'prezzi' } };
 
             const alLavoro = await _dispositiviAttiviOra();
-            if (alLavoro) return { righe: ['Il gruppo sta lavorando'], tabSuggerito: 'home' };
+            if (alLavoro) return { righe: ['Il gruppo sta lavorando'], tabSuggerito: 'home' , dati: { testo: 'Il gruppo sta lavorando', tab: 'home' } };
 
-            return { righe: ['Tutto in ordine'], stato: 'ok', tabSuggerito: 'home' };
+            return { righe: ['Tutto in ordine'], stato: 'ok', tabSuggerito: 'home' , dati: { testo: 'Tutto in ordine', tab: 'home' } };
         },
         azione: (dati, evt) => {
             const tab = (dati && dati.tabSuggerito) || 'home';
@@ -265,12 +312,13 @@ const CATALOGO_WIDGET = {
         titolo: 'Estensione', icona: 'fa-plug',
         preview: async () => {
             const versione = await _chiediVersioneEstensione();
-            if (!versione) return { righe: ['Non rilevata'], rilevata: false };
+            if (!versione) return { righe: ['Non rilevata'], rilevata: false, dati: { rilevata: false } };
             const aiutaGruppo = await _chiediAiutaGruppoEstensione();
             return {
                 righe: [`v${versione}`, aiutaGruppo ? 'Aiuta il gruppo: attivo' : 'Aiuta il gruppo: no'],
                 stato: aiutaGruppo ? 'ok' : undefined,
                 rilevata: true,
+                dati: { rilevata: true, versione, aiutaGruppo: !!aiutaGruppo },
             };
         },
         // Click: porta l'estensione in primo piano (stessa funzione già
@@ -286,6 +334,191 @@ const CATALOGO_WIDGET = {
                 apriDettaglioWidget('impostazioni', evt);
             }
         },
+    },
+
+    // ═══════════════════════════════════════════════════════════════════
+    // WIDGET NUOVI (27/08/2026) — ispirati ai tipi del mockup di Opus.
+    // ═══════════════════════════════════════════════════════════════════
+    // Nascono TUTTI nascosti: _caricaLayoutWidget aggiunge gli id non
+    // presenti nel layout salvato con visibile:false, quindi compaiono nel
+    // picker "Aggiungi" senza spostare nulla di ciò che hai già in home.
+    //
+    // Nessuna query nuova: tutto da carteReali, già in memoria.
+    //
+    // NON portati dal mockup, e perché: bustina, polvere, fortuna, missioni
+    // e traguardi-a-punti appartengono a un'economia di gioco (aprire
+    // pacchetti, guadagnare valuta) che in CardSync non esiste. "Set
+    // completo" richiederebbe di sapere quante carte compone ogni set:
+    // dato non presente nello schema, e non lo deduco dal codice.
+
+    valore_collezione: {
+        titolo: 'Valore collezione', icona: 'fa-sack-dollar',
+        preview: () => {
+            const coll = carteReali.filter(c => c.stato === 'collezione');
+            const valore = coll.reduce((t, c) => t + (Number(c.price) || 0) * (Number(c.qty) || 1), 0);
+            const top = coll.slice()
+                .sort((a, b) => (Number(b.price) || 0) - (Number(a.price) || 0))
+                .slice(0, 3)
+                .map(c => ({ nome: c.name || '—', valore: Number(c.price) || 0, id: c.id }));
+            const media = coll.length ? valore / coll.length : 0;
+            return {
+                righe: [`€ ${valore.toLocaleString('it-IT', { maximumFractionDigits: 0 })}`],
+                dati: { valore, media, pezzi: coll.length, top }
+            };
+        },
+        tab: 'prezzi',
+    },
+
+    doppioni: {
+        titolo: 'Doppioni', icona: 'fa-clone',
+        preview: () => {
+            const doppie = carteReali
+                .filter(c => c.stato === 'collezione' && (Number(c.qty) || 1) > 1)
+                .sort((a, b) => (Number(b.qty) || 1) - (Number(a.qty) || 1));
+            const copieExtra = doppie.reduce((t, c) => t + ((Number(c.qty) || 1) - 1), 0);
+            const valoreExtra = doppie.reduce((t, c) => t + (Number(c.price) || 0) * ((Number(c.qty) || 1) - 1), 0);
+            if (doppie.length === 0) return { righe: ['Nessun doppione'], stato: 'ok', dati: { titoli: 0, copieExtra: 0, valoreExtra: 0, lista: [] } };
+            return {
+                righe: [`${doppie.length} carte in più copie`],
+                dati: {
+                    titoli: doppie.length, copieExtra, valoreExtra,
+                    lista: doppie.slice(0, 3).map(c => ({ nome: c.name || '—', qty: Number(c.qty) || 1, id: c.id }))
+                }
+            };
+        },
+        tab: 'visualizzazione',
+    },
+
+    wishlist_obiettivi: {
+        titolo: 'Wishlist', icona: 'fa-heart',
+        preview: () => {
+            const desiderate = carteReali.filter(c => c.tabella === 'wishlist' || c.stato === 'wishlist');
+            const conObiettivo = desiderate.filter(c => c.prezzoObiettivo != null && c.prezzoObiettivo > 0);
+            const raggiunte = conObiettivo.filter(c => c.price > 0 && c.price <= c.prezzoObiettivo);
+            if (desiderate.length === 0) return { righe: ['Wishlist vuota'], dati: { totale: 0, raggiunte: 0, conObiettivo: 0, lista: [] } };
+            return {
+                righe: [raggiunte.length > 0 ? `${raggiunte.length} sotto obiettivo` : `${desiderate.length} carte desiderate`],
+                stato: raggiunte.length > 0 ? 'ok' : undefined,
+                dati: {
+                    totale: desiderate.length,
+                    conObiettivo: conObiettivo.length,
+                    raggiunte: raggiunte.length,
+                    lista: (raggiunte.length ? raggiunte : conObiettivo).slice(0, 3).map(c => ({
+                        nome: c.name || '—',
+                        prezzo: Number(c.price) || 0,
+                        obiettivo: Number(c.prezzoObiettivo) || 0,
+                        id: c.id
+                    }))
+                }
+            };
+        },
+        tab: 'binder',
+    },
+
+    traguardi: {
+        titolo: 'Traguardi', icona: 'fa-trophy',
+        // Soglie fisse: il prossimo scalino da raggiungere, con quanto manca.
+        preview: () => {
+            const coll = carteReali.filter(c => c.stato === 'collezione');
+            const n = coll.length;
+            const valore = coll.reduce((t, c) => t + (Number(c.price) || 0) * (Number(c.qty) || 1), 0);
+            const scalini = (v, soglie) => {
+                const prossima = soglie.find(x => v < x) || soglie[soglie.length - 1];
+                return { valore: v, soglia: prossima, perc: Math.min(100, (v / prossima) * 100) };
+            };
+            const carte = scalini(n, [50, 100, 250, 500, 1000, 2500, 5000]);
+            const euro = scalini(Math.round(valore), [100, 500, 1000, 2500, 5000, 10000, 25000]);
+            const posti = new Set(coll.map(c => c.location).filter(Boolean)).size;
+            const luoghi = scalini(posti, [3, 5, 10, 20]);
+            return {
+                righe: [`${carte.soglia - n} carte al prossimo traguardo`],
+                dati: { carte, euro, luoghi }
+            };
+        },
+        tab: 'visualizzazione',
+    },
+
+    lingue: {
+        titolo: 'Lingue', icona: 'fa-language',
+        preview: () => {
+            const coll = carteReali.filter(c => c.stato === 'collezione');
+            const conteggi = {};
+            coll.forEach(c => { const k = c.lang || '—'; conteggi[k] = (conteggi[k] || 0) + 1; });
+            const voci = Object.entries(conteggi).sort((a, b) => b[1] - a[1]);
+            if (!voci.length) return { righe: ['Nessuna carta'], dati: { voci: [], totale: 0 } };
+            return {
+                righe: [`${voci.length} lingu${voci.length === 1 ? 'a' : 'e'} · ${voci[0][0]} in testa`],
+                dati: { voci, totale: coll.length }
+            };
+        },
+        tab: 'visualizzazione',
+    },
+
+    // ── SET / ESPANSIONI ─────────────────────────────────────────────────
+    // Avanzamento verso il set completo, dedotto dal CODICE della carta.
+    //
+    // ATTENZIONE, LIMITE DICHIARATO: il formato di 'codice' non è definito
+    // da nessuna parte nel sito — nessun placeholder d'esempio, nessuna
+    // validazione, nessuna regex: arriva grezzo dalla colonna. Quello che
+    // segue riconosce i formati più diffusi (vedi _ballLeggiCodice) e, se
+    // non riconosce nulla, il widget dice "codici non riconosciuti" invece
+    // di mostrare percentuali inventate. Da tarare su codici reali.
+    set_completamento: {
+        titolo: 'Set', icona: 'fa-layer-group',
+        preview: () => {
+            const coll = carteReali.filter(c => c.stato === 'collezione' && c.tabella === 'carte');
+            const set = {};
+            let riconosciute = 0;
+            coll.forEach(c => {
+                const letto = _ballLeggiCodice(c.code);
+                if (!letto) return;
+                riconosciute++;
+                const k = letto.set;
+                if (!set[k]) set[k] = { nome: k, possedute: new Set(), totale: letto.totale || 0 };
+                set[k].possedute.add(letto.numero);
+                if (letto.totale > set[k].totale) set[k].totale = letto.totale;
+            });
+            const voci = Object.values(set)
+                .filter(s => s.totale > 0)
+                .map(s => ({ nome: s.nome, hai: s.possedute.size, totale: s.totale, perc: Math.min(100, (s.possedute.size / s.totale) * 100) }))
+                .sort((a, b) => b.perc - a.perc);
+
+            if (voci.length === 0) {
+                return { righe: [riconosciute === 0 ? 'Codici non riconosciuti' : 'Nessun set completabile'], dati: { voci: [], riconosciute } };
+            }
+            const migliore = voci[0];
+            return {
+                righe: [`${migliore.nome}: ${migliore.hai}/${migliore.totale}`],
+                dati: { voci, riconosciute }
+            };
+        },
+        tab: 'visualizzazione',
+    },
+
+    // ═══════════════════════════════════════════════════════════════════
+    // SEGNAPOSTO GACHA (27/08/2026)
+    // ═══════════════════════════════════════════════════════════════════
+    // Claudio: "verranno collegati in seguito con un aggiornamento
+    // riguardante un gacha". Finché quel sistema non esiste, questi tre
+    // NON mostrano dati finti spacciati per veri: dichiarano di essere in
+    // arrivo. Sono 'bloccato: true', quindi il preview è sincrono e il
+    // tocco non apre niente (vedi _eseguiAzioneWidget, che esce subito sui
+    // widget bloccati) — nessun vicolo cieco per l'utente.
+    //
+    // Quando arriverà il gacha: togliere 'bloccato', sostituire il preview
+    // con quello vero e riempire il corpo in _ballCORPI, dove ognuno ha già
+    // la sua voce pronta.
+    bustina: {
+        titolo: 'Bustina', icona: 'fa-gift', bloccato: true,
+        preview: () => ({ righe: ['In arrivo'], dati: { placeholder: true, testo: 'Aprirai le bustine da qui' } }),
+    },
+    polvere: {
+        titolo: 'Polvere', icona: 'fa-wand-sparkles', bloccato: true,
+        preview: () => ({ righe: ['In arrivo'], dati: { placeholder: true, testo: 'La valuta guadagnata coi doppioni' } }),
+    },
+    missioni: {
+        titolo: 'Missioni', icona: 'fa-list-check', bloccato: true,
+        preview: () => ({ righe: ['In arrivo'], dati: { placeholder: true, testo: 'Obiettivi giornalieri da completare' } }),
     },
 };
 
@@ -605,7 +838,16 @@ const _ballTITOLI_BREVI = {
     aggiungi_carta: 'Aggiungi',
     condividi: 'Condividi',
     match: 'Match',
-    estensione: 'Estensione'
+    estensione: 'Estensione',
+    valore_collezione: 'Valore',
+    doppioni: 'Doppioni',
+    wishlist_obiettivi: 'Wishlist',
+    traguardi: 'Traguardi',
+    lingue: 'Lingue',
+    set_completamento: 'Set',
+    bustina: 'Bustina',
+    polvere: 'Polvere',
+    missioni: 'Missioni'
 };
 
 // ── EMBLEMA + COLORE PER OGNI WIDGET ─────────────────────────────────────
@@ -626,7 +868,18 @@ const _ballASPETTO = {
     aggiungi_carta:   { emblema: 'piu',         colore: '#639922' },
     condividi:        { emblema: 'scambio',     colore: '#4B9AA6' },
     match:            { emblema: 'cuore',       colore: '#D6538F' },
-    estensione:       { emblema: 'ingranaggio', colore: '#7A7F8A' }
+    estensione:       { emblema: 'ingranaggio', colore: '#7A7F8A' },
+    // Widget nuovi
+    valore_collezione:{ emblema: 'monete',      colore: '#C8892B' },
+    doppioni:         { emblema: 'carte',       colore: '#8A6FD0' },
+    wishlist_obiettivi:{ emblema: 'cuore',      colore: '#D6538F' },
+    traguardi:        { emblema: 'polvere',     colore: '#F2C230' },
+    lingue:           { emblema: 'album',       colore: '#4B9AA6' },
+    set_completamento:{ emblema: 'carte',       colore: '#3B7DD8' },
+    // Segnaposto gacha: emblemi già scelti, si accenderanno con il sistema
+    bustina:          { emblema: 'bustina',     colore: '#D6538F' },
+    polvere:          { emblema: 'polvere',     colore: '#7F77DD' },
+    missioni:         { emblema: 'regalo',      colore: '#639922' }
 };
 
 // Il testo inciso è stretto: teniamo le prime parole, il resto lo dice la
@@ -1124,6 +1377,20 @@ function _ballRiga(nome, ...dati) {
     </div>`;
 }
 
+// Corpo dei widget non ancora collegati (gacha): niente numeri finti, solo
+// una riga che dice cosa arriverà. Ricalcato sullo stato "vuoto" del
+// mockup, che trattava il primo giorno come un momento importante invece
+// che come un errore.
+function _ballCorpoSegnaposto(titolo, d) {
+    return {
+        inline:
+            `<p class="ball-k-tit">${titolo}</p>` +
+            '<div class="ball-k-mid ball-attesa">In arrivo</div>' +
+            `<span class="ball-k-lab">${(d && d.testo) || ''}</span>`,
+        blocco: ''
+    };
+}
+
 function _ballPill(testo, acceso) {
     return `<span class="ball-pill${acceso ? ' acceso' : ''}">${testo}</span>`;
 }
@@ -1134,6 +1401,195 @@ function _ballPulsante(testo, azione) {
 
 // ── I QUATTRO CORPI ──────────────────────────────────────────────────────
 const _ballCORPI = {
+    set_completamento: (d) => {
+        if (!d) return { inline: '', blocco: '' };
+        if (!d.voci || !d.voci.length) {
+            return {
+                inline: '<p class="ball-k-tit">Set</p>' +
+                        '<div class="ball-k-mid">—</div>' +
+                        `<span class="ball-k-lab">${d.riconosciute ? 'nessun set completabile' : 'codici non riconosciuti'}</span>`,
+                blocco: ''
+            };
+        }
+        const m = d.voci[0];
+        const inline =
+            '<p class="ball-k-tit">Set</p>' +
+            `<div class="ball-k-big ball-k-mono">${Math.round(m.perc)}%</div>` +
+            `<span class="ball-k-lab">${m.nome} · ${m.totale - m.hai} alla fine</span>`;
+        const blocco = d.voci.slice(0, 4).map(v =>
+            _ballRigaBarra(v.nome, `${v.hai}/${v.totale}`, v.perc,
+                `_ballAzioneRiga(event,'tab','visualizzazione')`)).join('');
+        return { inline, blocco };
+    },
+
+    // ── SEGNAPOSTO GACHA ─────────────────────────────────────────────────
+    // Stessa forma dello "stato vuoto" del mockup: dice cosa arriverà,
+    // senza numeri finti e senza pulsanti che non portano da nessuna parte.
+    bustina: (d) => _ballCorpoSegnaposto('Bustina', d),
+    polvere: (d) => _ballCorpoSegnaposto('Polvere', d),
+    missioni: (d) => _ballCorpoSegnaposto('Missioni', d),
+
+    // ── I CINQUE WIDGET NUOVI ────────────────────────────────────────────
+    valore_collezione: (d) => {
+        if (!d) return { inline: '', blocco: '' };
+        const eur = (v) => '€ ' + Number(v || 0).toLocaleString('it-IT', { maximumFractionDigits: 0 });
+        const inline =
+            '<p class="ball-k-tit">Valore</p>' +
+            `<div class="ball-k-big ball-k-mono">${eur(d.valore)}</div>` +
+            `<span class="ball-k-lab">${d.pezzi} pezzi · media ${eur(d.media)}</span>`;
+        let blocco = '';
+        if (d.top && d.top.length) {
+            blocco = '<div class="ball-riga-set">' + d.top.map(c =>
+                `<div class="ball-riga ball-clic" onclick="_ballAzioneRiga(event,'carta','${c.id}')">
+                    <span class="ball-nome">${c.nome}</span><span class="ball-dato">${eur(c.valore)}</span>
+                 </div>`).join('') + '</div>' +
+                '<span class="ball-k-lab">Le più preziose</span>';
+        }
+        return { inline, blocco };
+    },
+
+    doppioni: (d) => {
+        if (!d) return { inline: '', blocco: '' };
+        const inline =
+            '<p class="ball-k-tit">Doppioni</p>' +
+            `<div class="ball-k-big ball-k-mono">${d.copieExtra || 0}</div>` +
+            `<span class="ball-k-lab">copie in più su ${d.titoli || 0} carte</span>` +
+            (d.valoreExtra > 0 ? `<span class="ball-k-lab su">€ ${Math.round(d.valoreExtra).toLocaleString('it-IT')} scambiabili</span>` : '');
+        let blocco = '';
+        if (d.lista && d.lista.length) {
+            blocco = '<div class="ball-riga-set">' + d.lista.map(c =>
+                `<div class="ball-riga ball-clic" onclick="_ballAzioneRiga(event,'carta','${c.id}')">
+                    <span class="ball-nome">${c.nome}</span><span class="ball-dato">×${c.qty}</span>
+                 </div>`).join('') + '</div>';
+        }
+        return { inline, blocco };
+    },
+
+    wishlist_obiettivi: (d) => {
+        if (!d) return { inline: '', blocco: '' };
+        const inline =
+            '<p class="ball-k-tit">Wishlist</p>' +
+            `<div class="ball-k-big ball-k-mono${d.raggiunte > 0 ? ' su' : ''}">${d.raggiunte > 0 ? d.raggiunte : (d.totale || 0)}</div>` +
+            `<span class="ball-k-lab">${d.raggiunte > 0 ? 'sotto il prezzo obiettivo' : 'carte desiderate'}</span>` +
+            (d.raggiunte > 0 ? _ballPill('da comprare', true) : '');
+        let blocco = '';
+        if (d.lista && d.lista.length) {
+            // Barra: quanto è vicino il prezzo attuale all'obiettivo. Piena
+            // quando il prezzo è sceso fino al bersaglio.
+            blocco = d.lista.map(c => {
+                const perc = c.prezzo > 0 ? Math.min(100, (c.obiettivo / c.prezzo) * 100) : 0;
+                return _ballRigaBarra(c.nome, `€ ${c.prezzo.toFixed(0)} / ${c.obiettivo.toFixed(0)}`, perc,
+                    `_ballAzioneRiga(event,'carta','${c.id}')`);
+            }).join('');
+        }
+        return { inline, blocco };
+    },
+
+    traguardi: (d) => {
+        if (!d || !d.carte) return { inline: '', blocco: '' };
+        const manca = d.carte.soglia - d.carte.valore;
+        const inline =
+            '<p class="ball-k-tit">Traguardi</p>' +
+            `<div class="ball-k-big ball-k-mono">${manca > 0 ? manca : 0}</div>` +
+            `<span class="ball-k-lab">carte al traguardo di ${d.carte.soglia}</span>`;
+        const blocco =
+            _ballRigaBarra('Carte', `${d.carte.valore}/${d.carte.soglia}`, d.carte.perc) +
+            _ballRigaBarra('Valore', `€ ${d.euro.valore.toLocaleString('it-IT')}/${d.euro.soglia.toLocaleString('it-IT')}`, d.euro.perc) +
+            _ballRigaBarra('Location', `${d.luoghi.valore}/${d.luoghi.soglia}`, d.luoghi.perc);
+        return { inline, blocco };
+    },
+
+    lingue: (d) => {
+        if (!d || !d.voci || !d.voci.length) return { inline: '', blocco: '' };
+        const prima = d.voci[0];
+        const quota = d.totale ? Math.round((prima[1] / d.totale) * 100) : 0;
+        const inline =
+            '<p class="ball-k-tit">Lingue</p>' +
+            `<div class="ball-k-big ball-k-mono">${prima[0]}</div>` +
+            `<span class="ball-k-lab">${quota}% della collezione</span>`;
+        const blocco = '<div class="ball-stat-griglia">' + d.voci.slice(0, 3).map(([lang, n]) =>
+            `<div class="ball-stat"><b>${n}</b><span>${lang}</span></div>`).join('') + '</div>';
+        return { inline, blocco };
+    },
+
+    // ── CORPI PER I WIDGET GIÀ ESISTENTI ─────────────────────────────────
+    inserimento: (d) => {
+        if (!d) return { inline: '', blocco: '' };
+        const n = d.daCorreggere || 0;
+        const inline =
+            '<p class="ball-k-tit">Inserimento</p>' +
+            `<div class="ball-k-big ball-k-mono${n > 0 ? ' giu' : ' su'}">${n}</div>` +
+            `<span class="ball-k-lab">${n > 0 ? 'in coda da correggere' : 'coda pulita'}</span>`;
+        const blocco = n > 0
+            ? _ballPulsante('Vai alla coda', `_ballAzioneRiga(event,'tab','inserimento')`)
+            : _ballPulsante('Aggiungi carta', `_ballAzioneRiga(event,'tab','inserimento')`);
+        return { inline, blocco };
+    },
+
+    binder: (d) => {
+        if (!d) return { inline: '', blocco: '' };
+        const inline =
+            '<p class="ball-k-tit">Binders</p>' +
+            `<div class="ball-k-big ball-k-mono">${d.totale || 0}</div>` +
+            '<span class="ball-k-lab">raccoglitori</span>';
+        let blocco = '';
+        if (d.voci && d.voci.length) {
+            const massimo = d.voci[0][1] || 1;
+            blocco = d.voci.slice(0, 3).map(([nome, n]) =>
+                _ballRigaBarra(nome, n, (n / massimo) * 100,
+                    `_ballAzioneRiga(event,'location','${String(nome).replace(/'/g, "\\'")}')`)).join('');
+        }
+        return { inline, blocco };
+    },
+
+    sealed: (d) => {
+        if (!d) return { inline: '', blocco: '' };
+        const eur = (v) => '€ ' + Number(v || 0).toLocaleString('it-IT', { maximumFractionDigits: 0 });
+        const inline =
+            '<p class="ball-k-tit">Sealed</p>' +
+            `<div class="ball-k-big ball-k-mono">${d.totale || 0}</div>` +
+            `<span class="ball-k-lab">prodotti${d.valore ? ' · ' + eur(d.valore) : ''}</span>`;
+        let blocco = '';
+        if (d.lista && d.lista.length) {
+            blocco = '<div class="ball-riga-set">' + d.lista.map(p =>
+                `<div class="ball-riga"><span class="ball-nome">${p.nome}</span><span class="ball-dato">${eur(p.prezzo)}</span></div>`
+            ).join('') + '</div>';
+        }
+        return { inline, blocco };
+    },
+
+    gruppo_attivo: (d) => {
+        if (!d) return { inline: '', blocco: '' };
+        const inline =
+            '<p class="ball-k-tit">Gruppo</p>' +
+            `<div class="ball-k-mid">${d.attivo ? 'Al lavoro' : 'In pausa'}</div>` +
+            '<span class="ball-k-lab">stato del gruppo adesso</span>' +
+            _ballPill(d.attivo ? 'qualcuno online' : 'nessuno online', !!d.attivo);
+        return { inline, blocco: '' };
+    },
+
+    suggerimento: (d) => {
+        if (!d) return { inline: '', blocco: '' };
+        const inline =
+            '<p class="ball-k-tit">Prossima azione</p>' +
+            `<div class="ball-k-mid">${d.testo || ''}</div>` +
+            '<span class="ball-k-lab">la cosa più utile ora</span>';
+        const blocco = d.tab && d.tab !== 'home'
+            ? _ballPulsante('Fallo adesso', `_ballAzioneRiga(event,'tab','${d.tab}')`)
+            : '';
+        return { inline, blocco };
+    },
+
+    estensione: (d) => {
+        if (!d) return { inline: '', blocco: '' };
+        const inline =
+            '<p class="ball-k-tit">Estensione</p>' +
+            `<div class="ball-k-mid">${d.rilevata ? 'v' + d.versione : 'Non rilevata'}</div>` +
+            `<span class="ball-k-lab">${d.rilevata ? 'collegata a questo dispositivo' : 'installala per sincronizzare'}</span>` +
+            (d.rilevata ? _ballPill(d.aiutaGruppo ? 'aiuta il gruppo' : 'aiuto disattivo', !!d.aiutaGruppo) : '');
+        return { inline, blocco: '' };
+    },
+
     // Prezzi: quanti chiedono attenzione, quanto vale la collezione, la
     // quota di aggiornati come barra e le carte scadute come righe.
     prezzi: (d) => {
