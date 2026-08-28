@@ -207,6 +207,49 @@ function _ballLeggiCodice(codice) {
     return null;
 }
 
+// ── STORICO "DA FARE" (24h) — Claudio, 2026-08-28 ────────────────────────
+// _daFareUltimoStato: SOLO in memoria, non persistito, per-tab. Serve
+// unicamente a confrontare "prima" con "ora" a ogni preview() del widget
+// 'suggerimento' (~ogni 15s mentre la home è aperta, stesso polling già
+// esistente) — zero query in più per il confronto stesso. La scrittura
+// vera su preferenze_utente scatta SOLO quando un segnale sparisce
+// dall'elenco attivo (transizione), non a ogni tick.
+// LIMITE ACCETTATO: se un segnale nasce e si risolve interamente senza
+// che la home sia mai aperta nel frattempo, la transizione non viene mai
+// osservata — nessuno storico per quel caso. Accettabile per una funzione
+// "in più", non richiede un cron server-side.
+let _daFareUltimoStato = {};
+const FINESTRA_STORICO_DAFARE_MS = 24 * 60 * 60 * 1000; // Claudio: "24 ore va benissimo"
+
+function _rilevaTransizioniDaFare(segnaliOra) {
+    const idAttiviOra = new Set(segnaliOra.map(s => s.id));
+    Object.keys(_daFareUltimoStato).forEach(id => {
+        if (_daFareUltimoStato[id].attivo && !idAttiviOra.has(id)) {
+            _segnaDaFareRisolto(id, _daFareUltimoStato[id].testo); // fire-and-forget, non blocca il render
+        }
+    });
+    const nuovoStato = {};
+    segnaliOra.forEach(s => { nuovoStato[s.id] = { attivo: true, testo: s.testo }; });
+    Object.keys(_daFareUltimoStato).forEach(id => {
+        if (!nuovoStato[id]) nuovoStato[id] = { attivo: false, testo: _daFareUltimoStato[id].testo };
+    });
+    _daFareUltimoStato = nuovoStato;
+}
+
+async function _segnaDaFareRisolto(id, testo) {
+    try {
+        const userId = await authGetUserId();
+        if (!userId) return;
+        const { data, error } = await userSettingsGet(userId);
+        if (error) { console.error('_segnaDaFareRisolto: lettura fallita:', error.message); return; }
+        let storico = {};
+        try { storico = (data && data.dafare_risolti) ? JSON.parse(data.dafare_risolti) : {}; } catch (_) { storico = {}; }
+        storico[id] = { testo, risoltoIl: new Date().toISOString() };
+        const { error: errScrittura } = await userSettingsUpsertDaFareRisolti(userId, storico);
+        if (errScrittura) console.error('_segnaDaFareRisolto: scrittura fallita:', errScrittura.message);
+    } catch (e) { console.error('_segnaDaFareRisolto:', e); }
+}
+
 const CATALOGO_WIDGET = {
     visualizzazione: {
         titolo: 'Visualizzazione', icona: 'fa-images',
@@ -384,6 +427,8 @@ const CATALOGO_WIDGET = {
 
             const alLavoro = await _dispositiviAttiviOra();
             if (alLavoro) segnali.push({ id: 'gruppo_al_lavoro', testo: 'Il gruppo sta lavorando', stato: undefined, tab: 'home' });
+
+            _rilevaTransizioniDaFare(segnali); // storico 24h — vedi sopra la funzione
 
             if (segnali.length === 0) return { righe: ['Tutto in ordine'], stato: 'ok', dati: { segnali: [] } };
             const primo = segnali[0];
@@ -2615,7 +2660,26 @@ async function renderPaginaDaFare() {
     try { anteprima = await CATALOGO_WIDGET.suggerimento.preview(); } catch (e) { console.error('renderPaginaDaFare:', e); anteprima = { dati: { segnali: [] } }; }
     const segnali = (anteprima.dati && anteprima.dati.segnali) || [];
 
-    if (segnali.length === 0) {
+    // Storico: segnali risolti negli ultimi FINESTRA_STORICO_DAFARE_MS,
+    // persistente per-utente (migration 31) — non compaiono più tra gli
+    // attivi ma restano visibili barrati per un po' (Claudio, confermato).
+    let risolti = [];
+    try {
+        const userId = await authGetUserId();
+        if (userId) {
+            const { data, error } = await userSettingsGet(userId);
+            if (!error && data && data.dafare_risolti) {
+                const storico = JSON.parse(data.dafare_risolti) || {};
+                const ora = Date.now();
+                const idAttivi = new Set(segnali.map(s => s.id));
+                risolti = Object.entries(storico)
+                    .filter(([id, v]) => !idAttivi.has(id) && (ora - new Date(v.risoltoIl).getTime()) < FINESTRA_STORICO_DAFARE_MS)
+                    .map(([, v]) => v.testo);
+            }
+        }
+    } catch (e) { console.error('renderPaginaDaFare: storico:', e); }
+
+    if (segnali.length === 0 && risolti.length === 0) {
         container.innerHTML = `
             <p style="text-align:center; color:var(--text-muted); font-size:0.9rem; padding:2rem 0;">
                 <i class="fa-solid fa-circle-check" style="font-size:1.6rem; display:block; margin-bottom:0.6rem; color:var(--success);"></i>
@@ -2627,8 +2691,8 @@ async function renderPaginaDaFare() {
     // Ordine = priorità: preview() li restituisce già in quest'ordine
     // (coda errori → prezzi scaduti → wishlist sotto obiettivo → gruppo
     // al lavoro), nessun riordino aggiuntivo qui (Claudio, risposta 12:
-    // "solo per priorità").
-    container.innerHTML = segnali.map(s => {
+    // "solo per priorità"). I risolti vanno sempre in coda, dopo gli attivi.
+    const righeAttive = segnali.map(s => {
         const alta = s.stato === 'allerta';
         return `
             <div class="widget-picker-riga" onclick="_apriVoceDaFare('${s.tab}', event)" style="align-items:flex-start;">
@@ -2639,6 +2703,14 @@ async function renderPaginaDaFare() {
                 </span>
             </div>`;
     }).join('');
+
+    const righeRisolte = risolti.map(testo => `
+        <div class="widget-picker-riga" style="align-items:flex-start; opacity:0.55;">
+            <i class="fa-solid fa-square-check" style="color:var(--success); margin-top:0.15rem;"></i>
+            <span style="flex:1; text-decoration:line-through;">${testo}</span>
+        </div>`).join('');
+
+    container.innerHTML = righeAttive + righeRisolte;
 }
 
 // Riusa apriDettaglioWidget per tutte le destinazioni tranne 'home' (già
