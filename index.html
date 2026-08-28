@@ -1012,6 +1012,189 @@
         #phoneWidgetHomeWrap.densita-compatta .widget-tile-titolo { font-size: 0.72rem; }
         #phoneWidgetHomeWrap.densita-compatta .widget-tile-righe { font-size: 0.62rem; }
 
+        /* ═══════════════════════════════════════════════════════════════
+           GRAFICA POKÉ BALL DEI WIDGET (sessione 2026-08-27)
+           ═══════════════════════════════════════════════════════════════
+           Blocco ADDITIVO: tutto sotto ".ball-ui", classe messa su
+           #phoneWidgetGrid da renderWidgetHome() solo quando BALL_ATTIVA è
+           vera (ui/phone.ui.js, in cima). ROLLBACK: mettere BALL_ATTIVA a
+           false — la classe non viene più applicata, queste regole non
+           mordono più e torna in vigore da sé il CSS originale qui sopra,
+           che non è stato toccato.
+
+           Origine: mockup approvato (mockup-widget.html).
+           ═══════════════════════════════════════════════════════════════ */
+
+        /* Misura UNICA della sfera: uguale su 1x1, 2x1, 1x2, 2x2, mini e in
+           entrambe le densità (Claudio: "la ball non deve MAI rimpicciolire").
+           90px in una cella alta 108 lascia ~9px di respiro per lato. */
+        #phoneWidgetGrid.ball-ui { --ball-misura: 90px; }
+
+        /* Riquadro QUASI INVISIBILE: la sfera è il soggetto, il rettangolo
+           serve solo al layout e ai gesti. Riappare in modalità modifica,
+           dove devi vedere dove finisce un widget per spostarlo. */
+        .ball-ui .widget-tile {
+            background: transparent;
+            border: 1px solid transparent;
+            box-shadow: none;
+            padding: 0.35rem;
+            min-height: 0;
+            align-items: center;
+            justify-content: center;
+            gap: 0.2rem;
+            overflow: visible;
+            --ball: var(--ball-misura, 90px);
+            --accent: var(--primary);
+        }
+        .ball-ui .widget-tile-allerta,
+        .ball-ui .widget-tile-ok { border-color: transparent; }
+
+        /* In modifica il riquadro torna: bordo tratteggiato, sfondo, ombra. */
+        .ball-ui.in-modifica-widget .widget-tile {
+            background: var(--card-bg);
+            border: 1px dashed var(--primary);
+            box-shadow: var(--shadow-soft);
+        }
+
+        /* Strati luminosi. La tinta colorava il RETTANGOLO: senza rettangolo
+           sporcherebbe lo sfondo, quindi resta solo in modifica. L'alone del
+           semaforo invece si accende sempre: è un lampo, non un fondo. */
+        .ball-ui .tile-tinta,
+        .ball-ui .tile-alone {
+            position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+        }
+        .ball-ui .tile-tinta {
+            background: radial-gradient(circle at 50% 45%, var(--accent), transparent 64%);
+            opacity: 0;
+        }
+        .ball-ui.in-modifica-widget .tile-tinta { opacity: .13; }
+        body.dark-mode .ball-ui.in-modifica-widget .tile-tinta { opacity: .22; }
+        .ball-ui .tile-alone {
+            box-shadow: inset 0 0 0 2px var(--accent), 0 0 22px -4px var(--accent);
+            opacity: 0;
+        }
+
+        /* ── LA SFERA ────────────────────────────────────────────────────
+           Il viewBox dell'SVG è ritagliato esattamente sulla sfera, quindi
+           .pkdx-ball COINCIDE con la sfera: tutte le percentuali qui sotto
+           sono riferite al diametro, non a un box più largo. */
+        .ball-ui .pkdx-icon-wrap {
+            position: relative;
+            width: var(--ball); height: var(--ball);
+            flex: 0 0 auto; z-index: 2;
+        }
+        .ball-ui .pkdx-ball { width: 100%; height: 100%; position: relative; }
+        .ball-ui .pkdx-ball-body {
+            width: 100%; height: 100%; position: relative;
+            transform-origin: 50% 100%; will-change: transform;
+        }
+        .ball-ui .ball-svg { display: block; width: 100%; height: 100%; overflow: visible; }
+        .ball-ui .ball-shadow {
+            position: absolute; left: 14%; right: 14%; bottom: -5%; height: 8%;
+            border-radius: 50%; background: rgba(0,0,0,.26); filter: blur(3px); pointer-events: none;
+        }
+        .ball-ui .ball-glass {
+            position: absolute; inset: 0; border-radius: 50%;
+            overflow: hidden; pointer-events: none;
+        }
+        .ball-ui .ball-sweep {
+            position: absolute; top: -30%; left: -60%; width: 34%; height: 160%;
+            background: linear-gradient(90deg, rgba(255,255,255,0), rgba(255,255,255,.85) 50%, rgba(255,255,255,0));
+            transform: rotate(18deg); opacity: 0;
+        }
+        .ball-ui .pkdx-ball-glow {
+            position: absolute; inset: -8%; border-radius: 50%;
+            background: radial-gradient(circle, rgba(212,52,44,.6) 36%, rgba(212,52,44,0) 72%);
+            opacity: 0; pointer-events: none;
+        }
+        .ball-ui .pkdx-lock-ring {
+            position: absolute; inset: 0; border-radius: 50%;
+            border: 3px solid #F2C230; opacity: 0; pointer-events: none;
+        }
+        .ball-ui .pkdx-lock-ring.ring-2 { border-color: #fff; border-width: 2px; }
+        .ball-ui .pkdx-dust {
+            position: absolute; left: 4%; right: 4%; bottom: -10%; height: 16%;
+            border-radius: 50%; border: 2px solid rgba(120,116,104,.55);
+            opacity: 0; pointer-events: none;
+        }
+        .ball-ui .pkdx-star,
+        .ball-ui .pkdx-conf { position: absolute; opacity: 0; pointer-events: none; }
+        .ball-ui .pkdx-star {
+            clip-path: polygon(50% 0%, 61% 39%, 100% 50%, 61% 61%, 50% 100%, 39% 61%, 0% 50%, 39% 39%);
+        }
+        .ball-ui .pkdx-conf { border-radius: 1px; }
+        .ball-ui .ball-inciso { pointer-events: none; }
+
+        /* Punti esclamativi del semaforo, sopra la sfera. */
+        .ball-ui .pkdx-avviso {
+            position: absolute; left: 0; right: 0; top: -14%; height: 24%;
+            display: flex; align-items: center; justify-content: center; gap: 3%;
+            pointer-events: none; z-index: 4;
+        }
+        .ball-ui .pkdx-avviso i {
+            position: relative; display: flex; align-items: center; justify-content: center;
+            font-style: normal; font-weight: 800; color: #fff;
+            background: var(--accent);
+            border: calc(var(--ball) * 0.022) solid #141416;
+            border-radius: 50%; opacity: 0;
+            box-shadow: 0 2px 6px rgba(0,0,0,.3);
+        }
+        .ball-ui .pkdx-avviso i::after {
+            content: ''; position: absolute; left: 22%; top: 16%;
+            width: 30%; height: 22%; border-radius: 50%; background: rgba(255,255,255,.55);
+        }
+        .ball-ui .pkdx-avviso .a2 {
+            width: calc(var(--ball) * 0.30); height: calc(var(--ball) * 0.30);
+            font-size: calc(var(--ball) * 0.19);
+        }
+        .ball-ui .pkdx-avviso .a1,
+        .ball-ui .pkdx-avviso .a3 {
+            width: calc(var(--ball) * 0.21); height: calc(var(--ball) * 0.21);
+            font-size: calc(var(--ball) * 0.135);
+        }
+
+        /* ── TAGLIE ──────────────────────────────────────────────────────
+           Su 1x1 la tessera È la sfera, col titolo inciso nella pancia: il
+           testo esterno sparisce. La cella non è quadrata (larga ~117px,
+           alta 108), quindi la centratura la fa place-items su una griglia
+           — un solo meccanismo, per non ritrovarsi offset di un pixel. */
+        .ball-ui .widget-size-1x1:not(.widget-tile-mini) {
+            display: grid;
+            place-items: center;
+            padding: 0;
+            gap: 0;
+        }
+        .ball-ui .widget-size-1x1 > .pkdx-icon-wrap,
+        .ball-ui .widget-size-1x1 > .widget-tile-thumb-row { grid-area: 1 / 1; }
+        .ball-ui .widget-size-1x1 .widget-tile-titolo,
+        .ball-ui .widget-size-1x1 .widget-tile-righe { display: none; }
+
+        .ball-ui .widget-size-2x1 {
+            flex-direction: row; align-items: center; justify-content: flex-start;
+            gap: 0.7rem; padding: 0.5rem;
+        }
+        .ball-ui .widget-size-1x2,
+        .ball-ui .widget-size-2x2 { justify-content: center; gap: 0.4rem; padding: 0.5rem; }
+
+        /* Mini: la sfera è già l'icona, resta solo lei. */
+        .ball-ui .widget-tile-mini { padding: 0.2rem; }
+        .ball-ui .widget-tile-mini .widget-tile-thumb-row { display: flex; }
+        .ball-ui .widget-tile-mini .widget-tile-thumb { width: 46px; height: 64px; }
+
+        /* Densità compatta: con la sfera grande quanto il lato della cella,
+           abbassare la riga vorrebbe dire rimpicciolire la sfera. Quindi la
+           riga NON cambia e si comprimono solo distanze e testo
+           (Claudio: "si comprimono solo gap e testo"). */
+        #phoneWidgetHomeWrap.densita-compatta #phoneWidgetGrid.ball-ui {
+            grid-auto-rows: 108px; gap: 0.4rem;
+        }
+        #phoneWidgetHomeWrap.densita-compatta .ball-ui .widget-tile { padding: 0.15rem; gap: 0.1rem; }
+
+        /* Le tessere con immagine (Ultima carta, Carta del giorno) non hanno
+           sfera: la carta prende il suo posto e si ingrandisce per reggere
+           il confronto con le sfere accanto. */
+        .ball-ui .widget-size-1x1 .widget-tile-thumb { width: 62px; height: 86px; }
+
         /* Overlay dettaglio: .container viene agganciata al rettangolo
            schermo della cornice — non spostata nel DOM (zero rischio sui
            selettori esistenti). Geometria (top/left/width/height/border-
@@ -3361,6 +3544,56 @@
                     </div>
                     <label class="switch">
                         <input type="checkbox" id="riduciAnimazioniToggle" onchange="toggleRiduciAnimazioni(this.checked)">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+
+                <!-- ═══ GRAFICA WIDGET POKÉ BALL (27/08/2026) ═══
+                     Quattro preferenze PER-DISPOSITIVO (localStorage, vedi
+                     data/preferences.repository.js). Volutamente separate da
+                     "Riduci Animazioni" qui sopra, che riguarda solo il flash
+                     sul prezzo: chi non vuole il flash non è detto voglia
+                     anche i widget immobili. -->
+                <div class="setting-row">
+                    <div>
+                        <h4 style="font-size: 0.9rem; font-weight: 700;">Animazioni dei widget</h4>
+                        <p style="font-size: 0.75rem; color: var(--text-muted);">Movimento delle Poké Ball: cattura all'apertura e richiami quando c'è qualcosa da fare (solo su questo dispositivo)</p>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox" id="chkAnimWidget" onchange="toggleAnimWidget(this.checked)">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+
+                <div class="setting-row" id="rigaAnimCattura">
+                    <div>
+                        <h4 style="font-size: 0.9rem; font-weight: 700;">Animazione di cattura</h4>
+                        <p style="font-size: 0.75rem; color: var(--text-muted);">La sequenza completa quando apri un widget (dura circa 2 secondi e mezzo). Spegnendola i widget si aprono subito, ma le Poké Ball continuano a segnalarti cosa richiede attenzione</p>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox" id="chkAnimCattura" onchange="toggleAnimCattura(this.checked)">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+
+                <div class="setting-row">
+                    <div>
+                        <h4 style="font-size: 0.9rem; font-weight: 700;">Scritte sulle Poké Ball</h4>
+                        <p style="font-size: 0.75rem; color: var(--text-muted);">Il nome inciso sulla parte bianca dei widget piccoli. Spento, restano le sfere nude</p>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox" id="chkScritteBall" onchange="toggleScritteBall(this.checked)">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+
+                <div class="setting-row">
+                    <div>
+                        <h4 style="font-size: 0.9rem; font-weight: 700;">Numeri sui widget</h4>
+                        <p style="font-size: 0.75rem; color: var(--text-muted);">Il pallino col conteggio in alto a destra. Sui widget piccoli ripete un dato già inciso sulla sfera</p>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox" id="chkBadgeWidget" onchange="toggleBadgeWidget(this.checked)">
                         <span class="slider"></span>
                     </label>
                 </div>
