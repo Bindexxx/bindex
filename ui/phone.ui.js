@@ -118,7 +118,7 @@ async function _ballCaricaLibreriaDaDb() {
 //   "BRS TG04"      → BRS-TG / 4       (Trainer Gallery: numerazione a sé)
 //   "CRZ GG22"      → CRZ-GG / 22      (Galarian Gallery)
 //   "CEL TR 15"     → CEL-TR / 15      (sottoinsieme Team Rocket)
-//   "PPS8 SCR 107"  → PPS8-SCR / 107
+//   "PPS8 SCR 107"  → SCR / 107        (bustina premio, ricondotta al set)
 //   "MCD25 5"       → MCD25 / 5        (McDonald's, uno per anno)
 //   "SM-P 47"       → SM-P / 47        (promo)
 //
@@ -143,10 +143,41 @@ async function _ballCaricaLibreriaDaDb() {
 // risulterebbe mai completa. La variante resta comunque nota (campo
 // 'variante'), utile se un giorno vorrai contare il master set — cioè tutte
 // le varianti — invece del solo set base.
+//
+// BUSTINE PREMIO (Claudio): le sigle che iniziano per "PPS<numero>-"
+// — es. PPS8-SCR, PPS6-TWM, PPS7-JTG, 48 carte in tutto — sono carte
+// normali di un'espansione reale, solo stampate come bustina premio.
+// Stesso trattamento delle varianti X: ricondotte al set base (campo
+// 'variante' = 'stampata'). Verificato sui 1143+ codici reali il
+// 2026-08-28: tutte le 19 teste PPS trovate puntano a un set già in
+// libreria, nessuna eccezione.
 function _ballSetBase(testa) {
-    const m = testa.match(/^X([A-Z]{2,6})(-.*)?$/);
-    if (!m) return { set: testa, variante: null };
-    return { set: m[1] + (m[2] || ''), variante: 'ball' };
+    const mX = testa.match(/^X([A-Z]{2,6})(-.*)?$/);
+    if (mX) return { set: mX[1] + (mX[2] || ''), variante: 'ball' };
+
+    // Bustine premio: "PPS8 SCR 107" → testa normalizzata "PPS8-SCR".
+    // Carte normali di un'espansione reale, solo stampate diversamente.
+    // Verificato sui dati reali (2026-08-28): 19 teste PPS<n>-<SIGLA>,
+    // tutte riconducibili a un set già in libreria, nessuna eccezione.
+    const mPPS = testa.match(/^PPS\d+-(.+)$/);
+    if (mPPS) return { set: mPPS[1], variante: 'stampata' };
+
+    return { set: testa, variante: null };
+}
+
+// Alias per teste che in collezione non coincidono con la sigla ufficiale
+// TCGdex. Una riga per ogni caso: aggiunta SOLO dopo conferma esplicita di
+// Claudio sul significato del codice, mai dedotta dal pattern (a differenza
+// di X e PPS, qui non c'è una regola regolare da riconoscere).
+const _ballALIAS_TESTA = {
+    'SM': 'SMP',   // SM Black Star Promos (confermato da Claudio, 2026-08-28)
+    'TR': 'RO',    // Team Rocket, sigla storica (confermato da Claudio, 2026-08-28)
+    'FL': 'UNB',   // Legami Inossidabili / Unbroken Bonds (confermato da Claudio, 2026-08-28)
+    'TM': 'TRI',   // Battaglie Trionfali, HS4 (confermato da Claudio, 2026-08-28)
+};
+
+function _ballSetBaseConAlias(testa) {
+    return _ballSetBase(_ballALIAS_TESTA[testa] || testa);
 }
 
 function _ballLeggiCodice(codice) {
@@ -159,7 +190,7 @@ function _ballLeggiCodice(codice) {
         // "CEL TR 15" e "CEL-TR-15" finiscono nello stesso set.
         const testa = m[1].trim().replace(/^[\s\-_]+|[\s\-_]+$/g, '').replace(/[\s\-_]+/g, '-');
         if (testa && /[A-Z]/.test(testa)) {
-            const b = _ballSetBase(testa);
+            const b = _ballSetBaseConAlias(testa);
             return { set: b.set, variante: b.variante, numero: parseInt(m[2], 10) };
         }
     }
@@ -170,7 +201,7 @@ function _ballLeggiCodice(codice) {
     // conteggio delle espansioni, ma non entrano in nessun avanzamento —
     // senza numerazione non esiste un "quante ne mancano".
     if (/^[A-Z][A-Z\-]{0,7}$/.test(t)) {
-        const b = _ballSetBase(t);
+        const b = _ballSetBaseConAlias(t);
         return { set: b.set, variante: b.variante, numero: null };
     }
     return null;
