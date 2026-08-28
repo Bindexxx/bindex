@@ -46,3 +46,16 @@ async function userSettingsUpsertBinderModalita(userId, modalita) {
         owner_id: userId, binder_modalita_visualizzazione: modalita, aggiornato_il: new Date().toISOString(),
     });
 }
+
+// Aggiunta 2026-08-28 (pagina Match, "nascondi persistente" per-utente —
+// vedi migration 30_preferenze_match_nascosti.sql). match_nascosti è
+// TEXT, non JSONB (stessa scelta di colonna delle altre in questo file):
+// qui il client serializza l'array di chiavi con JSON.stringify, chi
+// legge (userSettingsGet) lo riceve grezzo e lo fa JSON.parse da sé.
+async function userSettingsUpsertMatchNascosti(userId, chiaviNascoste) {
+    return supabaseClient.from('preferenze_utente').upsert({
+        owner_id: userId,
+        match_nascosti: JSON.stringify(chiaviNascoste || []),
+        aggiornato_il: new Date().toISOString(),
+    });
+}
