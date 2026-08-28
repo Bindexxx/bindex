@@ -1392,6 +1392,16 @@
             position: absolute; inset: 0;
             width: 100%; height: 100%; object-fit: cover;
         }
+        /* Badge opzionale d'angolo (Claudio, 2026-08-28): oggi usato solo da
+           Doppioni per "×quante copie" — _ballMiniCarta(c, badge) lo
+           riceve come secondo parametro opzionale, retrocompatibile con
+           tutti gli altri punti che la chiamano senza. */
+        .ball-ui .ball-mini-badge {
+            position: absolute; right: 2px; bottom: 2px; z-index: 1;
+            background: rgba(0,0,0,.68); color: #fff;
+            font-size: 0.55rem; font-weight: 700; line-height: 1.3;
+            padding: 1px 4px; border-radius: 4px;
+        }
         .ball-ui .ball-mini:active { transform: scale(0.94); }
 
         /* Riflesso olografico delle carte speciali. Oggi non si accende su
@@ -3157,6 +3167,20 @@
             <button class="close-modal-btn" onclick="_chiudiPickerAggiungiWidget()"><i class="fa-solid fa-xmark"></i></button>
             <h3 style="font-weight: 800; margin-bottom: 0.8rem;"><i class="fa-solid fa-plus" style="color: var(--primary);"></i> Aggiungi widget</h3>
             <div id="widgetPickerLista"></div>
+        </div>
+    </div>
+
+    <!-- MODALE — ricerca carte per scegliere quale mostrare in una Vetrina
+         (Claudio, 2026-08-28, vedi _apriRicercaCartaVetrina in
+         ui/phone.ui.js). Stessa struttura del picker widget qui sopra;
+         l'input di testo riusa lo stile generico input[type="text"] già
+         definito nel foglio, nessuna CSS nuova per il campo. -->
+    <div id="vetrinaRicercaModal" class="modal-overlay" onclick="_chiudiRicercaCartaVetrina()">
+        <div class="modal-content" style="max-width: 360px;" onclick="event.stopPropagation()">
+            <button class="close-modal-btn" onclick="_chiudiRicercaCartaVetrina()"><i class="fa-solid fa-xmark"></i></button>
+            <h3 style="font-weight: 800; margin-bottom: 0.8rem;"><i class="fa-solid fa-star" style="color: var(--primary);"></i> Scegli la carta</h3>
+            <input type="text" id="vetrinaRicercaInput" placeholder="Cerca per nome o codice..." oninput="_filtraRicercaCartaVetrina(this.value)" style="width:100%; margin-bottom:0.6rem;">
+            <div id="vetrinaRicercaLista" style="max-height:50vh; overflow-y:auto;"></div>
         </div>
     </div>
 
