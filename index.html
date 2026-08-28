@@ -1196,106 +1196,208 @@
         .ball-ui .widget-size-1x1 .widget-tile-thumb { width: 62px; height: 86px; }
 
         /* ── CONTENUTI DELLE TESSERE GRANDI ──────────────────────────────
-           Due slot: "testa" (sfera + titolo + dato saliente, su una riga) e
-           "blocco" (sotto, per barre/elenchi/miniature). Il blocco esiste
-           solo dove c'è altezza: su 2x1 viene nascosto, o schiaccerebbe la
-           riga superiore. */
+           Componenti e tipografia ricalcati dal mockup (cardsync.css):
+           k-tit 14px/600, k-big 25px/650 con letter-spacing -.5px, k-mid
+           17px, k-lab 11px, barre 6px, pill, sparkline, riquadri statistica.
+           Le misure per taglia sono quelle del mockup: 1x2 accorcia, 2x2
+           ingrandisce, 2x1 taglia tutto tranne la prima riga.
+
+           NOMI PREFISSATI: nel mockup queste classi si chiamano .riga,
+           .nome, .dato, .pill, .stat, .azione — nomi che nel CSS di questo
+           sito sono già usati altrove (17 occorrenze). Stesse proprietà,
+           nomi prefissati con ball-. */
+
         .ball-ui .ball-testa {
             display: flex; align-items: center; gap: 0.65rem;
             width: 100%; min-width: 0;
         }
-        .ball-ui .ball-slot-inline { min-width: 0; flex: 1; }
+        .ball-ui .ball-slot-inline {
+            flex: 1 1 auto; min-width: 0;
+            display: flex; flex-direction: column; gap: 4px;
+        }
         .ball-ui .ball-slot-blocco {
-            width: 100%; margin-top: 0.5rem;
-            display: flex; flex-direction: column; gap: 0.35rem;
-            min-width: 0;
+            flex: 1 1 auto; min-height: 0; width: 100%;
+            display: flex; flex-direction: column; gap: 10px;
+            overflow: hidden;
+            margin-top: 0.5rem;
         }
-        /* 2x1 è largo ma basso: solo la riga superiore. */
-        .ball-ui .widget-size-2x1 .ball-slot-blocco { display: none; }
-        .ball-ui .widget-size-1x2,
-        .ball-ui .widget-size-2x2 { align-items: stretch; justify-content: flex-start; }
-        .ball-ui .widget-size-1x2 .ball-testa,
-        .ball-ui .widget-size-2x2 .ball-testa { flex-shrink: 0; }
 
-        .ball-ui .ball-testa .widget-tile-titolo {
-            font-size: 0.78rem; line-height: 1.15;
+        /* Tipografia */
+        .ball-ui .ball-k-tit {
+            font-size: 14px; font-weight: 600; margin: 0;
+            color: var(--text-dark);
             white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
         }
-        .ball-ui .widget-size-2x2 .ball-testa .widget-tile-titolo { font-size: 0.92rem; }
-
-        /* Il dato saliente: grosso, subito leggibile. */
-        .ball-ui .ball-cifra {
-            font-size: 1.45rem; font-weight: 800; line-height: 1.05;
-            color: var(--text-dark); letter-spacing: -0.5px;
-        }
-        .ball-ui .widget-size-2x2 .ball-cifra { font-size: 1.9rem; }
-        .ball-ui .ball-cifra.allerta { color: var(--danger); }
-        .ball-ui .ball-cifra.ok { color: var(--success, #2e7d32); }
-        .ball-ui .ball-sotto {
-            font-size: 0.66rem; font-weight: 600; color: var(--text-muted);
+        .ball-ui .ball-k-lab {
+            font-size: 11px; color: var(--text-muted);
             white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
         }
+        .ball-ui .ball-k-big {
+            font-size: 25px; font-weight: 650; line-height: 1;
+            letter-spacing: -.5px; color: var(--text-dark);
+        }
+        .ball-ui .ball-k-mid { font-size: 17px; font-weight: 600; line-height: 1.1; }
+        .ball-ui .ball-k-mono { font-variant-numeric: tabular-nums; }
+        .ball-ui .su { color: #2E9E5F; }
+        .ball-ui .giu { color: #D4342C; }
+
+        /* Pill */
+        .ball-ui .ball-pill {
+            display: inline-flex; align-items: center; gap: 4px;
+            padding: 3px 9px; border-radius: 99px;
+            font-size: 11px; align-self: flex-start;
+            background: color-mix(in srgb, var(--text-muted) 15%, transparent);
+            color: var(--text-muted);
+        }
+        .ball-ui .ball-pill.acceso { background: var(--accent); color: #fff; }
+
+        /* Barre di avanzamento */
+        .ball-ui .ball-barra-out {
+            height: 6px; border-radius: 99px; overflow: hidden;
+            background: color-mix(in srgb, var(--text-muted) 18%, transparent);
+        }
+        .ball-ui .ball-barra-in {
+            height: 100%; border-radius: 99px; background: var(--accent);
+            transition: width .6s cubic-bezier(.3,.8,.35,1);
+        }
+        .ball-ui .ball-barra-testo {
+            display: flex; justify-content: space-between;
+            font-size: 11px; color: var(--text-muted); margin-bottom: 5px;
+        }
+
+        /* Righe */
+        .ball-ui .ball-riga { display: flex; align-items: center; gap: 10px; }
+        .ball-ui .ball-riga .ball-nome {
+            font-size: 12px; font-weight: 500; flex: 1 1 auto; min-width: 0;
+            color: var(--text-dark);
+            overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+        }
+        .ball-ui .ball-riga .ball-dato { font-size: 12px; color: var(--text-muted); flex: 0 0 auto; }
+        .ball-ui .ball-riga-set { display: flex; flex-direction: column; gap: 4px; }
+
+        /* Righe toccabili: ogni riga è una scorciatoia a sé */
+        .ball-ui .ball-clic { cursor: pointer; border-radius: 8px; }
+        .ball-ui .ball-clic:active { background: color-mix(in srgb, var(--primary) 14%, transparent); }
+
+        /* Sparkline */
+        .ball-ui .ball-spark { width: 100%; height: 34px; display: block; }
+
+        /* Riquadri statistica */
+        .ball-ui .ball-stat-griglia { display: flex; gap: 8px; }
+        .ball-ui .ball-stat {
+            flex: 1 1 0; min-width: 0; border-radius: 11px; padding: 7px 9px;
+            background: color-mix(in srgb, var(--text-muted) 12%, transparent);
+        }
+        .ball-ui .ball-stat b {
+            display: block; font-size: 17px; font-weight: 650; line-height: 1.15;
+            color: var(--text-dark);
+        }
+        .ball-ui .ball-stat span {
+            display: block; font-size: 10px; color: var(--text-muted);
+            overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+        }
+
+        /* Pulsante dentro al widget */
+        .ball-ui .ball-azione {
+            align-self: flex-start;
+            padding: 6px 13px; border-radius: 99px;
+            background: var(--accent); color: #fff;
+            font-size: 12px; font-weight: 600;
+            border: none; font-family: inherit; cursor: pointer;
+        }
+        .ball-ui .ball-azione:active { opacity: .75; }
+
+        /* Ripiego per gli undici widget non ancora convertiti */
         .ball-ui .ball-righe-testo {
             display: flex; flex-direction: column;
             font-size: 0.72rem; color: var(--text-muted); font-weight: 600;
         }
 
-        /* Righe: barre, elenchi, chip. Quelle toccabili si illuminano al
-           tocco, così è chiaro che sono bersagli a sé e non decorazione. */
-        .ball-ui .ball-riga { display: flex; flex-direction: column; gap: 0.2rem; border-radius: 8px; }
-        .ball-ui .ball-riga-clic { cursor: pointer; padding: 0.15rem 0.25rem; margin: 0 -0.25rem; }
-        .ball-ui .ball-riga-clic:active { background: color-mix(in srgb, var(--primary) 14%, transparent); }
-        .ball-ui .ball-riga-testa {
-            display: flex; justify-content: space-between; align-items: baseline; gap: 0.4rem;
-            font-size: 0.66rem; color: var(--text-muted); font-weight: 600;
+        /* ── MISURE PER TAGLIA, come nel mockup ──────────────────────────
+           2x1: largo ma basso. Resta la prima riga del blocco e nulla più:
+           strisce, riquadri e pulsanti verrebbero schiacciati. */
+        .ball-ui .widget-size-2x1 .ball-slot-blocco {
+            flex: 0 0 auto; max-height: 34px; overflow: hidden; margin-top: 0.3rem;
         }
-        .ball-ui .ball-riga-testa span {
-            white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0;
-        }
-        .ball-ui .ball-riga-testa b { color: var(--text-dark); font-weight: 800; flex-shrink: 0; }
-        .ball-ui .ball-barra {
-            height: 5px; border-radius: 3px; overflow: hidden;
-            background: color-mix(in srgb, var(--text-muted) 20%, transparent);
-        }
-        .ball-ui .ball-barra i {
-            display: block; height: 100%; border-radius: 3px;
-            background: linear-gradient(90deg, var(--accent), color-mix(in srgb, var(--accent) 60%, #fff 40%));
-        }
+        .ball-ui .widget-size-2x1 .ball-slot-blocco > *:nth-child(n+2) { display: none; }
+        .ball-ui .widget-size-2x1 .ball-slot-blocco .ball-strip,
+        .ball-ui .widget-size-2x1 .ball-slot-blocco .ball-stat-griglia,
+        .ball-ui .widget-size-2x1 .ball-azione { display: none; }
+        .ball-ui .widget-size-2x1 .ball-spark { height: 22px; }
+        .ball-ui .widget-size-2x1 .ball-k-big { font-size: 21px; }
 
-        .ball-ui .ball-elenco { display: flex; flex-direction: column; gap: 0.15rem; }
-        .ball-ui .ball-elenco .ball-riga { flex-direction: row; align-items: center; gap: 0.4rem; }
-        .ball-ui .ball-punto {
-            width: 6px; height: 6px; border-radius: 50%;
-            background: var(--danger); flex-shrink: 0;
-        }
-        .ball-ui .ball-nome {
-            font-size: 0.68rem; font-weight: 600; color: var(--text-dark);
-            white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0;
-        }
+        /* 1x2: stretto e alto. La sfera va sopra, il testo si centra. */
+        .ball-ui .widget-size-1x2 .ball-testa { flex-direction: column; gap: 8px; }
+        .ball-ui .widget-size-1x2 .ball-slot-inline { text-align: center; align-items: center; width: 100%; }
+        .ball-ui .widget-size-1x2 .ball-k-tit { font-size: 13px; }
+        .ball-ui .widget-size-1x2 .ball-k-mid { font-size: 15px; }
+        .ball-ui .widget-size-1x2 .ball-k-big { font-size: 22px; }
+        /* Oltre la terza riga non c'è spazio: si taglia invece di traboccare. */
+        .ball-ui .widget-size-1x2 .ball-slot-blocco > .ball-riga:nth-child(n+4),
+        .ball-ui .widget-size-1x2 .ball-slot-blocco > .ball-riga-set:nth-child(n+4) { display: none; }
 
-        .ball-ui .ball-chips { display: flex; gap: 0.35rem; flex-wrap: wrap; }
-        .ball-ui .ball-chip {
-            font-size: 0.64rem; font-weight: 700; padding: 0.22rem 0.5rem;
-            border-radius: 999px; cursor: pointer;
-            background: color-mix(in srgb, var(--text-muted) 15%, transparent);
-            color: var(--text-muted);
-        }
-        .ball-ui .ball-chip.forte {
-            background: color-mix(in srgb, var(--accent) 22%, transparent);
-            color: var(--text-dark);
-        }
-        .ball-ui .ball-chip:active { transform: scale(0.95); }
+        /* 2x2: c'è spazio, tutto respira. */
+        .ball-ui .widget-size-2x2 { padding: 16px; }
+        .ball-ui .widget-size-2x2 .ball-k-tit { font-size: 16px; }
+        .ball-ui .widget-size-2x2 .ball-k-mid { font-size: 20px; }
+        .ball-ui .widget-size-2x2 .ball-k-lab { font-size: 12px; }
+        .ball-ui .widget-size-2x2 .ball-k-big { font-size: 30px; }
+        .ball-ui .widget-size-2x2 .ball-spark { height: 52px; }
+        .ball-ui .widget-size-1x2,
+        .ball-ui .widget-size-2x2 { align-items: stretch; justify-content: space-between; }
 
-        /* Miniature delle ultime carte: ognuna apre la sua scheda. */
-        .ball-ui .ball-miniature { display: flex; gap: 0.35rem; }
+        /* ── MINIATURE DELLE CARTE ───────────────────────────────────────
+           Ricalcate sul mockup (.strip/.mini di cardsync.css): stesse
+           misure, stessi angoli, stessa ombra, stessa spaziatura. Le due
+           barre interne (i, u) sono l'illustrazione e il testo della carta
+           disegnata: restano visibili sotto l'immagine vera, così se questa
+           non carica non resta un buco. */
+        .ball-ui .ball-strip { display: flex; gap: 7px; }
         .ball-ui .ball-mini {
-            flex: 1; aspect-ratio: 5 / 7; border-radius: 5px; overflow: hidden;
-            border: 1px solid var(--border-color); background: var(--bg-color);
-            display: flex; align-items: center; justify-content: center;
-            color: var(--text-muted); font-size: 0.8rem; cursor: pointer;
+            width: 32px; height: 44px; border-radius: 5px;
+            flex: 0 0 auto; position: relative; overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0,0,0,.18);
+            cursor: pointer; display: block;
         }
-        .ball-ui .ball-mini img { width: 100%; height: 100%; object-fit: cover; }
+        .ball-ui .ball-mini i {
+            position: absolute; left: 4px; right: 4px; top: 5px; height: 22px;
+            border-radius: 3px; background: rgba(255,255,255,.35);
+        }
+        .ball-ui .ball-mini u {
+            position: absolute; left: 4px; right: 4px; bottom: 5px; height: 4px;
+            border-radius: 2px; background: rgba(255,255,255,.5);
+        }
+        .ball-ui .ball-mini img {
+            position: absolute; inset: 0;
+            width: 100%; height: 100%; object-fit: cover;
+        }
         .ball-ui .ball-mini:active { transform: scale(0.94); }
+
+        /* Riflesso olografico delle carte speciali. Oggi non si accende su
+           nulla: dipende dal campo 'rarita', che nello schema NON esiste
+           (verificato). Se un giorno arriverà, si accenderà da solo. */
+        .ball-ui .ball-mini.holo::after {
+            content: ''; position: absolute; inset: 0;
+            background: linear-gradient(115deg, transparent 30%, rgba(255,255,255,.75) 48%, transparent 66%);
+            transform: translateX(-120%);
+            animation: ballHoloScorre 2.6s ease-in-out infinite;
+        }
+        @keyframes ballHoloScorre {
+            0%, 55% { transform: translateX(-120%); }
+            85%, 100% { transform: translateX(120%); }
+        }
+        /* Con le animazioni dei widget spente non deve restare nulla che si
+           muove da solo. */
+        body.senza-anim-widget .ball-ui .ball-mini.holo::after { animation: none; opacity: 0; }
+
+        /* Misure per taglia, come nel mockup: più spazio, carte più grandi. */
+        .ball-ui .widget-size-1x2 .ball-mini { width: 30px; height: 42px; }
+        .ball-ui .widget-size-2x2 .ball-mini { width: 42px; height: 58px; }
+
+        .ball-ui .ball-etichetta-strip {
+            display: block; margin-top: 0.3rem;
+            font-size: 0.62rem; font-weight: 600; color: var(--text-muted);
+        }
 
         /* Overlay dettaglio: .container viene agganciata al rettangolo
            schermo della cornice — non spostata nel DOM (zero rischio sui
