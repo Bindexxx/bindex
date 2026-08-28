@@ -162,6 +162,16 @@ function _ballSetBase(testa) {
     const mPPS = testa.match(/^PPS\d+-(.+)$/);
     if (mPPS) return { set: mPPS[1], variante: 'stampata' };
 
+    // Trick or Trade: "BOO24 PAR 023" → testa normalizzata "BOO24-PAR".
+    // Applicato "PER ORA" (Claudio, 2026-08-28) sulla base di 3 fonti
+    // esterne concordi (Bulbapedia, Pokellector, un'inserzione che vende
+    // le singole carte catalogandole col set/numero originale) che
+    // descrivono le BOO come ristampe timbrate di carte di set esistenti,
+    // stesso numero originale — non un set con numerazione propria. Se un
+    // riscontro sui dati fisici dicesse diversamente, questa riga va tolta.
+    const mBOO = testa.match(/^BOO\d+-(.+)$/);
+    if (mBOO) return { set: mBOO[1], variante: 'halloween' };
+
     return { set: testa, variante: null };
 }
 
@@ -174,6 +184,20 @@ const _ballALIAS_TESTA = {
     'TR': 'RO',    // Team Rocket, sigla storica (confermato da Claudio, 2026-08-28)
     'FL': 'UNB',   // Legami Inossidabili / Unbroken Bonds (confermato da Claudio, 2026-08-28)
     'TM': 'TRI',   // Battaglie Trionfali, HS4 (confermato da Claudio, 2026-08-28)
+    'NG': 'N1',    // Neo Genesis (fonte esterna verificata, confermato 2026-08-28)
+    'NDI': 'N2',   // Neo Discovery, codice reale confermato "NDI-nn" (fonte esterna, 2026-08-28)
+    'NR': 'N3',    // Neo Revelation, codice reale confermato "NR-nn" (fonte esterna, 2026-08-28)
+    'NDE': 'N4',   // Neo Destiny, codice reale confermato "NDE-nn" (fonte esterna, 2026-08-28)
+    'UD': 'UND',   // Undaunted / Senza Paura (confermato da Claudio, 2026-08-28)
+    'CL': 'COL',   // Call of Legends / Richiamo delle Leggende — NON la Pokémon Card
+                   // Game Classic (quella userebbe CLK/CLL/CLF, mai "CL" nudo — la
+                   // carta reale in collezione è "CL 92", senza suffisso). Confermato
+                   // da Claudio 2026-08-28.
+    'TK2-M': 'TK2M', // Trainer Kit Minun — stesso bug del separatore delle Trainer
+                      // Gallery (spazio "TK2 M3" collassato in trattino dal lettore,
+                      // ma la libreria usa "TK2M" senza separatore). Confermato 2026-08-28.
+    'TK10-A': 'TK10A', // Trainer Kit Alolan Raichu, stesso bug. Confermato 2026-08-28.
+    'M24': 'MCD24', // McDonald's Collection 2024 (confermato da Claudio, 2026-08-28)
 };
 
 function _ballSetBaseConAlias(testa) {
