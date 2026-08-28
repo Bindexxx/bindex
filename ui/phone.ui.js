@@ -330,31 +330,10 @@ const CATALOGO_WIDGET = {
         },
         azione: (dati) => { if (dati && dati.cardId != null) apriFlipCardHome(dati.cardId); },
     },
-    carta_del_giorno: {
-        titolo: 'Carta del giorno', icona: 'fa-wand-magic-sparkles',
-        // Pescata a caso una volta per sessione (non ad ogni polling, o
-        // "salterebbe" ogni 15s) — vedi _cartaDelGiornoId più sotto. Click
-        // apre lo stesso flip-modal riusato da tutto il sito.
-        preview: () => {
-            const collezione = carteReali.filter(c => c.stato === 'collezione');
-            if (collezione.length === 0) return { righe: ['Nessuna carta'] };
-            if (_cartaDelGiornoId == null || !collezione.find(c => String(c.id) === String(_cartaDelGiornoId))) {
-                _cartaDelGiornoId = collezione[Math.floor(Math.random() * collezione.length)].id;
-            }
-            const carta = collezione.find(c => String(c.id) === String(_cartaDelGiornoId));
-            return { righe: [carta.name || ''], immagine: carta.immagine, cardId: carta.id, rarita: carta.rarita };
-        },
-        azione: (dati) => { if (dati && dati.cardId != null) apriFlipCardHome(dati.cardId); },
-    },
-    gruppo_attivo: {
-        titolo: 'Gruppo', icona: 'fa-users',
-        // Riusa _dispositiviAttiviOra() (home.ui.js) — solo sì/no per
-        // scelta esplicita di Claudio (privacy), non un elenco nominale.
-        preview: async () => {
-            const attivo = await _dispositiviAttiviOra();
-            return { righe: [attivo ? 'Qualcuno al lavoro ora' : 'Nessuno al momento'], stato: attivo ? 'ok' : undefined, dati: { attivo: !!attivo } };
-        },
-    },
+    // RIMOSSO (Claudio, 2026-08-28): "Carta del giorno", ritenuto inutile.
+    // Voci orfane in _ballTITOLI_BREVI/_ballASPETTO lasciate intatte —
+    // per ripristinarlo, riportare qui l'oggetto originale (vedi git/backup).
+    // RIMOSSO (Claudio, 2026-08-28): "Gruppo", ritenuto inutile.
     location: {
         titolo: 'Location', icona: 'fa-map-pin',
         preview: () => {
@@ -396,18 +375,8 @@ const CATALOGO_WIDGET = {
             apriDettaglioWidget(tab, evt);
         },
     },
-    orologio: {
-        titolo: 'Orologio', icona: 'fa-clock', decorativo: true,
-        preview: () => {
-            const ora = new Date();
-            return { righe: [ora.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })] };
-        },
-    },
-    aggiungi_carta: {
-        titolo: 'Aggiungi carta', icona: 'fa-circle-plus',
-        preview: () => ({ righe: ['Scorciatoia rapida'] }),
-        tab: 'inserimento',
-    },
+    // RIMOSSO (Claudio, 2026-08-28): "Orologio".
+    // RIMOSSO (Claudio, 2026-08-28): "Aggiungi carta".
     condividi: {
         titolo: 'Condividi', icona: 'fa-share-nodes',
         // Riusa openQrModal() (navigation.ui.js) — dipende dal
