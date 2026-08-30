@@ -362,6 +362,36 @@ async function missioniRicercheEseguitePeriodo(userId, inizioISO, fineISO) {
 }
 
 
+// ── POPOLARITÀ BINDER (activity_log, source='binder-pubblico',
+//    action='aperto') ────────────────────────────────────────────────
+// Scritto da una RPC SECURITY DEFINER (registra_apertura_binder_pubblico,
+// migration 33), MAI da un insert diretto — il visitatore che genera
+// l'evento è sempre anonimo, solo la RPC sa validare e attribuire
+// l'evento al proprietario del binder. Nessun dedup: ogni apertura conta
+// (vedi discussione con Claudio, 2026-08-29 — un dedup per-owner-per-giorno
+// perderebbe il segnale "quante persone diverse hanno aperto oggi").
+
+async function missioniBinderAperturePeriodo(userId, inizioISO, fineISO) {
+    return supabaseClient
+        .from('activity_log')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', userId)
+        .eq('source', 'binder-pubblico')
+        .eq('action', 'aperto')
+        .gte('created_at', inizioISO)
+        .lt('created_at', fineISO);
+}
+
+async function missioniBinderApertureTotale(userId) {
+    return supabaseClient
+        .from('activity_log')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', userId)
+        .eq('source', 'binder-pubblico')
+        .eq('action', 'aperto');
+}
+
+
 // ── META (missioni_completate, traguardi_riscossi — migration 32) ──────
 
 async function missioniCompletateTotale(userId) {

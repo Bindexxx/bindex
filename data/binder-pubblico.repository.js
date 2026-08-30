@@ -18,3 +18,14 @@ async function binderPubblicoLeggiCarte(binderId) {
 async function binderPubblicoLeggiMedia(binderId) {
     return supabaseClient.rpc('leggi_media_binder_pubblico', { p_binder_id: binderId });
 }
+
+// Missioni/Traguardi Fase 2 (2026-08-29): registra che QUESTO binder
+// pubblico è stato aperto — evento attribuito al PROPRIETARIO (il
+// visitatore resta anonimo, questa pagina non ha sessione — vedi
+// migration 33 per il perché serve una RPC SECURITY DEFINER e non un
+// insert diretto). Nessun valore di ritorno atteso: fire-and-forget dal
+// chiamante, un fallimento qui non deve mai essere visibile al
+// visitatore né bloccare il caricamento del binder.
+async function binderPubblicoRegistraApertura(binderId) {
+    return supabaseClient.rpc('registra_apertura_binder_pubblico', { p_binder_id: binderId });
+}
