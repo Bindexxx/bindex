@@ -409,6 +409,23 @@ async function missioniCompletatePeriodo(userId, periodo) {
         .eq('periodo', periodo);
 }
 
+// Missioni/Traguardi Fase 2 — categorie (#96-98, 2026-08-29). A differenza
+// di missioniCompletatePeriodo sopra (che filtra su 'periodo', la stringa
+// propria di CIASCUNA missione: giornaliera→data, settimanale→W35...), qui
+// serve sapere COSA è stato completato in una finestra temporale assoluta
+// (oggi, o questa settimana), indipendentemente dalla finestra propria di
+// ogni singola missione — quindi filtro su completato_il (timestamp reale),
+// non su periodo (stringa). Ritorna gli id missione, non un conteggio: il
+// mapping id→categoria vive nel catalogo JS (ui/missioni.ui.js), non nel DB.
+async function missioniCompletateIdRangeTemporale(userId, inizioISO, fineISO) {
+    return supabaseClient
+        .from('missioni_completate')
+        .select('missione_id')
+        .eq('owner_id', userId)
+        .gte('completato_il', inizioISO)
+        .lt('completato_il', fineISO);
+}
+
 async function missioniInserisciCompletamento(userId, missioneId, finestra, periodo, origine = 'normale') {
     return supabaseClient
         .from('missioni_completate')
