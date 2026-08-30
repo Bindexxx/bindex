@@ -1509,6 +1509,14 @@
            dimensione che replica quella percepita del tasto vero, non
            quella misurata via soglia colore (che si è dimostrata
            inaffidabile per elementi con bordo sfumato). */
+        /* FIX (2026-08-30): z-index alzato da 6 a 12. Da quando .container
+           copre l'intera finestra (non più solo il rettangolo del telefono
+           simulato — vedi _posizionaContainerNelloSchermo in
+           ui/phone.ui.js), il container (z-index:11) copriva visivamente
+           questo bottone, rendendo impossibile tornare indietro da una
+           pagina di dettaglio widget. La posizione (left/top) resta
+           invariata: il bottone non si è spostato, era solo nascosto
+           sotto al container. */
         #btnFisicoTelefono {
             position: absolute;
             left: 49.94%; top: 93.95%; /* cornice verticale */
@@ -1521,7 +1529,7 @@
             display: flex; align-items: center; justify-content: center;
             font-size: 0.55rem;
             cursor: pointer;
-            z-index: 6;
+            z-index: 12;
             box-shadow: 0 0 2px rgba(56, 201, 232, 0.45), inset 0 0 2px rgba(56, 201, 232, 0.3);
             transition: visibility 0s;
         }
