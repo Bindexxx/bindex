@@ -10,17 +10,14 @@
 // Dipende da: supabaseClient, e da trovaMatch() già definita in
 // data/prices.repository.js (stesso file globale condiviso, nessun import).
 //
-// NON COPERTE QUI (mancano ancora dati/file per scriverle correttamente):
-//   - estensione_aperta_periodo: serve un nuovo evento scritto sul canale
-//     chrome.runtime esistente — richiede ui/extension.ui.js, non letto in
-//     questa sessione.
-//   - layout_modificato_periodo: non è una metrica interrogabile da qui —
-//     il layout widget vive in localStorage per-dispositivo (vedi
-//     prefWidgetLayoutGet/Set in data/preferences.repository.js), NON
-//     sincronizzato su Supabase. Va agganciata come scrittura DIRETTA in
-//     missioni_completate nel punto in cui il layout viene salvato (in
-//     ui/phone.ui.js, funzione non ancora identificata — da leggere prima
-//     di collegare m94/m95), non come lettura di stato qui.
+// m89 (Apri il Pokédex), m94/m95 (Personalizza layout): NON sono metriche
+// interrogabili da qui — sono EVENTI, agganciati come scrittura DIRETTA in
+// missioni_completate nel punto esatto dell'azione utente:
+//   - m89: ui/extension.ui.js, funzione apriAppEstensione() (dopo conferma
+//     ok===true da CARDSYNC_OPEN_APP)
+//   - m94/m95: ui/phone.ui.js, funzione _salvaLayoutWidget(daAzioneUtente)
+// Entrambe chiamano missioniInserisciCompletamento() qui sotto direttamente,
+// nessuna nuova funzione di lettura necessaria in questo file.
 //
 // RARITÀ (missioni m58/m59): ELIMINATE dal catalogo (2026-08-29) — nessuna
 // fonte trovata nel codice reale, vedi Catalogo_Missioni_Traguardi_Annotato.md.
@@ -235,6 +232,107 @@ async function missioniCodaErroriAzzerataOggi(userId) {
     const oggi = new Date().toISOString().slice(0, 10);
     const risoltoGiorno = String(voce.risoltoIl).slice(0, 10);
     return { data: oggi === risoltoGiorno, error: null };
+}
+
+
+// ── ACCESSI (activity_log, source='auth', action='accesso') ────────────
+// Dedup: massimo 1 riga 'accesso' al giorno per utente (deciso 2026-08-29)
+// — indipendente da quanti reload della pagina avvengono nello stesso
+// giorno. Stesso pattern SELECT-poi-INSERT di binderWishlistGarantisci in
+// data/binder.repository.js (mai upsert diretto: qui non c'è un vincolo
+// UNIQUE lato DB su cui fare onConflict, la deduplica è tutta applicativa).
+
+async function missioniAccessoRegistraOggi(userId) {
+    const oggi = new Date();
+    const inizioOggi = new Date(oggi.getFullYear(), oggi.getMonth(), oggi.getDate()).toISOString();
+    const domani = new Date(oggi.getFullYear(), oggi.getMonth(), oggi.getDate() + 1).toISOString();
+
+    const { data: esistente, error: errSelect } = await supabaseClient
+        .from('activity_log')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('source', 'auth')
+        .eq('action', 'accesso')
+        .gte('created_at', inizioOggi)
+        .lt('created_at', domani)
+        .maybeSingle();
+    if (errSelect) return { data: null, error: errSelect };
+    if (esistente) return { data: esistente, error: null }; // già registrato oggi, non riscrivere
+
+    return supabaseClient
+        .from('activity_log')
+        .insert({ user_id: userId, source: 'auth', action: 'accesso', details: {} })
+        .select()
+        .single();
+}
+
+async function missioniAccessoOggi(userId) {
+    const oggi = new Date();
+    const inizioOggi = new Date(oggi.getFullYear(), oggi.getMonth(), oggi.getDate()).toISOString();
+    const domani = new Date(oggi.getFullYear(), oggi.getMonth(), oggi.getDate() + 1).toISOString();
+    const { data, error } = await supabaseClient
+        .from('activity_log')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('source', 'auth')
+        .eq('action', 'accesso')
+        .gte('created_at', inizioOggi)
+        .lt('created_at', domani)
+        .maybeSingle();
+    if (error) return { data: null, error };
+    return { data: !!data, error: null };
+}
+
+async function missioniAccessiTotali(userId) {
+    return supabaseClient
+        .from('activity_log')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', userId)
+        .eq('source', 'auth')
+        .eq('action', 'accesso');
+}
+
+// Streak di giorni consecutivi CON accesso, terminante oggi (o ieri se
+// l'evento di oggi non è ancora stato scritto quando questa viene chiamata
+// — in pratica non succede: missioniAccessoRegistraOggi() gira sempre
+// prima nella catena _avviaSitoDopoAccesso). Legge al massimo gli ultimi
+// 400 eventi 'accesso' (più che sufficiente per uno streak realistico) e
+// conta all'indietro giorno per giorno finché non trova un buco.
+async function missioniGiorniConsecutivi(userId) {
+    const { data, error } = await supabaseClient
+        .from('activity_log')
+        .select('created_at')
+        .eq('user_id', userId)
+        .eq('source', 'auth')
+        .eq('action', 'accesso')
+        .order('created_at', { ascending: false })
+        .limit(400);
+    if (error) return { data: null, error };
+
+    // Confronto sempre in "giorno di calendario LOCALE": created_at torna
+    // da Supabase come istante UTC, va convertito a Date locale prima di
+    // estrarre y/m/d — altrimenti vicino a mezzanotte un accesso reale di
+    // ieri sera potrebbe contare come oggi (o viceversa), disallineato
+    // rispetto a come missioniAccessoRegistraOggi() calcola i confini del
+    // giorno (locale, non UTC).
+    const _giornoLocale = (isoString) => {
+        const d = new Date(isoString);
+        return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+    };
+    const giorniConAccesso = new Set((data || []).map(r => _giornoLocale(r.created_at)));
+    let streak = 0;
+    let cursore = new Date();
+    const chiaveCursore = () => `${cursore.getFullYear()}-${cursore.getMonth()}-${cursore.getDate()}`;
+    // Se oggi non è ancora presente (chiamata prima della registrazione),
+    // parte da ieri invece di azzerare subito lo streak a 0.
+    if (!giorniConAccesso.has(chiaveCursore())) {
+        cursore.setDate(cursore.getDate() - 1);
+    }
+    while (giorniConAccesso.has(chiaveCursore())) {
+        streak++;
+        cursore.setDate(cursore.getDate() - 1);
+    }
+    return { data: streak, error: null };
 }
 
 
