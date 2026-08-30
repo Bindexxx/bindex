@@ -4516,6 +4516,13 @@
          manca il sito funziona lo stesso: il widget Set ricade sulle poche
          voci scritte a mano. -->
     <script src="data/sets.library.js"></script>
+    <!-- Catalogo missioni/traguardi (Fase 1) + motore di valutazione. Va
+         PRIMA di phone.ui.js, che leggerà CATALOGO_MISSIONI/CATALOGO_TRAGUARDI
+         per costruire pagina/widget dedicati (non ancora scritti in questa
+         sessione). Non chiama supabaseClient: le funzioni che calcolano i
+         valori delle metriche vivono in un futuro data/missioni.repository.js,
+         non ancora creato. -->
+    <script src="ui/missioni.ui.js"></script>
     <script src="ui/phone.ui.js"></script>
 
     <script>
