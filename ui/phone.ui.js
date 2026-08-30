@@ -559,7 +559,13 @@ const CATALOGO_WIDGET = {
                 dati: { valore, media, pezzi: coll.length, top }
             };
         },
-        tab: 'prezzi',
+        // MODIFICATO (2026-08-30): prima apriva semplicemente la sezione
+        // Prezzi (tab:'prezzi') — ora ha una pagina propria dedicata
+        // (#valore in index.html, renderPaginaValoreCollezione() sotto).
+        // Nessun impatto sul tracciamento missioni m38/m39/m40/m80/m81
+        // (registrano l'evento su w.id='valore_collezione', non su
+        // 'def.tab' — vedi _eseguiAzioneWidget).
+        tab: 'valore',
     },
 
     doppioni: {
@@ -1503,13 +1509,16 @@ function _ballSincronizzaToggleImpostazioni() {
 //       filterTable() + #filterLocation → ui/cards.ui.js r.803-833
 //     ognuna protetta da un typeof: se un domani sparisse, la riga smette
 //     di funzionare ma non butta giù la home.
-function _ballAzioneRiga(evt, tipo, valore) {
+function _ballAzioneRiga(evt, tipo, valore, origine) {
     if (evt) evt.stopPropagation();
     if (_editModeWidget) return;
     _vibraSeSupportato(8);
     switch (tipo) {
         case 'carta':
-            if (typeof apriFlipCardHome === 'function') apriFlipCardHome(valore);
+            // Missioni #39/#83 (2026-08-30): origine propagata per distinguere
+            // "apertura da lista top-valore" (valore_collezione) da qualunque
+            // altra apertura — vedi ui/home.ui.js:apriFlipCardHome().
+            if (typeof apriFlipCardHome === 'function') apriFlipCardHome(valore, origine ? { origine } : {});
             break;
 
         case 'tab':
@@ -1568,9 +1577,9 @@ function _ballTintaDaNome(nome) {
     return `hsl(${h}, 52%, 58%)`;
 }
 
-function _ballMiniCarta(c, badge) {
+function _ballMiniCarta(c, badge, origine) {
     const titolo = String(c.nome || '').replace(/"/g, '&quot;');
-    const clic = `onclick="_ballAzioneRiga(event,'carta','${c.id}')"`;
+    const clic = `onclick="_ballAzioneRiga(event,'carta','${c.id}','${origine || ''}')"`;
     const badgeHtml = badge ? `<b class="ball-mini-badge">${badge}</b>` : '';
 
     // Holo scorrevole: nel mockup segnala le carte speciali. Qui dipende dal
@@ -1714,7 +1723,11 @@ const _ballCORPI = {
             `<span class="ball-k-lab">${d.pezzi} pezzi · media ${eur(d.media)}</span>`;
         let blocco = '';
         if (d.top && d.top.length) {
-            blocco = '<div class="ball-strip">' + d.top.map(c => _ballMiniCarta(c)).join('') + '</div>' +
+            // Missioni #39/#83: origine 'top_valore', SOLO qui — non nel
+            // blocco 'lista' di doppioni sotto né in quello di
+            // 'visualizzazione' più in basso, che riusano la stessa
+            // _ballMiniCarta ma non sono "le carte di maggior valore".
+            blocco = '<div class="ball-strip">' + d.top.map(c => _ballMiniCarta(c, undefined, 'top_valore')).join('') + '</div>' +
                 '<span class="ball-k-lab">Le più preziose</span>';
         }
         return { inline, blocco };
@@ -2612,15 +2625,20 @@ function _nascondiPeek() {
 
 // ── APERTURA/CHIUSURA DETTAGLIO FULLSCREEN DENTRO IL FRAME ───────────────
 function _posizionaContainerNelloSchermo() {
-    const schermo = document.getElementById('phoneScreen');
     const container = document.querySelector('.container');
-    if (!schermo || !container) return;
-    const rect = schermo.getBoundingClientRect();
-    container.style.top = rect.top + 'px';
-    container.style.left = rect.left + 'px';
-    container.style.width = rect.width + 'px';
-    container.style.height = rect.height + 'px';
-    container.style.borderRadius = getComputedStyle(schermo).borderRadius;
+    if (!container) return;
+    // MODIFICATO (2026-08-30, Claudio: "il cerchio ma a schermo intero"):
+    // prima il container era confinato al rettangolo di #phoneScreen (la
+    // cornice del telefono simulato) — ora copre l'intera finestra del
+    // browser. Il punto di origine del cerchio (--pokeball-x/-y, impostato
+    // da _impostaOrigineAnimazione) resta relativo al click reale
+    // dell'utente, quindi funziona invariato. Nessun bordo arrotondato:
+    // a schermo intero non c'è una cornice da rispettare.
+    container.style.top = '0px';
+    container.style.left = '0px';
+    container.style.width = window.innerWidth + 'px';
+    container.style.height = window.innerHeight + 'px';
+    container.style.borderRadius = '0px';
 }
 
 // ── APERTURA/CHIUSURA — animazione "a Pokéball" ──────────────────────────
@@ -2648,20 +2666,22 @@ async function apriDettaglioWidget(tabId, evt) {
     clearTimeout(_chiusuraDettaglioTimeout); // annulla un'eventuale chiusura ancora in corso (riapertura rapida)
 
     const container = document.querySelector('.container');
-    if (tabId === 'dafare' || tabId === 'match' || tabId === 'condividi' || tabId === 'missioni') {
+    if (tabId === 'dafare' || tabId === 'match' || tabId === 'condividi' || tabId === 'missioni' || tabId === 'valore') {
         // MAI switchTab() qui: quella funzione ha una whitelist fissa di 5
         // tab (navigation.ui.js r.199) ed è segnata nella memoria di
         // progetto come "deve restare stabile e intoccata" — un bug reale
         // c'è già stato lì in passato. Repliochiamo solo il minimo che
         // switchTab farebbe per una tab in whitelist (nascondi tutte le
         // view-section, mostra la mia), concordato con Claudio 2026-08-28
-        // (dafare) e riusato identico per 'match', 'condividi' e 'missioni'.
+        // (dafare) e riusato identico per 'match', 'condividi', 'missioni'
+        // e ora 'valore' (2026-08-30, pagina dedicata Valore collezione).
         document.querySelectorAll('.view-section').forEach(sec => sec.classList.remove('active'));
         document.getElementById(tabId)?.classList.add('active');
         if (tabId === 'dafare') renderPaginaDaFare();
         if (tabId === 'match') renderPaginaMatch();
         if (tabId === 'condividi') renderPaginaCondividi();
         if (tabId === 'missioni') renderPaginaMissioni();
+        if (tabId === 'valore') renderPaginaValoreCollezione();
     } else {
         switchTab(tabId, null);
     }
@@ -3013,6 +3033,17 @@ function _apriBinderAltruiMatch(ownerAltro, binderAltro) {
         alert('Collegamento diretto al binder non ancora disponibile.');
         return;
     }
+    // Missione #70 "Binder pubblico" (2026-08-30): visita del binder
+    // pubblico di un altro utente TRAMITE MATCH — utente loggato, quindi
+    // scrivibile direttamente (a differenza della "popolarità" m18-20, che
+    // conta le aperture anonime da binder-pubblico.html e passa per la RPC
+    // SECURITY DEFINER di migration 33). Fire-and-forget, come gli altri.
+    (async () => {
+        try {
+            const userId = await authGetUserId();
+            if (userId) await missioniBinderPubblicoVisitatoRegistra(userId);
+        } catch (e) { console.error('[missioni] registrazione visita binder pubblico:', e); }
+    })();
     const url = new URL('binder-pubblico.html?u=' + encodeURIComponent(ownerAltro), window.location.href);
     url.searchParams.set('binder', binderAltro);
     window.open(url.href, '_blank');
@@ -3023,6 +3054,70 @@ function _apriBinderAltruiMatch(ownerAltro, binderAltro) {
 function _contattaPersonaMatch(ownerAltro) {
     alert('Funzione di contatto in arrivo.');
 }
+
+// ── PAGINA "VALORE COLLEZIONE" (2026-08-30) ─────────────────────────────
+// Prima widget con pagina di dettaglio propria (struttura adottata da
+// cardsync-tutto.html, vedi CSS pg-*/page-header in index.html) invece di
+// aprire semplicemente la sezione Prezzi. Zero query nuove: riusa
+// CATALOGO_WIDGET.valore_collezione.preview(), la stessa funzione già
+// usata per l'anteprima del widget in Home.
+// Le carte nella lista "Le più preziose" aprono il flip-viewer con
+// origine:'top_valore' — STESSO meccanismo già usato per le missioni
+// #39/#83 dal ball-peek in Home (vedi _ballMiniCarta/_ballAzioneRiga):
+// cliccarle da qui deve contare allo stesso modo, è concettualmente la
+// stessa lista.
+async function renderPaginaValoreCollezione() {
+    const container = document.getElementById('valoreContenuto');
+    if (!container) return;
+
+    const def = CATALOGO_WIDGET.valore_collezione;
+    let dati;
+    try {
+        const anteprima = await def.preview();
+        dati = anteprima.dati;
+    } catch (e) {
+        console.error('renderPaginaValoreCollezione:', e);
+        container.innerHTML = '<p style="text-align:center; color:var(--text-muted); font-size:0.85rem; padding:1rem 0;">Errore nel caricamento.</p>';
+        return;
+    }
+
+    const eur = (v) => '€ ' + Number(v || 0).toLocaleString('it-IT', { maximumFractionDigits: 0 });
+
+    const righeCarte = (dati.top && dati.top.length)
+        ? dati.top.map(c => {
+            const immagineSrc = c.immagine ? (_urlImmagineVisualizzabile(c.immagine, 96) || '') : '';
+            const fig = immagineSrc
+                ? `<img class="pg-fig" src="${immagineSrc}" alt="" onerror="this.style.display='none';">`
+                : '<div class="pg-fig"></div>';
+            return `
+                <div class="pg-riga" data-tocca onclick="apriFlipCardHome('${c.id}', { origine: 'top_valore' })">
+                    ${fig}
+                    <div class="pg-testo"><b>${escapeHtml(c.nome || '—')}</b></div>
+                    <div class="pg-destra"><b>${eur(c.valore)}</b></div>
+                </div>`;
+        }).join('')
+        : '<p style="text-align:center; color:var(--text-muted); font-size:0.85rem; padding:1rem 0;">Ancora nessuna carta in collezione.</p>';
+
+    container.innerHTML = `
+        <div class="page-header">
+            <span class="page-title">Valore collezione</span>
+            <span class="page-azione attiva" onclick="apriDettaglioWidget('prezzi', event)">Vai a Prezzi</span>
+        </div>
+        <div class="pg-pagina">
+            <div class="pg-intro">
+                <div class="pg-grande">${eur(dati.valore)}</div>
+                <div class="pg-sotto">${dati.pezzi} pezz${dati.pezzi === 1 ? 'o' : 'i'} · media ${eur(dati.media)}</div>
+            </div>
+            <div class="pg-stat">
+                <div><b>${dati.pezzi}</b><span>Carte totali</span></div>
+                <div><b>${eur(dati.media)}</b><span>Valore medio</span></div>
+            </div>
+            ${dati.top && dati.top.length ? '<div class="pg-titoletto">Le più preziose</div>' : ''}
+            <div class="pg-elenco">${righeCarte}</div>
+        </div>
+    `;
+}
+
 
 // ── PAGINA "CONDIVIDI" ────────────────────────────────────────────────
 // Elenca tutto il condivisibile reale: ogni binder pubblico (Scambio,
@@ -3101,6 +3196,17 @@ async function _condividiElementoWidget(pagina, binderId, tipoBinder, evt) {
     const qrContainer = document.getElementById('condividiQrContainer');
     qrContainer.innerHTML = '';
     new QRCode(qrContainer, { text: link, width: 160, height: 160, colorDark: '#2a2438', colorLight: '#ffffff' });
+
+    // Missione #29 "QR Hunter" (2026-08-30). Fire-and-forget, stesso
+    // pattern degli altri hook missioni — un fallimento qui non deve mai
+    // bloccare la generazione del QR, già avvenuta sopra.
+    (async () => {
+        try {
+            const userId = await authGetUserId();
+            if (userId) await missioniQrGeneratoRegistra(userId);
+        } catch (e) { console.error('[missioni] registrazione QR generato:', e); }
+    })();
+
     // Stesso criterio di navigation.ui.js: il pulsante nativo compare solo
     // dove il browser lo supporta davvero, niente pulsante rotto altrove.
     document.getElementById('condividiBtnNativo').style.display = navigator.share ? 'block' : 'none';
