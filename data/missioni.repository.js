@@ -1,0 +1,319 @@
+// ── data/missioni.repository.js ──────────────────────────────────────────
+// Funzioni che calcolano i valori delle metriche lette da
+// MOTORE_MISSIONI.valuta() (vedi ui/missioni.ui.js) — SOLO voci Fase 1.
+// Stesso pattern degli altri repository del progetto: funzioni piccole e
+// componibili, nessuna query "mega-aggregatore" — chi le chiama (una
+// pagina/widget missioni, non ancora scritta) decide quali servono e con
+// quale range di date passare per ciascuna finestra (giornaliera/
+// settimanale/mensile/una_tantum).
+//
+// Dipende da: supabaseClient, e da trovaMatch() già definita in
+// data/prices.repository.js (stesso file globale condiviso, nessun import).
+//
+// NON COPERTE QUI (mancano ancora dati/file per scriverle correttamente):
+//   - estensione_aperta_periodo: serve un nuovo evento scritto sul canale
+//     chrome.runtime esistente — richiede ui/extension.ui.js, non letto in
+//     questa sessione.
+//   - layout_modificato_periodo: non è una metrica interrogabile da qui —
+//     il layout widget vive in localStorage per-dispositivo (vedi
+//     prefWidgetLayoutGet/Set in data/preferences.repository.js), NON
+//     sincronizzato su Supabase. Va agganciata come scrittura DIRETTA in
+//     missioni_completate nel punto in cui il layout viene salvato (in
+//     ui/phone.ui.js, funzione non ancora identificata — da leggere prima
+//     di collegare m94/m95), non come lettura di stato qui.
+//
+// RARITÀ (missioni m58/m59): ELIMINATE dal catalogo (2026-08-29) — nessuna
+// fonte trovata nel codice reale, vedi Catalogo_Missioni_Traguardi_Annotato.md.
+
+
+// ── CARTE ─────────────────────────────────────────────────────────────
+// Tutte scoped su stato='collezione' (stesso filtro di cardsQueryCollezione
+// in data/cards.repository.js) — sealed/wishlist hanno le loro metriche
+// dedicate più sotto.
+
+async function missioniCarteAggiuntePeriodo(userId, inizioISO, fineISO) {
+    return supabaseClient
+        .from('carte')
+        .select('id', { count: 'exact', head: true })
+        .eq('owner_id', userId)
+        .eq('stato', 'collezione')
+        .gte('created_at', inizioISO)
+        .lt('created_at', fineISO);
+}
+
+async function missioniCarteTotali(userId) {
+    return supabaseClient
+        .from('carte')
+        .select('id', { count: 'exact', head: true })
+        .eq('owner_id', userId)
+        .eq('stato', 'collezione');
+}
+
+// Somma lato client: nessuna RPC di aggregazione confermata esistente nel
+// progetto, stesso approccio "leggi e riduci" già usato altrove (vedi
+// _cardeConAllertaPrezzo in ui/queue.ui.js che filtra carteReali in memoria).
+async function missioniValoreCollezione(userId) {
+    const { data, error } = await supabaseClient
+        .from('carte')
+        .select('prezzo')
+        .eq('owner_id', userId)
+        .eq('stato', 'collezione');
+    if (error) return { data: null, error };
+    const totale = (data || []).reduce((s, r) => s + (Number(r.prezzo) || 0), 0);
+    return { data: totale, error: null };
+}
+
+async function missioniDoppioniTotali(userId) {
+    return supabaseClient
+        .from('carte')
+        .select('id', { count: 'exact', head: true })
+        .eq('owner_id', userId)
+        .eq('stato', 'collezione')
+        .gt('qty', 1);
+}
+
+// Location distinte USATE (da carte.location), non le righe della tabella
+// 'location' (quella è il catalogo dei valori possibili, non tutti
+// necessariamente in uso — vedi data/locations.repository.js:locationsList).
+async function missioniLocationDistinte(userId) {
+    const { data, error } = await supabaseClient
+        .from('carte')
+        .select('location')
+        .eq('owner_id', userId)
+        .eq('stato', 'collezione')
+        .not('location', 'is', null);
+    if (error) return { data: null, error };
+    const distinte = new Set((data || []).map(r => r.location));
+    return { data: distinte.size, error: null };
+}
+
+async function missioniLocationAggiuntaPeriodo(userId, inizioISO, fineISO) {
+    return supabaseClient
+        .from('carte')
+        .select('id', { count: 'exact', head: true })
+        .eq('owner_id', userId)
+        .eq('stato', 'collezione')
+        .not('location', 'is', null)
+        .gte('created_at', inizioISO)
+        .lt('created_at', fineISO);
+}
+
+// Gruppo più numeroso per espansione — sigla ricavata dal prefisso di
+// 'codice' prima del primo '-' (stessa convenzione delle chiavi in
+// CARDSYNC_SET_LIBRARY, es. "BRS-045" → "BRS"). Calcolato lato client:
+// nessun GROUP BY via supabase-js senza RPC dedicata.
+async function missioniCarteStessaEspansioneMax(userId) {
+    const { data, error } = await supabaseClient
+        .from('carte')
+        .select('codice')
+        .eq('owner_id', userId)
+        .eq('stato', 'collezione')
+        .not('codice', 'is', null);
+    if (error) return { data: null, error };
+    const conteggi = {};
+    (data || []).forEach(r => {
+        const sigla = String(r.codice).split('-')[0];
+        conteggi[sigla] = (conteggi[sigla] || 0) + 1;
+    });
+    const max = Object.values(conteggi).reduce((m, v) => Math.max(m, v), 0);
+    return { data: max, error: null };
+}
+
+
+// ── PREZZI (storico_prezzi + ultimo_controllo) ──────────────────────────
+
+// Carte distinte con almeno un aggiornamento prezzo nel periodo. 'tabella'
+// segue la stessa convenzione di storicoPrezziQuery in
+// data/prices.repository.js ('carte' o 'wishlist').
+async function missioniPrezziAggiornatiPeriodo(userId, tabella, inizioISO, fineISO) {
+    const { data, error } = await supabaseClient
+        .from('storico_prezzi')
+        .select('carta_id')
+        .eq('owner_id', userId)
+        .eq('tabella', tabella)
+        .gte('registrato_il', inizioISO)
+        .lt('registrato_il', fineISO);
+    if (error) return { data: null, error };
+    const distinte = new Set((data || []).map(r => r.carta_id));
+    return { data: distinte.size, error: null };
+}
+
+// Stessa condizione di apriModalePrezziScaduti() in ui/prices.ui.js: mai
+// controllate o ultimo controllo più vecchio di SOGLIA_GIORNI_PREZZO_SCADUTO
+// giorni. SOLO collezione (stessa scelta di caricaUltimaSincronizzazioneHome
+// in ui/prices.ui.js) — SOGLIA_GIORNI_PREZZO_SCADUTO è una costante globale
+// definita altrove (state/*.js), risolta al momento della chiamata come fa
+// già data/preferences.repository.js con CHIAVE_BINDER_LAYOUT e simili.
+async function missioniPrezziScadutiTotale(userId) {
+    const cutoff = new Date(Date.now() - SOGLIA_GIORNI_PREZZO_SCADUTO * 86400000).toISOString();
+    return supabaseClient
+        .from('carte')
+        .select('id', { count: 'exact', head: true })
+        .eq('owner_id', userId)
+        .eq('stato', 'collezione')
+        .or(`ultimo_controllo.is.null,ultimo_controllo.lt.${cutoff}`);
+}
+
+
+// ── WISHLIST ─────────────────────────────────────────────────────────
+
+async function missioniWishlistTotale(userId) {
+    return supabaseClient
+        .from('wishlist')
+        .select('id', { count: 'exact', head: true })
+        .eq('owner_id', userId);
+}
+
+// Stessa condizione di _cardeConAllertaPrezzo() in ui/queue.ui.js
+// (prezzo>0, prezzo_obiettivo impostato, prezzo <= prezzo_obiettivo), qui
+// come query diretta invece che filtro su carteReali in memoria.
+async function missioniWishlistObiettiviRaggiunti(userId) {
+    return supabaseClient
+        .from('wishlist')
+        .select('id', { count: 'exact', head: true })
+        .eq('owner_id', userId)
+        .not('prezzo_obiettivo', 'is', null)
+        .gt('prezzo', 0)
+        .lte('prezzo', 'prezzo_obiettivo'); // ATTENZIONE: confronto tra due colonne,
+    // .lte() di supabase-js si aspetta un VALORE non una colonna — questa riga
+    // molto probabilmente NON FUNZIONA così com'è. Da correggere con una vista
+    // o RPC dedicata, oppure leggendo prezzo+prezzo_obiettivo e filtrando lato
+    // client come fa oggi _cardeConAllertaPrezzo(). Segnalato invece di
+    // consegnare codice che sembra corretto ma non lo è.
+}
+
+
+// ── MATCH ────────────────────────────────────────────────────────────
+// Riusa trovaMatch() già definita in data/prices.repository.js — stessa
+// RPC, nessuna duplicazione. "Attivi" = quelli che la RPC restituisce ora,
+// stato corrente (non storico cumulativo — deciso: traguardi Match #46-55
+// rimangono Fase 2, qui serve solo per le missioni m24/m25/m75 Fase 1).
+async function missioniMatchAttiviTotale(userId) {
+    const [{ data: scambio, error: e1 }, { data: wishlist, error: e2 }] = await Promise.all([
+        trovaMatch('trova_match_scambio_wishlist', userId),
+        trovaMatch('trova_match_wishlist_scambio', userId),
+    ]);
+    if (e1 || e2) return { data: null, error: e1 || e2 };
+    return { data: (scambio || []).length + (wishlist || []).length, error: null };
+}
+
+
+// ── BINDER ───────────────────────────────────────────────────────────
+
+async function missioniBinderPubblicatiPeriodo(userId, inizioISO, fineISO) {
+    return supabaseClient
+        .from('binders')
+        .select('id', { count: 'exact', head: true })
+        .eq('owner_id', userId)
+        .eq('stato_pubblicazione', 'pubblico')
+        .gte('created_at', inizioISO)
+        .lt('created_at', fineISO);
+}
+
+
+// ── ERRORI (coda_carte / correzioni_manuali_carte) ──────────────────────
+
+// Stato attuale — riusa correzioniManualiConta già definita in
+// data/queue.repository.js, nessuna duplicazione.
+async function missioniErroriCodaVuota(userId) {
+    const { count, error } = await correzioniManualiConta(userId);
+    if (error) return { data: null, error };
+    return { data: count === 0, error: null };
+}
+
+// Binaria "hai azzerato la coda oggi" (missione m11, ridefinita — vedi nota
+// in ui/missioni.ui.js): legge preferenze_utente.dafare_risolti e controlla
+// se il segnale 'coda_errori' ha un risoltoIl con data odierna. Riusa
+// userSettingsGet già definita in data/user-settings.repository.js.
+async function missioniCodaErroriAzzerataOggi(userId) {
+    const { data, error } = await userSettingsGet(userId);
+    if (error) return { data: null, error };
+    let storico = {};
+    try { storico = data && data.dafare_risolti ? JSON.parse(data.dafare_risolti) : {}; } catch (_) { storico = {}; }
+    const voce = storico['coda_errori'];
+    if (!voce || !voce.risoltoIl) return { data: false, error: null };
+    const oggi = new Date().toISOString().slice(0, 10);
+    const risoltoGiorno = String(voce.risoltoIl).slice(0, 10);
+    return { data: oggi === risoltoGiorno, error: null };
+}
+
+
+// ── META (missioni_completate, traguardi_riscossi — migration 32) ──────
+
+async function missioniCompletateTotale(userId) {
+    return supabaseClient
+        .from('missioni_completate')
+        .select('id', { count: 'exact', head: true })
+        .eq('owner_id', userId);
+}
+
+async function missioniCompletatePeriodo(userId, periodo) {
+    return supabaseClient
+        .from('missioni_completate')
+        .select('id', { count: 'exact', head: true })
+        .eq('owner_id', userId)
+        .eq('periodo', periodo);
+}
+
+async function missioniInserisciCompletamento(userId, missioneId, finestra, periodo, origine = 'normale') {
+    return supabaseClient
+        .from('missioni_completate')
+        .insert({ owner_id: userId, missione_id: missioneId, finestra, periodo, origine });
+    // UNIQUE(owner_id, periodo, missione_id) in migration 32 previene doppi
+    // completamenti nella stessa finestra — un insert duplicato ritorna
+    // errore 23505, da gestire silenziosamente lato chiamante (non è un
+    // vero errore, è la protezione anti-doppio-accredito richiesta dalla
+    // nota #5 del documento originale).
+}
+
+async function traguardiSbloccatiTotale(userId) {
+    return supabaseClient
+        .from('traguardi_riscossi')
+        .select('id', { count: 'exact', head: true })
+        .eq('owner_id', userId);
+}
+
+async function traguardiInserisciRiscossione(userId, traguardoId) {
+    return supabaseClient
+        .from('traguardi_riscossi')
+        .insert({ owner_id: userId, traguardo_id: traguardoId });
+    // UNIQUE(owner_id, traguardo_id) — stessa protezione anti-doppio della
+    // funzione sopra.
+}
+
+
+// ── RICOMPENSE (inventario_ricompense — migration 32) ───────────────────
+
+async function ricompenseInserisci(userId, tipo, riferimentoId, quantita = 1) {
+    return supabaseClient
+        .from('inventario_ricompense')
+        .insert({ owner_id: userId, tipo, riferimento_id: riferimentoId, quantita });
+}
+
+async function ricompenseTotalePerTipo(userId, tipo) {
+    const { data, error } = await supabaseClient
+        .from('inventario_ricompense')
+        .select('quantita')
+        .eq('owner_id', userId)
+        .eq('tipo', tipo);
+    if (error) return { data: null, error };
+    const totale = (data || []).reduce((s, r) => s + (r.quantita || 0), 0);
+    return { data: totale, error: null };
+}
+
+// Consuma uno skip (missione#quantità -1) — usata dal futuro bottone "usa
+// skip". Nessun controllo di quantità>0 qui dentro: il chiamante deve
+// verificare ricompenseTotalePerTipo(userId,'skip_missione') > 0 PRIMA di
+// chiamare questa, altrimenti la quantità scende sotto zero silenziosamente.
+async function ricompenseConsumaSkip(userId, id) {
+    return supabaseClient
+        .from('inventario_ricompense')
+        .update({ quantita: supabaseClient.raw ? supabaseClient.raw('quantita - 1') : undefined })
+        .eq('id', id)
+        .eq('owner_id', userId);
+    // ATTENZIONE: supabaseClient.raw potrebbe non esistere in questa versione
+    // del client (dipende dalla versione di @supabase/supabase-js in uso,
+    // non verificata in questa sessione) — se .raw non è disponibile va
+    // fatto un read-then-write (leggi quantita, scrivi quantita-1), meno
+    // elegante ma sempre corretto. Da testare prima di usare in produzione.
+}
