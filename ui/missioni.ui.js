@@ -166,6 +166,12 @@ const CATALOGO_MISSIONI = [
       finestra: 'giornaliera', metrica: 'binder_pubblicati_periodo', operatore: '>=', valore: 1,
       ricompensa: { tipo: 'polvere', quantita: 3 } },
 
+    // FASE 2 sbloccata (2026-08-30): generazione QR di un binder pubblico.
+    // Aggancio: ui/phone.ui.js:_condividiElementoWidget().
+    { id: 'm29_qr_hunter', titolo: 'QR Hunter', categoria: 'social',
+      finestra: 'giornaliera', metrica: 'qr_generato_periodo', operatore: '>=', valore: 1,
+      ricompensa: { tipo: 'polvere', quantita: 3 } },
+
     // FASE 2 sbloccata (2026-08-30): apertura widget Location, distinta
     // dallo stato "location valorizzata" già coperto da m31/m32 sotto.
     { id: 'm30_esplora_una_location', titolo: 'Esplora una location', categoria: 'esplorazione',
@@ -195,10 +201,32 @@ const CATALOGO_MISSIONI = [
       finestra: 'giornaliera', metrica: 'apertura_valore_collezione_periodo', operatore: '>=', valore: 1,
       ricompensa: { tipo: 'polvere', quantita: 2 } },
 
+    { id: 'm40_portfolio', titolo: 'Portfolio', categoria: 'esplorazione',
+      finestra: 'giornaliera', metrica: 'apertura_valore_collezione_periodo', operatore: '>=', valore: 1,
+      ricompensa: { tipo: 'polvere', quantita: 3 },
+      nota: 'duplicato concettuale di m38 — "consultare il valore medio" e "consultare il totale" sono la stessa apertura widget (la media è testo statico nell\'header, non un elemento cliccabile separato su cui propagare un\'origine come per m39/m83)' },
+
+    // FASE 2 sbloccata (2026-08-30): click su una carta dalla lista "Le più
+    // preziose" nel widget Valore collezione — origine 'top_valore'
+    // propagata da ui/phone.ui.js:_ballMiniCarta()/_ballAzioneRiga(), NON
+    // conta le aperture da altre liste (doppioni, ultime aggiunte) né dalla
+    // tabella. Stessa metrica di m83 sotto, soglia più bassa.
+    { id: 'm39_tesori_nascosti', titolo: 'Tesori nascosti', categoria: 'esplorazione',
+      finestra: 'giornaliera', metrica: 'apertura_carta_top_valore_periodo', operatore: '>=', valore: 1,
+      ricompensa: { tipo: 'polvere', quantita: 4 } },
+
     // FASE 2 sbloccata (2026-08-30): stessa metrica di m13/m82, soglia più
     // bassa — coerente col titolo "Prima apertura".
     { id: 'm41_prima_apertura', titolo: 'Prima apertura', categoria: 'esplorazione',
       finestra: 'giornaliera', metrica: 'apertura_dettaglio_carta_periodo', operatore: '>=', valore: 1,
+      ricompensa: { tipo: 'polvere', quantita: 2 } },
+
+    // FASE 2 sbloccata (2026-08-30): apertura del widget Vetrina
+    // ('ultima_carta' nel catalogo — titolo interno 'Preferita', riga
+    // ~1092 di ui/phone.ui.js). Già coperta dall'hook generico in
+    // _eseguiAzioneWidget(), nessun nuovo punto di scrittura.
+    { id: 'm42_carta_preferita', titolo: 'Carta preferita', categoria: 'esplorazione',
+      finestra: 'giornaliera', metrica: 'apertura_ultima_carta_periodo', operatore: '>=', valore: 1,
       ricompensa: { tipo: 'polvere', quantita: 2 } },
 
     { id: 'm50_missione_compiuta', titolo: 'Missione compiuta', categoria: 'meta',
@@ -276,10 +304,24 @@ const CATALOGO_MISSIONI = [
       finestra: 'giornaliera', metrica: 'apertura_binder_periodo', operatore: '>=', valore: 1,
       ricompensa: { tipo: 'polvere', quantita: 2 } },
 
+    // FASE 2 sbloccata (2026-08-30): "visitare il binder pubblico di
+    // qualcun altro tramite Match" (confermato da Claudio) — NON il tuo
+    // proprio link. Aggancio: ui/phone.ui.js:_apriBinderAltruiMatch().
+    { id: 'm70_binder_pubblico', titolo: 'Binder pubblico', categoria: 'social',
+      finestra: 'giornaliera', metrica: 'binder_pubblico_visitato_periodo', operatore: '>=', valore: 1,
+      ricompensa: { tipo: 'polvere', quantita: 2 } },
+
     { id: 'm75_matchmaker', titolo: 'Matchmaker', categoria: 'social',
       finestra: 'una_tantum', metrica: 'match_attivi_totale', operatore: '>=', valore: 1,
       ricompensa: { tipo: 'polvere', quantita: 4 },
       nota: 'duplicato concettuale di m24, ma una_tantum invece di giornaliera' },
+
+    // FASE 2 sbloccata (2026-08-30): "collezione condivisa O sezione
+    // sociale" — OR tra apertura Binders e apertura Match, calcolato in
+    // MOTORE_MISSIONI.raccogliDati() (esplorazione_sociale_oggi).
+    { id: 'm78_esplora_il_gruppo', titolo: 'Esplora il gruppo', categoria: 'social',
+      finestra: 'giornaliera', metrica: 'esplorazione_sociale_oggi', operatore: '==', valore: true,
+      ricompensa: { tipo: 'polvere', quantita: 3 } },
 
     // FASE 2 sbloccata (2026-08-30): apertura del widget preview Estensione
     // in Home, trigger diverso da m89 sotto (lancio effettivo dell'app via
@@ -289,15 +331,89 @@ const CATALOGO_MISSIONI = [
       finestra: 'giornaliera', metrica: 'apertura_estensione_periodo', operatore: '>=', valore: 1,
       ricompensa: { tipo: 'polvere', quantita: 2 } },
 
-    // FASE 2 sbloccata (2026-08-30): stessa metrica di m13/m41, soglia
-    // intermedia.
+    // FASE 2 sbloccata (2026-08-30): duplicato concettuale di m06 —
+    // "controlla il numero totale di carte" è la stessa apertura di
+    // Visualizzazione, nessun bersaglio distinto in Home (vedi discussione:
+    // Home non passa da apriDettaglioWidget).
+    { id: 'm80_numeri_alla_mano', titolo: 'Numeri alla mano', categoria: 'esplorazione',
+      finestra: 'giornaliera', metrica: 'apertura_visualizzazione_periodo', operatore: '>=', valore: 1,
+      ricompensa: { tipo: 'polvere', quantita: 1 } },
+
+    // FASE 2 sbloccata (2026-08-30, decisione b): "controlla carte, valore
+    // e location — 3 statistiche" = 3 widget specifici (visualizzazione/
+    // valore_collezione/location) aperti almeno una volta oggi, non un
+    // evento nuovo — calcolato in raccogliDati() (statistiche_distinte_periodo).
+    { id: 'm81_conta_tutto', titolo: 'Conta tutto', categoria: 'esplorazione',
+      finestra: 'giornaliera', metrica: 'statistiche_distinte_periodo', operatore: '>=', valore: 3,
+      ricompensa: { tipo: 'polvere', quantita: 5 } },
+
+    // FASE 2 sbloccata (2026-08-30, CORREZIONE 2026-08-30): il documento
+    // originale dice "tre carte DIVERSE" — a differenza di m13/m41/m83
+    // (semplice conteggio di aperture), qui conta i cardId distinti, non i
+    // tap. Vedi missioniDettaglioCarteDistintePeriodo() nel repository.
     { id: 'm82_occhio_ai_dettagli', titolo: 'Occhio ai dettagli', categoria: 'esplorazione',
-      finestra: 'giornaliera', metrica: 'apertura_dettaglio_carta_periodo', operatore: '>=', valore: 3,
+      finestra: 'giornaliera', metrica: 'carte_distinte_dettaglio_periodo', operatore: '>=', valore: 3,
       ricompensa: { tipo: 'polvere', quantita: 4 } },
+
+    // FASE 2 sbloccata (2026-08-30): stessa metrica di m39, soglia più alta.
+    { id: 'm83_tre_tesori', titolo: 'Tre tesori', categoria: 'esplorazione',
+      finestra: 'giornaliera', metrica: 'apertura_carta_top_valore_periodo', operatore: '>=', valore: 3,
+      ricompensa: { tipo: 'polvere', quantita: 6 } },
+
+    // FASE 2 sbloccata (2026-08-30): duplicato concettuale di m41 —
+    // "consultare una carta inserita in precedenza" è la stessa apertura
+    // dettaglio carta, nessun modo di distinguere "storica" da "nuova"
+    // senza il flag 'vecchia' usato da m87 sotto (qui non richiesto dal
+    // testo originale).
+    { id: 'm86_archivio_digitale', titolo: 'Archivio digitale', categoria: 'esplorazione',
+      finestra: 'giornaliera', metrica: 'apertura_dettaglio_carta_periodo', operatore: '>=', valore: 1,
+      ricompensa: { tipo: 'polvere', quantita: 2 } },
+
+    // FASE 2 sbloccata (2026-08-30): apertura di una carta NON aggiunta
+    // oggi — flag 'vecchia' calcolato in ui/home.ui.js:apriFlipCardHome()
+    // (confronto card.createdAt vs oggi), salvato in 'details'.
+    { id: 'm87_ritorno_al_passato', titolo: 'Ritorno al passato', categoria: 'esplorazione',
+      finestra: 'giornaliera', metrica: 'carta_vecchia_aperta_periodo', operatore: '>=', valore: 1,
+      ricompensa: { tipo: 'polvere', quantita: 3 } },
+
+    // FASE 2 sbloccata (2026-08-30): duplicato esatto di m79 — "controllare
+    // lo stato dell'estensione" è la stessa apertura del widget preview.
+    { id: 'm88_estensione_pronta', titolo: 'Estensione pronta', categoria: 'estensione',
+      finestra: 'giornaliera', metrica: 'apertura_estensione_periodo', operatore: '>=', valore: 1,
+      ricompensa: { tipo: 'polvere', quantita: 2 } },
 
     { id: 'm89_apri_il_pokedex', titolo: 'Apri il Pokédex', categoria: 'estensione',
       finestra: 'giornaliera', metrica: 'estensione_aperta_periodo', operatore: '>=', valore: 1,
       ricompensa: { tipo: 'polvere', quantita: 3 } },
+
+    // FASE 2 sbloccata (2026-08-30): uso REALE di una funzione
+    // dell'estensione (avvio controllo prezzi), distinta da m79/m88 (solo
+    // apertura/controllo stato) e da m89 (lancio app). Aggancio:
+    // ui/prices.ui.js:triggerExtensionPriceCheck()/...Wishlist().
+    { id: 'm90_collega_il_mondo', titolo: 'Collega il mondo', categoria: 'estensione',
+      finestra: 'giornaliera', metrica: 'estensione_funzione_usata_periodo', operatore: '>=', valore: 1,
+      ricompensa: { tipo: 'polvere', quantita: 5 } },
+
+    // FASE 2 sbloccate (2026-08-30): "apri N widget diversi" — riusa gli
+    // eventi generici di apertura widget già scritti da _eseguiAzioneWidget
+    // per OGNI widget, contati distinti in
+    // data/missioni.repository.js:missioniWidgetDistintiPeriodo().
+    { id: 'm91_widget_explorer', titolo: 'Widget explorer', categoria: 'home',
+      finestra: 'giornaliera', metrica: 'widget_distinti_periodo', operatore: '>=', valore: 3,
+      ricompensa: { tipo: 'polvere', quantita: 3 } },
+
+    { id: 'm92_telefono_completo', titolo: 'Telefono completo', categoria: 'home',
+      finestra: 'giornaliera', metrica: 'widget_distinti_periodo', operatore: '>=', valore: 5,
+      ricompensa: { tipo: 'polvere', quantita: 6 } },
+
+    // FASE 2 sbloccata (2026-08-30): titolo originale "Tutto sotto
+    // controllo", rinominato "Panoramica completa" per conflitto con
+    // missione #56 (vedi TITOLI RINOMINATI nel catalogo annotato). "Tutti i
+    // widget informativi" = tutti tranne i segnaposto gacha (bloccato:true
+    // in CATALOGO_WIDGET — bustina/polvere/missioni), contati a runtime.
+    { id: 'm93_panoramica_completa', titolo: 'Panoramica completa', categoria: 'home',
+      finestra: 'giornaliera', metrica: 'tutti_widget_informativi_periodo', operatore: '==', valore: true,
+      ricompensa: { tipo: 'polvere', quantita: 8 } },
 
     { id: 'm94_personalizza', titolo: 'Personalizza', categoria: 'home',
       finestra: 'giornaliera', metrica: 'layout_modificato_periodo', operatore: '>=', valore: 1,
@@ -723,6 +839,9 @@ const MOTORE_MISSIONI = {
             aperturaDoppioni, aperturaMatch, aperturaLocation,
             aperturaValoreCollezione, aperturaBinder, aperturaEstensione,
             aperturaDettaglioCarta,
+            qrGenerato, binderPubblicoVisitato, aperturaCartaTopValore, aperturaUltimaCarta,
+            carteDistinteDettaglio,
+            carteVecchiaAperta, estensioneFunzioneUsata, widgetDistinti,
         ] = await Promise.all([
             missioniCarteAggiuntePeriodo(userId, oggi.inizioISO, oggi.fineISO),
             missioniCarteTotali(userId),
@@ -761,6 +880,14 @@ const MOTORE_MISSIONI = {
             missioniAperturaWidgetPeriodo(userId, 'binder', oggi.inizioISO, oggi.fineISO),
             missioniAperturaWidgetPeriodo(userId, 'estensione', oggi.inizioISO, oggi.fineISO),
             missioniDettaglioCartaAperturePeriodo(userId, oggi.inizioISO, oggi.fineISO),
+            missioniQrGeneratoPeriodo(userId, oggi.inizioISO, oggi.fineISO),
+            missioniBinderPubblicoVisitatoPeriodo(userId, oggi.inizioISO, oggi.fineISO),
+            missioniDettaglioCartaTopValorePeriodo(userId, oggi.inizioISO, oggi.fineISO),
+            missioniAperturaWidgetPeriodo(userId, 'ultima_carta', oggi.inizioISO, oggi.fineISO),
+            missioniDettaglioCarteDistintePeriodo(userId, oggi.inizioISO, oggi.fineISO),
+            missioniDettaglioCartaVecchiaPeriodo(userId, oggi.inizioISO, oggi.fineISO),
+            missioniEstensioneFunzioneUsataPeriodo(userId, oggi.inizioISO, oggi.fineISO),
+            missioniWidgetDistintiPeriodo(userId, oggi.inizioISO, oggi.fineISO),
         ]);
 
         // Ogni chiamata sopra ritorna { data, error } o { count, error } (le
@@ -800,6 +927,33 @@ const MOTORE_MISSIONI = {
             ? (console.warn('[missioni] raccolta dati (categorie traguardi):', traguardiRiscossiIdTotale.error.message), new Set())
             : new Set(((traguardiRiscossiIdTotale && traguardiRiscossiIdTotale.data) || [])
                 .map(row => row.traguardo_id).map(_categoriaTraguardoDi).filter(Boolean));
+
+        // Missione #78 "Esplora il gruppo" (2026-08-30): OR tra apertura
+        // widget Binders e apertura widget Match — "collezione condivisa O
+        // sezione sociale", nessuno dei due obbligatorio da solo.
+        const _aperturaBinderOggi = v(aperturaBinder, 'count');
+        const _aperturaMatchOggi = v(aperturaMatch, 'count');
+        const esplorazioneSocialeOggi = _aperturaBinderOggi >= 1 || _aperturaMatchOggi >= 1;
+
+        // Missione #81 "Conta tutto" (2026-08-30, decisione b): "controlla
+        // carte, valore e location — 3 statistiche consultate" = numero di
+        // widget tra {visualizzazione, valore_collezione, location} aperti
+        // almeno una volta oggi, non un evento nuovo.
+        const _aperturaVisualizzazioneOggi = v(aperturaVisualizzazione, 'count');
+        const _aperturaValoreCollezioneOggi = v(aperturaValoreCollezione, 'count');
+        const _aperturaLocationOggi = v(aperturaLocation, 'count');
+        const statisticheDistintePeriodo =
+            (_aperturaVisualizzazioneOggi >= 1 ? 1 : 0) +
+            (_aperturaValoreCollezioneOggi >= 1 ? 1 : 0) +
+            (_aperturaLocationOggi >= 1 ? 1 : 0);
+
+        // Missione #93 "Panoramica completa" (2026-08-30): "tutti i widget
+        // informativi disponibili" — CATALOGO_WIDGET (ui/phone.ui.js) meno
+        // i segnaposto gacha mai implementati (bloccato:true — bustina,
+        // polvere, missioni). Contato a runtime, non un numero fisso: se il
+        // catalogo cambia, questa soglia si aggiorna da sola.
+        const totaleWidgetInformativi = Object.keys(CATALOGO_WIDGET).filter(id => !CATALOGO_WIDGET[id].bloccato).length;
+        const widgetDistintiPeriodo = v(widgetDistinti);
 
         return {
             carte_aggiunte_periodo: v(carteAggiunteOggi, 'count'),
@@ -843,6 +997,17 @@ const MOTORE_MISSIONI = {
             apertura_binder_periodo: v(aperturaBinder, 'count'),
             apertura_estensione_periodo: v(aperturaEstensione, 'count'),
             apertura_dettaglio_carta_periodo: v(aperturaDettaglioCarta, 'count'),
+            qr_generato_periodo: v(qrGenerato, 'count'),
+            binder_pubblico_visitato_periodo: v(binderPubblicoVisitato, 'count'),
+            apertura_carta_top_valore_periodo: v(aperturaCartaTopValore, 'count'),
+            apertura_ultima_carta_periodo: v(aperturaUltimaCarta, 'count'),
+            carte_distinte_dettaglio_periodo: v(carteDistinteDettaglio),
+            carta_vecchia_aperta_periodo: v(carteVecchiaAperta, 'count'),
+            estensione_funzione_usata_periodo: v(estensioneFunzioneUsata, 'count'),
+            widget_distinti_periodo: widgetDistintiPeriodo,
+            esplorazione_sociale_oggi: esplorazioneSocialeOggi,
+            statistiche_distinte_periodo: statisticheDistintePeriodo,
+            tutti_widget_informativi_periodo: totaleWidgetInformativi > 0 && widgetDistintiPeriodo >= totaleWidgetInformativi,
         };
     },
 

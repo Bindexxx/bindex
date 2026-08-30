@@ -91,6 +91,17 @@
 
             btn.innerHTML = '<i class="fa-solid fa-hourglass-half"></i> In attesa che un dispositivo lo prenda in carico...';
             sub.textContent = 'L\'ordine è stato creato — un dispositivo con l\'estensione aperta lo eseguirà a breve.';
+
+            // Missione #90 "Collega il mondo" (2026-08-30): usare una
+            // funzione reale attraverso l'estensione (qui: avviare il
+            // controllo prezzi). Fire-and-forget, stesso pattern degli
+            // altri hook missioni.
+            (async () => {
+                try {
+                    await missioniEstensioneFunzioneUsataRegistra(userId);
+                } catch (e) { console.error('[missioni] registrazione uso estensione:', e); }
+            })();
+
             _pollOrdine(ordine.id, btn, sub);
         }
 
@@ -166,6 +177,15 @@
 
             btn.innerHTML = '<i class="fa-solid fa-hourglass-half"></i> In attesa che un dispositivo lo prenda in carico...';
             sub.textContent = 'L\'ordine è stato creato — un dispositivo con l\'estensione aperta lo eseguirà a breve.';
+
+            // Missione #90 "Collega il mondo" (2026-08-30): stesso hook di
+            // triggerExtensionPriceCheck() sopra — stessa funzione, stesso
+            // concetto ("usa una funzione dell'estensione").
+            (async () => {
+                try {
+                    await missioniEstensioneFunzioneUsataRegistra(userId);
+                } catch (e) { console.error('[missioni] registrazione uso estensione:', e); }
+            })();
 
             if (_pollOrdineWishlistInterval) clearInterval(_pollOrdineWishlistInterval);
             const INTERVALLO_MS = 3000;

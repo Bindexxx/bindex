@@ -360,15 +360,25 @@
             const card = carteReali.find(c => String(c.id) === String(id));
             if (!card) return;
 
-            // Missioni #13/#41/#82 (2026-08-30): apertura dettaglio carta.
-            // Fire-and-forget, stesso pattern degli altri hook missioni —
-            // un fallimento qui non deve mai bloccare il flip-viewer.
-            // Nessun dedup: ogni tap conta (deciso da Claudio), anche sulla
-            // stessa carta più volte nello stesso giorno.
+            // Missioni #13/#41/#82/#87 (2026-08-30): apertura dettaglio
+            // carta. Fire-and-forget, stesso pattern degli altri hook
+            // missioni — un fallimento qui non deve mai bloccare il
+            // flip-viewer. Nessun dedup: ogni tap conta (deciso da
+            // Claudio), anche sulla stessa carta più volte nello stesso
+            // giorno. 'vecchia' (#87 "Ritorno al passato"): true se la
+            // carta non è stata aggiunta oggi — confronto in giorno-di-
+            // calendario locale, stesso principio già usato per lo streak
+            // accessi in data/missioni.repository.js.
+            const _vecchia = (() => {
+                if (!card.createdAt) return false;
+                const d = new Date(card.createdAt);
+                const oggi = new Date();
+                return d.getFullYear() !== oggi.getFullYear() || d.getMonth() !== oggi.getMonth() || d.getDate() !== oggi.getDate();
+            })();
             (async () => {
                 try {
                     const userId = await authGetUserId();
-                    if (userId) await missioniDettaglioCartaRegistra(userId, card.id);
+                    if (userId) await missioniDettaglioCartaRegistra(userId, card.id, opzioni.origine, _vecchia);
                 } catch (e) { console.error('[missioni] registrazione apertura dettaglio carta:', e); }
             })();
 
