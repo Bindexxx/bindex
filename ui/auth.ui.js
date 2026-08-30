@@ -266,6 +266,19 @@
             aggiornaBadgeMatch();
             caricaCarteConProblemi();
 
+            // Missioni/Traguardi Fase 2 — streak accessi (2026-08-29).
+            // Fire-and-forget: un fallimento qui non deve mai bloccare
+            // l'avvio del sito. Dedup a 1/giorno gestito dentro la
+            // funzione stessa (vedi data/missioni.repository.js) — sicuro
+            // chiamarla ad ogni reload, anche più volte nello stesso giorno.
+            (async () => {
+                try {
+                    const userId = await authGetUserId();
+                    if (userId) await missioniAccessoRegistraOggi(userId);
+                } catch (e) { console.error('[missioni] registrazione accesso:', e); }
+            })();
+
+
             // Ripristina l'ultima scheda visitata; se non c'è (prima visita
             // su questo dispositivo, o storage svuotato), usa la sezione
             // predefinita scelta nelle Impostazioni.

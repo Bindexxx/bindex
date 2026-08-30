@@ -37,6 +37,11 @@
 // bilancerà in fase di test.
 
 const CATALOGO_MISSIONI = [
+    { id: 'm01_primo_accesso', titolo: 'Primo accesso', categoria: 'costanza',
+      finestra: 'giornaliera', metrica: 'accesso_oggi', operatore: '==', valore: true,
+      ricompensa: { tipo: 'polvere', quantita: 1 },
+      nota: 'FASE 2 sbloccata (2026-08-29): richiede activity_log, agganciata in ui/auth.ui.js:_avviaSitoDopoAccesso()' },
+
     { id: 'm02_una_carta_in_piu', titolo: 'Una carta in più', categoria: 'inserimento',
       finestra: 'giornaliera', metrica: 'carte_aggiunte_periodo', operatore: '>=', valore: 1,
       ricompensa: { tipo: 'polvere', quantita: 2 } },
@@ -125,6 +130,23 @@ const CATALOGO_MISSIONI = [
 
     { id: 'm54_cacciatore_di_obiettivi', titolo: 'Cacciatore di obiettivi', categoria: 'meta',
       finestra: 'una_tantum', metrica: 'missioni_completate_totale', operatore: '>=', valore: 10,
+      ricompensa: { tipo: 'polvere', quantita: 15 } },
+
+    // FASE 2 sbloccate (2026-08-29): streak giorni consecutivi con accesso.
+    // finestra 'una_tantum' (non giornaliera): una volta raggiunta una
+    // soglia di streak la ricompensa va data UNA volta sola, non ogni
+    // giorno per tutta la durata dello streak — stesso ragionamento di
+    // m54 sopra (totale, non periodo).
+    { id: 'm44_torna_domani', titolo: 'Torna domani', categoria: 'costanza',
+      finestra: 'una_tantum', metrica: 'giorni_consecutivi', operatore: '>=', valore: 2,
+      ricompensa: { tipo: 'polvere', quantita: 4 } },
+
+    { id: 'm45_costanza', titolo: 'Costanza', categoria: 'costanza',
+      finestra: 'una_tantum', metrica: 'giorni_consecutivi', operatore: '>=', valore: 3,
+      ricompensa: { tipo: 'polvere', quantita: 7 } },
+
+    { id: 'm46_settimana_attiva', titolo: 'Settimana attiva', categoria: 'costanza',
+      finestra: 'una_tantum', metrica: 'giorni_consecutivi', operatore: '>=', valore: 7,
       ricompensa: { tipo: 'polvere', quantita: 15 } },
 
     { id: 'm57_raccoglitore', titolo: 'Raccoglitore', categoria: 'inserimento',
@@ -293,6 +315,21 @@ const SCALA_MISSIONI_TOTALI = _generaScalaTraguardi('t_missioni', 'missioni_comp
 // NOTA: "Inarrestabile" (titolo originale soglia 2500) rinominato "Instancabile"
 // per conflitto con missione m51_inarrestabile.
 
+// FASE 2 sbloccata (2026-08-29): traguardi #76-85, Accessi — richiede
+// activity_log, vedi missioniAccessiTotali() in data/missioni.repository.js.
+const SCALA_ACCESSI = _generaScalaTraguardi('t_accessi', 'accessi_totali', [
+    { soglia: 1,    titolo: 'Benvenuto',            ricompensa: { tipo: 'polvere', quantita: 3 } },
+    { soglia: 3,    titolo: 'Abitudine',            ricompensa: { tipo: 'polvere', quantita: 5 } },
+    { soglia: 7,    titolo: 'Frequentatore',        ricompensa: { tipo: 'polvere', quantita: 10 } },
+    { soglia: 30,   titolo: 'Cliente abituale',     ricompensa: { tipo: 'stampino' } },
+    { soglia: 100,  titolo: 'Presenza costante',    ricompensa: { tipo: 'bustina', quantita: 1 } },
+    { soglia: 250,  titolo: 'Veterano',             ricompensa: { tipo: 'polvere', quantita: 50 } },
+    { soglia: 500,  titolo: 'Punto fermo',          ricompensa: { tipo: 'stampino', riferimento: 'raro' } },
+    { soglia: 1000, titolo: 'Storico CardSync',     ricompensa: { tipo: 'bustina', quantita: 2 } },
+    { soglia: 2500, titolo: 'Leggenda del Pokédex', ricompensa: { tipo: 'stampino', riferimento: 'leggendario' } },
+    { soglia: 5000, titolo: 'Sempre qui',           ricompensa: { tipo: 'polvere', quantita: 250 } },
+]);
+
 // Traguardi singoli (non in scala)
 const TRAGUARDI_SINGOLI = [
     { id: 't_giorno_impeccabile', titolo: 'Giorno impeccabile', categoria: 'meta',
@@ -308,13 +345,14 @@ const CATALOGO_TRAGUARDI = [
     ...SCALA_WISHLIST,
     ...SCALA_DOPPIONI,
     ...SCALA_MISSIONI_TOTALI,
+    ...SCALA_ACCESSI,
     ...TRAGUARDI_SINGOLI,
 ];
-// Traguardi #46-55 (Match), #56-65 (binder visitati), #76-85 (accessi), #98
-// (Collezionista completo, categorie) sono FASE 2 — non inclusi qui.
+// Traguardi #46-55 (Match), #56-65 (binder visitati), #98 (Collezionista
+// completo, categorie) restano FASE 2 — non inclusi qui.
 // Traguardi #99/#100 (soglie su traguardi sbloccati totali) sono PENDING:
 // le soglie originali (50/100) presumono il catalogo completo a 100 voci,
-// da ricalcolare quando anche la Fase 2 sarà implementata.
+// da ricalcolare quando anche il resto della Fase 2 sarà implementato.
 
 
 // ----------------------------------------------------------------------------
@@ -480,6 +518,7 @@ const MOTORE_MISSIONI = {
             matchAttivi, binderPubblicatiOggi,
             codaVuota, codaAzzerataOggi,
             missioniTotali, missioniOggi,
+            accessoOggi, accessiTotali, giorniConsecutivi,
         ] = await Promise.all([
             missioniCarteAggiuntePeriodo(userId, oggi.inizioISO, oggi.fineISO),
             missioniCarteTotali(userId),
@@ -499,6 +538,9 @@ const MOTORE_MISSIONI = {
             missioniCodaErroriAzzerataOggi(userId),
             missioniCompletateTotale(userId),
             missioniCompletatePeriodo(userId, oggi.periodo),
+            missioniAccessoOggi(userId),
+            missioniAccessiTotali(userId),
+            missioniGiorniConsecutivi(userId),
         ]);
 
         // Ogni chiamata sopra ritorna { data, error } o { count, error } (le
@@ -533,6 +575,9 @@ const MOTORE_MISSIONI = {
             missioni_completate_periodo: numeroMissioniOggiCompletate,
             percentuale_missioni_giorno: poolOggi > 0 ? Math.round((numeroMissioniOggiCompletate / poolOggi) * 100) : 0,
             giorno_perfetto_mai: poolOggi > 0 && numeroMissioniOggiCompletate >= poolOggi,
+            accesso_oggi: v(accessoOggi),
+            accessi_totali: v(accessiTotali, 'count'),
+            giorni_consecutivi: v(giorniConsecutivi),
         };
     },
 
