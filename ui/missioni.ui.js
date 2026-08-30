@@ -62,12 +62,14 @@ const CATALOGO_MISSIONI = [
       ricompensa: { tipo: 'polvere', quantita: 6 } },
 
     { id: 'm11_metti_ordine', titolo: 'Metti ordine', categoria: 'inserimento',
-      finestra: 'giornaliera', metrica: 'errori_risolti_oggi', operatore: '>=', valore: 1,
-      ricompensa: { tipo: 'polvere', quantita: 3 } },
+      finestra: 'giornaliera', metrica: 'coda_errori_azzerata_oggi', operatore: '==', valore: true,
+      ricompensa: { tipo: 'polvere', quantita: 3 },
+      nota: 'ridefinita come binaria (non conteggio) — dafare_risolti traccia solo la transizione attivo->risolto del segnale aggregato coda_errori, una volta, non eventi singoli' },
 
-    { id: 'm12_pulizia_straordinaria', titolo: 'Pulizia straordinaria', categoria: 'inserimento',
-      finestra: 'giornaliera', metrica: 'errori_risolti_oggi', operatore: '>=', valore: 3,
-      ricompensa: { tipo: 'polvere', quantita: 7 } },
+    // m12_pulizia_straordinaria SPOSTATA IN FASE 2: dafare_risolti traccia solo
+    // la transizione attivo->risolto di un segnale aggregato (una volta per
+    // segnale), non un conteggio di eventi singoli — "3 errori risolti" non è
+    // calcolabile da questa fonte. Vedi Catalogo_Missioni_Traguardi_Annotato.md.
 
     { id: 'm16_cacciatore_di_carte', titolo: 'Cacciatore di carte', categoria: 'inserimento',
       finestra: 'giornaliera', metrica: 'carte_aggiunte_periodo', operatore: '>=', valore: 1,
@@ -130,14 +132,12 @@ const CATALOGO_MISSIONI = [
       ricompensa: { tipo: 'polvere', quantita: 4 },
       nota: 'stato cumulativo (gruppo più numeroso per espansione), non vincolato a "aggiunte oggi"' },
 
-    { id: 'm58_rarita_gemelle', titolo: 'Rarità gemelle', categoria: 'inserimento',
-      finestra: 'giornaliera', metrica: 'carte_stessa_rarita_max', operatore: '>=', valore: 2,
-      ricompensa: { tipo: 'polvere', quantita: 4 },
-      nota: 'ex "Doppietta" — rinominata per conflitto con traguardo #68, vedi Catalogo_Missioni_Traguardi_Annotato.md' },
-
-    { id: 'm59_varieta', titolo: 'Varietà', categoria: 'inserimento',
-      finestra: 'giornaliera', metrica: 'rarita_distinte', operatore: '>=', valore: 3,
-      ricompensa: { tipo: 'polvere', quantita: 6 } },
+    // m58_rarita_gemelle e m59_varieta: ELIMINATE dal catalogo (decisione
+    // Claudio, 2026-08-29). Rarità non trovata in nessun file reale: non è
+    // una colonna di 'carte' (verificato via information_schema), non è
+    // in ui/prices.ui.js né in data/sets.library.js (contiene solo
+    // nome/base/totale per set). c.rarita in phone.ui.js è probabilmente
+    // un campo mai popolato. Vedi Catalogo_Missioni_Traguardi_Annotato.md.
 
     { id: 'm63_un_desiderio_in_meno', titolo: 'Un desiderio in meno', categoria: 'prezzi',
       finestra: 'giornaliera', metrica: 'wishlist_obiettivi_raggiunti', operatore: '>=', valore: 1,
@@ -343,7 +343,7 @@ const CATALOGO_TRAGUARDI = [
 //   rarita_distinte            — count(DISTINCT rarità) tra le carte
 //   match_attivi_totale        — length(trovaMatch()) — riusa funzione esistente in queue.ui.js
 //   binder_pubblicati_periodo  — count(binders) WHERE stato_pubblicazione='pubblico' AND created_at IN periodo
-//   prezzi_scaduti_totale      — riusa segnale già calcolato dal widget "Da fare"
+//   prezzi_scaduti_totale      — carte.ultimo_controllo IS NULL OR < oggi-SOGLIA_GIORNI_PREZZO_SCADUTO giorni (vedi ui/prices.ui.js:apriModalePrezziScaduti). Solo collezione, non wishlist (stessa scelta di caricaUltimaSincronizzazioneHome).
 //   estensione_aperta_periodo  — RICHIEDE nuova scrittura sul canale chrome.runtime esistente
 //   layout_modificato_periodo  — confronto layout salvato prima/dopo, al momento del salvataggio
 //   missioni_completate_totale — count(missioni_completate) WHERE owner_id=X
