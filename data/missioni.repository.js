@@ -374,6 +374,54 @@ async function missioniAperturaWidgetPeriodo(userId, widgetId, inizioISO, fineIS
 }
 
 
+// ── QR (activity_log, source='condividi', action='qr_generato') ────────
+// Missione #29 "QR Hunter" (2026-08-30). Nessun dedup: ogni QR generato
+// conta, anche per lo stesso binder più volte nello stesso giorno.
+
+async function missioniQrGeneratoRegistra(userId) {
+    return supabaseClient
+        .from('activity_log')
+        .insert({ user_id: userId, source: 'condividi', action: 'qr_generato', details: {} });
+}
+
+async function missioniQrGeneratoPeriodo(userId, inizioISO, fineISO) {
+    return supabaseClient
+        .from('activity_log')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', userId)
+        .eq('source', 'condividi')
+        .eq('action', 'qr_generato')
+        .gte('created_at', inizioISO)
+        .lt('created_at', fineISO);
+}
+
+
+// ── BINDER PUBBLICO VIA MATCH (activity_log, source='binder_pubblico',
+//    action='visitato_da_match') ────────────────────────────────────────
+// Missione #70 "Binder pubblico" (2026-08-30): visita del binder pubblico
+// di un ALTRO utente raggiunto tramite Match — direzione opposta e
+// meccanismo diverso dalla "popolarità" m18-20 (quella conta chi apre IL
+// TUO binder, in forma anonima via RPC SECURITY DEFINER). Qui l'utente che
+// visita è loggato, quindi scrittura diretta, nessuna RPC necessaria.
+
+async function missioniBinderPubblicoVisitatoRegistra(userId) {
+    return supabaseClient
+        .from('activity_log')
+        .insert({ user_id: userId, source: 'binder_pubblico', action: 'visitato_da_match', details: {} });
+}
+
+async function missioniBinderPubblicoVisitatoPeriodo(userId, inizioISO, fineISO) {
+    return supabaseClient
+        .from('activity_log')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', userId)
+        .eq('source', 'binder_pubblico')
+        .eq('action', 'visitato_da_match')
+        .gte('created_at', inizioISO)
+        .lt('created_at', fineISO);
+}
+
+
 // ── DETTAGLIO CARTA (activity_log, source='carta', action='aperta') ────
 // Missioni #13/#41/#82 (2026-08-30): apertura del flip-viewer di una
 // singola carta (apriFlipCardHome() in ui/home.ui.js) — NON il modale di
@@ -381,10 +429,10 @@ async function missioniAperturaWidgetPeriodo(userId, widgetId, inizioISO, fineIS
 // Nessun dedup: ogni tap conta, anche sulla stessa carta più volte nello
 // stesso giorno (deciso esplicitamente, a differenza degli accessi).
 
-async function missioniDettaglioCartaRegistra(userId, cardId) {
+async function missioniDettaglioCartaRegistra(userId, cardId, origine, vecchia) {
     return supabaseClient
         .from('activity_log')
-        .insert({ user_id: userId, source: 'carta', action: 'aperta', details: { cardId } });
+        .insert({ user_id: userId, source: 'carta', action: 'aperta', details: { cardId, origine: origine || null, vecchia: !!vecchia } });
 }
 
 async function missioniDettaglioCartaAperturePeriodo(userId, inizioISO, fineISO) {
@@ -396,6 +444,108 @@ async function missioniDettaglioCartaAperturePeriodo(userId, inizioISO, fineISO)
         .eq('action', 'aperta')
         .gte('created_at', inizioISO)
         .lt('created_at', fineISO);
+}
+
+// Missione #82 "Occhio ai dettagli" (2026-08-30, CORREZIONE): il documento
+// originale dice esplicitamente "tre carte DIVERSE" — a differenza di m13/
+// m41/m83 che sono un semplice conteggio di aperture, qui serve contare i
+// cardId DISTINTI aperti nel periodo, non i tap totali (aprire 3 volte la
+// stessa carta non deve soddisfare questa missione). cardId letto da
+// 'details' (jsonb), stesso approccio "leggi e riduci" di
+// missioniLocationDistinte() sopra.
+async function missioniDettaglioCarteDistintePeriodo(userId, inizioISO, fineISO) {
+    const { data, error } = await supabaseClient
+        .from('activity_log')
+        .select('details')
+        .eq('user_id', userId)
+        .eq('source', 'carta')
+        .eq('action', 'aperta')
+        .gte('created_at', inizioISO)
+        .lt('created_at', fineISO);
+    if (error) return { data: null, error };
+    const distinte = new Set((data || []).map(r => r.details && r.details.cardId).filter(id => id != null));
+    return { data: distinte.size, error: null };
+}
+
+// Missione #87 "Ritorno al passato" (2026-08-30): apertura di una carta
+// NON aggiunta oggi — flag 'vecchia' calcolato lato client in
+// ui/home.ui.js:apriFlipCardHome() (confronto card.createdAt con la data
+// odierna, dato già in memoria) e salvato in 'details', stesso approccio
+// di 'origine' per #39/#83.
+async function missioniDettaglioCartaVecchiaPeriodo(userId, inizioISO, fineISO) {
+    return supabaseClient
+        .from('activity_log')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', userId)
+        .eq('source', 'carta')
+        .eq('action', 'aperta')
+        .eq('details->>vecchia', 'true')
+        .gte('created_at', inizioISO)
+        .lt('created_at', fineISO);
+}
+
+// Missioni #39/#83 "Tesori nascosti"/"Tre tesori" (2026-08-30): sottoinsieme
+// delle aperture sopra, solo quelle con origine='top_valore' (click dalla
+// lista "Le più preziose" nel widget Valore collezione — vedi
+// ui/phone.ui.js:_ballMiniCarta()/_ballAzioneRiga()). Filtro su jsonb via
+// operatore ->> di PostgREST, stesso 'details' già scritto sopra, nessuna
+// colonna nuova.
+async function missioniDettaglioCartaTopValorePeriodo(userId, inizioISO, fineISO) {
+    return supabaseClient
+        .from('activity_log')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', userId)
+        .eq('source', 'carta')
+        .eq('action', 'aperta')
+        .eq('details->>origine', 'top_valore')
+        .gte('created_at', inizioISO)
+        .lt('created_at', fineISO);
+}
+
+
+// ── ESTENSIONE — FUNZIONE USATA (activity_log, source='estensione',
+//    action='funzione_usata') ────────────────────────────────────────────
+// Missione #90 "Collega il mondo" (2026-08-30): uso di una funzione REALE
+// tramite l'estensione (avvio controllo prezzi, collezione o wishlist) —
+// distinta da m79/m88 (solo apertura/controllo stato del widget preview) e
+// da m89 (lancio dell'app). Aggancio: ui/prices.ui.js:
+// triggerExtensionPriceCheck() e triggerExtensionPriceCheckWishlist().
+
+async function missioniEstensioneFunzioneUsataRegistra(userId) {
+    return supabaseClient
+        .from('activity_log')
+        .insert({ user_id: userId, source: 'estensione', action: 'funzione_usata', details: {} });
+}
+
+async function missioniEstensioneFunzioneUsataPeriodo(userId, inizioISO, fineISO) {
+    return supabaseClient
+        .from('activity_log')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', userId)
+        .eq('source', 'estensione')
+        .eq('action', 'funzione_usata')
+        .gte('created_at', inizioISO)
+        .lt('created_at', fineISO);
+}
+
+
+// ── WIDGET DISTINTI (missioni #91/#92/#93, 2026-08-30) ──────────────────
+// Riusa gli stessi eventi di missioniAperturaWidgetPeriodo() sopra
+// (source='widget', action=<widget id>), ma conta i widget DISTINTI aperti
+// nel periodo, non le aperture totali — stesso approccio "leggi e riduci"
+// di missioniLocationDistinte()/missioniDettaglioCarteDistintePeriodo().
+
+async function missioniWidgetDistintiPeriodo(userId, inizioISO, fineISO) {
+    const { data, error } = await supabaseClient
+        .from('activity_log')
+        .select('action')
+        .eq('user_id', userId)
+        .eq('source', 'widget')
+        .gte('created_at', inizioISO)
+        .lt('created_at', fineISO);
+    if (error) return { data: null, error };
+    const distinti = new Set((data || []).map(r => r.action).filter(Boolean));
+    return { data: distinti.size, error: null };
 }
 
 
