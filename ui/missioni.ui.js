@@ -96,6 +96,29 @@ const CATALOGO_MISSIONI = [
       finestra: 'giornaliera', metrica: 'ricerche_eseguite_periodo', operatore: '>=', valore: 5,
       ricompensa: { tipo: 'polvere', quantita: 7 } },
 
+    // FASE 2 sbloccate (2026-08-29), TEMA CAMBIATO da "esplorazione" a
+    // "popolarità": binder-pubblico.html è anonimo per design (nessuna
+    // sessione), impossibile sapere CHI visita — l'evento è quindi
+    // attribuito al PROPRIETARIO del binder aperto, non al visitatore.
+    // Da qui il titolo diverso dall'originale ("Esploratore"/"Viaggiatore"
+    // presumevano un attore-visitatore che qui non possiamo identificare).
+    // Missioni originali #21 "Nuova conoscenza" (nuovo UTENTE mai visitato)
+    // e #22 "Curiosone" (5 CARTE viste dentro un binder) restano FASE 2
+    // permanentemente bloccate anche con questa reinterpretazione: la prima
+    // richiede identità visitatore (impossibile), la seconda richiede
+    // eventi per-singola-carta (non tracciati, solo apertura binder intero).
+    { id: 'm18_qualcuno_ti_ha_trovato', titolo: 'Qualcuno ti ha trovato', categoria: 'social',
+      finestra: 'giornaliera', metrica: 'binder_aperture_periodo', operatore: '>=', valore: 1,
+      ricompensa: { tipo: 'polvere', quantita: 3 } },
+
+    { id: 'm19_doppio_interesse', titolo: 'Doppio interesse', categoria: 'social',
+      finestra: 'giornaliera', metrica: 'binder_aperture_periodo', operatore: '>=', valore: 2,
+      ricompensa: { tipo: 'polvere', quantita: 5 } },
+
+    { id: 'm20_molto_cercato', titolo: 'Molto cercato', categoria: 'social',
+      finestra: 'giornaliera', metrica: 'binder_aperture_periodo', operatore: '>=', valore: 3,
+      ricompensa: { tipo: 'polvere', quantita: 7 } },
+
     { id: 'm24_primo_match', titolo: 'Primo Match', categoria: 'social',
       finestra: 'giornaliera', metrica: 'match_attivi_totale', operatore: '>=', valore: 1,
       ricompensa: { tipo: 'polvere', quantita: 4 } },
@@ -345,6 +368,26 @@ const SCALA_ACCESSI = _generaScalaTraguardi('t_accessi', 'accessi_totali', [
     { soglia: 5000, titolo: 'Sempre qui',           ricompensa: { tipo: 'polvere', quantita: 250 } },
 ]);
 
+// FASE 2 sbloccata (2026-08-29), TEMA CAMBIATO da "binder visitati" a
+// "binder aperti" — stesso motivo delle missioni #18-20 sopra (nessuna
+// identità visitatore disponibile, evento attribuito al proprietario).
+// Titoli originali (#56-65: Prima visita, Curioso, Esploratore...)
+// sostituiti — presumevano un attore-visitatore.
+const SCALA_BINDER_APERTURE = _generaScalaTraguardi('t_binder_aperture', 'binder_aperture_totale', [
+    { soglia: 1,    titolo: 'Prima scoperta',        ricompensa: { tipo: 'polvere', quantita: 3 } },
+    { soglia: 5,    titolo: 'Piccola fama',          ricompensa: { tipo: 'polvere', quantita: 5 } },
+    { soglia: 10,   titolo: 'Ti conoscono',          ricompensa: { tipo: 'polvere', quantita: 10 } },
+    { soglia: 25,   titolo: 'Volto noto',            ricompensa: { tipo: 'stampino' } },
+    { soglia: 50,   titolo: 'Punto di riferimento',  ricompensa: { tipo: 'bustina', quantita: 1 } },
+    { soglia: 100,  titolo: 'Molto seguito',         ricompensa: { tipo: 'polvere', quantita: 50 } },
+    { soglia: 250,  titolo: 'Popolare nel gruppo',   ricompensa: { tipo: 'stampino', riferimento: 'raro' } },
+    { soglia: 500,  titolo: 'Un classico',           ricompensa: { tipo: 'polvere', quantita: 100 } },
+    { soglia: 1000, titolo: 'Leggenda condivisa',    ricompensa: { tipo: 'bustina', quantita: 2 } },
+    { soglia: 2500, titolo: 'Il binder più visto',   ricompensa: { tipo: 'stampino', riferimento: 'leggendario' } },
+]);
+// NOTA: traguardi #56-65 originali (binder visitati da TE) restano FASE 2
+// permanentemente bloccati, stesso motivo delle missioni #21/#22 sopra.
+
 // Traguardi singoli (non in scala)
 const TRAGUARDI_SINGOLI = [
     { id: 't_giorno_impeccabile', titolo: 'Giorno impeccabile', categoria: 'meta',
@@ -361,6 +404,7 @@ const CATALOGO_TRAGUARDI = [
     ...SCALA_DOPPIONI,
     ...SCALA_MISSIONI_TOTALI,
     ...SCALA_ACCESSI,
+    ...SCALA_BINDER_APERTURE,
     ...TRAGUARDI_SINGOLI,
 ];
 // Traguardi #46-55 (Match), #56-65 (binder visitati), #98 (Collezionista
@@ -535,6 +579,7 @@ const MOTORE_MISSIONI = {
             missioniTotali, missioniOggi,
             accessoOggi, accessiTotali, giorniConsecutivi,
             ricercheOggi,
+            binderAperturePeriodo, binderApertureTotale,
         ] = await Promise.all([
             missioniCarteAggiuntePeriodo(userId, oggi.inizioISO, oggi.fineISO),
             missioniCarteTotali(userId),
@@ -558,6 +603,8 @@ const MOTORE_MISSIONI = {
             missioniAccessiTotali(userId),
             missioniGiorniConsecutivi(userId),
             missioniRicercheEseguitePeriodo(userId, oggi.inizioISO, oggi.fineISO),
+            missioniBinderAperturePeriodo(userId, oggi.inizioISO, oggi.fineISO),
+            missioniBinderApertureTotale(userId),
         ]);
 
         // Ogni chiamata sopra ritorna { data, error } o { count, error } (le
@@ -596,6 +643,8 @@ const MOTORE_MISSIONI = {
             accessi_totali: v(accessiTotali, 'count'),
             giorni_consecutivi: v(giorniConsecutivi),
             ricerche_eseguite_periodo: v(ricercheOggi, 'count'),
+            binder_aperture_periodo: v(binderAperturePeriodo, 'count'),
+            binder_aperture_totale: v(binderApertureTotale, 'count'),
         };
     },
 

@@ -66,6 +66,12 @@ async function caricaCatalogo() {
     document.title = 'CardSync Pro — ' + nomeBinder;
     document.getElementById('titoloBinder').textContent = nomeBinder;
 
+    // Missioni/Traguardi Fase 2 — fire-and-forget, non deve mai bloccare o
+    // rallentare il caricamento della pagina per il visitatore. La RPC
+    // stessa rivalida che il binder sia pubblico (vedi migration 33), non
+    // c'è bisogno di controllarlo di nuovo qui.
+    binderPubblicoRegistraApertura(binderId).catch(() => { /* silenzioso, mai visibile al visitatore */ });
+
     // FASE 1 CONSOLIDAMENTO: selezione+riepilogo attivi solo per Scambio —
     // vedi _binderPubblicoESelezionabile in cima al file. _libroSelezionabile
     // è già dichiarata in ui/binder-flipbook.ui.js (assegnazione, non "let").
