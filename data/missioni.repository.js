@@ -336,6 +336,32 @@ async function missioniGiorniConsecutivi(userId) {
 }
 
 
+// ── RICERCHE (activity_log, source='ricerca', action='trovata') ────────
+// Nessun dedup: ogni ricerca riuscita (click su un risultato) conta,
+// fino a 5+/giorno per le missioni #84/#85. Conteggio nel periodo tramite
+// range su created_at, stesso pattern delle altre metriche *_periodo.
+
+async function missioniRicercaRegistra(userId, query) {
+    return supabaseClient
+        .from('activity_log')
+        .insert({ user_id: userId, source: 'ricerca', action: 'trovata', details: { query: (query || '').slice(0, 100) } });
+    // query troncata a 100 caratteri: 'details' è jsonb, nessun limite
+    // tecnico, ma non serve conservare stringhe lunghissime per un log che
+    // esiste solo per contare eventi.
+}
+
+async function missioniRicercheEseguitePeriodo(userId, inizioISO, fineISO) {
+    return supabaseClient
+        .from('activity_log')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', userId)
+        .eq('source', 'ricerca')
+        .eq('action', 'trovata')
+        .gte('created_at', inizioISO)
+        .lt('created_at', fineISO);
+}
+
+
 // ── META (missioni_completate, traguardi_riscossi — migration 32) ──────
 
 async function missioniCompletateTotale(userId) {
