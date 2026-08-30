@@ -21,6 +21,10 @@
 //
 // RARITÀ (missioni m58/m59): ELIMINATE dal catalogo (2026-08-29) — nessuna
 // fonte trovata nel codice reale, vedi Catalogo_Missioni_Traguardi_Annotato.md.
+//
+// BUG #1 (wishlist .lte() su colonna) RISOLTO 2026-08-30, confermato dal
+// vivo (400 Bad Request) prima della correzione — vedi
+// missioniWishlistObiettiviRaggiunti() più sotto.
 
 
 // ── CARTE ─────────────────────────────────────────────────────────────
@@ -162,21 +166,27 @@ async function missioniWishlistTotale(userId) {
 }
 
 // Stessa condizione di _cardeConAllertaPrezzo() in ui/queue.ui.js
-// (prezzo>0, prezzo_obiettivo impostato, prezzo <= prezzo_obiettivo), qui
-// come query diretta invece che filtro su carteReali in memoria.
+// (prezzo>0, prezzo_obiettivo impostato, prezzo <= prezzo_obiettivo).
+// CORRETTO (2026-08-30, bug confermato dal vivo — 400 Bad Request): il
+// confronto tra due colonne (prezzo <= prezzo_obiettivo) non è esprimibile
+// con .lte() di supabase-js, che si aspetta un VALORE non un nome colonna.
+// Filtri server-side mantenuti dove sono valori reali (prezzo_obiettivo
+// non null, prezzo>0); il confronto tra le due colonne è ora fatto lato
+// client sui soli risultati già ristretti, stesso approccio di
+// missioniValoreCollezione() sopra ("leggi e riduci").
 async function missioniWishlistObiettiviRaggiunti(userId) {
-    return supabaseClient
+    const { data, error } = await supabaseClient
         .from('wishlist')
-        .select('id', { count: 'exact', head: true })
+        .select('prezzo, prezzo_obiettivo')
         .eq('owner_id', userId)
         .not('prezzo_obiettivo', 'is', null)
-        .gt('prezzo', 0)
-        .lte('prezzo', 'prezzo_obiettivo'); // ATTENZIONE: confronto tra due colonne,
-    // .lte() di supabase-js si aspetta un VALORE non una colonna — questa riga
-    // molto probabilmente NON FUNZIONA così com'è. Da correggere con una vista
-    // o RPC dedicata, oppure leggendo prezzo+prezzo_obiettivo e filtrando lato
-    // client come fa oggi _cardeConAllertaPrezzo(). Segnalato invece di
-    // consegnare codice che sembra corretto ma non lo è.
+        .gt('prezzo', 0);
+    if (error) return { data: null, count: null, error };
+    const raggiunti = (data || []).filter(r => Number(r.prezzo) <= Number(r.prezzo_obiettivo)).length;
+    // count esplicito perché raccogliDati() in ui/missioni.ui.js legge
+    // questo valore con v(wishlistObiettivi, 'count') — stesso nome campo
+    // atteso dalle altre funzioni *_totale con head:true.
+    return { data: raggiunti, count: raggiunti, error: null };
 }
 
 
@@ -333,6 +343,34 @@ async function missioniGiorniConsecutivi(userId) {
         cursore.setDate(cursore.getDate() - 1);
     }
     return { data: streak, error: null };
+}
+
+
+// ── APERTURE WIDGET (activity_log, source='widget', action=<widget id>) ──
+// Missioni/Traguardi Fase 2 — aperture sezioni/widget (2026-08-30). Un solo
+// evento generico per QUALUNQUE widget cliccato (non solo quelli con una
+// missione già agganciata oggi): così le prossime missioni di questa
+// categoria non richiederanno un nuovo punto di scrittura, solo una nuova
+// lettura qui sotto con un widgetId diverso. Stesso approccio "zero SQL per
+// aggiungere una voce" già usato per il catalogo missioni in JS.
+// Nessun dedup (come le ricerche, non come gli accessi): ogni apertura
+// conta, anche più volte nello stesso giorno.
+
+async function missioniAperturaWidgetRegistra(userId, widgetId) {
+    return supabaseClient
+        .from('activity_log')
+        .insert({ user_id: userId, source: 'widget', action: widgetId, details: {} });
+}
+
+async function missioniAperturaWidgetPeriodo(userId, widgetId, inizioISO, fineISO) {
+    return supabaseClient
+        .from('activity_log')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', userId)
+        .eq('source', 'widget')
+        .eq('action', widgetId)
+        .gte('created_at', inizioISO)
+        .lt('created_at', fineISO);
 }
 
 
