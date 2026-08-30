@@ -271,9 +271,14 @@ async function missioniAccessoRegistraOggi(userId) {
 
     return supabaseClient
         .from('activity_log')
-        .insert({ user_id: userId, source: 'auth', action: 'accesso', details: {} })
-        .select()
-        .single();
+        .insert({ user_id: userId, source: 'auth', action: 'accesso', details: {} });
+    // CORRETTO 2026-08-30 (bug 403 confermato dal vivo): rimosso
+    // .select().single() — il chiamante (ui/auth.ui.js) non legge mai il
+    // risultato, e PostgREST richiede permesso SELECT sulla riga appena
+    // inserita per restituirla con RETURNING, permesso che l'utente
+    // normale non ha su questa tabella (solo una policy SELECT esiste,
+    // riservata ad admin). Stesso pattern già usato dalle altre 6 funzioni
+    // di scrittura su activity_log in questo file.
 }
 
 async function missioniAccessoOggi(userId) {
