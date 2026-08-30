@@ -81,6 +81,21 @@ const CATALOGO_MISSIONI = [
       ricompensa: { tipo: 'polvere', quantita: 2 },
       nota: 'duplicato concettuale di m02_una_carta_in_piu — il motore di assegnazione giornaliera deve evitare di estrarle insieme' },
 
+    // FASE 2 sbloccate (2026-08-29): ricerche eseguite, agganciate in
+    // ui/navigation.ui.js:vaiARisultatoRicerca() — conta solo click su un
+    // risultato trovato (ricerca "riuscita"), non ogni tasto premuto.
+    { id: 'm17_completa_una_ricerca', titolo: 'Completa una ricerca', categoria: 'esplorazione',
+      finestra: 'giornaliera', metrica: 'ricerche_eseguite_periodo', operatore: '>=', valore: 1,
+      ricompensa: { tipo: 'polvere', quantita: 2 } },
+
+    { id: 'm84_cerca_e_trova', titolo: 'Cerca e trova', categoria: 'esplorazione',
+      finestra: 'giornaliera', metrica: 'ricerche_eseguite_periodo', operatore: '>=', valore: 3,
+      ricompensa: { tipo: 'polvere', quantita: 4 } },
+
+    { id: 'm85_ricerca_completa', titolo: 'Ricerca completa', categoria: 'esplorazione',
+      finestra: 'giornaliera', metrica: 'ricerche_eseguite_periodo', operatore: '>=', valore: 5,
+      ricompensa: { tipo: 'polvere', quantita: 7 } },
+
     { id: 'm24_primo_match', titolo: 'Primo Match', categoria: 'social',
       finestra: 'giornaliera', metrica: 'match_attivi_totale', operatore: '>=', valore: 1,
       ricompensa: { tipo: 'polvere', quantita: 4 } },
@@ -519,6 +534,7 @@ const MOTORE_MISSIONI = {
             codaVuota, codaAzzerataOggi,
             missioniTotali, missioniOggi,
             accessoOggi, accessiTotali, giorniConsecutivi,
+            ricercheOggi,
         ] = await Promise.all([
             missioniCarteAggiuntePeriodo(userId, oggi.inizioISO, oggi.fineISO),
             missioniCarteTotali(userId),
@@ -541,6 +557,7 @@ const MOTORE_MISSIONI = {
             missioniAccessoOggi(userId),
             missioniAccessiTotali(userId),
             missioniGiorniConsecutivi(userId),
+            missioniRicercheEseguitePeriodo(userId, oggi.inizioISO, oggi.fineISO),
         ]);
 
         // Ogni chiamata sopra ritorna { data, error } o { count, error } (le
@@ -578,6 +595,7 @@ const MOTORE_MISSIONI = {
             accesso_oggi: v(accessoOggi),
             accessi_totali: v(accessiTotali, 'count'),
             giorni_consecutivi: v(giorniConsecutivi),
+            ricerche_eseguite_periodo: v(ricercheOggi, 'count'),
         };
     },
 

@@ -77,6 +77,17 @@
             const card = carteReali.find(c => String(c.id) === String(id));
             if (!card) return;
 
+            // Missioni/Traguardi Fase 2 — ricerche eseguite (2026-08-29).
+            // Fire-and-forget: un fallimento qui non deve mai bloccare la
+            // navigazione al risultato, che è la parte importante di questa
+            // funzione.
+            (async () => {
+                try {
+                    const userId = await authGetUserId();
+                    if (userId) await missioniRicercaRegistra(userId, card.name);
+                } catch (e) { console.error('[missioni] registrazione ricerca:', e); }
+            })();
+
             const et = _etichettaSezione(card);
             const tabDiDestinazione = tabella === 'wishlist' ? 'wishlist' : (et.testo === 'Sealed' ? 'sealed' : 'visualizzazione');
             // Assicura che i toggle Carte/Sealed/Wishlist in Visualizzazione
