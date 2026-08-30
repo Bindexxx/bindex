@@ -444,6 +444,21 @@ async function traguardiSbloccatiTotale(userId) {
         .eq('owner_id', userId);
 }
 
+// Traguardo #98 "Collezionista completo" (Fase 2, 2026-08-30): a differenza
+// di traguardiSbloccatiTotale sopra (solo un conteggio), qui serve sapere
+// QUALI traguardi sono stati sbloccati per mapparli a categoria — stesso
+// bisogno di missioniCompletateIdRangeTemporale sopra, ma senza filtro
+// temporale: i traguardi sono permanenti (traguardi_riscossi non decrementa
+// mai), quindi non ha senso un range "oggi/questa settimana" come per le
+// missioni. Il mapping traguardo_id → categoria vive nel catalogo JS
+// (ui/missioni.ui.js), non nel DB.
+async function missioniTraguardiRiscossiIdTotale(userId) {
+    return supabaseClient
+        .from('traguardi_riscossi')
+        .select('traguardo_id')
+        .eq('owner_id', userId);
+}
+
 async function traguardiInserisciRiscossione(userId, traguardoId) {
     return supabaseClient
         .from('traguardi_riscossi')
