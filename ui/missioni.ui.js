@@ -92,8 +92,14 @@ const CATALOGO_MISSIONI = [
     // segnale), non un conteggio di eventi singoli — "3 errori risolti" non è
     // calcolabile da questa fonte. Vedi Catalogo_Missioni_Traguardi_Annotato.md.
 
-    // m13 "Sfoglia l'archivio" (apertura scheda carta) rimandata: ambigua,
-    // meccanismo per-carta diverso da questa categoria — vedi discussione.
+    // FASE 2 sbloccata (2026-08-30): apertura dettaglio carta (flip-viewer),
+    // vedi ui/home.ui.js:apriFlipCardHome(). Soglia 10 = valore originale
+    // del documento (Missione #13 "Archivista", 10 carte consultate — vedi
+    // TITOLI RINOMINATI nel catalogo annotato). Stesso evento di m41/m82,
+    // soglie crescenti sulla stessa metrica.
+    { id: 'm13_sfoglia_larchivio', titolo: "Sfoglia l'archivio", categoria: 'esplorazione',
+      finestra: 'giornaliera', metrica: 'apertura_dettaglio_carta_periodo', operatore: '>=', valore: 10,
+      ricompensa: { tipo: 'polvere', quantita: 8 } },
 
     { id: 'm14_cerca_un_doppione', titolo: 'Cerca un doppione', categoria: 'esplorazione',
       finestra: 'giornaliera', metrica: 'apertura_doppioni_periodo', operatore: '>=', valore: 1,
@@ -189,6 +195,12 @@ const CATALOGO_MISSIONI = [
       finestra: 'giornaliera', metrica: 'apertura_valore_collezione_periodo', operatore: '>=', valore: 1,
       ricompensa: { tipo: 'polvere', quantita: 2 } },
 
+    // FASE 2 sbloccata (2026-08-30): stessa metrica di m13/m82, soglia più
+    // bassa — coerente col titolo "Prima apertura".
+    { id: 'm41_prima_apertura', titolo: 'Prima apertura', categoria: 'esplorazione',
+      finestra: 'giornaliera', metrica: 'apertura_dettaglio_carta_periodo', operatore: '>=', valore: 1,
+      ricompensa: { tipo: 'polvere', quantita: 2 } },
+
     { id: 'm50_missione_compiuta', titolo: 'Missione compiuta', categoria: 'meta',
       finestra: 'una_tantum', metrica: 'missioni_completate_totale', operatore: '>=', valore: 1,
       ricompensa: { tipo: 'polvere', quantita: 3 } },
@@ -276,6 +288,12 @@ const CATALOGO_MISSIONI = [
     { id: 'm79_pokedex_aggiornato', titolo: 'Pokédex aggiornato', categoria: 'estensione',
       finestra: 'giornaliera', metrica: 'apertura_estensione_periodo', operatore: '>=', valore: 1,
       ricompensa: { tipo: 'polvere', quantita: 2 } },
+
+    // FASE 2 sbloccata (2026-08-30): stessa metrica di m13/m41, soglia
+    // intermedia.
+    { id: 'm82_occhio_ai_dettagli', titolo: 'Occhio ai dettagli', categoria: 'esplorazione',
+      finestra: 'giornaliera', metrica: 'apertura_dettaglio_carta_periodo', operatore: '>=', valore: 3,
+      ricompensa: { tipo: 'polvere', quantita: 4 } },
 
     { id: 'm89_apri_il_pokedex', titolo: 'Apri il Pokédex', categoria: 'estensione',
       finestra: 'giornaliera', metrica: 'estensione_aperta_periodo', operatore: '>=', valore: 1,
@@ -704,6 +722,7 @@ const MOTORE_MISSIONI = {
             aperturaVisualizzazione, aperturaWishlistObiettivi, aperturaPrezzi,
             aperturaDoppioni, aperturaMatch, aperturaLocation,
             aperturaValoreCollezione, aperturaBinder, aperturaEstensione,
+            aperturaDettaglioCarta,
         ] = await Promise.all([
             missioniCarteAggiuntePeriodo(userId, oggi.inizioISO, oggi.fineISO),
             missioniCarteTotali(userId),
@@ -741,6 +760,7 @@ const MOTORE_MISSIONI = {
             missioniAperturaWidgetPeriodo(userId, 'valore_collezione', oggi.inizioISO, oggi.fineISO),
             missioniAperturaWidgetPeriodo(userId, 'binder', oggi.inizioISO, oggi.fineISO),
             missioniAperturaWidgetPeriodo(userId, 'estensione', oggi.inizioISO, oggi.fineISO),
+            missioniDettaglioCartaAperturePeriodo(userId, oggi.inizioISO, oggi.fineISO),
         ]);
 
         // Ogni chiamata sopra ritorna { data, error } o { count, error } (le
@@ -822,6 +842,7 @@ const MOTORE_MISSIONI = {
             apertura_valore_collezione_periodo: v(aperturaValoreCollezione, 'count'),
             apertura_binder_periodo: v(aperturaBinder, 'count'),
             apertura_estensione_periodo: v(aperturaEstensione, 'count'),
+            apertura_dettaglio_carta_periodo: v(aperturaDettaglioCarta, 'count'),
         };
     },
 

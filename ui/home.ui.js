@@ -360,6 +360,18 @@
             const card = carteReali.find(c => String(c.id) === String(id));
             if (!card) return;
 
+            // Missioni #13/#41/#82 (2026-08-30): apertura dettaglio carta.
+            // Fire-and-forget, stesso pattern degli altri hook missioni —
+            // un fallimento qui non deve mai bloccare il flip-viewer.
+            // Nessun dedup: ogni tap conta (deciso da Claudio), anche sulla
+            // stessa carta più volte nello stesso giorno.
+            (async () => {
+                try {
+                    const userId = await authGetUserId();
+                    if (userId) await missioniDettaglioCartaRegistra(userId, card.id);
+                } catch (e) { console.error('[missioni] registrazione apertura dettaglio carta:', e); }
+            })();
+
             document.getElementById('immagineErroreMsg').style.display = 'none';
             document.getElementById('immagineIngranditaImg').style.display = 'none';
             document.getElementById('flipCardScene').style.display = 'block';
