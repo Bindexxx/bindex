@@ -2980,6 +2980,108 @@
         }
 
         .binder-page-btn:disabled { background-color: var(--border-color); color: var(--text-muted); cursor: not-allowed; }
+
+        /* ============================================================
+           PAGINE DI DETTAGLIO WIDGET — struttura adottata dal mockup
+           cardsync-tutto.html (2026-08-30, Claudio: "la struttura di
+           questo mockup totalmente, i colori i temi del sito"). Nomi di
+           classe IDENTICI all'originale (pg-*), colori rimappati sulle
+           variabili tema reali già esistenti in questo file — nessuna
+           variabile nuova introdotta, nessun tema nuovo.
+           Mappatura: --sfondo→--bg-color, --tile/--pannello→--card-bg,
+           --tile-bordo/--linea→--border-color, --testo→--text-dark,
+           --testo-2→--text-muted, --incasso→--primary-light,
+           --accent→--primary.
+           NIENTE freccia indietro nel page-header (a differenza del
+           mockup originale): il sito ha già un bottone fisico unico per
+           tornare indietro (#btnFisicoTelefono, vedi ui/phone.ui.js
+           _aggiornaTastoFisico) — aggiungerne una seconda dentro la
+           pagina duplicherebbe quella funzione.
+           Partito da UN SOLO widget pilota (Valore collezione,
+           #valore) — le altre pagine widget verranno convertite una
+           alla volta, non tutte insieme.
+           ============================================================ */
+
+        .page-header {
+            display: flex; align-items: center; gap: 10px;
+            padding: 0 0 14px;
+            border-bottom: 0.5px solid var(--border-color);
+            margin-bottom: 1rem;
+        }
+        .page-header .page-title { font-size: 1.15rem; font-weight: 800; flex: 1 1 auto; color: var(--text-dark); }
+        .page-azione {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            padding: 6px 12px;
+            border-radius: 999px;
+            cursor: pointer;
+        }
+        .page-azione.attiva { background: var(--primary-light); color: var(--text-dark); }
+        .page-azione:active { opacity: .6; }
+
+        .pg-pagina { display: flex; flex-direction: column; gap: 14px; padding-bottom: 1rem; }
+
+        .pg-intro { display: flex; flex-direction: column; gap: 4px; }
+        .pg-grande {
+            font-size: 2rem; font-weight: 650; line-height: 1;
+            letter-spacing: -.6px; font-variant-numeric: tabular-nums;
+            color: var(--text-dark);
+        }
+        .pg-sotto { font-size: 0.82rem; color: var(--text-muted); }
+        .pg-titoletto { font-size: 0.82rem; font-weight: 700; margin: 4px 0 -4px; color: var(--text-dark); }
+
+        .pg-stat { display: flex; gap: 8px; }
+        .pg-stat > div {
+            flex: 1 1 0; min-width: 0;
+            background: var(--primary-light);
+            border-radius: 14px;
+            padding: 10px 12px;
+        }
+        .pg-stat b { display: block; font-size: 1.2rem; font-weight: 650; line-height: 1.15; color: var(--text-dark); }
+        .pg-stat span {
+            display: block; font-size: 0.68rem; color: var(--text-muted);
+            overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+        }
+
+        .pg-elenco { display: flex; flex-direction: column; }
+        .pg-riga {
+            display: flex; align-items: center; gap: 11px;
+            padding: 11px 6px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .pg-riga:last-child { border-bottom: none; }
+        .pg-riga[data-tocca] { cursor: pointer; }
+        .pg-riga[data-tocca]:active { background: var(--row-hover); }
+
+        .pg-fig {
+            width: 34px; height: 47px; border-radius: 6px; flex: 0 0 auto;
+            object-fit: cover;
+            box-shadow: 0 2px 6px rgba(0,0,0,.2);
+            background: var(--primary-light);
+        }
+
+        .pg-testo { flex: 1 1 auto; min-width: 0; }
+        .pg-testo b {
+            display: block; font-size: 0.85rem; font-weight: 500; color: var(--text-dark);
+            overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+        }
+        .pg-testo span { display: block; font-size: 0.72rem; color: var(--text-muted); }
+
+        .pg-destra { flex: 0 0 auto; text-align: right; font-size: 0.78rem; color: var(--text-muted); }
+        .pg-destra b { display: block; font-size: 0.85rem; font-variant-numeric: tabular-nums; color: var(--text-dark); }
+
+        .pg-bottoni { display: flex; gap: 8px; flex-wrap: wrap; }
+        .pg-bottoni button {
+            font: inherit; font-size: 0.82rem; font-weight: 700;
+            padding: 9px 14px; border-radius: 999px;
+            border: 1px solid var(--border-color);
+            background: var(--card-bg); color: var(--text-dark);
+            cursor: pointer;
+        }
+        .pg-bottoni button.primario {
+            background: var(--primary); border-color: var(--primary); color: #fff;
+        }
+        .pg-bottoni button:active { opacity: .7; }
     </style>
 </head>
 <body>
@@ -3834,6 +3936,16 @@
                 </p>
                 <div id="missioniListaTraguardi"></div>
             </div>
+        </div>
+
+        <div id="valore" class="view-section">
+            <!-- Pagina di dettaglio "Valore collezione" (2026-08-30) —
+                 prima apriva semplicemente la sezione Prezzi (tab:'prezzi'
+                 nel catalogo widget); ora è una pagina propria, struttura
+                 adottata da cardsync-tutto.html (page-header + pg-*),
+                 colori dal tema reale del sito. Contenuto riempito da
+                 renderPaginaValoreCollezione() in ui/phone.ui.js. -->
+            <div id="valoreContenuto"></div>
         </div>
 
         <div id="impostazioni" class="view-section">
