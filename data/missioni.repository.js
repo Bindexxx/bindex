@@ -25,6 +25,16 @@
 // BUG #1 (wishlist .lte() su colonna) RISOLTO 2026-08-30, confermato dal
 // vivo (400 Bad Request) prima della correzione — vedi
 // missioniWishlistObiettiviRaggiunti() più sotto.
+//
+// BUG CHECK CONSTRAINT (2026-08-30, TROVATO DAL VIVO): activity_log ha un
+// CHECK esistente, mai documentato prima d'ora, che ammette SOLO
+// source IN ('sito', 'estensione') — non una categoria libera. Ogni
+// funzione di questo file che scrive su activity_log usa ora
+// source: 'sito' (tutte queste scritture avvengono da codice del sito),
+// con la categoria dell'evento distinta nel campo 'action' (invariato,
+// già univoco per dominio — verificato nessuna collisione). Corretta
+// anche la RPC registra_apertura_binder_pubblico (migration 33) via
+// migrazione 34 separata, consegnata a parte per esecuzione manuale.
 
 
 // ── CARTE ─────────────────────────────────────────────────────────────
@@ -245,7 +255,7 @@ async function missioniCodaErroriAzzerataOggi(userId) {
 }
 
 
-// ── ACCESSI (activity_log, source='auth', action='accesso') ────────────
+// ── ACCESSI (activity_log, source='sito', action='accesso') ────────────
 // Dedup: massimo 1 riga 'accesso' al giorno per utente (deciso 2026-08-29)
 // — indipendente da quanti reload della pagina avvengono nello stesso
 // giorno. Stesso pattern SELECT-poi-INSERT di binderWishlistGarantisci in
@@ -261,7 +271,7 @@ async function missioniAccessoRegistraOggi(userId) {
         .from('activity_log')
         .select('id')
         .eq('user_id', userId)
-        .eq('source', 'auth')
+        .eq('source', 'sito')
         .eq('action', 'accesso')
         .gte('created_at', inizioOggi)
         .lt('created_at', domani)
@@ -271,7 +281,7 @@ async function missioniAccessoRegistraOggi(userId) {
 
     return supabaseClient
         .from('activity_log')
-        .insert({ user_id: userId, source: 'auth', action: 'accesso', details: {} });
+        .insert({ user_id: userId, source: 'sito', action: 'accesso', details: {} });
     // CORRETTO 2026-08-30 (bug 403 confermato dal vivo): rimosso
     // .select().single() — il chiamante (ui/auth.ui.js) non legge mai il
     // risultato, e PostgREST richiede permesso SELECT sulla riga appena
@@ -289,7 +299,7 @@ async function missioniAccessoOggi(userId) {
         .from('activity_log')
         .select('id')
         .eq('user_id', userId)
-        .eq('source', 'auth')
+        .eq('source', 'sito')
         .eq('action', 'accesso')
         .gte('created_at', inizioOggi)
         .lt('created_at', domani)
@@ -303,7 +313,7 @@ async function missioniAccessiTotali(userId) {
         .from('activity_log')
         .select('id', { count: 'exact', head: true })
         .eq('user_id', userId)
-        .eq('source', 'auth')
+        .eq('source', 'sito')
         .eq('action', 'accesso');
 }
 
@@ -318,7 +328,7 @@ async function missioniGiorniConsecutivi(userId) {
         .from('activity_log')
         .select('created_at')
         .eq('user_id', userId)
-        .eq('source', 'auth')
+        .eq('source', 'sito')
         .eq('action', 'accesso')
         .order('created_at', { ascending: false })
         .limit(400);
@@ -351,7 +361,7 @@ async function missioniGiorniConsecutivi(userId) {
 }
 
 
-// ── APERTURE WIDGET (activity_log, source='widget', action=<widget id>) ──
+// ── APERTURE WIDGET (activity_log, source='sito', action=<widget id>) ──
 // Missioni/Traguardi Fase 2 — aperture sezioni/widget (2026-08-30). Un solo
 // evento generico per QUALUNQUE widget cliccato (non solo quelli con una
 // missione già agganciata oggi): così le prossime missioni di questa
@@ -364,7 +374,7 @@ async function missioniGiorniConsecutivi(userId) {
 async function missioniAperturaWidgetRegistra(userId, widgetId) {
     return supabaseClient
         .from('activity_log')
-        .insert({ user_id: userId, source: 'widget', action: widgetId, details: {} });
+        .insert({ user_id: userId, source: 'sito', action: widgetId, details: {} });
 }
 
 async function missioniAperturaWidgetPeriodo(userId, widgetId, inizioISO, fineISO) {
@@ -372,21 +382,21 @@ async function missioniAperturaWidgetPeriodo(userId, widgetId, inizioISO, fineIS
         .from('activity_log')
         .select('id', { count: 'exact', head: true })
         .eq('user_id', userId)
-        .eq('source', 'widget')
+        .eq('source', 'sito')
         .eq('action', widgetId)
         .gte('created_at', inizioISO)
         .lt('created_at', fineISO);
 }
 
 
-// ── QR (activity_log, source='condividi', action='qr_generato') ────────
+// ── QR (activity_log, source='sito', action='qr_generato') ────────
 // Missione #29 "QR Hunter" (2026-08-30). Nessun dedup: ogni QR generato
 // conta, anche per lo stesso binder più volte nello stesso giorno.
 
 async function missioniQrGeneratoRegistra(userId) {
     return supabaseClient
         .from('activity_log')
-        .insert({ user_id: userId, source: 'condividi', action: 'qr_generato', details: {} });
+        .insert({ user_id: userId, source: 'sito', action: 'qr_generato', details: {} });
 }
 
 async function missioniQrGeneratoPeriodo(userId, inizioISO, fineISO) {
@@ -394,14 +404,14 @@ async function missioniQrGeneratoPeriodo(userId, inizioISO, fineISO) {
         .from('activity_log')
         .select('id', { count: 'exact', head: true })
         .eq('user_id', userId)
-        .eq('source', 'condividi')
+        .eq('source', 'sito')
         .eq('action', 'qr_generato')
         .gte('created_at', inizioISO)
         .lt('created_at', fineISO);
 }
 
 
-// ── BINDER PUBBLICO VIA MATCH (activity_log, source='binder_pubblico',
+// ── BINDER PUBBLICO VIA MATCH (activity_log, source='sito',
 //    action='visitato_da_match') ────────────────────────────────────────
 // Missione #70 "Binder pubblico" (2026-08-30): visita del binder pubblico
 // di un ALTRO utente raggiunto tramite Match — direzione opposta e
@@ -412,7 +422,7 @@ async function missioniQrGeneratoPeriodo(userId, inizioISO, fineISO) {
 async function missioniBinderPubblicoVisitatoRegistra(userId) {
     return supabaseClient
         .from('activity_log')
-        .insert({ user_id: userId, source: 'binder_pubblico', action: 'visitato_da_match', details: {} });
+        .insert({ user_id: userId, source: 'sito', action: 'visitato_da_match', details: {} });
 }
 
 async function missioniBinderPubblicoVisitatoPeriodo(userId, inizioISO, fineISO) {
@@ -420,14 +430,14 @@ async function missioniBinderPubblicoVisitatoPeriodo(userId, inizioISO, fineISO)
         .from('activity_log')
         .select('id', { count: 'exact', head: true })
         .eq('user_id', userId)
-        .eq('source', 'binder_pubblico')
+        .eq('source', 'sito')
         .eq('action', 'visitato_da_match')
         .gte('created_at', inizioISO)
         .lt('created_at', fineISO);
 }
 
 
-// ── DETTAGLIO CARTA (activity_log, source='carta', action='aperta') ────
+// ── DETTAGLIO CARTA (activity_log, source='sito', action='aperta') ────
 // Missioni #13/#41/#82 (2026-08-30): apertura del flip-viewer di una
 // singola carta (apriFlipCardHome() in ui/home.ui.js) — NON il modale di
 // modifica (apriModificaCarta() in ui/cards.ui.js), deciso da Claudio.
@@ -437,7 +447,7 @@ async function missioniBinderPubblicoVisitatoPeriodo(userId, inizioISO, fineISO)
 async function missioniDettaglioCartaRegistra(userId, cardId, origine, vecchia) {
     return supabaseClient
         .from('activity_log')
-        .insert({ user_id: userId, source: 'carta', action: 'aperta', details: { cardId, origine: origine || null, vecchia: !!vecchia } });
+        .insert({ user_id: userId, source: 'sito', action: 'aperta', details: { cardId, origine: origine || null, vecchia: !!vecchia } });
 }
 
 async function missioniDettaglioCartaAperturePeriodo(userId, inizioISO, fineISO) {
@@ -445,7 +455,7 @@ async function missioniDettaglioCartaAperturePeriodo(userId, inizioISO, fineISO)
         .from('activity_log')
         .select('id', { count: 'exact', head: true })
         .eq('user_id', userId)
-        .eq('source', 'carta')
+        .eq('source', 'sito')
         .eq('action', 'aperta')
         .gte('created_at', inizioISO)
         .lt('created_at', fineISO);
@@ -463,7 +473,7 @@ async function missioniDettaglioCarteDistintePeriodo(userId, inizioISO, fineISO)
         .from('activity_log')
         .select('details')
         .eq('user_id', userId)
-        .eq('source', 'carta')
+        .eq('source', 'sito')
         .eq('action', 'aperta')
         .gte('created_at', inizioISO)
         .lt('created_at', fineISO);
@@ -482,7 +492,7 @@ async function missioniDettaglioCartaVecchiaPeriodo(userId, inizioISO, fineISO) 
         .from('activity_log')
         .select('id', { count: 'exact', head: true })
         .eq('user_id', userId)
-        .eq('source', 'carta')
+        .eq('source', 'sito')
         .eq('action', 'aperta')
         .eq('details->>vecchia', 'true')
         .gte('created_at', inizioISO)
@@ -500,7 +510,7 @@ async function missioniDettaglioCartaTopValorePeriodo(userId, inizioISO, fineISO
         .from('activity_log')
         .select('id', { count: 'exact', head: true })
         .eq('user_id', userId)
-        .eq('source', 'carta')
+        .eq('source', 'sito')
         .eq('action', 'aperta')
         .eq('details->>origine', 'top_valore')
         .gte('created_at', inizioISO)
@@ -508,7 +518,7 @@ async function missioniDettaglioCartaTopValorePeriodo(userId, inizioISO, fineISO
 }
 
 
-// ── ESTENSIONE — FUNZIONE USATA (activity_log, source='estensione',
+// ── ESTENSIONE — FUNZIONE USATA (activity_log, source='sito',
 //    action='funzione_usata') ────────────────────────────────────────────
 // Missione #90 "Collega il mondo" (2026-08-30): uso di una funzione REALE
 // tramite l'estensione (avvio controllo prezzi, collezione o wishlist) —
@@ -519,7 +529,7 @@ async function missioniDettaglioCartaTopValorePeriodo(userId, inizioISO, fineISO
 async function missioniEstensioneFunzioneUsataRegistra(userId) {
     return supabaseClient
         .from('activity_log')
-        .insert({ user_id: userId, source: 'estensione', action: 'funzione_usata', details: {} });
+        .insert({ user_id: userId, source: 'sito', action: 'funzione_usata', details: {} });
 }
 
 async function missioniEstensioneFunzioneUsataPeriodo(userId, inizioISO, fineISO) {
@@ -527,7 +537,7 @@ async function missioniEstensioneFunzioneUsataPeriodo(userId, inizioISO, fineISO
         .from('activity_log')
         .select('id', { count: 'exact', head: true })
         .eq('user_id', userId)
-        .eq('source', 'estensione')
+        .eq('source', 'sito')
         .eq('action', 'funzione_usata')
         .gte('created_at', inizioISO)
         .lt('created_at', fineISO);
@@ -536,7 +546,7 @@ async function missioniEstensioneFunzioneUsataPeriodo(userId, inizioISO, fineISO
 
 // ── WIDGET DISTINTI (missioni #91/#92/#93, 2026-08-30) ──────────────────
 // Riusa gli stessi eventi di missioniAperturaWidgetPeriodo() sopra
-// (source='widget', action=<widget id>), ma conta i widget DISTINTI aperti
+// (source='sito', action=<widget id>), ma conta i widget DISTINTI aperti
 // nel periodo, non le aperture totali — stesso approccio "leggi e riduci"
 // di missioniLocationDistinte()/missioniDettaglioCarteDistintePeriodo().
 
@@ -545,7 +555,7 @@ async function missioniWidgetDistintiPeriodo(userId, inizioISO, fineISO) {
         .from('activity_log')
         .select('action')
         .eq('user_id', userId)
-        .eq('source', 'widget')
+        .eq('source', 'sito')
         .gte('created_at', inizioISO)
         .lt('created_at', fineISO);
     if (error) return { data: null, error };
@@ -554,7 +564,7 @@ async function missioniWidgetDistintiPeriodo(userId, inizioISO, fineISO) {
 }
 
 
-// ── RICERCHE (activity_log, source='ricerca', action='trovata') ────────
+// ── RICERCHE (activity_log, source='sito', action='trovata') ────────
 // Nessun dedup: ogni ricerca riuscita (click su un risultato) conta,
 // fino a 5+/giorno per le missioni #84/#85. Conteggio nel periodo tramite
 // range su created_at, stesso pattern delle altre metriche *_periodo.
@@ -562,7 +572,7 @@ async function missioniWidgetDistintiPeriodo(userId, inizioISO, fineISO) {
 async function missioniRicercaRegistra(userId, query) {
     return supabaseClient
         .from('activity_log')
-        .insert({ user_id: userId, source: 'ricerca', action: 'trovata', details: { query: (query || '').slice(0, 100) } });
+        .insert({ user_id: userId, source: 'sito', action: 'trovata', details: { query: (query || '').slice(0, 100) } });
     // query troncata a 100 caratteri: 'details' è jsonb, nessun limite
     // tecnico, ma non serve conservare stringhe lunghissime per un log che
     // esiste solo per contare eventi.
@@ -573,14 +583,14 @@ async function missioniRicercheEseguitePeriodo(userId, inizioISO, fineISO) {
         .from('activity_log')
         .select('id', { count: 'exact', head: true })
         .eq('user_id', userId)
-        .eq('source', 'ricerca')
+        .eq('source', 'sito')
         .eq('action', 'trovata')
         .gte('created_at', inizioISO)
         .lt('created_at', fineISO);
 }
 
 
-// ── POPOLARITÀ BINDER (activity_log, source='binder-pubblico',
+// ── POPOLARITÀ BINDER (activity_log, source='sito',
 //    action='aperto') ────────────────────────────────────────────────
 // Scritto da una RPC SECURITY DEFINER (registra_apertura_binder_pubblico,
 // migration 33), MAI da un insert diretto — il visitatore che genera
@@ -594,7 +604,7 @@ async function missioniBinderAperturePeriodo(userId, inizioISO, fineISO) {
         .from('activity_log')
         .select('id', { count: 'exact', head: true })
         .eq('user_id', userId)
-        .eq('source', 'binder-pubblico')
+        .eq('source', 'sito')
         .eq('action', 'aperto')
         .gte('created_at', inizioISO)
         .lt('created_at', fineISO);
@@ -605,7 +615,7 @@ async function missioniBinderApertureTotale(userId) {
         .from('activity_log')
         .select('id', { count: 'exact', head: true })
         .eq('user_id', userId)
-        .eq('source', 'binder-pubblico')
+        .eq('source', 'sito')
         .eq('action', 'aperto');
 }
 
