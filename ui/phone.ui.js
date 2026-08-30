@@ -2146,6 +2146,21 @@ async function _eseguiAzioneWidget(instanceId, evt) {
     const def = w && CATALOGO_WIDGET[w.id];
     if (!def || def.bloccato) return;
 
+    // Missioni/Traguardi Fase 2 — apertura sezioni/widget (2026-08-30).
+    // Fire-and-forget, stesso pattern di missioniAccessoRegistraOggi in
+    // ui/auth.ui.js: un fallimento qui non deve mai bloccare l'apertura
+    // del widget. Nessun dedup: ogni apertura conta (stesso approccio di
+    // missioniRicercaRegistra). Loggato per TUTTI i widget, anche quelli
+    // senza ancora una missione agganciata — le prossime missioni di
+    // questa categoria non richiederanno un nuovo punto di scrittura, solo
+    // una nuova lettura in ui/missioni.ui.js:raccogliDati().
+    (async () => {
+        try {
+            const userId = await authGetUserId();
+            if (userId) await missioniAperturaWidgetRegistra(userId, w.id);
+        } catch (e) { console.error('[missioni] registrazione apertura widget:', e); }
+    })();
+
     // Animazione di cattura PRIMA di aprire. Mai in modalità modifica: lì
     // il tocco lungo apre il peek e il trascinamento riordina, e 2,6s di
     // animazione a ogni tentativo di spostare un widget renderebbero il

@@ -58,6 +58,22 @@ const CATALOGO_MISSIONI = [
       finestra: 'giornaliera', metrica: 'carte_aggiunte_periodo', operatore: '>=', valore: 10,
       ricompensa: { tipo: 'polvere', quantita: 15 } },
 
+    // FASE 2 sbloccate (2026-08-30): prima tranche "aperture sezioni/widget"
+    // — solo le missioni con un widget reale 1:1 nel catalogo, vedi
+    // Catalogo_Missioni_Traguardi_Annotato.md per le rimanenti (ambigue,
+    // rimandate). Aggancio: ui/phone.ui.js:_eseguiAzioneWidget().
+    { id: 'm06_occhiata_alla_collezione', titolo: 'Occhiata alla collezione', categoria: 'esplorazione',
+      finestra: 'giornaliera', metrica: 'apertura_visualizzazione_periodo', operatore: '>=', valore: 1,
+      ricompensa: { tipo: 'polvere', quantita: 2 } },
+
+    { id: 'm07_controllo_wishlist', titolo: 'Controllo Wishlist', categoria: 'esplorazione',
+      finestra: 'giornaliera', metrica: 'apertura_wishlist_obiettivi_periodo', operatore: '>=', valore: 1,
+      ricompensa: { tipo: 'polvere', quantita: 2 } },
+
+    { id: 'm08_occhiata_ai_prezzi', titolo: "Dai un'occhiata ai prezzi", categoria: 'esplorazione',
+      finestra: 'giornaliera', metrica: 'apertura_prezzi_periodo', operatore: '>=', valore: 1,
+      ricompensa: { tipo: 'polvere', quantita: 2 } },
+
     { id: 'm09_controllo_mercato', titolo: 'Controllo mercato', categoria: 'prezzi',
       finestra: 'giornaliera', metrica: 'prezzi_aggiornati_periodo', operatore: '>=', valore: 1,
       ricompensa: { tipo: 'polvere', quantita: 3 } },
@@ -75,6 +91,13 @@ const CATALOGO_MISSIONI = [
     // la transizione attivo->risolto di un segnale aggregato (una volta per
     // segnale), non un conteggio di eventi singoli — "3 errori risolti" non è
     // calcolabile da questa fonte. Vedi Catalogo_Missioni_Traguardi_Annotato.md.
+
+    // m13 "Sfoglia l'archivio" (apertura scheda carta) rimandata: ambigua,
+    // meccanismo per-carta diverso da questa categoria — vedi discussione.
+
+    { id: 'm14_cerca_un_doppione', titolo: 'Cerca un doppione', categoria: 'esplorazione',
+      finestra: 'giornaliera', metrica: 'apertura_doppioni_periodo', operatore: '>=', valore: 1,
+      ricompensa: { tipo: 'polvere', quantita: 2 } },
 
     { id: 'm16_cacciatore_di_carte', titolo: 'Cacciatore di carte', categoria: 'inserimento',
       finestra: 'giornaliera', metrica: 'carte_aggiunte_periodo', operatore: '>=', valore: 1,
@@ -119,6 +142,12 @@ const CATALOGO_MISSIONI = [
       finestra: 'giornaliera', metrica: 'binder_aperture_periodo', operatore: '>=', valore: 3,
       ricompensa: { tipo: 'polvere', quantita: 7 } },
 
+    // FASE 2 sbloccata (2026-08-30): apertura pagina Match, distinta dallo
+    // stato "esiste un match" già coperto da m24/m25 sotto.
+    { id: 'm23_match_point', titolo: 'Match point', categoria: 'social',
+      finestra: 'giornaliera', metrica: 'apertura_match_periodo', operatore: '>=', valore: 1,
+      ricompensa: { tipo: 'polvere', quantita: 2 } },
+
     { id: 'm24_primo_match', titolo: 'Primo Match', categoria: 'social',
       finestra: 'giornaliera', metrica: 'match_attivi_totale', operatore: '>=', valore: 1,
       ricompensa: { tipo: 'polvere', quantita: 4 } },
@@ -130,6 +159,12 @@ const CATALOGO_MISSIONI = [
     { id: 'm27_condividi', titolo: 'Condividi', categoria: 'social',
       finestra: 'giornaliera', metrica: 'binder_pubblicati_periodo', operatore: '>=', valore: 1,
       ricompensa: { tipo: 'polvere', quantita: 3 } },
+
+    // FASE 2 sbloccata (2026-08-30): apertura widget Location, distinta
+    // dallo stato "location valorizzata" già coperto da m31/m32 sotto.
+    { id: 'm30_esplora_una_location', titolo: 'Esplora una location', categoria: 'esplorazione',
+      finestra: 'giornaliera', metrica: 'apertura_location_periodo', operatore: '>=', valore: 1,
+      ricompensa: { tipo: 'polvere', quantita: 2 } },
 
     { id: 'm31_nuovo_posto', titolo: 'Nuovo posto', categoria: 'inserimento',
       finestra: 'giornaliera', metrica: 'location_aggiunta_periodo', operatore: '>=', valore: 1,
@@ -148,6 +183,11 @@ const CATALOGO_MISSIONI = [
       finestra: 'giornaliera', metrica: 'prezzi_aggiornati_periodo', operatore: '>=', valore: 1,
       ricompensa: { tipo: 'polvere', quantita: 3 },
       nota: 'duplicato concettuale di m09_controllo_mercato' },
+
+    // FASE 2 sbloccata (2026-08-30): apertura widget Valore collezione.
+    { id: 'm38_occhio_al_valore', titolo: 'Occhio al valore', categoria: 'esplorazione',
+      finestra: 'giornaliera', metrica: 'apertura_valore_collezione_periodo', operatore: '>=', valore: 1,
+      ricompensa: { tipo: 'polvere', quantita: 2 } },
 
     { id: 'm50_missione_compiuta', titolo: 'Missione compiuta', categoria: 'meta',
       finestra: 'una_tantum', metrica: 'missioni_completate_totale', operatore: '>=', valore: 1,
@@ -217,10 +257,25 @@ const CATALOGO_MISSIONI = [
       finestra: 'giornaliera', metrica: 'prezzi_scaduti_totale', operatore: '==', valore: 0,
       ricompensa: { tipo: 'polvere', quantita: 10 } },
 
+    // FASE 2 sbloccata (2026-08-30): apertura del PROPRIO widget Binders
+    // (visualizzarlo), distinta dalla "popolarità" m18-20 (che è su chi
+    // apre il TUO binder pubblico — direzione opposta).
+    { id: 'm69_binder_aperto', titolo: 'Binder aperto', categoria: 'esplorazione',
+      finestra: 'giornaliera', metrica: 'apertura_binder_periodo', operatore: '>=', valore: 1,
+      ricompensa: { tipo: 'polvere', quantita: 2 } },
+
     { id: 'm75_matchmaker', titolo: 'Matchmaker', categoria: 'social',
       finestra: 'una_tantum', metrica: 'match_attivi_totale', operatore: '>=', valore: 1,
       ricompensa: { tipo: 'polvere', quantita: 4 },
       nota: 'duplicato concettuale di m24, ma una_tantum invece di giornaliera' },
+
+    // FASE 2 sbloccata (2026-08-30): apertura del widget preview Estensione
+    // in Home, trigger diverso da m89 sotto (lancio effettivo dell'app via
+    // apriAppEstensione()) — stessa distinzione già tollerata altrove nel
+    // catalogo tra stato/anteprima ed evento concreto (es. m63/m64).
+    { id: 'm79_pokedex_aggiornato', titolo: 'Pokédex aggiornato', categoria: 'estensione',
+      finestra: 'giornaliera', metrica: 'apertura_estensione_periodo', operatore: '>=', valore: 1,
+      ricompensa: { tipo: 'polvere', quantita: 2 } },
 
     { id: 'm89_apri_il_pokedex', titolo: 'Apri il Pokédex', categoria: 'estensione',
       finestra: 'giornaliera', metrica: 'estensione_aperta_periodo', operatore: '>=', valore: 1,
@@ -646,6 +701,9 @@ const MOTORE_MISSIONI = {
             binderAperturePeriodo, binderApertureTotale,
             completateOggiRange, completateSettimanaRange,
             traguardiRiscossiIdTotale,
+            aperturaVisualizzazione, aperturaWishlistObiettivi, aperturaPrezzi,
+            aperturaDoppioni, aperturaMatch, aperturaLocation,
+            aperturaValoreCollezione, aperturaBinder, aperturaEstensione,
         ] = await Promise.all([
             missioniCarteAggiuntePeriodo(userId, oggi.inizioISO, oggi.fineISO),
             missioniCarteTotali(userId),
@@ -674,6 +732,15 @@ const MOTORE_MISSIONI = {
             missioniCompletateIdRangeTemporale(userId, oggi.inizioISO, oggi.fineISO),
             missioniCompletateIdRangeTemporale(userId, settimana.inizioISO, settimana.fineISO),
             missioniTraguardiRiscossiIdTotale(userId),
+            missioniAperturaWidgetPeriodo(userId, 'visualizzazione', oggi.inizioISO, oggi.fineISO),
+            missioniAperturaWidgetPeriodo(userId, 'wishlist_obiettivi', oggi.inizioISO, oggi.fineISO),
+            missioniAperturaWidgetPeriodo(userId, 'prezzi', oggi.inizioISO, oggi.fineISO),
+            missioniAperturaWidgetPeriodo(userId, 'doppioni', oggi.inizioISO, oggi.fineISO),
+            missioniAperturaWidgetPeriodo(userId, 'match', oggi.inizioISO, oggi.fineISO),
+            missioniAperturaWidgetPeriodo(userId, 'location', oggi.inizioISO, oggi.fineISO),
+            missioniAperturaWidgetPeriodo(userId, 'valore_collezione', oggi.inizioISO, oggi.fineISO),
+            missioniAperturaWidgetPeriodo(userId, 'binder', oggi.inizioISO, oggi.fineISO),
+            missioniAperturaWidgetPeriodo(userId, 'estensione', oggi.inizioISO, oggi.fineISO),
         ]);
 
         // Ogni chiamata sopra ritorna { data, error } o { count, error } (le
@@ -746,6 +813,15 @@ const MOTORE_MISSIONI = {
             collezione_e_social_oggi: categorieOggi.has('inserimento') && categorieOggi.has('social'),
             tutte_categorie_coperte_settimana: categorieSettimana.size >= totaleCategorieCatalogo,
             categorie_traguardi_distinte_totale: categorieTraguardi.size,
+            apertura_visualizzazione_periodo: v(aperturaVisualizzazione, 'count'),
+            apertura_wishlist_obiettivi_periodo: v(aperturaWishlistObiettivi, 'count'),
+            apertura_prezzi_periodo: v(aperturaPrezzi, 'count'),
+            apertura_doppioni_periodo: v(aperturaDoppioni, 'count'),
+            apertura_match_periodo: v(aperturaMatch, 'count'),
+            apertura_location_periodo: v(aperturaLocation, 'count'),
+            apertura_valore_collezione_periodo: v(aperturaValoreCollezione, 'count'),
+            apertura_binder_periodo: v(aperturaBinder, 'count'),
+            apertura_estensione_periodo: v(aperturaEstensione, 'count'),
         };
     },
 
