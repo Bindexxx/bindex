@@ -243,6 +243,30 @@ const CATALOGO_MISSIONI = [
       finestra: 'giornaliera', metrica: 'percentuale_missioni_giorno', operatore: '>=', valore: 100,
       ricompensa: { tipo: 'polvere', quantita: 20, bonus: 'possibilita_stampino' },
       nota: 'duplicato concettuale di m53, stessa metrica speciale' },
+
+    // FASE 2 sbloccate (2026-08-29): categorie missione. #96 ridefinita
+    // 'settimanale' (Claudio, 2026-08-30): con solo 4 missioni/giorno
+    // estratte a caso, coprire le 8 categorie esistenti in un solo giorno
+    // è strutturalmente impossibile — in una settimana è realistico. #97
+    // resta giornaliera (richiede solo 2 categorie specifiche).
+    { id: 'm96_una_giornata_cardsync', titolo: 'Una giornata CardSync', categoria: 'meta',
+      finestra: 'settimanale', metrica: 'tutte_categorie_coperte_settimana', operatore: '==', valore: true,
+      ricompensa: { tipo: 'polvere', quantita: 12 } },
+
+    { id: 'm97_collezionista_sociale', titolo: 'Collezionista sociale', categoria: 'meta',
+      finestra: 'giornaliera', metrica: 'collezione_e_social_oggi', operatore: '==', valore: true,
+      ricompensa: { tipo: 'polvere', quantita: 8 } },
+
+    // #98 SPOSTATA a settimanale (2026-08-30): stessa identica logica di
+    // #96 — con un pool di 4 missioni giornaliere, coprire 5 categorie
+    // diverse in UN giorno richiede che tutte e 4 le estratte siano di
+    // categorie diverse (non garantito dall'estrazione casuale) PIÙ che
+    // una settimanale/una_tantum scatti per la prima volta proprio quel
+    // giorno — nella pratica, su un account già avviato, sostanzialmente
+    // mai raggiungibile. In una settimana è ampiamente realistico.
+    { id: 'm98_tuttofare', titolo: 'Tuttofare', categoria: 'meta',
+      finestra: 'settimanale', metrica: 'categorie_distinte_settimana', operatore: '>=', valore: 5,
+      ricompensa: { tipo: 'polvere', quantita: 12 } },
 ];
 
 
@@ -488,11 +512,16 @@ const MOTORE_MISSIONI = {
         return CATALOGO_TRAGUARDI.filter(t => this.valuta(t, dati));
     },
 
-    // Selezione deterministica delle missioni giornaliere di un utente.
-    // Stesso input (owner_id + data) => stesso output, sempre. Nessuna
-    // tabella "missioni_assegnate": ricalcolato ad ogni apertura pagina.
-    // NUMERO_MISSIONI_GIORNO: quante missioni giornaliere estrarre (deciso: 4).
+    // Selezione deterministica delle missioni per finestra, di un utente.
+    // Stesso input (owner_id + chiave periodo) => stesso output, sempre.
+    // Nessuna tabella "missioni_assegnate": ricalcolato ad ogni apertura
+    // pagina. Generalizzata (2026-08-30, Claudio) dalla sola giornaliera
+    // alle tre finestre ricorrenti — le una_tantum NON passano da qui,
+    // restano sempre "in gioco" tutte insieme (sono obiettivi permanenti,
+    // non ha senso nasconderne a sorte alcune).
     NUMERO_MISSIONI_GIORNO: 4,
+    NUMERO_MISSIONI_SETTIMANA: 2,
+    NUMERO_MISSIONI_MESE: 2,
 
     _hashSemplice(str) {
         let h = 0;
@@ -502,9 +531,13 @@ const MOTORE_MISSIONI = {
         return Math.abs(h);
     },
 
-    missioniDelGiorno(ownerId, dataISO) {
-        const pool = CATALOGO_MISSIONI.filter(m => m.finestra === 'giornaliera');
-        const seme = this._hashSemplice(ownerId + '|' + dataISO);
+    // pool: array di missioni già filtrate per finestra. chiavePeriodo:
+    // stringa stabile per l'unità di tempo corrente (data/settimana/mese).
+    // numero: quante estrarre — se il pool è più piccolo del numero
+    // richiesto (caso comune oggi per settimanali/mensili, pool ancora
+    // piccoli), ritorna semplicemente tutto il pool.
+    _estraiDaPool(ownerId, chiavePeriodo, pool, numero) {
+        const seme = this._hashSemplice(ownerId + '|' + chiavePeriodo);
         // Fisher-Yates deterministico usando il seme come sorgente pseudo-casuale
         const copia = [...pool];
         let s = seme;
@@ -513,7 +546,22 @@ const MOTORE_MISSIONI = {
             const j = s % (i + 1);
             [copia[i], copia[j]] = [copia[j], copia[i]];
         }
-        return copia.slice(0, this.NUMERO_MISSIONI_GIORNO);
+        return copia.slice(0, numero);
+    },
+
+    missioniDelGiorno(ownerId, dataISO) {
+        const pool = CATALOGO_MISSIONI.filter(m => m.finestra === 'giornaliera');
+        return this._estraiDaPool(ownerId, dataISO, pool, this.NUMERO_MISSIONI_GIORNO);
+    },
+
+    missioniDellaSettimana(ownerId, periodoSettimana) {
+        const pool = CATALOGO_MISSIONI.filter(m => m.finestra === 'settimanale');
+        return this._estraiDaPool(ownerId, periodoSettimana, pool, this.NUMERO_MISSIONI_SETTIMANA);
+    },
+
+    missioniDelMese(ownerId, periodoMese) {
+        const pool = CATALOGO_MISSIONI.filter(m => m.finestra === 'mensile');
+        return this._estraiDaPool(ownerId, periodoMese, pool, this.NUMERO_MISSIONI_MESE);
     },
 
     // ── Periodo corrente per finestra ─────────────────────────────────
@@ -580,6 +628,7 @@ const MOTORE_MISSIONI = {
             accessoOggi, accessiTotali, giorniConsecutivi,
             ricercheOggi,
             binderAperturePeriodo, binderApertureTotale,
+            completateOggiRange, completateSettimanaRange,
         ] = await Promise.all([
             missioniCarteAggiuntePeriodo(userId, oggi.inizioISO, oggi.fineISO),
             missioniCarteTotali(userId),
@@ -605,6 +654,8 @@ const MOTORE_MISSIONI = {
             missioniRicercheEseguitePeriodo(userId, oggi.inizioISO, oggi.fineISO),
             missioniBinderAperturePeriodo(userId, oggi.inizioISO, oggi.fineISO),
             missioniBinderApertureTotale(userId),
+            missioniCompletateIdRangeTemporale(userId, oggi.inizioISO, oggi.fineISO),
+            missioniCompletateIdRangeTemporale(userId, settimana.inizioISO, settimana.fineISO),
         ]);
 
         // Ogni chiamata sopra ritorna { data, error } o { count, error } (le
@@ -617,6 +668,20 @@ const MOTORE_MISSIONI = {
 
         const numeroMissioniOggiCompletate = v(missioniOggi, 'count');
         const poolOggi = this.missioniDelGiorno(userId, oggi.periodo).length;
+
+        // Categorie (#96-98): mappa missione_id → categoria usando il
+        // catalogo JS (il DB non conosce le categorie, sono solo qui).
+        const _categoriaDi = (missioneId) => {
+            const m = CATALOGO_MISSIONI.find(x => x.id === missioneId);
+            return m ? m.categoria : null;
+        };
+        const _idsDaRange = (r) => {
+            if (r && r.error) { console.warn('[missioni] raccolta dati (categorie):', r.error.message); return []; }
+            return (r && r.data) ? r.data.map(row => row.missione_id) : [];
+        };
+        const categorieOggi = new Set(_idsDaRange(completateOggiRange).map(_categoriaDi).filter(Boolean));
+        const categorieSettimana = new Set(_idsDaRange(completateSettimanaRange).map(_categoriaDi).filter(Boolean));
+        const totaleCategorieCatalogo = new Set(CATALOGO_MISSIONI.map(m => m.categoria)).size;
 
         return {
             carte_aggiunte_periodo: v(carteAggiunteOggi, 'count'),
@@ -645,6 +710,10 @@ const MOTORE_MISSIONI = {
             ricerche_eseguite_periodo: v(ricercheOggi, 'count'),
             binder_aperture_periodo: v(binderAperturePeriodo, 'count'),
             binder_aperture_totale: v(binderApertureTotale, 'count'),
+            categorie_distinte_periodo: categorieOggi.size,
+            categorie_distinte_settimana: categorieSettimana.size,
+            collezione_e_social_oggi: categorieOggi.has('inserimento') && categorieOggi.has('social'),
+            tutte_categorie_coperte_settimana: categorieSettimana.size >= totaleCategorieCatalogo,
         };
     },
 
@@ -656,16 +725,58 @@ const MOTORE_MISSIONI = {
     // 23505 significa "già assegnata", non è un errore — non si assegna di
     // nuovo la ricompensa. Solo gli insert riusciti (novità vere) tornano
     // nell'elenco "nuove" per il feedback visivo alla pagina che chiama.
+    //
+    // SECONDO GIRO (bug trovato e corretto, 2026-08-30): le missioni/
+    // traguardi "meta" (m51-54, m96-100, t_giorno_impeccabile) dipendono da
+    // missioni_completate — ma 'dati' è calcolato PRIMA di inserire i
+    // completamenti di QUESTO stesso giro. Se in un solo giro l'utente
+    // completa abbastanza missioni "normali" da far scattare anche una
+    // meta (es. 5 categorie diverse per m98 "Tuttofare"), la meta non
+    // verrebbe rilevata finché non si riapre la pagina una seconda volta —
+    // non è "automatico, si sblocca da solo" come deciso. Fix: se il primo
+    // giro ha inserito qualcosa, ricalcolo 'dati' da capo e rifaccio un
+    // secondo giro completo. Sicuro farlo sempre (anche se non necessario):
+    // le missioni non-meta dipendono solo da stato reale (mai da altre
+    // missioni), quindi non c'è rischio di catena infinita — un secondo
+    // giro è sempre sufficiente, mai serve un terzo.
     async valutaEAssegna(userId) {
+        const primoGiro = await this._valutaEAssegnaUnGiro(userId);
+
+        if (primoGiro.nuoveMissioni.length === 0 && primoGiro.nuoviTraguardi.length === 0) {
+            return primoGiro; // niente di nuovo, nessun secondo giro necessario
+        }
+
+        const secondoGiro = await this._valutaEAssegnaUnGiro(userId);
+        return {
+            dati: secondoGiro.dati, // il più aggiornato dei due
+            missioniOggiPool: secondoGiro.missioniOggiPool,
+            missioniSettimanaPool: secondoGiro.missioniSettimanaPool,
+            missioniMesePool: secondoGiro.missioniMesePool,
+            nuoveMissioni: [...primoGiro.nuoveMissioni, ...secondoGiro.nuoveMissioni],
+            nuoviTraguardi: [...primoGiro.nuoviTraguardi, ...secondoGiro.nuoviTraguardi],
+        };
+    },
+
+    // Singolo giro raccolta-valutazione-assegnazione — estratto da
+    // valutaEAssegna() sopra per poterlo richiamare due volte in sequenza.
+    async _valutaEAssegnaUnGiro(userId) {
         const dati = await this.raccogliDati(userId);
 
-        const missioniOggiPool = this.missioniDelGiorno(userId, this.periodoCorrente('giornaliera').periodo);
-        // Solo le missioni del pool di oggi (giornaliere) + tutte le
-        // settimanali/mensili/una_tantum sono "in gioco" — le giornaliere
-        // NON estratte oggi non vanno valutate (non è giusto assegnarle
-        // se non erano nemmeno proposte).
+        const oggi = this.periodoCorrente('giornaliera');
+        const settimana = this.periodoCorrente('settimanale');
+        const mese = this.periodoCorrente('mensile');
+        const missioniOggiPool = this.missioniDelGiorno(userId, oggi.periodo);
+        const missioniSettimanaPool = this.missioniDellaSettimana(userId, settimana.periodo);
+        const missioniMesePool = this.missioniDelMese(userId, mese.periodo);
+
+        // "In gioco" (2026-08-30, generalizzato): giornaliere/settimanali/
+        // mensili SOLO se estratte nel pool della loro finestra corrente —
+        // le una_tantum restano sempre tutte in gioco (obiettivi permanenti,
+        // nessuna estrazione a sorte per quelle, vedi missioniDelGiorno
+        // e sorelle qui sopra).
+        const pool = { giornaliera: missioniOggiPool, settimanale: missioniSettimanaPool, mensile: missioniMesePool };
         const inGioco = CATALOGO_MISSIONI.filter(m =>
-            m.finestra !== 'giornaliera' || missioniOggiPool.some(p => p.id === m.id)
+            m.finestra === 'una_tantum' || (pool[m.finestra] || []).some(p => p.id === m.id)
         );
         const missioniSoddisfatte = inGioco.filter(m => this.valuta(m, dati));
         const traguardiSoddisfatti = this.valutaTraguardi(dati);
@@ -693,6 +804,6 @@ const MOTORE_MISSIONI = {
             }
         }
 
-        return { dati, missioniOggiPool, nuoveMissioni, nuoviTraguardi };
+        return { dati, missioniOggiPool, missioniSettimanaPool, missioniMesePool, nuoveMissioni, nuoviTraguardi };
     },
 };

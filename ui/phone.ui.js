@@ -2810,7 +2810,7 @@ async function renderPaginaMissioni() {
         containerMissioni.innerHTML = '<p style="text-align:center; color:var(--danger); font-size:0.85rem; padding:1rem 0;">Errore nel caricamento delle missioni.</p>';
         return;
     }
-    const { dati, missioniOggiPool, nuoveMissioni, nuoviTraguardi } = risultato;
+    const { dati, missioniOggiPool, missioniSettimanaPool, missioniMesePool, nuoveMissioni, nuoviTraguardi } = risultato;
 
     // Aggiorna il badge del widget in home, se aperto in background —
     // stesso principio di aggiornaBadgeMatch(), nessun refresh di pagina.
@@ -2818,16 +2818,19 @@ async function renderPaginaMissioni() {
 
     const idNuove = new Set(nuoveMissioni.map(m => m.id));
     const righeMissioni = missioniOggiPool.map(m => _righeMissioneHtml(m, dati, idNuove.has(m.id))).join('');
-    // Aggiunge anche le settimanali/mensili/una_tantum Fase 1 non giornaliere,
-    // sotto un secondo titolo — restano sempre visibili (non "estratte a
-    // sorte" come le giornaliere).
-    const altreMissioni = CATALOGO_MISSIONI.filter(m => m.finestra !== 'giornaliera');
+    // Settimanali/mensili (2026-08-30, generalizzato): ora estratte a
+    // sorte come le giornaliere, NON più "tutte visibili sempre" — mostro
+    // solo il pool estratto per questa settimana/mese. Le una_tantum
+    // restano invece tutte visibili sempre (obiettivi permanenti).
+    const missioniRicorrentiNonGiornaliere = [...missioniSettimanaPool, ...missioniMesePool];
+    const missioniUnaTantum = CATALOGO_MISSIONI.filter(m => m.finestra === 'una_tantum');
+    const altreMissioni = [...missioniRicorrentiNonGiornaliere, ...missioniUnaTantum];
     const righeAltre = altreMissioni.map(m => _righeMissioneHtml(m, dati, idNuove.has(m.id))).join('');
 
     containerMissioni.innerHTML = `
         <h4 style="font-size:0.85rem; color:var(--text-muted); margin:0 0 0.5rem;">Oggi</h4>
         ${righeMissioni}
-        ${altreMissioni.length ? `<h4 style="font-size:0.85rem; color:var(--text-muted); margin:1rem 0 0.5rem;">Settimanali &amp; mensili</h4>${righeAltre}` : ''}
+        ${altreMissioni.length ? `<h4 style="font-size:0.85rem; color:var(--text-muted); margin:1rem 0 0.5rem;">Settimanali, mensili &amp; permanenti</h4>${righeAltre}` : ''}
     `;
 
     // Traguardi: vista compatta per non riversare 65 righe su mobile — per
