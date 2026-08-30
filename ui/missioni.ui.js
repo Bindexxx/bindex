@@ -278,19 +278,25 @@ const CATALOGO_MISSIONI = [
 // Generatore di scala: stessa metrica, soglie crescenti, titoli reali dal
 // documento originale (CardSync_100_Missioni_100_Traguardi.txt).
 
-function _generaScalaTraguardi(prefissoId, metrica, voci) {
+function _generaScalaTraguardi(prefissoId, metrica, categoria, voci) {
     // voci: [{ soglia, titolo, ricompensa }, ...]
     return voci.map((v, i) => ({
         id: `${prefissoId}_${i + 1}`,
         titolo: v.titolo,
         metrica: metrica,
+        categoria: categoria,
         operatore: '>=',
         valore: v.soglia,
         ricompensa: v.ricompensa,
     }));
 }
 
-const SCALA_CARTE = _generaScalaTraguardi('t_carte', 'carte_totali', [
+// Categoria per scala (2026-08-30, per traguardo #98 "Collezionista
+// completo"): riusa la stessa tassonomia già in uso su CATALOGO_MISSIONI,
+// una categoria per scala intera. 5 categorie distinte risultanti tra tutti
+// i traguardi (inserimento/prezzi/meta/costanza/social) — mai
+// esplorazione/estensione/home, nessuna scala traguardi copre quei domini.
+const SCALA_CARTE = _generaScalaTraguardi('t_carte', 'carte_totali', 'inserimento', [
     { soglia: 1,      titolo: 'Primo passo',            ricompensa: { tipo: 'stampino', riferimento: 'primo_passo' } },
     { soglia: 5,      titolo: 'Inizia la collezione',   ricompensa: { tipo: 'polvere', quantita: 5 } },
     { soglia: 10,     titolo: 'Piccolo raccoglitore',   ricompensa: { tipo: 'polvere', quantita: 10 } },
@@ -308,7 +314,7 @@ const SCALA_CARTE = _generaScalaTraguardi('t_carte', 'carte_totali', [
     { soglia: 100000, titolo: 'Collezione monumentale', ricompensa: { tipo: 'stampino', riferimento: 'leggendario' } },
 ]);
 
-const SCALA_VALORE = _generaScalaTraguardi('t_valore', 'valore_collezione', [
+const SCALA_VALORE = _generaScalaTraguardi('t_valore', 'valore_collezione', 'inserimento', [
     { soglia: 10,    titolo: 'Primo tesoro',         ricompensa: { tipo: 'polvere', quantita: 5 } },
     { soglia: 50,    titolo: 'Piccolo capitale',     ricompensa: { tipo: 'polvere', quantita: 10 } },
     { soglia: 100,   titolo: 'Tesoretto',            ricompensa: { tipo: 'polvere', quantita: 15 } },
@@ -321,7 +327,7 @@ const SCALA_VALORE = _generaScalaTraguardi('t_valore', 'valore_collezione', [
     { soglia: 25000, titolo: 'Tesoro leggendario',   ricompensa: { tipo: 'stampino', riferimento: 'leggendario', bonus: '250_polvere' } },
 ]);
 
-const SCALA_LOCATION = _generaScalaTraguardi('t_location', 'location_distinte', [
+const SCALA_LOCATION = _generaScalaTraguardi('t_location', 'location_distinte', 'inserimento', [
     { soglia: 1,   titolo: 'Prima tappa',            ricompensa: { tipo: 'polvere', quantita: 5 } },
     { soglia: 3,   titolo: 'Viaggiatore',            ricompensa: { tipo: 'stampino', riferimento: 'viaggiatore' } },
     { soglia: 5,   titolo: 'Esploratore',            ricompensa: { tipo: 'polvere', quantita: 15 } },
@@ -334,7 +340,7 @@ const SCALA_LOCATION = _generaScalaTraguardi('t_location', 'location_distinte', 
     { soglia: 500, titolo: 'Ovunque tu vada',        ricompensa: { tipo: 'stampino', riferimento: 'leggendario' } },
 ]);
 
-const SCALA_WISHLIST = _generaScalaTraguardi('t_wishlist', 'wishlist_totale', [
+const SCALA_WISHLIST = _generaScalaTraguardi('t_wishlist', 'wishlist_totale', 'prezzi', [
     { soglia: 1,    titolo: 'Primo desiderio',        ricompensa: { tipo: 'polvere', quantita: 3 } },
     { soglia: 5,    titolo: 'Cacciatore',              ricompensa: { tipo: 'polvere', quantita: 5 } },
     { soglia: 10,   titolo: 'Wishlist attiva',         ricompensa: { tipo: 'polvere', quantita: 10 } },
@@ -347,7 +353,7 @@ const SCALA_WISHLIST = _generaScalaTraguardi('t_wishlist', 'wishlist_totale', [
     { soglia: 2500, titolo: 'Tutto in lista',          ricompensa: { tipo: 'stampino', riferimento: 'leggendario' } },
 ]);
 
-const SCALA_DOPPIONI = _generaScalaTraguardi('t_doppioni', 'doppioni_totali', [
+const SCALA_DOPPIONI = _generaScalaTraguardi('t_doppioni', 'doppioni_totali', 'inserimento', [
     { soglia: 1,    titolo: 'Primo doppione',       ricompensa: { tipo: 'polvere', quantita: 3 } },
     { soglia: 5,    titolo: 'Riserva',               ricompensa: { tipo: 'polvere', quantita: 5 } },
     { soglia: 10,   titolo: 'Doppietta',             ricompensa: { tipo: 'polvere', quantita: 10 } },
@@ -362,7 +368,7 @@ const SCALA_DOPPIONI = _generaScalaTraguardi('t_doppioni', 'doppioni_totali', [
 // NOTA: "Fai scorta" (titolo originale soglia 5) rinominato "Riserva" per
 // conflitto con missione m03_fai_scorta — vedi Catalogo_Missioni_Traguardi_Annotato.md
 
-const SCALA_MISSIONI_TOTALI = _generaScalaTraguardi('t_missioni', 'missioni_completate_totale', [
+const SCALA_MISSIONI_TOTALI = _generaScalaTraguardi('t_missioni', 'missioni_completate_totale', 'meta', [
     { soglia: 1,    titolo: 'Prima missione',          ricompensa: { tipo: 'stampino', riferimento: 'recluta' } },
     { soglia: 5,    titolo: 'Recluta',                 ricompensa: { tipo: 'polvere', quantita: 10 } },
     { soglia: 10,   titolo: 'Apprendista missioni',    ricompensa: { tipo: 'polvere', quantita: 15 } },
@@ -379,7 +385,7 @@ const SCALA_MISSIONI_TOTALI = _generaScalaTraguardi('t_missioni', 'missioni_comp
 
 // FASE 2 sbloccata (2026-08-29): traguardi #76-85, Accessi — richiede
 // activity_log, vedi missioniAccessiTotali() in data/missioni.repository.js.
-const SCALA_ACCESSI = _generaScalaTraguardi('t_accessi', 'accessi_totali', [
+const SCALA_ACCESSI = _generaScalaTraguardi('t_accessi', 'accessi_totali', 'costanza', [
     { soglia: 1,    titolo: 'Benvenuto',            ricompensa: { tipo: 'polvere', quantita: 3 } },
     { soglia: 3,    titolo: 'Abitudine',            ricompensa: { tipo: 'polvere', quantita: 5 } },
     { soglia: 7,    titolo: 'Frequentatore',        ricompensa: { tipo: 'polvere', quantita: 10 } },
@@ -397,7 +403,7 @@ const SCALA_ACCESSI = _generaScalaTraguardi('t_accessi', 'accessi_totali', [
 // identità visitatore disponibile, evento attribuito al proprietario).
 // Titoli originali (#56-65: Prima visita, Curioso, Esploratore...)
 // sostituiti — presumevano un attore-visitatore.
-const SCALA_BINDER_APERTURE = _generaScalaTraguardi('t_binder_aperture', 'binder_aperture_totale', [
+const SCALA_BINDER_APERTURE = _generaScalaTraguardi('t_binder_aperture', 'binder_aperture_totale', 'social', [
     { soglia: 1,    titolo: 'Prima scoperta',        ricompensa: { tipo: 'polvere', quantita: 3 } },
     { soglia: 5,    titolo: 'Piccola fama',          ricompensa: { tipo: 'polvere', quantita: 5 } },
     { soglia: 10,   titolo: 'Ti conoscono',          ricompensa: { tipo: 'polvere', quantita: 10 } },
@@ -418,6 +424,16 @@ const TRAGUARDI_SINGOLI = [
       metrica: 'giorno_perfetto_mai', operatore: '==', valore: true,
       ricompensa: { tipo: 'bustina', quantita: 1 },
       nota: 'ex "Giornata perfetta" — rinominato per conflitto con missione m53. Sbloccato la prima volta che percentuale_missioni_giorno raggiunge 100%.' },
+
+    // FASE 2 sbloccata (2026-08-30): traguardo #98 "Collezionista completo".
+    // Soglia 5 = numero di categorie distinte tra TUTTE le scale traguardi
+    // (inserimento/prezzi/meta/costanza/social — vedi _generaScalaTraguardi
+    // sopra). Permanente come ogni traguardo: conta categorie mai sbloccate,
+    // non un range temporale (a differenza di m96 "categorie_distinte_settimana",
+    // che è sulle MISSIONI e resettabile per finestra).
+    { id: 't_collezionista_completo', titolo: 'Collezionista completo', categoria: 'meta',
+      metrica: 'categorie_traguardi_distinte_totale', operatore: '>=', valore: 5,
+      ricompensa: { tipo: 'bustina', quantita: 2 } },
 ];
 
 const CATALOGO_TRAGUARDI = [
@@ -629,6 +645,7 @@ const MOTORE_MISSIONI = {
             ricercheOggi,
             binderAperturePeriodo, binderApertureTotale,
             completateOggiRange, completateSettimanaRange,
+            traguardiRiscossiIdTotale,
         ] = await Promise.all([
             missioniCarteAggiuntePeriodo(userId, oggi.inizioISO, oggi.fineISO),
             missioniCarteTotali(userId),
@@ -656,6 +673,7 @@ const MOTORE_MISSIONI = {
             missioniBinderApertureTotale(userId),
             missioniCompletateIdRangeTemporale(userId, oggi.inizioISO, oggi.fineISO),
             missioniCompletateIdRangeTemporale(userId, settimana.inizioISO, settimana.fineISO),
+            missioniTraguardiRiscossiIdTotale(userId),
         ]);
 
         // Ogni chiamata sopra ritorna { data, error } o { count, error } (le
@@ -682,6 +700,19 @@ const MOTORE_MISSIONI = {
         const categorieOggi = new Set(_idsDaRange(completateOggiRange).map(_categoriaDi).filter(Boolean));
         const categorieSettimana = new Set(_idsDaRange(completateSettimanaRange).map(_categoriaDi).filter(Boolean));
         const totaleCategorieCatalogo = new Set(CATALOGO_MISSIONI.map(m => m.categoria)).size;
+
+        // Traguardo #98 "Collezionista completo" (2026-08-30): stesso
+        // approccio di categorieOggi/categorieSettimana sopra, ma su
+        // CATALOGO_TRAGUARDI e SENZA range temporale — traguardi_riscossi
+        // è permanente, non ha senso un "oggi/questa settimana" qui.
+        const _categoriaTraguardoDi = (traguardoId) => {
+            const t = CATALOGO_TRAGUARDI.find(x => x.id === traguardoId);
+            return t ? t.categoria : null;
+        };
+        const categorieTraguardi = (traguardiRiscossiIdTotale && traguardiRiscossiIdTotale.error)
+            ? (console.warn('[missioni] raccolta dati (categorie traguardi):', traguardiRiscossiIdTotale.error.message), new Set())
+            : new Set(((traguardiRiscossiIdTotale && traguardiRiscossiIdTotale.data) || [])
+                .map(row => row.traguardo_id).map(_categoriaTraguardoDi).filter(Boolean));
 
         return {
             carte_aggiunte_periodo: v(carteAggiunteOggi, 'count'),
@@ -714,6 +745,7 @@ const MOTORE_MISSIONI = {
             categorie_distinte_settimana: categorieSettimana.size,
             collezione_e_social_oggi: categorieOggi.has('inserimento') && categorieOggi.has('social'),
             tutte_categorie_coperte_settimana: categorieSettimana.size >= totaleCategorieCatalogo,
+            categorie_traguardi_distinte_totale: categorieTraguardi.size,
         };
     },
 
