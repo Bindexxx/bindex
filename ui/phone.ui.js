@@ -608,28 +608,16 @@ const CATALOGO_WIDGET = {
         tab: 'binder',
     },
 
-    traguardi: {
-        titolo: 'Traguardi', icona: 'fa-trophy',
-        // Soglie fisse: il prossimo scalino da raggiungere, con quanto manca.
-        preview: () => {
-            const coll = carteReali.filter(c => c.stato === 'collezione');
-            const n = coll.length;
-            const valore = coll.reduce((t, c) => t + (Number(c.price) || 0) * (Number(c.qty) || 1), 0);
-            const scalini = (v, soglie) => {
-                const prossima = soglie.find(x => v < x) || soglie[soglie.length - 1];
-                return { valore: v, soglia: prossima, perc: Math.min(100, (v / prossima) * 100) };
-            };
-            const carte = scalini(n, [50, 100, 250, 500, 1000, 2500, 5000]);
-            const euro = scalini(Math.round(valore), [100, 500, 1000, 2500, 5000, 10000, 25000]);
-            const posti = new Set(coll.map(c => c.location).filter(Boolean)).size;
-            const luoghi = scalini(posti, [3, 5, 10, 20]);
-            return {
-                righe: [`${carte.soglia - n} carte al prossimo traguardo`],
-                dati: { carte, euro, luoghi }
-            };
-        },
-        tab: 'visualizzazione',
-    },
+    // RIMOSSO (2026-08-29): "Traguardi" — unificato nel widget "Missioni",
+    // che ora apre una pagina dedicata con missioni del giorno + traguardi
+    // permanenti Fase 1 (65 voci dal catalogo dichiarativo in
+    // ui/missioni.ui.js). Voci grafiche orfane in _ballTITOLI_BREVI/
+    // _ballASPETTO/_ballCORPI (righe ~1096/1127/1749) lasciate intatte per
+    // rollback a una riga, stesso principio della pulizia widget 24→19
+    // (Compilato_2026-08-28). _caricaLayoutWidget filtra da sé i layout
+    // salvati che referenziano ancora 'traguardi' (CATALOGO_WIDGET[w.id]
+    // fallisce, riga .filter già esistente) — nessun'altra modifica
+    // necessaria per chi ha già questa tessera in home.
 
     // RIMOSSO (Claudio, 2026-08-28): "Lingue".
 
@@ -715,8 +703,29 @@ const CATALOGO_WIDGET = {
         preview: () => ({ righe: ['In arrivo'], dati: { placeholder: true, testo: 'La valuta guadagnata coi doppioni' } }),
     },
     missioni: {
-        titolo: 'Missioni', icona: 'fa-list-check', bloccato: true,
-        preview: () => ({ righe: ['In arrivo'], dati: { placeholder: true, testo: 'Obiettivi giornalieri da completare' } }),
+        titolo: 'Missioni', icona: 'fa-list-check',
+        // Async: chiama il repository per il conteggio di oggi. Se l'utente
+        // non è loggato o la query fallisce, ricade su un testo neutro
+        // invece di un errore visibile (stesso principio degli altri
+        // preview() del catalogo).
+        preview: async () => {
+            try {
+                const userId = await authGetUserId();
+                if (!userId) return { righe: ['Accedi per vedere le missioni'], dati: { placeholder: true } };
+                const oggi = MOTORE_MISSIONI.periodoCorrente('giornaliera');
+                const pool = MOTORE_MISSIONI.missioniDelGiorno(userId, oggi.periodo);
+                const { count, error } = await missioniCompletatePeriodo(userId, oggi.periodo);
+                if (error) throw error;
+                const fatte = count || 0;
+                return {
+                    righe: [`${fatte}/${pool.length} missioni completate oggi`],
+                    dati: { fatte, totali: pool.length },
+                };
+            } catch (e) {
+                console.error('[missioni widget] preview:', e);
+                return { righe: ['Missioni del giorno'], dati: { placeholder: true } };
+            }
+        },
     },
 };
 
@@ -778,11 +787,34 @@ function _caricaLayoutWidget() {
     _layoutWidget = validi;
     // Persiste subito gli instanceId appena generati per un layout vecchio,
     // così al prossimo giro non li rigenera (restano stabili tra i render).
-    if (generatoQualcheId) _salvaLayoutWidget();
+    if (generatoQualcheId) _salvaLayoutWidget(false); // migrazione interna, non un'azione utente — vedi missioni m94/m95
 }
 
-function _salvaLayoutWidget() {
+// daAzioneUtente=false SOLO per la migrazione di un layout vecchio in
+// _caricaLayoutWidget() (generazione instanceId stabili) — non è
+// personalizzazione vera, non deve far scattare le missioni m94/m95.
+// Tutti gli altri 7 chiamanti (sposta, nascondi, mostra, aggiungi istanza,
+// seleziona carta Vetrina, resize, riordino drag) sono azioni reali
+// dell'utente, default true.
+function _salvaLayoutWidget(daAzioneUtente = true) {
     prefWidgetLayoutSet(JSON.stringify(_layoutWidget));
+    if (daAzioneUtente) _missioneAggancioPersonalizzaLayout();
+}
+
+// Fire-and-forget: un fallimento qui non deve mai bloccare il salvataggio
+// del layout, che è la parte importante di questa funzione. UNIQUE(owner_id,
+// periodo, missione_id) in missioni_completate assorbe silenziosamente le
+// chiamate ripetute nello stesso giorno (drag/resize possono chiamare
+// _salvaLayoutWidget() molte volte) — solo il primo insert del giorno va a
+// buon fine, gli altri falliscono con 23505 e va bene così.
+async function _missioneAggancioPersonalizzaLayout() {
+    try {
+        const userId = await authGetUserId();
+        if (!userId) return;
+        const oggi = new Date().toISOString().slice(0, 10);
+        await missioniInserisciCompletamento(userId, 'm94_personalizza', 'giornaliera', oggi);
+        await missioniInserisciCompletamento(userId, 'm95_il_tuo_telefono', 'una_tantum', 'sempre');
+    } catch (_) { /* silenzioso, vedi commento sopra */ }
 }
 
 // ── DENSITÀ (compatta/comoda) ─────────────────────────────────────────
@@ -2601,19 +2633,20 @@ async function apriDettaglioWidget(tabId, evt) {
     clearTimeout(_chiusuraDettaglioTimeout); // annulla un'eventuale chiusura ancora in corso (riapertura rapida)
 
     const container = document.querySelector('.container');
-    if (tabId === 'dafare' || tabId === 'match' || tabId === 'condividi') {
+    if (tabId === 'dafare' || tabId === 'match' || tabId === 'condividi' || tabId === 'missioni') {
         // MAI switchTab() qui: quella funzione ha una whitelist fissa di 5
         // tab (navigation.ui.js r.199) ed è segnata nella memoria di
         // progetto come "deve restare stabile e intoccata" — un bug reale
         // c'è già stato lì in passato. Repliochiamo solo il minimo che
         // switchTab farebbe per una tab in whitelist (nascondi tutte le
         // view-section, mostra la mia), concordato con Claudio 2026-08-28
-        // (dafare) e riusato identico per 'match' e 'condividi'.
+        // (dafare) e riusato identico per 'match', 'condividi' e 'missioni'.
         document.querySelectorAll('.view-section').forEach(sec => sec.classList.remove('active'));
         document.getElementById(tabId)?.classList.add('active');
         if (tabId === 'dafare') renderPaginaDaFare();
         if (tabId === 'match') renderPaginaMatch();
         if (tabId === 'condividi') renderPaginaCondividi();
+        if (tabId === 'missioni') renderPaginaMissioni();
     } else {
         switchTab(tabId, null);
     }
@@ -2750,7 +2783,104 @@ function _apriVoceDaFare(tab, evt) {
     apriDettaglioWidget(tab, evt);
 }
 
-// ── PAGINA "MATCH" ────────────────────────────────────────────────────
+// ── PAGINA "MISSIONI" (missioni giornaliere/settimanali/mensili/una_tantum
+// + traguardi permanenti, unificati — Claudio 2026-08-29) ────────────────
+// Chiama MOTORE_MISSIONI.valutaEAssegna() (ui/missioni.ui.js), che raccoglie
+// i dati via data/missioni.repository.js, valuta il catalogo Fase 1 e
+// assegna automaticamente le ricompense delle voci appena soddisfatte
+// (Claudio: "automatico, si sblocca da solo" — nessun bottone Riscuoti).
+async function renderPaginaMissioni() {
+    const containerMissioni = document.getElementById('missioniListaOggi');
+    const containerTraguardi = document.getElementById('missioniListaTraguardi');
+    if (!containerMissioni || !containerTraguardi) return;
+    containerMissioni.innerHTML = '<p style="text-align:center; color:var(--text-muted); font-size:0.85rem; padding:1rem 0;">Caricamento…</p>';
+    containerTraguardi.innerHTML = '';
+
+    const userId = await authGetUserId();
+    if (!userId) {
+        containerMissioni.innerHTML = '<p style="text-align:center; color:var(--text-muted); font-size:0.85rem; padding:1rem 0;">Accedi per vedere le tue missioni.</p>';
+        return;
+    }
+
+    let risultato;
+    try {
+        risultato = await MOTORE_MISSIONI.valutaEAssegna(userId);
+    } catch (e) {
+        console.error('renderPaginaMissioni:', e);
+        containerMissioni.innerHTML = '<p style="text-align:center; color:var(--danger); font-size:0.85rem; padding:1rem 0;">Errore nel caricamento delle missioni.</p>';
+        return;
+    }
+    const { dati, missioniOggiPool, nuoveMissioni, nuoviTraguardi } = risultato;
+
+    // Aggiorna il badge del widget in home, se aperto in background —
+    // stesso principio di aggiornaBadgeMatch(), nessun refresh di pagina.
+    if (typeof _aggiornaPallinoMenu === 'function') { /* nessun pallino per missioni al momento, placeholder per coerenza futura */ }
+
+    const idNuove = new Set(nuoveMissioni.map(m => m.id));
+    const righeMissioni = missioniOggiPool.map(m => _righeMissioneHtml(m, dati, idNuove.has(m.id))).join('');
+    // Aggiunge anche le settimanali/mensili/una_tantum Fase 1 non giornaliere,
+    // sotto un secondo titolo — restano sempre visibili (non "estratte a
+    // sorte" come le giornaliere).
+    const altreMissioni = CATALOGO_MISSIONI.filter(m => m.finestra !== 'giornaliera');
+    const righeAltre = altreMissioni.map(m => _righeMissioneHtml(m, dati, idNuove.has(m.id))).join('');
+
+    containerMissioni.innerHTML = `
+        <h4 style="font-size:0.85rem; color:var(--text-muted); margin:0 0 0.5rem;">Oggi</h4>
+        ${righeMissioni}
+        ${altreMissioni.length ? `<h4 style="font-size:0.85rem; color:var(--text-muted); margin:1rem 0 0.5rem;">Settimanali &amp; mensili</h4>${righeAltre}` : ''}
+    `;
+
+    // Traguardi: vista compatta per non riversare 65 righe su mobile — per
+    // ogni scala mostra il prossimo scalino non ancora raggiunto (o "tutti
+    // sbloccati" se completa), più il conteggio totale sbloccati in alto.
+    const idTraguardiSbloccati = new Set(nuoviTraguardi.map(t => t.id));
+    const scale = [
+        { prefisso: 't_carte_', titolo: 'Carte', metrica: 'carte_totali' },
+        { prefisso: 't_valore_', titolo: 'Valore collezione', metrica: 'valore_collezione' },
+        { prefisso: 't_location_', titolo: 'Location', metrica: 'location_distinte' },
+        { prefisso: 't_wishlist_', titolo: 'Wishlist', metrica: 'wishlist_totale' },
+        { prefisso: 't_doppioni_', titolo: 'Doppioni', metrica: 'doppioni_totali' },
+        { prefisso: 't_missioni_', titolo: 'Missioni completate', metrica: 'missioni_completate_totale' },
+    ];
+    const righeScale = scale.map(s => {
+        const voci = CATALOGO_TRAGUARDI.filter(t => t.id.startsWith(s.prefisso)).sort((a, b) => a.valore - b.valore);
+        const valoreAttuale = dati[s.metrica] || 0;
+        const prossima = voci.find(t => valoreAttuale < t.valore);
+        if (!prossima) {
+            return `<div class="widget-picker-riga"><i class="fa-solid fa-trophy" style="color:var(--success);"></i><span style="flex:1;">${s.titolo}: tutti i traguardi sbloccati! 🎉</span></div>`;
+        }
+        const perc = Math.min(100, Math.round((valoreAttuale / prossima.valore) * 100));
+        return `
+            <div class="widget-picker-riga" style="flex-direction:column; align-items:stretch; gap:0.3rem;">
+                <span style="font-size:0.85rem;"><strong>${s.titolo}</strong> — prossimo: ${escapeHtml(prossima.titolo)} (${valoreAttuale}/${prossima.valore})</span>
+                <div style="height:6px; border-radius:3px; background:var(--border-color); overflow:hidden;">
+                    <div style="height:100%; width:${perc}%; background:var(--primary);"></div>
+                </div>
+            </div>`;
+    }).join('');
+
+    containerTraguardi.innerHTML = righeScale;
+
+    if (nuoveMissioni.length || nuoviTraguardi.length) {
+        _beep(1200, 90); // stesso beep di conferma usato altrove (apertura dettaglio: 880Hz, qui più acuto per distinguere "vinto")
+    }
+}
+
+// Riga singola per una missione (completata o no), usata sia nel blocco
+// "oggi" che in quello "settimanali & mensili".
+function _righeMissioneHtml(m, dati, appenaCompletata) {
+    const soddisfatta = MOTORE_MISSIONI.valuta(m, dati);
+    const icona = soddisfatta ? 'fa-solid fa-circle-check' : 'fa-regular fa-circle';
+    const colore = soddisfatta ? 'var(--success)' : 'var(--text-muted)';
+    const badgeNuova = appenaCompletata ? `<span class="badge" style="background-color:var(--success); color:#fff; margin-left:0.4rem; font-size:0.65rem;">+${m.ricompensa.quantita || 1} ${m.ricompensa.tipo}</span>` : '';
+    return `
+        <div class="widget-picker-riga" style="align-items:flex-start;">
+            <i class="${icona}" style="color:${colore}; margin-top:0.15rem;"></i>
+            <span style="flex:1; ${soddisfatta ? 'opacity:0.7;' : ''}">${escapeHtml(m.titolo)}${badgeNuova}</span>
+        </div>`;
+}
+
+
 // Riusa trovaMatch() e la stessa chiave stabile di _chiaveMatch (entrambe
 // già in queue.ui.js) — zero duplicazione della logica di interrogazione,
 // solo una resa diversa: entrambe le direzioni insieme, raggruppate per

@@ -149,8 +149,9 @@ const CATALOGO_MISSIONI = [
       nota: 'duplicato concettuale di m63' },
 
     { id: 'm66_aggiornamento_completo', titolo: 'Aggiornamento completo', categoria: 'prezzi',
-      finestra: 'settimanale', metrica: 'prezzi_aggiornati_periodo', operatore: '>=', valore: 5,
-      ricompensa: { tipo: 'polvere', quantita: 10 } },
+      finestra: 'settimanale', metrica: 'prezzi_aggiornati_settimana', operatore: '>=', valore: 5,
+      ricompensa: { tipo: 'polvere', quantita: 10 },
+      nota: 'CORREZIONE: metrica rinominata da prezzi_aggiornati_periodo a prezzi_aggiornati_settimana — stesso nome della versione giornaliera (m09/m10/m37) avrebbe prodotto un valore sbagliato quando entrambe le finestre sono valutate nello stesso ciclo (vedi MOTORE_MISSIONI.raccogliDati)' },
 
     { id: 'm68_mercato_pulito', titolo: 'Mercato pulito', categoria: 'prezzi',
       finestra: 'giornaliera', metrica: 'prezzi_scaduti_totale', operatore: '==', valore: 0,
@@ -416,5 +417,170 @@ const MOTORE_MISSIONI = {
             [copia[i], copia[j]] = [copia[j], copia[i]];
         }
         return copia.slice(0, this.NUMERO_MISSIONI_GIORNO);
+    },
+
+    // ── Periodo corrente per finestra ─────────────────────────────────
+    // 'periodo' è la stringa salvata in missioni_completate.periodo (chiave
+    // dello UNIQUE insieme a owner_id+missione_id — vedi migration 32).
+    // inizioISO/fineISO servono alle query *_periodo del repository
+    // (created_at/registrato_il >= inizio AND < fine).
+    _pad2(n) { return String(n).padStart(2, '0'); },
+
+    _isoData(d) { return `${d.getFullYear()}-${this._pad2(d.getMonth() + 1)}-${this._pad2(d.getDate())}`; },
+
+    _numeroSettimanaISO(d) {
+        // Algoritmo standard settimana ISO-8601 (lunedì primo giorno).
+        const dt = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+        const giornoSett = (dt.getUTCDay() + 6) % 7; // lunedì=0
+        dt.setUTCDate(dt.getUTCDate() - giornoSett + 3);
+        const primoGennaio = new Date(Date.UTC(dt.getUTCFullYear(), 0, 4));
+        const numero = 1 + Math.round(((dt - primoGennaio) / 86400000 - 3 + ((primoGennaio.getUTCDay() + 6) % 7)) / 7);
+        return { anno: dt.getUTCFullYear(), settimana: numero };
+    },
+
+    periodoCorrente(finestra, ora = new Date()) {
+        if (finestra === 'una_tantum') return { periodo: 'sempre', inizioISO: null, fineISO: null };
+
+        if (finestra === 'giornaliera') {
+            const inizio = new Date(ora.getFullYear(), ora.getMonth(), ora.getDate());
+            const fine = new Date(inizio); fine.setDate(fine.getDate() + 1);
+            return { periodo: this._isoData(inizio), inizioISO: inizio.toISOString(), fineISO: fine.toISOString() };
+        }
+
+        if (finestra === 'settimanale') {
+            const giornoSett = (ora.getDay() + 6) % 7; // lunedì=0
+            const lunedi = new Date(ora.getFullYear(), ora.getMonth(), ora.getDate() - giornoSett);
+            const prossimoLunedi = new Date(lunedi); prossimoLunedi.setDate(prossimoLunedi.getDate() + 7);
+            const { anno, settimana } = this._numeroSettimanaISO(ora);
+            return { periodo: `${anno}-W${this._pad2(settimana)}`, inizioISO: lunedi.toISOString(), fineISO: prossimoLunedi.toISOString() };
+        }
+
+        if (finestra === 'mensile') {
+            const inizio = new Date(ora.getFullYear(), ora.getMonth(), 1);
+            const fine = new Date(ora.getFullYear(), ora.getMonth() + 1, 1);
+            return { periodo: `${ora.getFullYear()}-${this._pad2(ora.getMonth() + 1)}`, inizioISO: inizio.toISOString(), fineISO: fine.toISOString() };
+        }
+
+        throw new Error(`periodoCorrente: finestra "${finestra}" non riconosciuta`);
+    },
+
+    // ── Raccolta dati ──────────────────────────────────────────────────
+    // Chiama i repository necessari per TUTTE le metriche Fase 1 e
+    // restituisce l'oggetto "dati" pronto per valuta()/valutaMissioni()/
+    // valutaTraguardi(). Un solo giro di Promise.all per chiamata.
+    async raccogliDati(userId) {
+        const oggi = this.periodoCorrente('giornaliera');
+        const settimana = this.periodoCorrente('settimanale');
+
+        const [
+            carteAggiunteOggi, carteTotali, valoreCollezione, doppioniTotali,
+            locationDistinte, locationAggiuntaOggi, espansioneMax,
+            prezziAggiornatiOggi, prezziAggiornatiSettimana, prezziScaduti,
+            wishlistTotale, wishlistObiettivi,
+            matchAttivi, binderPubblicatiOggi,
+            codaVuota, codaAzzerataOggi,
+            missioniTotali, missioniOggi,
+        ] = await Promise.all([
+            missioniCarteAggiuntePeriodo(userId, oggi.inizioISO, oggi.fineISO),
+            missioniCarteTotali(userId),
+            missioniValoreCollezione(userId),
+            missioniDoppioniTotali(userId),
+            missioniLocationDistinte(userId),
+            missioniLocationAggiuntaPeriodo(userId, oggi.inizioISO, oggi.fineISO),
+            missioniCarteStessaEspansioneMax(userId),
+            missioniPrezziAggiornatiPeriodo(userId, 'carte', oggi.inizioISO, oggi.fineISO),
+            missioniPrezziAggiornatiPeriodo(userId, 'carte', settimana.inizioISO, settimana.fineISO),
+            missioniPrezziScadutiTotale(userId),
+            missioniWishlistTotale(userId),
+            missioniWishlistObiettiviRaggiunti(userId),
+            missioniMatchAttiviTotale(userId),
+            missioniBinderPubblicatiPeriodo(userId, oggi.inizioISO, oggi.fineISO),
+            missioniErroriCodaVuota(userId),
+            missioniCodaErroriAzzerataOggi(userId),
+            missioniCompletateTotale(userId),
+            missioniCompletatePeriodo(userId, oggi.periodo),
+        ]);
+
+        // Ogni chiamata sopra ritorna { data, error } o { count, error } (le
+        // *_totale con head:true) — normalizzo qui, un errore singolo non
+        // deve far fallire l'intera raccolta (resta 0/false, loggato).
+        const v = (r, campo = 'data') => {
+            if (r && r.error) { console.warn('[missioni] raccoglata dati:', r.error.message); return 0; }
+            return r ? (r[campo] ?? r.count ?? 0) : 0;
+        };
+
+        const numeroMissioniOggiCompletate = v(missioniOggi, 'count');
+        const poolOggi = this.missioniDelGiorno(userId, oggi.periodo).length;
+
+        return {
+            carte_aggiunte_periodo: v(carteAggiunteOggi, 'count'),
+            carte_totali: v(carteTotali, 'count'),
+            valore_collezione: v(valoreCollezione),
+            doppioni_totali: v(doppioniTotali, 'count'),
+            location_distinte: v(locationDistinte),
+            location_aggiunta_periodo: v(locationAggiuntaOggi, 'count'),
+            carte_stessa_espansione_max: v(espansioneMax),
+            prezzi_aggiornati_periodo: v(prezziAggiornatiOggi),
+            prezzi_aggiornati_settimana: v(prezziAggiornatiSettimana),
+            prezzi_scaduti_totale: v(prezziScaduti, 'count'),
+            wishlist_totale: v(wishlistTotale, 'count'),
+            wishlist_obiettivi_raggiunti: v(wishlistObiettivi, 'count'),
+            match_attivi_totale: v(matchAttivi),
+            binder_pubblicati_periodo: v(binderPubblicatiOggi, 'count'),
+            errori_coda_vuota: v(codaVuota),
+            coda_errori_azzerata_oggi: v(codaAzzerataOggi),
+            missioni_completate_totale: v(missioniTotali, 'count'),
+            missioni_completate_periodo: numeroMissioniOggiCompletate,
+            percentuale_missioni_giorno: poolOggi > 0 ? Math.round((numeroMissioniOggiCompletate / poolOggi) * 100) : 0,
+            giorno_perfetto_mai: poolOggi > 0 && numeroMissioniOggiCompletate >= poolOggi,
+        };
+    },
+
+    // ── Valutazione + assegnazione automatica ───────────────────────────
+    // Raccoglie i dati, valuta l'intero catalogo Fase 1, e per ogni voce
+    // soddisfatta prova a INSERIRE il completamento/riscossione. L'UNIQUE
+    // di migration 32 (owner_id+periodo+missione_id / owner_id+traguardo_id)
+    // fa da guardia anti-doppio-accredito: un insert che fallisce con
+    // 23505 significa "già assegnata", non è un errore — non si assegna di
+    // nuovo la ricompensa. Solo gli insert riusciti (novità vere) tornano
+    // nell'elenco "nuove" per il feedback visivo alla pagina che chiama.
+    async valutaEAssegna(userId) {
+        const dati = await this.raccogliDati(userId);
+
+        const missioniOggiPool = this.missioniDelGiorno(userId, this.periodoCorrente('giornaliera').periodo);
+        // Solo le missioni del pool di oggi (giornaliere) + tutte le
+        // settimanali/mensili/una_tantum sono "in gioco" — le giornaliere
+        // NON estratte oggi non vanno valutate (non è giusto assegnarle
+        // se non erano nemmeno proposte).
+        const inGioco = CATALOGO_MISSIONI.filter(m =>
+            m.finestra !== 'giornaliera' || missioniOggiPool.some(p => p.id === m.id)
+        );
+        const missioniSoddisfatte = inGioco.filter(m => this.valuta(m, dati));
+        const traguardiSoddisfatti = this.valutaTraguardi(dati);
+
+        const nuoveMissioni = [];
+        for (const m of missioniSoddisfatte) {
+            const { periodo } = this.periodoCorrente(m.finestra);
+            const { error } = await missioniInserisciCompletamento(userId, m.id, m.finestra, periodo);
+            if (!error) {
+                nuoveMissioni.push(m);
+                await ricompenseInserisci(userId, m.ricompensa.tipo, m.id, m.ricompensa.quantita || 1);
+            } else if (error.code !== '23505') {
+                console.error('[missioni] errore assegnazione', m.id, error.message);
+            }
+        }
+
+        const nuoviTraguardi = [];
+        for (const t of traguardiSoddisfatti) {
+            const { error } = await traguardiInserisciRiscossione(userId, t.id);
+            if (!error) {
+                nuoviTraguardi.push(t);
+                await ricompenseInserisci(userId, t.ricompensa.tipo, t.id, t.ricompensa.quantita || 1);
+            } else if (error.code !== '23505') {
+                console.error('[missioni] errore riscossione', t.id, error.message);
+            }
+        }
+
+        return { dati, missioniOggiPool, nuoveMissioni, nuoviTraguardi };
     },
 };
