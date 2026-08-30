@@ -374,6 +374,31 @@ async function missioniAperturaWidgetPeriodo(userId, widgetId, inizioISO, fineIS
 }
 
 
+// ── DETTAGLIO CARTA (activity_log, source='carta', action='aperta') ────
+// Missioni #13/#41/#82 (2026-08-30): apertura del flip-viewer di una
+// singola carta (apriFlipCardHome() in ui/home.ui.js) — NON il modale di
+// modifica (apriModificaCarta() in ui/cards.ui.js), deciso da Claudio.
+// Nessun dedup: ogni tap conta, anche sulla stessa carta più volte nello
+// stesso giorno (deciso esplicitamente, a differenza degli accessi).
+
+async function missioniDettaglioCartaRegistra(userId, cardId) {
+    return supabaseClient
+        .from('activity_log')
+        .insert({ user_id: userId, source: 'carta', action: 'aperta', details: { cardId } });
+}
+
+async function missioniDettaglioCartaAperturePeriodo(userId, inizioISO, fineISO) {
+    return supabaseClient
+        .from('activity_log')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', userId)
+        .eq('source', 'carta')
+        .eq('action', 'aperta')
+        .gte('created_at', inizioISO)
+        .lt('created_at', fineISO);
+}
+
+
 // ── RICERCHE (activity_log, source='ricerca', action='trovata') ────────
 // Nessun dedup: ogni ricerca riuscita (click su un risultato) conta,
 // fino a 5+/giorno per le missioni #84/#85. Conteggio nel periodo tramite
