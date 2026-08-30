@@ -4492,6 +4492,11 @@
     <script src="data/prices.repository.js"></script>
     <script src="data/preferences.repository.js"></script>
     <script src="data/sets.repository.js"></script>
+    <!-- Metriche Missioni/Traguardi Fase 1 (migration 32). Deve caricare
+         DOPO cards/prices/locations/queue/preferences/user-settings
+         repository (li riusa: trovaMatch, correzioniManualiConta,
+         userSettingsGet) e PRIMA di ui/missioni.ui.js. -->
+    <script src="data/missioni.repository.js"></script>
     <script src="state/app.state.js"></script>
     <script src="state/cards.state.js"></script>
     <script src="state/binder.state.js"></script>
