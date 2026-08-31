@@ -2149,8 +2149,13 @@
             /* FASE 4: non più uno scrim scuro su tutta la carta (sotto ora
                c'è la sleeve personalizzata con i 4 campi reali) — solo una
                fascia in basso per il bottone "Vai al binder" e per i dati
-               che non stanno nei 4 campi della sleeve (codice/location). */
-            background: linear-gradient(to top, rgba(10,15,40,0.75) 0%, rgba(10,15,40,0.75) 22%, rgba(10,15,40,0) 55%);
+               che non stanno nei 4 campi della sleeve (codice/location).
+               Restyle pg-* (2026-08-31): il navy fisso rgba(10,15,40,..)
+               è stato sostituito da var(--primary-dark) del tema attivo —
+               stesso identico scopo (scrim leggibile sopra la foto sleeve),
+               ma ora segue il tema come già fanno Match/Condividi/Missioni,
+               invece di un colore slegato dal resto del sito. */
+            background: linear-gradient(to top, color-mix(in srgb, var(--primary-dark) 82%, transparent) 0%, color-mix(in srgb, var(--primary-dark) 82%, transparent) 22%, transparent 55%);
             color: #fff;
             padding: 1rem;
             display: flex;
@@ -2161,6 +2166,47 @@
         .flip-card-back-overlay #flipCardStats,
         .flip-card-back-overlay button {
             pointer-events: auto;
+        }
+        /* Varianti colore delle classi pg-* condivise (vedi vocabolario
+           .pg-riga/.pg-bottoni sopra), SOLO dentro questo overlay: le
+           versioni base assumono uno sfondo chiaro (var(--card-bg)), qui
+           lo sfondo è lo scrim scuro sopra la foto della sleeve — stessa
+           struttura/spaziatura pg-*, colori adattati per restare leggibili.
+           Non è un tema a parte: .primario resta var(--primary), quindi
+           segue comunque il tema attivo del sito. */
+        .flip-card-back-overlay .pg-riga {
+            border-bottom-color: rgba(255,255,255,0.22);
+            padding: 0 0 0.6rem;
+        }
+        .flip-card-back-overlay .pg-testo b {
+            color: #fff;
+        }
+        .flip-card-back-overlay .pg-testo span {
+            color: rgba(255,255,255,0.7);
+        }
+        .flip-card-back-overlay .pg-bottoni {
+            margin-top: 0.6rem;
+        }
+        .flip-card-back-overlay .pg-bottoni button {
+            flex: 1 1 auto;
+            justify-content: center;
+            background: rgba(255,255,255,0.14);
+            border-color: rgba(255,255,255,0.32);
+            color: #fff;
+        }
+        .flip-card-back-overlay .pg-bottoni button.primario {
+            background: var(--primary);
+            border-color: var(--primary);
+            color: #fff;
+        }
+        .flip-card-back-overlay .pg-stat > div {
+            background: rgba(255,255,255,0.14);
+        }
+        .flip-card-back-overlay .pg-stat b {
+            color: #fff;
+        }
+        .flip-card-back-overlay .pg-stat span {
+            color: rgba(255,255,255,0.7);
         }
 
         /* FASE 2 (backcarte) — EDITOR RETRO CARTA PERSONALIZZATO ───────────
@@ -4614,21 +4660,32 @@
                             </div>
                         </div>
                         <div class="flip-card-back-overlay">
-                            <div id="flipCardStats"></div>
-                            <button class="btn-main" id="flipCardBinderBtn" style="width:100%; margin-top:0.6rem;"><i class="fa-solid fa-layer-group"></i> Vai al binder</button>
-                            <!-- Pulsante "Gestisci doppione" (2026-08-30) —
-                                 nascosto di default come flipCardBinderBtn:
-                                 mostrato solo quando apriFlipCardHome() viene
-                                 chiamata con opzioni.doppione=true (dalla
-                                 pagina Doppioni). Stesso pattern esatto:
-                                 style.display e .onclick riscritti ad ogni
-                                 apertura in ui/home.ui.js. -->
-                            <button class="btn-main" id="flipCardGestisciDoppioneBtn" style="width:100%; margin-top:0.5rem; display:none;"><i class="fa-solid fa-clone"></i> Gestisci doppione</button>
+                            <!-- Restyle pg-* (2026-08-31), stesso trattamento
+                                 cosmetico già dato a Match/Condividi/Missioni.
+                                 Colori adattati allo scrim scuro (vedi CSS
+                                 .flip-card-back-overlay .pg-* sopra) — la
+                                 struttura pg-riga/pg-stat/pg-bottoni è
+                                 invariata rispetto alle altre pagine. -->
+                            <div style="display:flex; flex-direction:column; gap:8px;">
+                                <div class="pg-riga" id="flipCardStats"></div>
+                                <div class="pg-stat" id="flipCardStatBoxes"></div>
+                            </div>
+                            <div class="pg-bottoni">
+                                <button class="primario" id="flipCardBinderBtn"><i class="fa-solid fa-layer-group"></i> Vai al binder</button>
+                                <!-- Pulsante "Gestisci doppione" (2026-08-30) —
+                                     nascosto di default come flipCardBinderBtn:
+                                     mostrato solo quando apriFlipCardHome() viene
+                                     chiamata con opzioni.doppione=true (dalla
+                                     pagina Doppioni). Stesso pattern esatto:
+                                     style.display e .onclick riscritti ad ogni
+                                     apertura in ui/home.ui.js. -->
+                                <button id="flipCardGestisciDoppioneBtn" style="display:none;"><i class="fa-solid fa-clone"></i> Gestisci doppione</button>
+                            </div>
                             <!-- Popolato via JS al tap del pulsante sopra:
                                  2 scelte (sposta in Scambio / apri scheda
                                  modifica) — vedi ui/home.ui.js
                                  _mostraSceltaGestisciDoppione(). -->
-                            <div id="flipCardDoppioneScelta" style="display:none; gap:6px; margin-top:0.5rem;"></div>
+                            <div class="pg-bottoni" id="flipCardDoppioneScelta" style="display:none;"></div>
                         </div>
                     </div>
                 </div>
