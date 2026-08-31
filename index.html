@@ -2240,18 +2240,43 @@
                 border-radius: 20px;
                 padding: 1.25rem;
             }
+            /* FIX 2026-08-31 — bug live: su desktop il modale collassava a
+               una striscia verticale sottile. Causa: la regola precedente
+               metteva width:auto + height:100% + aspect-ratio su
+               .flip-card-inner, che è annidata DENTRO #flipCardScene (che
+               a sua volta si allarga di default — align-items:stretch —
+               alla larghezza NON ANCORA nota di #immagineModalContent,
+               anch'esso width:auto). Due livelli di "percentuale su
+               contesto ancora indeterminato" durante il calcolo
+               dell'intrinsic size del browser: risultato, nessuna
+               larghezza definita da cui derivare, collasso quasi a zero.
+               Fix: il rapporto 5:7 si calcola su #flipCardScene stesso
+               (non su .flip-card-inner), che ha già un'altezza definita
+               dal flex-grow (flex:1 1 auto dentro una colonna di altezza
+               nota) INDIPENDENTEMENTE dalla larghezza — un solo passaggio
+               non circolare, non due. align-self:center sostituisce lo
+               stretch di default: #flipCardScene si dimensiona da sé
+               invece di aspettare la larghezza del genitore.
+               .flip-card-inner sotto eredita semplicemente 100%/100% da
+               lui, ormai già corretto. Scoped SOLO qui (desktop): su
+               mobile il comportamento originale larghezza-piena
+               (invariato, mai stato rotto) resta quello sotto. */
+            #immagineModalContent.modal-content-flip-fullscreen #flipCardScene {
+                align-self: center;
+                width: auto;
+                aspect-ratio: 5 / 7;
+            }
+            #immagineModalContent.modal-content-flip-fullscreen .flip-card-inner {
+                width: 100%;
+                height: 100%;
+                aspect-ratio: unset;
+                margin: 0;
+            }
         }
         #immagineModalContent.modal-content-flip-fullscreen #flipCardScene {
             flex: 1 1 auto;
             min-height: 0;
             margin-top: 0;
-            display: flex;
-        }
-        #immagineModalContent.modal-content-flip-fullscreen .flip-card-inner {
-            width: auto;
-            height: 100%;
-            aspect-ratio: 5 / 7;
-            margin: 0 auto;
         }
         /* FASE 2 (backcarte) — EDITOR RETRO CARTA PERSONALIZZATO ───────────
            Portato da modalita-crea-la-tua-sleeve.html (pacchetto backcarte),
