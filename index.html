@@ -2222,11 +2222,29 @@
            Tutto il contenuto interno (fronte, sleeve cbd-*, riga
            stats, riquadro pg-stat, pulsanti) scala di conseguenza perché
            deriva dall'altezza reale della carta, non da misure fisse. */
+        /* Default di #immagineModalContent (modalità immagine semplice,
+           apriUrlIngrandito) — 2026-08-31: era uno style INLINE nel
+           markup ("max-width: 320px; padding: 1rem;"), spostato qui in
+           CSS perché l'inline vince SEMPRE sulle classi, qualunque sia
+           la loro specificità — motivo per cui .modal-content-flip-
+           fullscreen sotto non riusciva mai a sovrascrivere davvero
+           max-width, anche impostando max-width:none: risolveva sulla
+           carta ma l'inline la ignorava del tutto a runtime (bug live
+           del 2026-08-31, il modale collassava a una striscia sottile
+           anche dopo il primo fix). Ora #immagineModalContent.modal-
+           content-flip-fullscreen (ID+classe, più specifico di questo ID
+           da solo) vince correttamente quando la classe è attiva. */
+        #immagineModalContent {
+            max-width: 320px;
+            padding: 1rem;
+        }
         #immagineModalContent.modal-content-flip-fullscreen {
             max-width: none;
             width: 100%;
             height: 100vh;
             height: 100dvh;
+            max-height: 100vh;
+            max-height: 100dvh;
             display: flex;
             flex-direction: column;
             padding: 0.75rem;
@@ -2237,6 +2255,7 @@
             #immagineModalContent.modal-content-flip-fullscreen {
                 width: auto;
                 height: min(92vh, 92dvh);
+                max-height: min(92vh, 92dvh);
                 border-radius: 20px;
                 padding: 1.25rem;
             }
@@ -4668,7 +4687,7 @@
 
     <!-- MODALE IMMAGINE INGRANDITA -->
     <div id="immagineModal" class="modal-overlay" onclick="chiudiImmagineIngrandita()">
-        <div class="modal-content" id="immagineModalContent" style="max-width: 320px; padding: 1rem;" onclick="event.stopPropagation()">
+        <div class="modal-content" id="immagineModalContent" onclick="event.stopPropagation()">
             <button class="close-modal-btn" onclick="chiudiImmagineIngrandita()"><i class="fa-solid fa-xmark"></i></button>
             <img id="immagineIngranditaImg" src="" alt="" style="width:100%; border-radius:12px; margin-top:0.5rem;" onerror="this.style.display='none'; document.getElementById('immagineErroreMsg').style.display='block';">
             <p id="immagineErroreMsg" style="display:none; color:var(--text-muted); font-size:0.85rem; padding:2rem 0;">Immagine non disponibile al momento.</p>
