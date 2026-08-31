@@ -3143,6 +3143,18 @@
             margin-left: 6px; vertical-align: middle;
         }
         .pg-riga.pg-riga-raggiunta { background: var(--primary-light); border-radius: 10px; }
+
+        /* Barre di progresso per la pagina Set (2026-08-30). */
+        .pg-riga-set { padding: 10px 4px; border-bottom: 1px solid var(--border-color); }
+        .pg-riga-set:last-child { border-bottom: none; }
+        .pg-riga-set-testa {
+            display: flex; justify-content: space-between; align-items: baseline;
+            margin-bottom: 6px; font-size: 0.85rem;
+        }
+        .pg-riga-set-testa b { color: var(--text-dark); font-weight: 600; }
+        .pg-riga-set-testa span { color: var(--text-muted); font-size: 0.78rem; font-variant-numeric: tabular-nums; }
+        .pg-barra-track { height: 8px; border-radius: 999px; background: var(--primary-light); overflow: hidden; }
+        .pg-barra-fill { height: 100%; border-radius: 999px; background: var(--primary); }
     </style>
 </head>
 <body>
@@ -3940,25 +3952,27 @@
         </div>
 
         <div id="match" class="view-section">
-            <div class="settings-card" style="max-width: 700px;">
-                <h3 style="margin-bottom: 0.3rem; color: var(--text-dark); display: flex; align-items: center; gap: 0.6rem; font-size: 1.15rem; font-weight: 800;">
-                    <i class="fa-solid fa-handshake" style="color: var(--primary);"></i> Match
-                </h3>
-                <p style="font-size: 0.78rem; color: var(--text-muted); margin-bottom: 1.2rem;">
-                    Corrispondenze tra i tuoi Scambio/Wishlist e quelli del gruppo, raggruppate per persona.
-                </p>
+            <!-- Restilizzata (2026-08-30) sulla struttura del mockup —
+                 stessa identica logica di renderPaginaMatch() in
+                 ui/phone.ui.js, solo il wrapper e le classi sono cambiate
+                 (da settings-card a page-header/pg-pagina). -->
+            <div class="page-header">
+                <span class="page-title">Match</span>
+            </div>
+            <div class="pg-pagina">
+                <p class="pg-sotto" style="margin:-6px 0 2px;">Corrispondenze tra i tuoi Scambio/Wishlist e quelli del gruppo, raggruppate per persona.</p>
                 <div id="matchLista"></div>
             </div>
         </div>
 
         <div id="condividi" class="view-section">
-            <div class="settings-card" style="max-width: 700px;">
-                <h3 style="margin-bottom: 0.3rem; color: var(--text-dark); display: flex; align-items: center; gap: 0.6rem; font-size: 1.15rem; font-weight: 800;">
-                    <i class="fa-solid fa-share-nodes" style="color: var(--primary);"></i> Condividi
-                </h3>
-                <p style="font-size: 0.78rem; color: var(--text-muted); margin-bottom: 1.2rem;">
-                    Scegli cosa condividere — link, QR o condivisione nativa.
-                </p>
+            <!-- Restilizzata (2026-08-30), stesso principio di #match sopra
+                 — logica di renderPaginaCondividi() invariata. -->
+            <div class="page-header">
+                <span class="page-title">Condividi</span>
+            </div>
+            <div class="pg-pagina">
+                <p class="pg-sotto" style="margin:-6px 0 2px;">Scegli cosa condividere — link, QR o condivisione nativa.</p>
                 <div id="condividiLista"></div>
 
                 <!-- Pannello di condivisione, comparso solo dopo aver
@@ -3980,21 +3994,19 @@
         </div>
 
         <div id="missioni" class="view-section">
-            <div class="settings-card" style="max-width: 700px;">
-                <h3 style="margin-bottom: 0.3rem; color: var(--text-dark); display: flex; align-items: center; gap: 0.6rem; font-size: 1.15rem; font-weight: 800;">
-                    <i class="fa-solid fa-list-check" style="color: var(--primary);"></i> Missioni
-                </h3>
-                <p style="font-size: 0.78rem; color: var(--text-muted); margin-bottom: 1.2rem;">
-                    Obiettivi giornalieri, settimanali e mensili — le ricompense si sbloccano da sole quando li completi.
-                </p>
+            <!-- Restilizzata (2026-08-30), stesso principio di #match/
+                 #condividi — logica di renderPaginaMissioni() invariata.
+                 Le barre di progresso dei traguardi riusano
+                 .pg-barra-track/.pg-barra-fill già costruite per #set. -->
+            <div class="page-header">
+                <span class="page-title">Missioni</span>
+            </div>
+            <div class="pg-pagina">
+                <p class="pg-sotto" style="margin:-6px 0 2px;">Obiettivi giornalieri, settimanali e mensili — le ricompense si sbloccano da sole quando li completi.</p>
                 <div id="missioniListaOggi"></div>
 
-                <h3 style="margin: 1.4rem 0 0.3rem; color: var(--text-dark); display: flex; align-items: center; gap: 0.6rem; font-size: 1.15rem; font-weight: 800;">
-                    <i class="fa-solid fa-trophy" style="color: var(--primary);"></i> Traguardi
-                </h3>
-                <p style="font-size: 0.78rem; color: var(--text-muted); margin-bottom: 1.2rem;">
-                    Permanenti — una volta sbloccati restano tuoi per sempre.
-                </p>
+                <div class="pg-titoletto" style="margin-top:0.6rem;"><i class="fa-solid fa-trophy"></i> Traguardi</div>
+                <p class="pg-sotto" style="margin:-6px 0 2px;">Permanenti — una volta sbloccati restano tuoi per sempre.</p>
                 <div id="missioniListaTraguardi"></div>
             </div>
         </div>
@@ -4033,6 +4045,24 @@
                  #location. Contenuto riempito da renderPaginaDoppioni() in
                  ui/phone.ui.js. -->
             <div id="doppioniContenuto"></div>
+        </div>
+
+        <div id="sealed" class="view-section">
+            <!-- Pagina di dettaglio "Sealed" (2026-08-30) — prima il tile
+                 non aveva una destinazione propria (nessun 'tab' nel
+                 catalogo widget); ora pagina propria, stesso pattern delle
+                 altre. Contenuto riempito da renderPaginaSealed() in
+                 ui/phone.ui.js. -->
+            <div id="sealedContenuto"></div>
+        </div>
+
+        <div id="set" class="view-section">
+            <!-- Pagina di dettaglio "Set" (2026-08-30) — prima apriva
+                 semplicemente Visualizzazione generica (tab:'visualizzazione');
+                 ora pagina propria. Solo consultazione, nessun click sulle
+                 righe (deciso da Claudio). Contenuto riempito da
+                 renderPaginaSet() in ui/phone.ui.js. -->
+            <div id="setContenuto"></div>
         </div>
 
         <div id="impostazioni" class="view-section">
