@@ -2963,18 +2963,58 @@ async function renderPaginaMissioni() {
 }
 
 // Riga singola per una missione (completata o no), usata sia nel blocco
-// "oggi" che in quello "settimanali & mensili".
+// "oggi" che in quello "settimanali & mensili". Tap sulla riga (2026-08-31,
+// richiesta di Claudio: "cliccando su una missione appaia la descrizione,
+// sennò l'utente non sa cosa fare, e anche la ricompensa collegata") →
+// espande un blocco sotto con descrizione + ricompensa. pg-riga resta
+// esattamente com'era (nessun rischio di rompere il layout condiviso con
+// le altre pagine pg-*) — il dettaglio è un div FRATELLO nascosto di
+// default, non dentro pg-riga stesso.
 function _righeMissioneHtml(m, dati, appenaCompletata) {
     const soddisfatta = MOTORE_MISSIONI.valuta(m, dati);
     const icona = soddisfatta ? 'fa-solid fa-circle-check' : 'fa-regular fa-circle';
     const colore = soddisfatta ? 'var(--success)' : 'var(--text-muted)';
     const badgeNuova = appenaCompletata ? `<span class="badge" style="background-color:var(--success); color:#fff; margin-left:0.4rem; font-size:0.65rem;">+${m.ricompensa.quantita || 1} ${m.ricompensa.tipo}</span>` : '';
+    const idBase = 'missioneDettaglio-' + m.id;
     return `
-        <div class="pg-riga">
-            <i class="${icona}" style="color:${colore};"></i>
-            <span style="flex:1; ${soddisfatta ? 'opacity:0.7;' : ''}">${escapeHtml(m.titolo)}${badgeNuova}</span>
+        <div>
+            <div class="pg-riga" style="cursor:pointer;" onclick="_toggleDettaglioMissione('${m.id}')">
+                <i class="${icona}" style="color:${colore};"></i>
+                <span style="flex:1; ${soddisfatta ? 'opacity:0.7;' : ''}">${escapeHtml(m.titolo)}${badgeNuova}</span>
+                <i class="fa-solid fa-chevron-down" id="${idBase}-chevron" style="font-size:0.7rem; color:var(--text-muted); transition:transform 0.2s; flex-shrink:0;"></i>
+            </div>
+            <div id="${idBase}" style="display:none; padding:0 0.2rem 0.6rem 1.6rem; font-size:0.78rem; color:var(--text-muted); line-height:1.4;">
+                <div>${escapeHtml(m.descrizione || m.titolo)}</div>
+                <div style="margin-top:0.25rem; color:var(--primary); font-weight:600;">${_testoRicompensa(m.ricompensa)}</div>
+            </div>
         </div>`;
 }
+
+function _toggleDettaglioMissione(id) {
+    const dettaglio = document.getElementById('missioneDettaglio-' + id);
+    const chevron = document.getElementById('missioneDettaglio-' + id + '-chevron');
+    if (!dettaglio) return;
+    const aperto = dettaglio.style.display !== 'none';
+    dettaglio.style.display = aperto ? 'none' : 'block';
+    if (chevron) chevron.style.transform = aperto ? 'rotate(0deg)' : 'rotate(180deg)';
+}
+
+// Testo leggibile della ricompensa — stessi 4 tipi già usati nel catalogo
+// (polvere/stampino/bustina/skip_missione), più il campo opzionale 'bonus'
+// (es. m53/m99/m100 "possibilita_bustina/stampino") mostrato come nota a
+// parte, senza promettere una certezza che non c'è.
+function _testoRicompensa(ricompensa) {
+    const q = ricompensa.quantita || 1;
+    let base;
+    if (ricompensa.tipo === 'polvere') base = `${q} polvere`;
+    else if (ricompensa.tipo === 'bustina') base = `${q} bustina${q === 1 ? '' : 'e'}`;
+    else if (ricompensa.tipo === 'stampino') base = `uno stampino${ricompensa.riferimento ? ` (${ricompensa.riferimento.replace(/_/g, ' ')})` : ''}`;
+    else if (ricompensa.tipo === 'skip_missione') base = `salta una missione`;
+    else base = `${q} ${ricompensa.tipo}`;
+    const bonus = ricompensa.bonus ? ` — più una possibilità di ${ricompensa.bonus.replace('possibilita_', '').replace('_', ' ')} extra` : '';
+    return `Ricompensa: ${base}${bonus}`;
+}
+
 
 
 // Riusa trovaMatch() e la stessa chiave stabile di _chiaveMatch (entrambe

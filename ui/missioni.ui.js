@@ -644,6 +644,125 @@ const CATALOGO_TRAGUARDI = [
 
 
 // ----------------------------------------------------------------------------
+// DESCRIZIONI (2026-08-31) — generate da due mappe metrica→frase, non
+// scritte a mano voce per voce (il catalogo ha ~58 missioni + ~90
+// traguardi: 150 descrizioni scritte singolarmente sarebbero enormi e a
+// rischio di incoerenza/dimenticanze). Un solo punto da mantenere per
+// metrica: se cambia la frase, si aggiorna automaticamente ovunque quella
+// metrica è usata.
+//
+// DUE mappe separate, non una sola condivisa: un primo tentativo con
+// un'unica mappa "Raggiungi {frase}" per entrambe produceva frasi
+// sgrammaticate per le missioni ("Raggiungi una carta alla collezione"
+// invece di "Aggiungi", singolare/plurale che non concordava) — le
+// missioni sono AZIONI (verbo diverso a seconda del tipo: Aggiungi/Apri/
+// Genera/Completa...), i traguardi sono SOGLIE cumulative (sempre
+// "Raggiungi {n} ..."). Solo 2 metriche sono usate in entrambi i
+// cataloghi (location_distinte, missioni_completate_totale) — overlap
+// minimo, verificato via script, non vale la pena forzare un'astrazione
+// condivisa che comprometta la grammatica.
+//
+// _FRASI_MISSIONE: { frase: (valore) => string } — frase completa già col
+// verbo giusto, MAIUSCOLA iniziale, senza punto finale (aggiunto dal
+// compositore insieme al qualificatore temporale). { testo: (valore) =>
+// string } per le poche già complete a sé (booleane/speciali).
+// ----------------------------------------------------------------------------
+
+const _FRASI_MISSIONE = {
+    accesso_oggi: { testo: () => 'Accedi al sito.' },
+    apertura_binder_periodo: { frase: v => `Apri il widget Binders ${v === 1 ? 'una volta' : v + ' volte'}` },
+    apertura_carta_top_valore_periodo: { frase: v => `Apri il dettaglio di una carta tra le più preziose ${v === 1 ? 'una volta' : v + ' volte'}` },
+    apertura_dettaglio_carta_periodo: { frase: v => `Apri il dettaglio di ${v === 1 ? 'una carta' : v + ' carte'}` },
+    apertura_doppioni_periodo: { frase: () => `Apri il widget Doppioni` },
+    apertura_estensione_periodo: { frase: () => `Apri il widget Estensione` },
+    apertura_location_periodo: { frase: () => `Apri il widget Location` },
+    apertura_match_periodo: { frase: () => `Apri il widget Match` },
+    apertura_prezzi_periodo: { frase: () => `Apri il widget Prezzi` },
+    apertura_ultima_carta_periodo: { frase: () => `Apri il widget Ultima carta` },
+    apertura_valore_collezione_periodo: { frase: () => `Apri il widget Valore collezione` },
+    apertura_visualizzazione_periodo: { frase: () => `Apri il widget Visualizzazione` },
+    apertura_wishlist_obiettivi_periodo: { frase: () => `Apri il widget Wishlist/Obiettivi` },
+    binder_aperture_periodo: { frase: v => `Fatti ${v === 1 ? 'visitare una volta' : 'visitare ' + v + ' volte'} il binder da qualcuno del gruppo` },
+    binder_pubblicati_periodo: { frase: v => `Pubblica ${v === 1 ? 'un binder' : v + ' binder'}` },
+    binder_pubblico_visitato_periodo: { frase: () => `Visita un binder pubblico di qualcun altro del gruppo (dal pannello Match)` },
+    carta_vecchia_aperta_periodo: { frase: () => `Apri il dettaglio di una carta aggiunta in un giorno precedente` },
+    carte_aggiunte_periodo: { frase: v => `Aggiungi ${v === 1 ? 'una carta' : v + ' carte'} alla collezione` },
+    carte_distinte_dettaglio_periodo: { frase: v => `Apri il dettaglio di ${v} carte diverse` },
+    carte_stessa_espansione_max: { testo: v => `Possiedi almeno ${v} carte della stessa espansione in collezione.` },
+    categorie_distinte_settimana: { frase: v => `Completa missioni di ${v} categorie diverse` },
+    coda_errori_azzerata_oggi: { testo: () => 'Azzera la lista "Carte con problemi" in Inserimento.' },
+    collezione_e_social_oggi: { testo: () => 'Fai qualcosa in Inserimento/Collezione E qualcosa nella sezione sociale (Binder o Match), nello stesso giorno.' },
+    errori_coda_vuota: { testo: () => 'Non avere nessuna carta in errore in coda.' },
+    esplorazione_sociale_oggi: { testo: () => 'Apri il widget Binders o il widget Match.' },
+    giorni_consecutivi: { frase: v => `Accedi al sito per ${v} giorni consecutivi` },
+    estensione_aperta_periodo: { frase: () => `Apri il widget Estensione` },
+    estensione_funzione_usata_periodo: { frase: () => `Usa davvero una funzione dell'estensione (es. avvia un controllo prezzi)` },
+    layout_modificato_periodo: { frase: () => `Modifica il layout della Home (ordine o visibilità dei widget)` },
+    location_aggiunta_periodo: { frase: v => `Assegna una location a ${v === 1 ? 'una carta' : v + ' carte'}` },
+    location_distinte: { frase: v => `Usa ${v === 1 ? 'una location' : v + ' location diverse'}` },
+    match_attivi_totale: { frase: () => `Trova una corrispondenza attiva nel gruppo (pannello Match)` },
+    missioni_completate_periodo: { frase: v => `Completa ${v === 1 ? 'un\'altra missione' : v + ' missioni'}` },
+    missioni_completate_totale: { frase: v => `Completa ${v} ${v === 1 ? 'missione' : 'missioni'} in totale` },
+    percentuale_missioni_giorno: { testo: () => 'Completa tutte le missioni assegnate oggi.' },
+    prezzi_aggiornati_periodo: { frase: v => `Aggiorna ${v === 1 ? 'un prezzo' : v + ' prezzi'}` },
+    prezzi_aggiornati_settimana: { frase: v => `Aggiorna ${v} prezzi` },
+    prezzi_scaduti_totale: { testo: () => 'Non avere nessuna carta con il prezzo da aggiornare.' },
+    qr_generato_periodo: { frase: v => `Genera ${v === 1 ? 'un codice QR' : v + ' codici QR'} per condividere un binder` },
+    ricerche_eseguite_periodo: { frase: v => `Completa ${v === 1 ? 'una ricerca' : v + ' ricerche'} (con un risultato aperto)` },
+    statistiche_distinte_periodo: { frase: v => `Consulta ${v} widget statistici diversi (Visualizzazione, Valore collezione, Location)` },
+    tutte_categorie_coperte_settimana: { testo: () => 'Completa almeno una missione per ciascuna categoria, nell\'arco della settimana.' },
+    tutti_widget_informativi_periodo: { testo: () => 'Apri tutti i widget informativi della Home.' },
+    widget_distinti_periodo: { frase: v => `Apri ${v} widget diversi` },
+    wishlist_obiettivi_raggiunti: { frase: v => `Raggiungi ${v === 1 ? 'un obiettivo' : v + ' obiettivi'} di prezzo in Wishlist` },
+};
+
+// _FRASI_TRAGUARDO: { frase: (soglia) => string } — sostantivo/oggetto da
+// comporre come "Raggiungi {frase(soglia)}." (sempre '>=' su un totale
+// cumulativo, mai legato a un periodo). { testo } per i pochi casi
+// speciali (giorno_perfetto_mai, categorie_traguardi_distinte_totale).
+const _FRASI_TRAGUARDO = {
+    accessi_totali: { frase: v => `${v} ${v === 1 ? 'accesso totale' : 'accessi totali'} al sito` },
+    binder_aperture_totale: { frase: v => `${v} ${v === 1 ? 'visita totale' : 'visite totali'} al tuo binder da parte del gruppo` },
+    carte_totali: { frase: v => `${v} ${v === 1 ? 'carta' : 'carte'} in collezione` },
+    categorie_traguardi_distinte_totale: { testo: v => `Sblocca almeno un traguardo in ${v} categorie diverse.` },
+    doppioni_totali: { frase: v => `${v} ${v === 1 ? 'doppione' : 'doppioni'} in collezione` },
+    giorno_perfetto_mai: { testo: () => 'Completa il 100% delle missioni assegnate in un giorno, almeno una volta.' },
+    location_distinte: { frase: v => `${v} location${v === 1 ? '' : ' diverse'}` },
+    missioni_completate_totale: { frase: v => `${v} ${v === 1 ? 'missione completata' : 'missioni completate'} in totale` },
+    valore_collezione: { frase: v => `${v} € di valore totale della collezione` },
+    wishlist_totale: { frase: v => `${v} ${v === 1 ? 'carta' : 'carte'} in Wishlist` },
+};
+
+// "oggi"/"questa settimana"/ecc. — solo per le missioni (i traguardi sono
+// sempre cumulativi, mai legati a una finestra).
+function _finestraTesto(finestra) {
+    if (finestra === 'giornaliera') return ' oggi';
+    if (finestra === 'settimanale') return ' questa settimana';
+    if (finestra === 'mensile') return ' questo mese';
+    return ''; // una_tantum: nessun qualificatore temporale, è un traguardo a vita
+}
+
+function _descrizioneMissione(m) {
+    const voce = _FRASI_MISSIONE[m.metrica];
+    if (!voce) return m.titolo; // rete di sicurezza: metrica non mappata, mai deve rompere il render
+    if (voce.testo) return voce.testo(m.valore);
+    return `${voce.frase(m.valore)}${_finestraTesto(m.finestra)}.`;
+}
+
+function _descrizioneTraguardo(t) {
+    const voce = _FRASI_TRAGUARDO[t.metrica];
+    if (!voce) return t.titolo;
+    if (voce.testo) return voce.testo(t.valore);
+    return `Raggiungi ${voce.frase(t.valore)}.`;
+}
+
+// Applicate una sola volta qui, non scritte nei singoli oggetti letterali
+// del catalogo sopra — un solo passaggio, impossibile dimenticarne una.
+CATALOGO_MISSIONI.forEach(m => { m.descrizione = _descrizioneMissione(m); });
+CATALOGO_TRAGUARDI.forEach(t => { t.descrizione = _descrizioneTraguardo(t); });
+
+
+// ----------------------------------------------------------------------------
 // MOTORE DI VALUTAZIONE GENERICO
 // ----------------------------------------------------------------------------
 // Riceve un oggetto "dati" con i valori già calcolati delle metriche (vedi
