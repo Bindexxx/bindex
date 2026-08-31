@@ -1,5 +1,5 @@
 // ── data/sets.library.js ─────────────────────────────────────────────────
-// GENERATO AUTOMATICAMENTE da genera-libreria-set.html il 2026-08-28.
+// GENERATO AUTOMATICAMENTE da genera-libreria-set.html il 2026-08-31.
 // Non modificare a mano: rilancia lo strumento quando esce un'espansione.
 //
 // Fonte: TCGdex (api.tcgdex.net), lingua 'it'.
@@ -8,7 +8,7 @@
 // L'avanzamento va calcolato su 'totale', mai su 'base': una carta
 // "ASC 123/217" appartiene a un set che ne ha 295.
 //
-// 191 espansioni. Caricare PRIMA di ui/phone.ui.js in index.html.
+// 193 espansioni. Caricare PRIMA di ui/phone.ui.js in index.html.
 const CARDSYNC_SET_LIBRARY = {
     PBL: { nome: "Buio Pesto", base: 84, totale: 120 },
     CRI: { nome: "Caos Nascente", base: 86, totale: 122 },
@@ -41,6 +41,7 @@ const CARDSYNC_SET_LIBRARY = {
     TWM: { nome: "Crepuscolo Mascherato", base: 167, totale: 226 },
     TEF: { nome: "Cronoforze", base: 162, totale: 218 },
     PAF: { nome: "Destino di Paldea", base: 91, totale: 245 },
+    CLB: { nome: "Pokémon TCG Classic — mazzo Blastoise", base: 34, totale: 34 },
     PAR: { nome: "Paradosso Temporale", base: 182, totale: 266 },
     MEW: { nome: "151", base: 165, totale: 207 },
     OBF: { nome: "Ossidiana Infuocata", base: 197, totale: 230 },
@@ -70,6 +71,7 @@ const CARDSYNC_SET_LIBRARY = {
     SHF: { nome: "Destino Splendente", base: 72, totale: 73 },
     'SHF-SV': { nome: "Destino Splendente Tesoro Lucente", base: 122, totale: 122 },
     MCD21: { nome: "McDonald's Collection 2021", base: 25, totale: 25 },
+    SEF: { nome: "Venusaur Starter Set VMAX", base: 21, totale: 21 },
     VIV: { nome: "Voltaggio Sfolgorante", base: 185, totale: 203 },
     CPA: { nome: "Futuri Campioni", base: 73, totale: 80 },
     DAA: { nome: "Fiamme Oscure", base: 189, totale: 201 },
@@ -198,7 +200,7 @@ const CARDSYNC_SET_LIBRARY = {
     RO: { nome: "Team Rocket", base: 82, totale: 82 },
     FO: { nome: "Fossil", base: 62, totale: 62 },
     WP: { nome: "Carte Promo Wizards", base: 7, totale: 7 },
-    BASEP: { nome: "Wizards Black Star Promos", base: 53, totale: 53 },
+    WP: { nome: "Wizards Black Star Promos", base: 53, totale: 53 },
     JU: { nome: "Jungle", base: 64, totale: 64 },
     BS: { nome: "Set Base", base: 102, totale: 102 },
 };
