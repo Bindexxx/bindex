@@ -8,7 +8,7 @@
 // L'avanzamento va calcolato su 'totale', mai su 'base': una carta
 // "ASC 123/217" appartiene a un set che ne ha 295.
 //
-// 193 espansioni. Caricare PRIMA di ui/phone.ui.js in index.html.
+// 192 espansioni. Caricare PRIMA di ui/phone.ui.js in index.html.
 const CARDSYNC_SET_LIBRARY = {
     PBL: { nome: "Buio Pesto", base: 84, totale: 120 },
     CRI: { nome: "Caos Nascente", base: 86, totale: 122 },
@@ -199,7 +199,6 @@ const CARDSYNC_SET_LIBRARY = {
     N1: { nome: "Neo Genesis", base: 111, totale: 111 },
     RO: { nome: "Team Rocket", base: 82, totale: 82 },
     FO: { nome: "Fossil", base: 62, totale: 62 },
-    WP: { nome: "Carte Promo Wizards", base: 7, totale: 7 },
     WP: { nome: "Wizards Black Star Promos", base: 53, totale: 53 },
     JU: { nome: "Jungle", base: 64, totale: 64 },
     BS: { nome: "Set Base", base: 102, totale: 102 },
