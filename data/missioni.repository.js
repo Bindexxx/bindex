@@ -147,13 +147,49 @@ async function missioniPrezziAggiornatiPeriodo(userId, tabella, inizioISO, fineI
     return { data: new Set((data || []).map(r => r.carta_id)).size, error: null };
 }
 
-// STUB — la logica di "prezzo scaduto" (colonna, soglia giorni) vive in
-// ui/prices.ui.js:apriModalePrezziScaduti() (menzionata nel commento
-// originale del motore) — file non caricato in questa sessione, non
-// improvviso né il nome colonna né il valore soglia.
+// Riusa lo stesso identico pattern di ui/home.ui.js:_ultimoControlloPerCarta()
+// (verificato in questa sessione, non dedotto): "ultimo controllo" non è
+// una colonna su 'carte' — si calcola dal MAX(registrato_il) per carta_id
+// in storico_prezzi (tabella 'carte'). SOGLIA_GIORNI_PREZZO_SCADUTO è una
+// costante globale definita in uno state/*.js non caricato in questa
+// sessione — referenziata per nome (stessa convenzione già usata altrove
+// nel progetto, es. data/preferences.repository.js con CHIAVE_BINDER_
+// LAYOUT): risolta al momento della chiamata, non della definizione,
+// quindi l'ordine di caricamento tra questo file e lo state/*.js non è
+// vincolante.
 async function missioniPrezziScadutiTotale(userId) {
-    console.warn('[missioni] missioniPrezziScadutiTotale: serve ui/prices.ui.js per colonna/soglia reali, vedi commento nel repository');
-    return { count: 0, error: null };
+    const { data: carte, error: errCarte } = await supabaseClient.from('carte').select('id')
+        .eq('owner_id', userId).eq('stato', 'collezione');
+    if (errCarte) return { count: 0, error: errCarte };
+    const ids = (carte || []).map(c => c.id);
+    if (ids.length === 0) return { count: 0, error: null };
+
+    // Blocchi da 500 id, stesso identico pattern di _ultimoControlloPerCarta
+    // — evita URL troppo lunghe con collezioni grandi.
+    const DIMENSIONE_BLOCCO = 500;
+    const blocchi = [];
+    for (let i = 0; i < ids.length; i += DIMENSIONE_BLOCCO) blocchi.push(ids.slice(i, i + DIMENSIONE_BLOCCO));
+
+    const risultati = await Promise.all(blocchi.map(blocco => storicoPrezziQuery('carte', blocco)));
+    const ultimoPerCarta = {};
+    for (const { data, error } of risultati) {
+        if (error) return { count: 0, error };
+        (data || []).forEach(r => {
+            if (!ultimoPerCarta[r.carta_id] || r.registrato_il > ultimoPerCarta[r.carta_id]) {
+                ultimoPerCarta[r.carta_id] = r.registrato_il;
+            }
+        });
+    }
+
+    const sogliaMs = SOGLIA_GIORNI_PREZZO_SCADUTO * 24 * 60 * 60 * 1000;
+    const adesso = Date.now();
+    const scadute = ids.filter(id => {
+        const ultimo = ultimoPerCarta[id];
+        if (!ultimo) return true; // mai controllata
+        return (adesso - new Date(ultimo).getTime()) > sogliaMs;
+    }).length;
+
+    return { count: scadute, error: null };
 }
 
 
@@ -189,17 +225,28 @@ async function missioniErroriCodaVuota(userId) {
     return { data: (count || 0) === 0, error: null };
 }
 
-// STUB — la forma esatta di preferenze_utente.dafare_risolti (mappa JSON
-// scritta da userSettingsUpsertDaFareRisolti in data/user-settings.
-// repository.js) non è stata vista popolata da nessun file letto in
-// questa sessione (probabile ui/dafare.ui.js, non caricato) — non
-// indovino le chiavi della mappa. Ritorna sempre false finché non viene
-// chiarita la struttura reale (serve capire come/dove la chiave
-// "coda_errori" — vedi nota su m11 in missioni.ui.js — viene scritta nella
-// mappa con un timestamp di risoluzione).
+// Struttura di dafare_risolti VERIFICATA in questa sessione (ui/phone.ui.js
+// _segnaDaFareRisolto/renderPaginaDaFare): mappa { [id]: { testo,
+// risoltoIl: ISOString } }. L'id del segnale "coda errori" è
+// letteralmente 'coda_errori' (ui/phone.ui.js riga 456,
+// segnali.push({ id: 'coda_errori', ... })) — non dedotto, letto nel file
+// reale. "Oggi" = stesso giorno di calendario (confronto Year/Month/Date),
+// stessa convenzione già usata per il flag "vecchia" in
+// ui/home.ui.js:apriFlipCardHome(), non una finestra di 24h continue.
 async function missioniCodaErroriAzzerataOggi(userId) {
-    console.warn('[missioni] missioniCodaErroriAzzerataOggi: struttura di preferenze_utente.dafare_risolti non verificata, vedi commento nel repository');
-    return { data: false, error: null };
+    const { data, error } = await userSettingsGet(userId);
+    if (error) return { data: false, error };
+
+    let storico = {};
+    try { storico = (data && data.dafare_risolti) ? JSON.parse(data.dafare_risolti) : {}; } catch (_) { storico = {}; }
+
+    const voce = storico['coda_errori'];
+    if (!voce || !voce.risoltoIl) return { data: false, error: null };
+
+    const oggi = new Date();
+    const d = new Date(voce.risoltoIl);
+    const risoltoOggi = d.getFullYear() === oggi.getFullYear() && d.getMonth() === oggi.getMonth() && d.getDate() === oggi.getDate();
+    return { data: risoltoOggi, error: null };
 }
 
 
