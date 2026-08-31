@@ -2250,6 +2250,16 @@
             padding: 0.75rem;
             border-radius: 0;
             box-sizing: border-box;
+            /* Sovrascrive overflow-y:auto ereditato da .modal-content (base
+               condivisa da tutti i modali, riga ~2098) — lì serve per
+               modali col contenuto potenzialmente più alto dello schermo
+               (es. "Modifica Carta", 7 campi); qui invece tutto il
+               contenuto è già dimensionato per stare esattamente nello
+               spazio disponibile (aspect-ratio), uno scroll interno non
+               serve mai e produceva solo la scrollbar visibile dentro il
+               modale (bug live 2026-08-31, dopo aver già bloccato lo
+               scroll della PAGINA sotto, restava questa). */
+            overflow: hidden;
         }
         @media (min-width: 700px) {
             /* FIX 2026-08-31, terzo tentativo — i primi due (aspect-ratio
