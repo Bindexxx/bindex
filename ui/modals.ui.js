@@ -29,6 +29,10 @@
             // modalità immagine semplice erediti per un frame le misure
             // fullscreen della modalità flip.
             document.getElementById('immagineModalContent').classList.remove('modal-content-flip-fullscreen');
+            // Sblocca lo scroll del body (2026-08-31), simmetrico al blocco
+            // in apriFlipCardHome() — reset innocuo anche se non era mai
+            // stato bloccato (modalità immagine semplice).
+            document.body.style.overflow = '';
         }
 
 
@@ -196,6 +200,7 @@
             // la attiva — rimossa qui per sicurezza anche se il modale non
             // era stato chiuso "pulito" da chiudiImmagineIngrandita prima.
             document.getElementById('immagineModalContent').classList.remove('modal-content-flip-fullscreen');
+            document.body.style.overflow = '';
             const img = document.getElementById('immagineIngranditaImg');
             img.style.display = '';
             img.src = url;

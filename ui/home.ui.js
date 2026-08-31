@@ -390,6 +390,14 @@
             // flex, .flip-card-inner calcola la propria larghezza
             // dall'altezza reale via aspect-ratio.
             document.getElementById('immagineModalContent').classList.add('modal-content-flip-fullscreen');
+            // Blocca lo scroll della pagina sotto (2026-08-31): il modale è
+            // a schermo intero, senza questo restava visibile la scrollbar
+            // del body dietro/accanto — nessun altro modale del sito lo
+            // fa (sono piccoli, centrati, non coprono la viewport), quindi
+            // non tocco nulla di condiviso: solo qui, rimosso in
+            // chiudiImmagineIngrandita()/apriUrlIngrandito() in
+            // ui/modals.ui.js.
+            document.body.style.overflow = 'hidden';
             document.getElementById('immagineErroreMsg').style.display = 'none';
             document.getElementById('immagineIngranditaImg').style.display = 'none';
             const scena = document.getElementById('flipCardScene');
