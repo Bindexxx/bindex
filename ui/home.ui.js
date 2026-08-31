@@ -398,8 +398,22 @@
             // sopra la sleeve personalizzata (renderRetroCartaOwner sotto),
             // non più qui in testo semplice. Qui resta solo ciò che non
             // rientra nei 4 campi della sleeve (codice interno e location).
+            // Restyle pg-* (2026-08-31): pg-riga con nome/codice/location,
+            // pg-stat con prezzo/condizione — stesso pattern delle liste e
+            // dei riquadri stat già usati in Match/Missioni/Dashboard.
+            // Colore ereditato dallo scrim scuro dell'overlay (vedi CSS
+            // .flip-card-back-overlay .pg-* in index.html) — non impostato
+            // qui.
             document.getElementById('flipCardStats').innerHTML = `
-                <div style="font-size:0.78rem; opacity:0.9;"><code style="background:none; color:inherit; padding:0;">${card.code}</code> · ${card.location || '—'}</div>
+                <div class="pg-testo">
+                    <b>${escapeHtml(card.name || '')}</b>
+                    <span><code style="background:none; color:inherit; padding:0;">${card.code}</code> · ${card.location || '—'}</span>
+                </div>
+            `;
+            const prezzoTesto = (card.price != null ? Number(card.price) : 0).toFixed(2) + ' €';
+            document.getElementById('flipCardStatBoxes').innerHTML = `
+                <div><b>${prezzoTesto}</b><span>Prezzo</span></div>
+                <div><b>${card.cond ? escapeHtml(card.cond) : '—'}</b><span>Condizione</span></div>
             `;
             // La visibilità va SEMPRE riscritta, non solo nascosta: il modale
             // è unico e condiviso — senza questo ripristino, una singola
@@ -445,9 +459,12 @@
             const scelta = document.getElementById('flipCardDoppioneScelta');
             btn.style.display = 'none';
             scelta.style.display = 'flex';
+            // Restyle pg-* (2026-08-31): stessa classe pg-bottoni del resto
+            // dell'overlay (già gestisce i colori per lo scrim scuro via
+            // CSS in index.html) invece di btn-secondary generico.
             scelta.innerHTML = `
-                <button class="btn-secondary" style="flex:1; font-size:0.78rem;" onclick="event.stopPropagation(); _doppioneSpostaInScambio('${cardId}')"><i class="fa-solid fa-right-left"></i> Sposta in Scambio</button>
-                <button class="btn-secondary" style="flex:1; font-size:0.78rem;" onclick="event.stopPropagation(); _doppioneApriModifica('${cardId}')"><i class="fa-solid fa-pen"></i> Modifica carta</button>
+                <button onclick="event.stopPropagation(); _doppioneSpostaInScambio('${cardId}')"><i class="fa-solid fa-right-left"></i> Sposta in Scambio</button>
+                <button onclick="event.stopPropagation(); _doppioneApriModifica('${cardId}')"><i class="fa-solid fa-pen"></i> Modifica carta</button>
             `;
         }
 
