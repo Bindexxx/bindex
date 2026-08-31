@@ -426,6 +426,13 @@ const CATALOGO_WIDGET = {
             // disegnano quattro, le righe di testo restano le prime due.
             return { righe: top.map(([k, v]) => `${k}: ${v}`), dati: { voci: ordinate } };
         },
+        // AGGIUNTO (2026-08-30): prima non aveva 'tab', quindi
+        // _eseguiAzioneWidget cadeva su apriDettaglioWidget(w.id, ...) =
+        // apriDettaglioWidget('location', ...) — non essendo 'location' né
+        // una whitelist custom né una vera view-section, il tap sul tile
+        // non portava da nessuna parte. Ora ha una pagina propria (#location
+        // in index.html, renderPaginaLocation() sotto).
+        tab: 'location',
     },
     suggerimento: {
         titolo: 'Prossima azione', icona: 'fa-lightbulb',
@@ -585,7 +592,11 @@ const CATALOGO_WIDGET = {
                 }
             };
         },
-        tab: 'visualizzazione',
+        // MODIFICATO (2026-08-30): prima apriva semplicemente
+        // Visualizzazione generica (tab:'visualizzazione') — ora ha una
+        // pagina propria (#doppioni in index.html,
+        // renderPaginaDoppioni() sotto).
+        tab: 'doppioni',
     },
 
     wishlist_obiettivi: {
@@ -2671,7 +2682,7 @@ async function apriDettaglioWidget(tabId, evt) {
     clearTimeout(_chiusuraDettaglioTimeout); // annulla un'eventuale chiusura ancora in corso (riapertura rapida)
 
     const container = document.querySelector('.container');
-    if (tabId === 'dafare' || tabId === 'match' || tabId === 'condividi' || tabId === 'missioni' || tabId === 'valore' || tabId === 'wishlist') {
+    if (tabId === 'dafare' || tabId === 'match' || tabId === 'condividi' || tabId === 'missioni' || tabId === 'valore' || tabId === 'wishlist' || tabId === 'location' || tabId === 'doppioni') {
         // MAI switchTab() qui: quella funzione ha una whitelist fissa di 5
         // tab (navigation.ui.js r.199) ed è segnata nella memoria di
         // progetto come "deve restare stabile e intoccata" — un bug reale
@@ -2688,6 +2699,8 @@ async function apriDettaglioWidget(tabId, evt) {
         if (tabId === 'missioni') renderPaginaMissioni();
         if (tabId === 'valore') renderPaginaValoreCollezione();
         if (tabId === 'wishlist') renderPaginaWishlist();
+        if (tabId === 'location') renderPaginaLocation();
+        if (tabId === 'doppioni') renderPaginaDoppioni();
     } else {
         switchTab(tabId, null);
     }
@@ -3307,6 +3320,263 @@ async function _vaiAlBinderWishlist(evt) {
     // Se non trovato (caso limite — binderWishlistGarantisci() dovrebbe
     // impedirlo sempre, vedi _garantisciTuttiIBinder in ui/binder.ui.js):
     // resta sulla griglia dei contenitori invece di rompere la pagina.
+}
+
+
+// ── PAGINA "LOCATION" (2026-08-30) ──────────────────────────────────────
+// Terzo widget con pagina di dettaglio propria. Due fonti unite:
+//   1) CATALOGO_WIDGET.location.preview() → dati.voci: location USATE da
+//      almeno una carta, con conteggio (da carteReali, stesso calcolo del
+//      tile — nessuna query nuova per questa parte).
+//   2) locationsList(userId) (data/locations.repository.js) → TUTTE le
+//      location esistenti nella tabella 'location', comprese quelle senza
+//      ancora nessuna carta. Necessaria: senza unire le due fonti, una
+//      location appena creata (0 carte) non comparirebbe mai qui, e
+//      sembrerebbe che "+ Aggiungi" non abbia fatto nulla.
+// Click su una riga → RIUSA _ballAzioneRiga(evt,'location',nome), lo
+// stesso meccanismo già esistente che apre Visualizzazione filtrata su
+// quella location — nessuna logica di filtro duplicata qui.
+//
+// "+ Aggiungi" ora reale (locationInsert, con locationExists prima per
+// evitare doppioni — nessun vincolo UNIQUE noto sulla tabella).
+// "✕ Rimuovi" resta placeholder: data/locations.repository.js non ha
+// nessuna funzione di eliminazione — non inventata.
+// Opzione A confermata da Claudio: blocca l'eliminazione se la location ha
+// ancora almeno una carta assegnata — le carte salvano la location come
+// testo libero (c.location), non un riferimento alla tabella, quindi
+// cancellarla senza controllo lascerebbe carte con un nome "orfano" (non
+// più presente in 'location' ma ancora scritto sulla carta).
+async function _locationRimuovi(nome) {
+    const carteConQuestaLocation = carteReali.filter(c => c.stato === 'collezione' && (c.location || '—') === nome).length;
+    if (carteConQuestaLocation > 0) {
+        alert(`"${nome}" ha ancora ${carteConQuestaLocation} cart${carteConQuestaLocation === 1 ? 'a assegnata' : 'e assegnate'}. Sposta prima quelle carte su un'altra location, poi riprova.`);
+        return;
+    }
+    if (!confirm(`Eliminare la location "${nome}"? Non ha nessuna carta assegnata.`)) return;
+
+    const userId = await authGetUserId();
+    if (!userId) return;
+    const { error } = await locationDelete(userId, nome);
+    if (error) { alert('Errore nella cancellazione: ' + error.message); return; }
+
+    renderPaginaLocation();
+}
+
+async function _locationAggiungi() {
+    const nome = (prompt('Nome della nuova location:') || '').trim();
+    if (!nome) return;
+    const userId = await authGetUserId();
+    if (!userId) return;
+
+    const { data: esistenti, error: errCheck } = await locationExists(userId, nome);
+    if (errCheck) { alert('Errore nel controllo: ' + errCheck.message); return; }
+    if (esistenti && esistenti.length > 0) { alert(`"${nome}" esiste già.`); return; }
+
+    const { error: errIns } = await locationInsert(userId, nome);
+    if (errIns) { alert('Errore nella creazione: ' + errIns.message); return; }
+
+    renderPaginaLocation(); // ricarica la pagina, la nuova location comparirà con 0 carte
+}
+
+async function renderPaginaLocation() {
+    const container = document.getElementById('locationContenuto');
+    if (!container) return;
+
+    const def = CATALOGO_WIDGET.location;
+    let voci;
+    try {
+        const anteprima = def.preview();
+        voci = (anteprima.dati && anteprima.dati.voci) || [];
+    } catch (e) {
+        console.error('renderPaginaLocation:', e);
+        container.innerHTML = '<p style="text-align:center; color:var(--text-muted); font-size:0.85rem; padding:1rem 0;">Errore nel caricamento.</p>';
+        return;
+    }
+
+    // Unione con le location senza ancora nessuna carta (vedi commento
+    // sopra). Fallimento qui non deve mai nascondere le location che
+    // hanno già delle carte (quelle sopra sono già pronte) — solo le
+    // location vuote in più non compariranno.
+    const userId = await authGetUserId();
+    if (userId) {
+        try {
+            const { data: tutte, error } = await locationsList(userId);
+            if (error) throw error;
+            const nomiConCarte = new Set(voci.map(([nome]) => nome));
+            (tutte || []).forEach(r => {
+                if (r.nome && !nomiConCarte.has(r.nome)) voci.push([r.nome, 0]);
+            });
+        } catch (e) {
+            console.error('renderPaginaLocation (locationsList):', e);
+        }
+    }
+    // Riordina dopo l'unione: conteggio discendente, a parità alfabetico —
+    // così le location vuote (0) finiscono in fondo, non sparse a caso.
+    voci.sort((a, b) => b[1] - a[1] || String(a[0]).localeCompare(String(b[0])));
+
+    if (voci.length === 0) {
+        container.innerHTML = `
+            <div class="page-header">
+                <span class="page-title">Location</span>
+            </div>
+            <p style="text-align:center; color:var(--text-muted); font-size:0.85rem; padding:1.5rem 0 0.5rem;">Nessuna carta ha ancora una location.</p>
+            <div class="pg-bottoni" style="justify-content:center;">
+                <button class="primario" onclick="_locationAggiungi()">+ Crea la prima location</button>
+            </div>
+        `;
+        return;
+    }
+
+    const totale = voci.length;
+    const [nomePiuPiena, conteggioPiuPieno] = voci[0];
+
+    const righe = voci.map(([nome, n]) => `
+        <div class="pg-riga" data-tocca>
+            <div class="pg-testo" style="cursor:pointer;" onclick="_ballAzioneRiga(event, 'location', '${String(nome).replace(/'/g, "\\'")}')">
+                <b>${escapeHtml(nome)}</b>
+            </div>
+            <div class="pg-destra" style="cursor:pointer;" onclick="_ballAzioneRiga(event, 'location', '${String(nome).replace(/'/g, "\\'")}')">
+                <b>${n}</b>${n === 1 ? 'carta' : 'carte'}
+            </div>
+            <span class="pg-filtro" style="margin-left:8px;" onclick="event.stopPropagation(); _locationRimuovi('${String(nome).replace(/'/g, "\\'")}')" title="Rimuovi location">✕</span>
+        </div>`).join('');
+
+    container.innerHTML = `
+        <div class="page-header">
+            <span class="page-title">Location</span>
+            <span class="page-azione attiva" onclick="_locationAggiungi()">+ Aggiungi</span>
+        </div>
+        <div class="pg-pagina">
+            <div class="pg-intro">
+                <div class="pg-grande">${totale}</div>
+                <div class="pg-sotto">più piena: ${escapeHtml(nomePiuPiena)} (${conteggioPiuPieno} carte)</div>
+            </div>
+            <div class="pg-stat">
+                <div><b>${totale}</b><span>Location totali</span></div>
+                <div><b>${escapeHtml(nomePiuPiena)}</b><span>Più piena (${conteggioPiuPieno})</span></div>
+            </div>
+            <div class="pg-elenco">${righe}</div>
+        </div>
+    `;
+}
+
+
+// ── PAGINA "DOPPIONI" (2026-08-30) ──────────────────────────────────────
+// Quarto widget con pagina di dettaglio propria. Riusa la stessa logica di
+// filtro di CATALOGO_WIDGET.doppioni.preview() (carte in collezione con
+// qty>1) letta direttamente da carteReali, senza il taglio a 3 del
+// preview — zero query nuove.
+// Click su una carta → flip-viewer con opzioni.doppione=true, che mostra
+// il pulsante "Gestisci doppione" (vedi ui/home.ui.js) — le due scelte
+// decise per la missione #15 "Fai spazio" (sposta in Scambio / apri
+// scheda modifica), costruite qui per la prima volta.
+let _doppioniCarteComputate = [];
+let _doppioniOrdinamento = 'quantita';
+let _doppioniRicercaTesto = '';
+
+function _doppioniCalcola() {
+    const doppie = carteReali.filter(c => c.stato === 'collezione' && (Number(c.qty) || 1) > 1);
+    const righe = doppie.map(c => {
+        const qty = Number(c.qty) || 1;
+        const prezzo = Number(c.price) || 0;
+        return { id: c.id, nome: c.name || '—', immagine: c.immagine || null, qty, valoreExtra: prezzo * (qty - 1) };
+    });
+    _doppioniCarteComputate = righe;
+    return {
+        titoli: righe.length,
+        copieExtra: righe.reduce((t, r) => t + (r.qty - 1), 0),
+        valoreExtra: righe.reduce((t, r) => t + r.valoreExtra, 0),
+    };
+}
+
+async function renderPaginaDoppioni() {
+    const container = document.getElementById('doppioniContenuto');
+    if (!container) return;
+
+    _doppioniOrdinamento = 'quantita';
+    _doppioniRicercaTesto = '';
+    const { titoli, copieExtra, valoreExtra } = _doppioniCalcola();
+    const eur = (v) => '€ ' + Number(v || 0).toLocaleString('it-IT', { maximumFractionDigits: 0 });
+
+    if (titoli === 0) {
+        container.innerHTML = `
+            <div class="page-header">
+                <span class="page-title">Doppioni</span>
+            </div>
+            <p style="text-align:center; color:var(--text-muted); font-size:0.85rem; padding:2rem 0;">Nessun doppione al momento.</p>
+        `;
+        return;
+    }
+
+    container.innerHTML = `
+        <div class="page-header">
+            <span class="page-title">Doppioni</span>
+        </div>
+        <div class="pg-pagina">
+            <div class="pg-intro">
+                <div class="pg-grande">${titoli}</div>
+                <div class="pg-sotto">${copieExtra} copie extra · valore ${eur(valoreExtra)}</div>
+            </div>
+            <div class="pg-stat">
+                <div><b>${titoli}</b><span>Carte doppie</span></div>
+                <div><b>${copieExtra}</b><span>Copie extra</span></div>
+                <div><b>${eur(valoreExtra)}</b><span>Valore extra</span></div>
+            </div>
+            <input type="text" class="pg-cerca" placeholder="Cerca tra i doppioni..." oninput="_doppioniCercaInput(this.value)">
+            <div class="pg-filtri">
+                <span class="pg-filtro attivo" data-ord="quantita" onclick="_doppioniImpostaOrdinamento('quantita')">Quantità</span>
+                <span class="pg-filtro" data-ord="valore" onclick="_doppioniImpostaOrdinamento('valore')">Valore</span>
+                <span class="pg-filtro" data-ord="alfabetico" onclick="_doppioniImpostaOrdinamento('alfabetico')">Alfabetico</span>
+            </div>
+            <div class="pg-elenco" id="doppioniElenco"></div>
+        </div>
+    `;
+    _doppioniRenderElenco();
+}
+
+function _doppioniImpostaOrdinamento(ordine) {
+    _doppioniOrdinamento = ordine;
+    document.querySelectorAll('.pg-filtri .pg-filtro').forEach(el => {
+        el.classList.toggle('attivo', el.dataset.ord === ordine);
+    });
+    _doppioniRenderElenco();
+}
+
+function _doppioniCercaInput(valore) {
+    _doppioniRicercaTesto = (valore || '').toLowerCase();
+    _doppioniRenderElenco();
+}
+
+function _doppioniRenderElenco() {
+    const elenco = document.getElementById('doppioniElenco');
+    if (!elenco) return;
+
+    const eur = (v) => '€ ' + Number(v || 0).toLocaleString('it-IT', { maximumFractionDigits: 0 });
+
+    let righe = [..._doppioniCarteComputate];
+    if (_doppioniRicercaTesto) righe = righe.filter(r => r.nome.toLowerCase().includes(_doppioniRicercaTesto));
+
+    if (_doppioniOrdinamento === 'quantita') righe.sort((a, b) => b.qty - a.qty);
+    else if (_doppioniOrdinamento === 'valore') righe.sort((a, b) => b.valoreExtra - a.valoreExtra);
+    else righe.sort((a, b) => a.nome.localeCompare(b.nome));
+
+    if (righe.length === 0) {
+        elenco.innerHTML = '<p style="text-align:center; color:var(--text-muted); font-size:0.82rem; padding:1.2rem 0;">Nessuna carta corrisponde alla ricerca.</p>';
+        return;
+    }
+
+    elenco.innerHTML = righe.map(r => {
+        const immagineSrc = r.immagine ? (_urlImmagineVisualizzabile(r.immagine, 96) || '') : '';
+        const fig = immagineSrc
+            ? `<img class="pg-fig" src="${immagineSrc}" alt="" onerror="this.style.display='none';">`
+            : '<div class="pg-fig"></div>';
+        return `
+            <div class="pg-riga" data-tocca onclick="apriFlipCardHome('${r.id}', { origine: 'doppioni_pagina', doppione: true })">
+                ${fig}
+                <div class="pg-testo"><b>${escapeHtml(r.nome)}</b><span>×${r.qty}</span></div>
+                <div class="pg-destra"><b>${eur(r.valoreExtra)}</b>copie extra</div>
+            </div>`;
+    }).join('');
 }
 
 

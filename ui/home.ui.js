@@ -410,11 +410,60 @@
             btnVaiAlBinder.onclick = (e) => { e.stopPropagation(); vaiAllaCartaNelBinder(card.id); };
             renderRetroCartaOwner(card, opzioni.binderId || null);
 
+            // "Gestisci doppione" (2026-08-30, pagina Doppioni): mostrato
+            // SOLO quando aperto con opzioni.doppione=true — non auto-
+            // rilevato da card.qty>1, per non far comparire questo
+            // pulsante su Valore/Wishlist/Location se una carta lì ha per
+            // caso più copie. Stesso pattern di flipCardBinderBtn sopra:
+            // display e onclick riscritti ad ogni apertura, mai lasciati
+            // da una apertura precedente.
+            const btnDoppione = document.getElementById('flipCardGestisciDoppioneBtn');
+            const sceltaDoppione = document.getElementById('flipCardDoppioneScelta');
+            sceltaDoppione.style.display = 'none';
+            sceltaDoppione.innerHTML = '';
+            btnDoppione.style.display = opzioni.doppione ? '' : 'none';
+            btnDoppione.onclick = (e) => { e.stopPropagation(); _mostraSceltaGestisciDoppione(card.id); };
+
             document.getElementById('immagineModal').style.display = 'flex';
 
             // Mostra prima il fronte, poi gira da sola dopo una breve pausa.
             if (_flipCardTimeout) clearTimeout(_flipCardTimeout);
             _flipCardTimeout = setTimeout(() => inner.classList.add('flipped'), 500);
+        }
+
+
+        // "Gestisci doppione" (2026-08-30) — le 2 scelte decise a suo tempo
+        // per la missione #15 "Fai spazio" (B: sposta in Scambio, C: apri
+        // scheda di modifica), mai costruite fino ad ora. C è reale
+        // (apriModificaCarta esiste già in ui/cards.ui.js). B resta un
+        // placeholder onesto: spostare le copie extra in Scambio richiede
+        // capire come data/cards.repository.js gestisce lo split di una
+        // carta in due righe (quantità tenuta vs quantità spostata) — file
+        // mai letto in questa sessione, non inventato.
+        function _mostraSceltaGestisciDoppione(cardId) {
+            const btn = document.getElementById('flipCardGestisciDoppioneBtn');
+            const scelta = document.getElementById('flipCardDoppioneScelta');
+            btn.style.display = 'none';
+            scelta.style.display = 'flex';
+            scelta.innerHTML = `
+                <button class="btn-secondary" style="flex:1; font-size:0.78rem;" onclick="event.stopPropagation(); _doppioneSpostaInScambio('${cardId}')"><i class="fa-solid fa-right-left"></i> Sposta in Scambio</button>
+                <button class="btn-secondary" style="flex:1; font-size:0.78rem;" onclick="event.stopPropagation(); _doppioneApriModifica('${cardId}')"><i class="fa-solid fa-pen"></i> Modifica carta</button>
+            `;
+        }
+
+        function _doppioneSpostaInScambio(cardId) {
+            alert('Spostamento in Scambio non ancora disponibile — serve prima vedere data/cards.repository.js per capire come dividere le copie di una carta tra due binder.');
+        }
+
+        function _doppioneApriModifica(cardId) {
+            // chiudiImmagineIngrandita() esiste SOLO in ui/wishlist.ui.js
+            // (pagina pubblica, un file HTML diverso) — mai caricata qui,
+            // l'avrei chiamata a vuoto. Chiudo il modale direttamente,
+            // stesso identico codice.
+            document.getElementById('immagineModal').style.display = 'none';
+            document.getElementById('flipCardInner').classList.remove('flipped');
+            if (_flipCardTimeout) { clearTimeout(_flipCardTimeout); _flipCardTimeout = null; }
+            if (typeof apriModificaCarta === 'function') apriModificaCarta(cardId);
         }
 
 
