@@ -125,12 +125,24 @@
 
         async function renderRetroCartaOwner(card, binderId) {
             const wrap = document.getElementById('cbdWrap');
+            const infoWrap = document.getElementById('flipCardInfoWrap');
             if (!wrap || !card) return;
 
             // Punto di partenza: retro di sistema (l'immagine di sfondo di
             // .flip-card-back in index.html). Se una sleeve c'è la scopriamo
             // qui sotto; altrimenti resta questo.
             wrap.style.display = 'none';
+            // Blocco info testuale (nome/codice/location/prezzo/condizione,
+            // restyle pg-* del 2026-08-31): visibile di default (retro di
+            // sistema, nessun dato già mostrato altrove). Nascosto più sotto
+            // SOLO se la sleeve personalizzata è davvero caricata — i campi
+            // pokemon/condizione/prezzo sarebbero doppioni, la sleeve li
+            // mostra già lei (vedi cbdField-* qui sotto). Codice/location
+            // non fanno parte dei 4 campi della sleeve e restano quindi
+            // visibili SOLO quando non c'è sleeve (decisione di Claudio,
+            // 2026-08-31: quando la sleeve c'è, nessuno dei 5 campi va
+            // ripetuto fuori da essa).
+            if (infoWrap) infoWrap.style.display = 'flex';
 
             const idBinder = binderId || _binderDiAppartenenzaSeNoto(card);
             if (!idBinder) return;
@@ -164,6 +176,7 @@
             });
 
             wrap.style.display = 'block';
+            if (infoWrap) infoWrap.style.display = 'none';
             _cbdAdattaScala();
             // Il modale può essere ancora in apertura quando arriviamo qui (la
             // risoluzione della sleeve è asincrona): al primo giro
