@@ -4017,6 +4017,24 @@
             <div id="wishlistContenuto"></div>
         </div>
 
+        <div id="location" class="view-section">
+            <!-- Pagina di dettaglio "Location" (2026-08-30) — prima il tile
+                 non aveva una destinazione propria (nessun 'tab' nel
+                 catalogo widget); ora pagina propria, stesso pattern di
+                 #valore/#wishlist. Contenuto riempito da
+                 renderPaginaLocation() in ui/phone.ui.js. -->
+            <div id="locationContenuto"></div>
+        </div>
+
+        <div id="doppioni" class="view-section">
+            <!-- Pagina di dettaglio "Doppioni" (2026-08-30) — prima apriva
+                 semplicemente Visualizzazione generica (tab:'visualizzazione');
+                 ora pagina propria, stesso pattern di #valore/#wishlist/
+                 #location. Contenuto riempito da renderPaginaDoppioni() in
+                 ui/phone.ui.js. -->
+            <div id="doppioniContenuto"></div>
+        </div>
+
         <div id="impostazioni" class="view-section">
             <div class="settings-card">
                 <h3 style="margin-bottom: 1rem; color: var(--text-dark); display: flex; align-items: center; gap: 0.6rem; font-size: 1.15rem; font-weight: 800;">
@@ -4568,6 +4586,19 @@
                         <div class="flip-card-back-overlay">
                             <div id="flipCardStats"></div>
                             <button class="btn-main" id="flipCardBinderBtn" style="width:100%; margin-top:0.6rem;"><i class="fa-solid fa-layer-group"></i> Vai al binder</button>
+                            <!-- Pulsante "Gestisci doppione" (2026-08-30) —
+                                 nascosto di default come flipCardBinderBtn:
+                                 mostrato solo quando apriFlipCardHome() viene
+                                 chiamata con opzioni.doppione=true (dalla
+                                 pagina Doppioni). Stesso pattern esatto:
+                                 style.display e .onclick riscritti ad ogni
+                                 apertura in ui/home.ui.js. -->
+                            <button class="btn-main" id="flipCardGestisciDoppioneBtn" style="width:100%; margin-top:0.5rem; display:none;"><i class="fa-solid fa-clone"></i> Gestisci doppione</button>
+                            <!-- Popolato via JS al tap del pulsante sopra:
+                                 2 scelte (sposta in Scambio / apri scheda
+                                 modifica) — vedi ui/home.ui.js
+                                 _mostraSceltaGestisciDoppione(). -->
+                            <div id="flipCardDoppioneScelta" style="display:none; gap:6px; margin-top:0.5rem;"></div>
                         </div>
                     </div>
                 </div>
