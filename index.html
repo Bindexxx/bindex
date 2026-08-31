@@ -1509,14 +1509,18 @@
            dimensione che replica quella percepita del tasto vero, non
            quella misurata via soglia colore (che si è dimostrata
            inaffidabile per elementi con bordo sfumato). */
-        /* FIX (2026-08-30): z-index alzato da 6 a 12. Da quando .container
-           copre l'intera finestra (non più solo il rettangolo del telefono
-           simulato — vedi _posizionaContainerNelloSchermo in
-           ui/phone.ui.js), il container (z-index:11) copriva visivamente
-           questo bottone, rendendo impossibile tornare indietro da una
-           pagina di dettaglio widget. La posizione (left/top) resta
-           invariata: il bottone non si è spostato, era solo nascosto
-           sotto al container. */
+        /* PRIMO TENTATIVO (2026-08-30), INSUFFICIENTE DA SOLO: alzare
+           questo z-index a 12 non bastava — il bottone vive dentro
+           #phoneShell, che essendo esso stesso position:fixed+z-index
+           crea un proprio contesto di stacking: nessun z-index su un
+           discendente può farlo emergere sopra un fratello di #phoneShell
+           (qui .container, z-index:11), il sotto-albero intero resta
+           sempre sotto. Il fix vero è il reparent temporaneo fuori da
+           #phoneShell — vedi classe .a-schermo-intero più sotto e
+           ui/phone.ui.js apriDettaglioWidget/chiudiDettaglioWidget.
+           Il valore 12 resta qui per lo stato normale (bottone dentro la
+           cornice, nessun dettaglio aperto) — innocuo, non è quello che
+           risolve il problema del "tasto indietro" a schermo intero. */
         #btnFisicoTelefono {
             position: absolute;
             left: 49.94%; top: 93.95%; /* cornice verticale */
@@ -1537,6 +1541,25 @@
             #btnFisicoTelefono { left: 52.79%; top: 87.58%; width: 5.2%; }
         }
         #btnFisicoTelefono.nascosto { visibility: hidden; pointer-events: none; }
+
+        /* FIX (2026-08-30): quando il bottone viene spostato fuori da
+           #phoneShell (vedi ui/phone.ui.js apriDettaglioWidget/
+           chiudiDettaglioWidget — reparent in <body>), le percentuali
+           sopra (calibrate sull'immagine cornice) non hanno più senso: il
+           bottone non è più dentro #phoneFrameBox. Posizione fissa
+           rispetto alla finestra, sempre in basso al centro (stessa
+           logica "bottone fisico in fondo allo schermo" di un telefono
+           vero). z-index 999: sopra .container (11) e sopra #phoneShell
+           (10), ma sotto ai veri livelli modali del sito (1000+), che
+           devono continuare a coprirlo quando aperti. */
+        #btnFisicoTelefono.a-schermo-intero {
+            position: fixed !important;
+            left: 50% !important;
+            top: auto !important;
+            bottom: 20px !important;
+            transform: translate(-50%, 0) !important;
+            z-index: 999 !important;
+        }
 
         /* Notifiche push in stile smartphone — banner che scivola dall'alto
            dentro lo schermo (non dentro .container: resta visibile sia
@@ -3090,6 +3113,36 @@
             background: var(--primary); border-color: var(--primary); color: #fff;
         }
         .pg-bottoni button:active { opacity: .7; }
+
+        /* Aggiunte per la pagina Wishlist (2026-08-30) — riusabili da
+           future pagine con liste grandi (ricerca/filtro) o badge di
+           stato sulle righe. */
+        .pg-cerca {
+            width: 100%; box-sizing: border-box;
+            font: inherit; font-size: 0.85rem;
+            padding: 9px 12px; border-radius: 10px;
+            border: 1px solid var(--border-color);
+            background: var(--card-bg); color: var(--text-dark);
+        }
+        .pg-cerca::placeholder { color: var(--text-muted); }
+
+        .pg-filtri { display: flex; gap: 6px; flex-wrap: wrap; }
+        .pg-filtro {
+            font-size: 0.72rem; font-weight: 600;
+            padding: 5px 11px; border-radius: 999px;
+            border: 1px solid var(--border-color);
+            background: var(--card-bg); color: var(--text-muted);
+            cursor: pointer;
+        }
+        .pg-filtro.attivo { background: var(--primary); border-color: var(--primary); color: #fff; }
+
+        .pg-badge-raggiunta {
+            display: inline-block; font-size: 0.62rem; font-weight: 700;
+            padding: 2px 7px; border-radius: 999px;
+            background: var(--primary); color: #fff;
+            margin-left: 6px; vertical-align: middle;
+        }
+        .pg-riga.pg-riga-raggiunta { background: var(--primary-light); border-radius: 10px; }
     </style>
 </head>
 <body>
@@ -3954,6 +4007,14 @@
                  colori dal tema reale del sito. Contenuto riempito da
                  renderPaginaValoreCollezione() in ui/phone.ui.js. -->
             <div id="valoreContenuto"></div>
+        </div>
+
+        <div id="wishlist" class="view-section">
+            <!-- Pagina di dettaglio "Wishlist" (2026-08-30) — prima apriva
+                 semplicemente Binder (tab:'binder'); ora pagina propria,
+                 stesso pattern di #valore. Contenuto riempito da
+                 renderPaginaWishlist() in ui/phone.ui.js. -->
+            <div id="wishlistContenuto"></div>
         </div>
 
         <div id="impostazioni" class="view-section">
