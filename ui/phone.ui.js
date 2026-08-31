@@ -611,7 +611,12 @@ const CATALOGO_WIDGET = {
                 }
             };
         },
-        tab: 'binder',
+        // MODIFICATO (2026-08-30): prima apriva semplicemente Binder
+        // (tab:'binder') — ora ha una pagina propria dedicata (#wishlist
+        // in index.html, renderPaginaWishlist() sotto). Nessun impatto sul
+        // tracciamento missioni (registrano l'evento su w.id=
+        // 'wishlist_obiettivi', non su def.tab).
+        tab: 'wishlist',
     },
 
     // RIMOSSO (2026-08-29): "Traguardi" — unificato nel widget "Missioni",
@@ -2666,7 +2671,7 @@ async function apriDettaglioWidget(tabId, evt) {
     clearTimeout(_chiusuraDettaglioTimeout); // annulla un'eventuale chiusura ancora in corso (riapertura rapida)
 
     const container = document.querySelector('.container');
-    if (tabId === 'dafare' || tabId === 'match' || tabId === 'condividi' || tabId === 'missioni' || tabId === 'valore') {
+    if (tabId === 'dafare' || tabId === 'match' || tabId === 'condividi' || tabId === 'missioni' || tabId === 'valore' || tabId === 'wishlist') {
         // MAI switchTab() qui: quella funzione ha una whitelist fissa di 5
         // tab (navigation.ui.js r.199) ed è segnata nella memoria di
         // progetto come "deve restare stabile e intoccata" — un bug reale
@@ -2682,10 +2687,28 @@ async function apriDettaglioWidget(tabId, evt) {
         if (tabId === 'condividi') renderPaginaCondividi();
         if (tabId === 'missioni') renderPaginaMissioni();
         if (tabId === 'valore') renderPaginaValoreCollezione();
+        if (tabId === 'wishlist') renderPaginaWishlist();
     } else {
         switchTab(tabId, null);
     }
     document.body.classList.add('phone-detail-open');
+
+    // FIX (2026-08-30, "non c'è modo di tornare indietro"): #btnFisicoTelefono
+    // vive dentro #phoneFrameBox → #phoneShell, e #phoneShell è un
+    // CONTESTO DI STACKING a sé (position:fixed + z-index:10). Per una
+    // regola del CSS, lo z-index di un discendente non può MAI farlo
+    // emergere sopra un fratello di un ANTENATO che ha stacking context
+    // proprio — l'intero sotto-albero di #phoneShell (bottone incluso)
+    // resta sempre sotto .container (z-index:11), qualunque z-index dia
+    // al bottone stesso. L'unico modo reale: spostarlo temporaneamente
+    // fuori da quel sotto-albero, direttamente dentro <body>, mentre il
+    // dettaglio è aperto — riportato al suo posto in chiudiDettaglioWidget
+    // qui sotto, a fine animazione di chiusura.
+    const _btnFisico = document.getElementById('btnFisicoTelefono');
+    if (_btnFisico && _btnFisico.parentElement !== document.body) {
+        document.body.appendChild(_btnFisico);
+        _btnFisico.classList.add('a-schermo-intero');
+    }
 
     if (container) {
         _impostaOrigineAnimazione(container, evt);
@@ -2726,6 +2749,15 @@ function chiudiDettaglioWidget() {
     clearTimeout(_chiusuraDettaglioTimeout);
     _chiusuraDettaglioTimeout = setTimeout(() => {
         if (container) container.classList.remove('container-visibile'); // SOLO ora, a transizione finita, torna display:none
+        // Simmetrico al reparent fatto in apriDettaglioWidget: il bottone
+        // torna dentro #phoneFrameBox, ripristinando la posizione
+        // percentuale calibrata sull'immagine cornice.
+        const btnFisico = document.getElementById('btnFisicoTelefono');
+        const frameBox = document.getElementById('phoneFrameBox');
+        if (btnFisico && frameBox && btnFisico.parentElement !== frameBox) {
+            frameBox.appendChild(btnFisico);
+            btnFisico.classList.remove('a-schermo-intero');
+        }
         renderWidgetHome();
     }, DURATA_ANIMAZIONE_DETTAGLIO_MS);
 }
@@ -3116,6 +3148,143 @@ async function renderPaginaValoreCollezione() {
             <div class="pg-elenco">${righeCarte}</div>
         </div>
     `;
+}
+
+
+// ── PAGINA "WISHLIST" (2026-08-30) ──────────────────────────────────────
+// Secondo widget con pagina di dettaglio propria, stesso pattern di
+// renderPaginaValoreCollezione() sopra. A differenza di quella, qui la
+// pagina mostra TUTTA la wishlist (non solo il preview a 3 carte del
+// widget) — letta direttamente da carteReali (stessa fonte del preview,
+// senza il .slice(0,3)), zero query nuove.
+//
+// Ordinamento: raggiunte prima (le carte con prezzo attuale <= obiettivo,
+// ordinate per sconto più grande), poi le altre con obiettivo impostato
+// (ordinate per vicinanza — prezzo più vicino all'obiettivo prima), infine
+// quelle senza obiettivo impostato in fondo (alfabetico) — deciso da
+// Claudio.
+let _wishlistCarteComputate = [];
+let _wishlistFiltroAttivo = 'tutte';
+let _wishlistRicercaTesto = '';
+
+function _wishlistClassificaEOrdina() {
+    const desiderate = carteReali.filter(c => c.tabella === 'wishlist' || c.stato === 'wishlist');
+    const conPrezzo = (c) => Number(c.price) || 0;
+    const conObiettivoVal = (c) => (c.prezzoObiettivo != null && Number(c.prezzoObiettivo) > 0) ? Number(c.prezzoObiettivo) : null;
+
+    const righe = desiderate.map(c => {
+        const obiettivo = conObiettivoVal(c);
+        const prezzo = conPrezzo(c);
+        const raggiunta = obiettivo != null && prezzo > 0 && prezzo <= obiettivo;
+        return { id: c.id, nome: c.name || '—', immagine: c.immagine || null, prezzo, obiettivo, raggiunta };
+    });
+
+    const raggiunte = righe.filter(r => r.raggiunta)
+        .sort((a, b) => (b.obiettivo - b.prezzo) - (a.obiettivo - a.prezzo)); // sconto più grande prima
+    const inCorso = righe.filter(r => !r.raggiunta && r.obiettivo != null)
+        .sort((a, b) => (a.prezzo - a.obiettivo) - (b.prezzo - b.obiettivo)); // più vicine prima
+    const senzaObiettivo = righe.filter(r => r.obiettivo == null)
+        .sort((a, b) => a.nome.localeCompare(b.nome));
+
+    _wishlistCarteComputate = [...raggiunte, ...inCorso, ...senzaObiettivo];
+    return { totale: righe.length, conObiettivo: raggiunte.length + inCorso.length, raggiunte: raggiunte.length };
+}
+
+async function renderPaginaWishlist() {
+    const container = document.getElementById('wishlistContenuto');
+    if (!container) return;
+
+    _wishlistFiltroAttivo = 'tutte';
+    _wishlistRicercaTesto = '';
+    const { totale, conObiettivo, raggiunte } = _wishlistClassificaEOrdina();
+
+    if (totale === 0) {
+        container.innerHTML = `
+            <div class="page-header">
+                <span class="page-title">Wishlist</span>
+            </div>
+            <p style="text-align:center; color:var(--text-muted); font-size:0.85rem; padding:2rem 0;">La tua wishlist è vuota.</p>
+        `;
+        return;
+    }
+
+    container.innerHTML = `
+        <div class="page-header">
+            <span class="page-title">Wishlist</span>
+            <span class="page-azione attiva" onclick="apriDettaglioWidget('binder', event)">Vai a Binder</span>
+        </div>
+        <div class="pg-pagina">
+            <div class="pg-intro">
+                <div class="pg-grande">${totale}</div>
+                <div class="pg-sotto">${conObiettivo} con obiettivo di prezzo · ${raggiunte} già raggiunte</div>
+            </div>
+            <div class="pg-stat">
+                <div><b>${totale}</b><span>Desiderate</span></div>
+                <div><b>${conObiettivo}</b><span>Con obiettivo</span></div>
+                <div><b>${raggiunte}</b><span>Raggiunte</span></div>
+            </div>
+            <input type="text" class="pg-cerca" placeholder="Cerca nella wishlist..." oninput="_wishlistCercaInput(this.value)">
+            <div class="pg-filtri">
+                <span class="pg-filtro attivo" data-filtro="tutte" onclick="_wishlistImpostaFiltro('tutte')">Tutte</span>
+                <span class="pg-filtro" data-filtro="raggiunte" onclick="_wishlistImpostaFiltro('raggiunte')">Raggiunte</span>
+                <span class="pg-filtro" data-filtro="in_corso" onclick="_wishlistImpostaFiltro('in_corso')">In corso</span>
+                <span class="pg-filtro" data-filtro="senza_obiettivo" onclick="_wishlistImpostaFiltro('senza_obiettivo')">Senza obiettivo</span>
+            </div>
+            <div class="pg-elenco" id="wishlistElenco"></div>
+        </div>
+    `;
+    _wishlistRenderElenco();
+}
+
+function _wishlistImpostaFiltro(filtro) {
+    _wishlistFiltroAttivo = filtro;
+    document.querySelectorAll('.pg-filtri .pg-filtro').forEach(el => {
+        el.classList.toggle('attivo', el.dataset.filtro === filtro);
+    });
+    _wishlistRenderElenco();
+}
+
+function _wishlistCercaInput(valore) {
+    _wishlistRicercaTesto = (valore || '').toLowerCase();
+    _wishlistRenderElenco();
+}
+
+function _wishlistRenderElenco() {
+    const elenco = document.getElementById('wishlistElenco');
+    if (!elenco) return;
+
+    const eur = (v) => '€ ' + Number(v || 0).toLocaleString('it-IT', { maximumFractionDigits: 0 });
+
+    let righe = _wishlistCarteComputate;
+    if (_wishlistFiltroAttivo === 'raggiunte') righe = righe.filter(r => r.raggiunta);
+    else if (_wishlistFiltroAttivo === 'in_corso') righe = righe.filter(r => !r.raggiunta && r.obiettivo != null);
+    else if (_wishlistFiltroAttivo === 'senza_obiettivo') righe = righe.filter(r => r.obiettivo == null);
+    if (_wishlistRicercaTesto) righe = righe.filter(r => r.nome.toLowerCase().includes(_wishlistRicercaTesto));
+
+    if (righe.length === 0) {
+        // Messaggio diverso da quello a pagina intera (wishlist vuota):
+        // qui la wishlist ha carte, solo il filtro/ricerca corrente non
+        // trova corrispondenze.
+        elenco.innerHTML = '<p style="text-align:center; color:var(--text-muted); font-size:0.82rem; padding:1.2rem 0;">Nessuna carta corrisponde alla ricerca o al filtro.</p>';
+        return;
+    }
+
+    elenco.innerHTML = righe.map(r => {
+        const immagineSrc = r.immagine ? (_urlImmagineVisualizzabile(r.immagine, 96) || '') : '';
+        const fig = immagineSrc
+            ? `<img class="pg-fig" src="${immagineSrc}" alt="" onerror="this.style.display='none';">`
+            : '<div class="pg-fig"></div>';
+        const badge = r.raggiunta ? '<span class="pg-badge-raggiunta">Raggiunto</span>' : '';
+        const destra = r.obiettivo != null
+            ? `<b>${eur(r.prezzo)}</b>obiettivo ${eur(r.obiettivo)}`
+            : `<b>${eur(r.prezzo)}</b>nessun obiettivo`;
+        return `
+            <div class="pg-riga ${r.raggiunta ? 'pg-riga-raggiunta' : ''}" data-tocca onclick="apriFlipCardHome('${r.id}', { origine: 'wishlist_pagina' })">
+                ${fig}
+                <div class="pg-testo"><b>${escapeHtml(r.nome)}${badge}</b></div>
+                <div class="pg-destra">${destra}</div>
+            </div>`;
+    }).join('');
 }
 
 
