@@ -8,29 +8,28 @@
 //
 // STATO (2026-08-31): copertura COMPLETA di tutte le funzioni chiamate da
 // MOTORE_MISSIONI.raccogliDati() — verificato con un confronto incrociato
-// automatico tra le chiamate reali nel motore e le funzioni definite qui,
+// automatico tra le chiamate reali nel motore E in tutti i file ui/*.js
+// disponibili in questa sessione (phone/prices/navigation/home/auth),
 // zero mancanti, zero orfane. Include sia Fase 1 (dati/stato già
 // esistenti) sia Fase 2 (eventi via activity_log, schema confermato via
-// information_schema — non dedotto).
+// information_schema — non dedotto). L'aggancio per lo streak accessi
+// (ui/auth.ui.js:_avviaSitoDopoAccesso(), chiamata ad ogni reload) esiste
+// già nel codice reale — richiedeva che missioniAccessoRegistraOggi()
+// dedupllicasse da sola (1 riga/giorno anche con reload multipli), non
+// solo un semplice insert: implementato di conseguenza.
 //
-// 3 PUNTI SEGNALATI, non stub ma da tenere d'occhio:
-//   - missioniLocationDistinte: ASSUNZIONE legge da 'location', non da
+// 3 ASSUNZIONI SEGNALATE, non stub ma da tenere d'occhio (implementate,
+// funzionanti, ma non verificate al 100% contro il codice reale):
+//   - missioniLocationDistinte: legge da 'location', non da
 //     DISTINCT carte.location — da confermare con Claudio.
-//   - missioniCarteStessaEspansioneMax: ASSUNZIONE sul formato del codice
-//     carta (sigla = prefisso prima dello spazio) — non verificata contro
-//     il vero parser sigle di ui/phone.ui.js (_ballLeggiCodice/
-//     _ballSetBase, non letto in questa sessione).
-//   - missioniWishlistObiettiviRaggiunti: ASSUNZIONE che 'wishlist'
-//     condivida i nomi colonna di 'carte' (prezzo, prezzo_obiettivo) —
-//     non verificata direttamente (la query information_schema copriva
-//     solo activity_log/carte/binders).
-//   - missioniAccessoRegistraOggi: la funzione è pronta ma il punto di
-//     chiamata reale (menzionato solo in un commento: ui/auth.ui.js:
-//     _avviaSitoDopoAccesso()) non è mai stato aggiunto — quel file non è
-//     stato caricato in questa sessione (regola d'oro #1: mai scrivere in
-//     un file mai visto). Senza quella chiamata, accessoOggi/accessiTotali/
-//     giorniConsecutivi restano sempre a zero/false — non un errore, solo
-//     nessun dato finché non si aggiunge quel singolo aggancio.
+//   - missioniCarteStessaEspansioneMax: formato del codice carta (sigla =
+//     prefisso prima dello spazio) — non verificata contro il vero parser
+//     sigle di ui/phone.ui.js (_ballLeggiCodice/_ballSetBase, non letto
+//     in questa sessione).
+//   - missioniWishlistObiettiviRaggiunti: assume che 'wishlist' condivida
+//     i nomi colonna di 'carte' (prezzo, prezzo_obiettivo) — non
+//     verificata direttamente (la query information_schema copriva solo
+//     activity_log/carte/binders).
 //
 // Dipende da: supabaseClient. Per il match automatico riusa trovaMatch()
 // già definita in data/prices.repository.js (stessa RPC di
@@ -317,16 +316,24 @@ async function missioniQrGeneratoRegistra(userId) {
     });
 }
 
-// Aggancio: menzionata solo in un commento di ui/missioni.ui.js
-// ("agganciata in ui/auth.ui.js:_avviaSitoDopoAccesso()") — quel file non
-// è mai stato caricato in questa sessione, quindi la funzione è QUI
-// pronta ma il punto di chiamata reale va aggiunto in ui/auth.ui.js in
-// una sessione futura (con quel file caricato, per non scrivere alla
-// cieca in un file mai visto — regola d'oro #1). Nessun vincolo UNIQUE
-// noto su activity_log: se chiamata più volte nello stesso giorno crea
-// righe duplicate innocue (missioniAccessoOggi sotto è un EXISTS, non un
-// conteggio, quindi i duplicati non alterano il risultato).
+// Aggancio REALE trovato in questa sessione: ui/auth.ui.js:
+// _avviaSitoDopoAccesso() — chiamata ad OGNI avvio/reload del sito, non
+// solo al login, col commento esplicito "dedup a 1/giorno gestito dentro
+// la funzione stessa ... sicuro chiamarla ad ogni reload, anche più volte
+// nello stesso giorno". SELECT-poi-INSERT (stesso pattern già usato in
+// data/binder.repository.js:binderWishlistGarantisci/binderExtraGarantisci
+// per la stessa ragione: nessun vincolo UNIQUE noto su activity_log per
+// farlo in un solo passaggio) — senza questo controllo, ogni reload della
+// pagina aggiungerebbe una riga 'accesso', gonfiando accessi_totali ben
+// oltre "una volta al giorno".
 async function missioniAccessoRegistraOggi(userId) {
+    const oggiInizio = new Date(); oggiInizio.setHours(0, 0, 0, 0);
+    const { count, error: errCheck } = await supabaseClient.from('activity_log')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', userId).eq('action', 'accesso').gte('created_at', oggiInizio.toISOString());
+    if (errCheck) return { error: errCheck };
+    if ((count || 0) > 0) return { error: null }; // già registrato oggi, nulla da fare
+
     return supabaseClient.from('activity_log').insert({
         user_id: userId, source: 'sito', action: 'accesso', details: {},
     });
