@@ -18,6 +18,16 @@ function cardsQueryCollezione(userId) {
 function cardsQueryTutte(userId) {
     return supabaseClient.from('carte').select('*').eq('owner_id', userId);
 }
+
+// Aggiunta 2026-08-30 (missione #15 "Fai spazio", spostamento parziale di
+// un doppione in Scambio): legge la riga GREZZA per intero (tutte le
+// colonne reali della tabella, non gli alias JS di carteReali) —
+// necessaria per duplicare una carta in un nuovo binder senza rischiare
+// di perdere colonne mai mappate lato JS (reverse_holo, first_ed, url,
+// dispositivo).
+async function cardsSelectById(id) {
+    return supabaseClient.from('carte').select('*').eq('id', id).single();
+}
 function wishlistQueryOrdinata(userId) {
     return supabaseClient.from('wishlist').select('*').eq('owner_id', userId).order('nome');
 }
