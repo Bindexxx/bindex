@@ -3211,7 +3211,7 @@ async function renderPaginaWishlist() {
     container.innerHTML = `
         <div class="page-header">
             <span class="page-title">Wishlist</span>
-            <span class="page-azione attiva" onclick="apriDettaglioWidget('binder', event)">Vai a Binder</span>
+            <span class="page-azione attiva" onclick="_vaiAlBinderWishlist(event)">Vai alla Wishlist</span>
         </div>
         <div class="pg-pagina">
             <div class="pg-intro">
@@ -3285,6 +3285,28 @@ function _wishlistRenderElenco() {
                 <div class="pg-destra">${destra}</div>
             </div>`;
     }).join('');
+}
+
+// Salta direttamente al binder di tipo 'wishlist', invece di lasciare
+// l'utente sulla griglia dei contenitori di Binder (2026-08-30). Usa SOLO
+// funzioni reali già esistenti in ui/binder.ui.js, nessuna query nuova
+// inventata:
+//   1) apriDettaglioWidget('binder', evt) — mostra la view-section Binder
+//      (switchTab interno, MAI toccato direttamente qui) E chiama già da
+//      sola apriWidgetBinders() al suo interno, awaited (vedi
+//      apriDettaglioWidget riga ~2733) — _bindersElenco è già garantita
+//      popolata quando questa await finisce, nessuna seconda chiamata
+//      necessaria.
+//   2) apriBinderDettaglio(id) — cerca dentro _bindersElenco.
+async function _vaiAlBinderWishlist(evt) {
+    await apriDettaglioWidget('binder', evt);
+    const binderWishlist = _bindersElenco.find(b => b.tipo === 'wishlist');
+    if (binderWishlist) {
+        await apriBinderDettaglio(binderWishlist.id);
+    }
+    // Se non trovato (caso limite — binderWishlistGarantisci() dovrebbe
+    // impedirlo sempre, vedi _garantisciTuttiIBinder in ui/binder.ui.js):
+    // resta sulla griglia dei contenitori invece di rompere la pagina.
 }
 
 
