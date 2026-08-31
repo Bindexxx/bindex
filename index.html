@@ -2252,38 +2252,35 @@
             box-sizing: border-box;
         }
         @media (min-width: 700px) {
+            /* FIX 2026-08-31, terzo tentativo — i primi due (aspect-ratio
+               su .flip-card-inner, poi su #flipCardScene con
+               align-self:center) collassavano comunque: è un caso limite
+               di interazione tra flex-grow (altezza) e aspect-ratio
+               (larghezza derivata) su elementi ANNIDATI, che i browser
+               risolvono in modo inconsistente — verificato con lo screenshot
+               DevTools di Claudio, la classe risultava applicata ma il
+               collasso persisteva comunque.
+               Approccio nuovo, più robusto: il rapporto 5:7 si applica QUI,
+               sul contenitore più esterno (#immagineModalContent), che ha
+               un'altezza già del tutto definita (min(92vh,92dvh), non
+               dipendente da flex-grow di nessun figlio) — un solo calcolo
+               diretto, zero livelli intermedi. box-sizing:border-box
+               (ereditato dalla regola base sopra) include il padding nel
+               rapporto: leggera imprecisione (~2%) tra il rapporto della
+               carta vera e quello del riquadro con padding, accettata
+               come compromesso per un calcolo stabile invece che fragile.
+               #flipCardScene e .flip-card-inner sotto tornano al comportamento
+               semplice — nessun align-self/aspect-ratio proprio, si
+               riempiono e basta (100%/100%, flex:1 1 auto), perché ora
+               ricevono già una larghezza definita dal genitore invece di
+               doversela calcolare da soli. */
             #immagineModalContent.modal-content-flip-fullscreen {
                 width: auto;
                 height: min(92vh, 92dvh);
                 max-height: min(92vh, 92dvh);
+                aspect-ratio: 5 / 7;
                 border-radius: 20px;
                 padding: 1.25rem;
-            }
-            /* FIX 2026-08-31 — bug live: su desktop il modale collassava a
-               una striscia verticale sottile. Causa: la regola precedente
-               metteva width:auto + height:100% + aspect-ratio su
-               .flip-card-inner, che è annidata DENTRO #flipCardScene (che
-               a sua volta si allarga di default — align-items:stretch —
-               alla larghezza NON ANCORA nota di #immagineModalContent,
-               anch'esso width:auto). Due livelli di "percentuale su
-               contesto ancora indeterminato" durante il calcolo
-               dell'intrinsic size del browser: risultato, nessuna
-               larghezza definita da cui derivare, collasso quasi a zero.
-               Fix: il rapporto 5:7 si calcola su #flipCardScene stesso
-               (non su .flip-card-inner), che ha già un'altezza definita
-               dal flex-grow (flex:1 1 auto dentro una colonna di altezza
-               nota) INDIPENDENTEMENTE dalla larghezza — un solo passaggio
-               non circolare, non due. align-self:center sostituisce lo
-               stretch di default: #flipCardScene si dimensiona da sé
-               invece di aspettare la larghezza del genitore.
-               .flip-card-inner sotto eredita semplicemente 100%/100% da
-               lui, ormai già corretto. Scoped SOLO qui (desktop): su
-               mobile il comportamento originale larghezza-piena
-               (invariato, mai stato rotto) resta quello sotto. */
-            #immagineModalContent.modal-content-flip-fullscreen #flipCardScene {
-                align-self: center;
-                width: auto;
-                aspect-ratio: 5 / 7;
             }
             #immagineModalContent.modal-content-flip-fullscreen .flip-card-inner {
                 width: 100%;
