@@ -382,9 +382,22 @@
                 } catch (e) { console.error('[missioni] registrazione apertura dettaglio carta:', e); }
             })();
 
+            // Modale fullscreen (2026-08-31): attivo SOLO qui, non nel
+            // modo immagine semplice (apriUrlIngrandito/chiudiImmagineIngrandita
+            // in ui/modals.ui.js la rimuovono). display:flex, non 'block':
+            // la variante fullscreen del CSS (#immagineModalContent.modal-
+            // content-flip-fullscreen #flipCardScene) è un layout a colonna
+            // flex, .flip-card-inner calcola la propria larghezza
+            // dall'altezza reale via aspect-ratio.
+            document.getElementById('immagineModalContent').classList.add('modal-content-flip-fullscreen');
             document.getElementById('immagineErroreMsg').style.display = 'none';
             document.getElementById('immagineIngranditaImg').style.display = 'none';
-            document.getElementById('flipCardScene').style.display = 'block';
+            const scena = document.getElementById('flipCardScene');
+            scena.style.display = 'flex';
+            // L'inline margin-top:0.5rem del markup vince sempre sul CSS
+            // (specificità inline), va azzerato qui o lascerebbe uno
+            // scarto fisso anche in modalità fullscreen.
+            scena.style.marginTop = '0';
 
             const inner = document.getElementById('flipCardInner');
             inner.classList.remove('flipped');

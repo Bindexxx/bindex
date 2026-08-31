@@ -23,6 +23,12 @@
             // la prossima volta che il modale si apre in modalità semplice.
             document.getElementById('flipCardScene').style.display = 'none';
             if (_flipCardTimeout) { clearTimeout(_flipCardTimeout); _flipCardTimeout = null; }
+            // Modale fullscreen (2026-08-31): rimossa qui, non solo in
+            // apriUrlIngrandito — è il punto di chiusura comune a
+            // entrambe le modalità, evita che una prossima apertura in
+            // modalità immagine semplice erediti per un frame le misure
+            // fullscreen della modalità flip.
+            document.getElementById('immagineModalContent').classList.remove('modal-content-flip-fullscreen');
         }
 
 
@@ -172,6 +178,11 @@
         function apriUrlIngrandito(url) {
             document.getElementById('immagineErroreMsg').style.display = 'none';
             document.getElementById('flipCardScene').style.display = 'none'; // A10: mai insieme alla scena flip
+            // Modale fullscreen (2026-08-31): questa modalità (immagine
+            // diretta da URL) non è mai fullscreen, solo apriFlipCardHome
+            // la attiva — rimossa qui per sicurezza anche se il modale non
+            // era stato chiuso "pulito" da chiudiImmagineIngrandita prima.
+            document.getElementById('immagineModalContent').classList.remove('modal-content-flip-fullscreen');
             const img = document.getElementById('immagineIngranditaImg');
             img.style.display = '';
             img.src = url;
