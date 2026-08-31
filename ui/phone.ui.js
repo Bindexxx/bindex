@@ -381,6 +381,11 @@ const CATALOGO_WIDGET = {
                 }
             };
         },
+        // AGGIUNTO (2026-08-30): prima non aveva 'tab', il tap sul tile non
+        // portava da nessuna parte (stesso problema già trovato e risolto
+        // per 'location'). Ora ha una pagina propria (#sealed in
+        // index.html, renderPaginaSealed() sotto).
+        tab: 'sealed',
     },
 
     ultima_carta: {
@@ -700,7 +705,12 @@ const CATALOGO_WIDGET = {
                 dati: { voci, riconosciute, inLibreria }
             };
         },
-        tab: 'visualizzazione',
+        // MODIFICATO (2026-08-30): prima apriva semplicemente
+        // Visualizzazione generica (tab:'visualizzazione') — ora ha una
+        // pagina propria (#set in index.html, renderPaginaSet() sotto).
+        // Nessun click sulle righe (deciso da Claudio): la pagina è solo
+        // di consultazione.
+        tab: 'set',
     },
 
     // ═══════════════════════════════════════════════════════════════════
@@ -2682,7 +2692,7 @@ async function apriDettaglioWidget(tabId, evt) {
     clearTimeout(_chiusuraDettaglioTimeout); // annulla un'eventuale chiusura ancora in corso (riapertura rapida)
 
     const container = document.querySelector('.container');
-    if (tabId === 'dafare' || tabId === 'match' || tabId === 'condividi' || tabId === 'missioni' || tabId === 'valore' || tabId === 'wishlist' || tabId === 'location' || tabId === 'doppioni') {
+    if (tabId === 'dafare' || tabId === 'match' || tabId === 'condividi' || tabId === 'missioni' || tabId === 'valore' || tabId === 'wishlist' || tabId === 'location' || tabId === 'doppioni' || tabId === 'sealed' || tabId === 'set') {
         // MAI switchTab() qui: quella funzione ha una whitelist fissa di 5
         // tab (navigation.ui.js r.199) ed è segnata nella memoria di
         // progetto come "deve restare stabile e intoccata" — un bug reale
@@ -2701,6 +2711,8 @@ async function apriDettaglioWidget(tabId, evt) {
         if (tabId === 'wishlist') renderPaginaWishlist();
         if (tabId === 'location') renderPaginaLocation();
         if (tabId === 'doppioni') renderPaginaDoppioni();
+        if (tabId === 'sealed') renderPaginaSealed();
+        if (tabId === 'set') renderPaginaSet();
     } else {
         switchTab(tabId, null);
     }
@@ -2908,9 +2920,9 @@ async function renderPaginaMissioni() {
     const righeAltre = altreMissioni.map(m => _righeMissioneHtml(m, dati, idNuove.has(m.id))).join('');
 
     containerMissioni.innerHTML = `
-        <h4 style="font-size:0.85rem; color:var(--text-muted); margin:0 0 0.5rem;">Oggi</h4>
-        ${righeMissioni}
-        ${altreMissioni.length ? `<h4 style="font-size:0.85rem; color:var(--text-muted); margin:1rem 0 0.5rem;">Settimanali, mensili &amp; permanenti</h4>${righeAltre}` : ''}
+        <div class="pg-titoletto">Oggi</div>
+        <div class="pg-elenco">${righeMissioni}</div>
+        ${altreMissioni.length ? `<div class="pg-titoletto" style="margin-top:0.8rem;">Settimanali, mensili &amp; permanenti</div><div class="pg-elenco">${righeAltre}</div>` : ''}
     `;
 
     // Traguardi: vista compatta per non riversare 65 righe su mobile — per
@@ -2930,19 +2942,20 @@ async function renderPaginaMissioni() {
         const valoreAttuale = dati[s.metrica] || 0;
         const prossima = voci.find(t => valoreAttuale < t.valore);
         if (!prossima) {
-            return `<div class="widget-picker-riga"><i class="fa-solid fa-trophy" style="color:var(--success);"></i><span style="flex:1;">${s.titolo}: tutti i traguardi sbloccati! 🎉</span></div>`;
+            return `<div class="pg-riga"><i class="fa-solid fa-trophy" style="color:var(--success);"></i><span style="flex:1;">${s.titolo}: tutti i traguardi sbloccati! 🎉</span></div>`;
         }
         const perc = Math.min(100, Math.round((valoreAttuale / prossima.valore) * 100));
+        // Stessa struttura/classi già usate per le barre di avanzamento
+        // della pagina Set (.pg-riga-set/.pg-barra-track/.pg-barra-fill,
+        // vedi renderPaginaSet()) — coerenza visiva, zero CSS nuovo.
         return `
-            <div class="widget-picker-riga" style="flex-direction:column; align-items:stretch; gap:0.3rem;">
-                <span style="font-size:0.85rem;"><strong>${s.titolo}</strong> — prossimo: ${escapeHtml(prossima.titolo)} (${valoreAttuale}/${prossima.valore})</span>
-                <div style="height:6px; border-radius:3px; background:var(--border-color); overflow:hidden;">
-                    <div style="height:100%; width:${perc}%; background:var(--primary);"></div>
-                </div>
+            <div class="pg-riga-set">
+                <div class="pg-riga-set-testa"><b>${s.titolo}</b><span>prossimo: ${escapeHtml(prossima.titolo)} (${valoreAttuale}/${prossima.valore})</span></div>
+                <div class="pg-barra-track"><div class="pg-barra-fill" style="width:${perc}%"></div></div>
             </div>`;
     }).join('');
 
-    containerTraguardi.innerHTML = righeScale;
+    containerTraguardi.innerHTML = `<div class="pg-elenco">${righeScale}</div>`;
 
     if (nuoveMissioni.length || nuoviTraguardi.length) {
         _beep(1200, 90); // stesso beep di conferma usato altrove (apertura dettaglio: 880Hz, qui più acuto per distinguere "vinto")
@@ -2957,8 +2970,8 @@ function _righeMissioneHtml(m, dati, appenaCompletata) {
     const colore = soddisfatta ? 'var(--success)' : 'var(--text-muted)';
     const badgeNuova = appenaCompletata ? `<span class="badge" style="background-color:var(--success); color:#fff; margin-left:0.4rem; font-size:0.65rem;">+${m.ricompensa.quantita || 1} ${m.ricompensa.tipo}</span>` : '';
     return `
-        <div class="widget-picker-riga" style="align-items:flex-start;">
-            <i class="${icona}" style="color:${colore}; margin-top:0.15rem;"></i>
+        <div class="pg-riga">
+            <i class="${icona}" style="color:${colore};"></i>
             <span style="flex:1; ${soddisfatta ? 'opacity:0.7;' : ''}">${escapeHtml(m.titolo)}${badgeNuova}</span>
         </div>`;
 }
@@ -3021,19 +3034,19 @@ async function renderPaginaMatch() {
     tutte.forEach(r => { (perPersona[r.persona] ||= []).push(r); });
 
     container.innerHTML = Object.entries(perPersona).map(([persona, righe]) => `
-        <div style="margin-bottom:1.1rem;">
-            <div style="font-weight:800; font-size:0.85rem; color:var(--primary); margin-bottom:0.4rem;">
-                <i class="fa-solid fa-user"></i> ${escapeHtml(persona)}
+        <div>
+            <div class="pg-titoletto"><i class="fa-solid fa-user"></i> ${escapeHtml(persona)}</div>
+            <div class="pg-elenco">
+                ${righe.map(r => `
+                    <div class="pg-riga" style="flex-wrap:wrap; gap:0.5rem;">
+                        <span style="flex:1; min-width:200px; font-size:0.82rem;">${r.testo}</span>
+                        <div style="display:flex; gap:0.4rem; flex-shrink:0;">
+                            <button type="button" class="btn-secondary" style="font-size:0.72rem; padding:0.35rem 0.55rem;" onclick="event.stopPropagation(); _apriBinderAltruiMatch('${r.ownerAltro}', '${r.binderAltro || ''}')" title="Vai al binder"><i class="fa-solid fa-layer-group"></i></button>
+                            <button type="button" class="btn-secondary" style="font-size:0.72rem; padding:0.35rem 0.55rem;" onclick="event.stopPropagation(); _contattaPersonaMatch('${r.ownerAltro}')" title="Contatta"><i class="fa-solid fa-comment"></i></button>
+                            <button type="button" class="btn-secondary" style="font-size:0.72rem; padding:0.35rem 0.55rem;" onclick="event.stopPropagation(); _nascondiMatch('${r.chiave}', event)" title="Nascondi"><i class="fa-solid fa-eye-slash"></i></button>
+                        </div>
+                    </div>`).join('')}
             </div>
-            ${righe.map(r => `
-                <div class="widget-picker-riga" style="align-items:flex-start; flex-wrap:wrap; gap:0.5rem;">
-                    <span style="flex:1; min-width:200px; font-size:0.82rem;">${r.testo}</span>
-                    <div style="display:flex; gap:0.4rem; flex-shrink:0;">
-                        <button type="button" class="btn-secondary" style="font-size:0.72rem; padding:0.35rem 0.55rem;" onclick="event.stopPropagation(); _apriBinderAltruiMatch('${r.ownerAltro}', '${r.binderAltro || ''}')" title="Vai al binder"><i class="fa-solid fa-layer-group"></i></button>
-                        <button type="button" class="btn-secondary" style="font-size:0.72rem; padding:0.35rem 0.55rem;" onclick="event.stopPropagation(); _contattaPersonaMatch('${r.ownerAltro}')" title="Contatta"><i class="fa-solid fa-comment"></i></button>
-                        <button type="button" class="btn-secondary" style="font-size:0.72rem; padding:0.35rem 0.55rem;" onclick="event.stopPropagation(); _nascondiMatch('${r.chiave}', event)" title="Nascondi"><i class="fa-solid fa-eye-slash"></i></button>
-                    </div>
-                </div>`).join('')}
         </div>`).join('');
 }
 
@@ -3580,6 +3593,191 @@ function _doppioniRenderElenco() {
 }
 
 
+// ── PAGINA "SEALED" (2026-08-30) ────────────────────────────────────────
+// Quinto widget con pagina di dettaglio propria. Stessa filosofia di
+// Doppioni: filtro replicato da CATALOGO_WIDGET.sealed.preview() ma su
+// carteReali per intero (senza il .slice(0,3) del preview) — zero query
+// nuove. A differenza delle altre pagine, click su una riga NON apre il
+// flip-viewer (deciso da Claudio: ha meno senso per un prodotto sigillato
+// che per una singola carta) — apre invece apriModificaCarta(id), lo
+// stesso modale di modifica già riusato per "Modifica carta" nella pagina
+// Doppioni.
+let _sealedProdottiComputati = [];
+let _sealedOrdinamento = 'valore';
+let _sealedRicercaTesto = '';
+
+function _sealedCalcola() {
+    const prodotti = carteReali.filter(c => c.stato === 'collezione' && c.tipo === 'sealed');
+    const righe = prodotti.map(p => {
+        const qty = Number(p.qty) || 1;
+        const prezzoUnitario = Number(p.price) || 0;
+        return { id: p.id, nome: p.name || '—', immagine: p.immagine || null, qty, prezzoUnitario, valoreTotale: prezzoUnitario * qty };
+    });
+    _sealedProdottiComputati = righe;
+    return {
+        totale: righe.length,
+        valore: righe.reduce((t, r) => t + r.valoreTotale, 0),
+    };
+}
+
+async function renderPaginaSealed() {
+    const container = document.getElementById('sealedContenuto');
+    if (!container) return;
+
+    _sealedOrdinamento = 'valore';
+    _sealedRicercaTesto = '';
+    const { totale, valore } = _sealedCalcola();
+    const eur = (v) => '€ ' + Number(v || 0).toLocaleString('it-IT', { maximumFractionDigits: 0 });
+
+    if (totale === 0) {
+        container.innerHTML = `
+            <div class="page-header">
+                <span class="page-title">Sealed</span>
+            </div>
+            <p style="text-align:center; color:var(--text-muted); font-size:0.85rem; padding:2rem 0;">Nessun prodotto sealed al momento.</p>
+        `;
+        return;
+    }
+
+    container.innerHTML = `
+        <div class="page-header">
+            <span class="page-title">Sealed</span>
+        </div>
+        <div class="pg-pagina">
+            <div class="pg-intro">
+                <div class="pg-grande">${totale}</div>
+                <div class="pg-sotto">valore totale ${eur(valore)}</div>
+            </div>
+            <div class="pg-stat">
+                <div><b>${totale}</b><span>Prodotti</span></div>
+                <div><b>${eur(valore)}</b><span>Valore totale</span></div>
+            </div>
+            <input type="text" class="pg-cerca" placeholder="Cerca tra i prodotti sealed..." oninput="_sealedCercaInput(this.value)">
+            <div class="pg-filtri">
+                <span class="pg-filtro attivo" data-ord="valore" onclick="_sealedImpostaOrdinamento('valore')">Valore</span>
+                <span class="pg-filtro" data-ord="quantita" onclick="_sealedImpostaOrdinamento('quantita')">Quantità</span>
+                <span class="pg-filtro" data-ord="alfabetico" onclick="_sealedImpostaOrdinamento('alfabetico')">Alfabetico</span>
+            </div>
+            <div class="pg-elenco" id="sealedElenco"></div>
+        </div>
+    `;
+    _sealedRenderElenco();
+}
+
+function _sealedImpostaOrdinamento(ordine) {
+    _sealedOrdinamento = ordine;
+    document.querySelectorAll('.pg-filtri .pg-filtro').forEach(el => {
+        el.classList.toggle('attivo', el.dataset.ord === ordine);
+    });
+    _sealedRenderElenco();
+}
+
+function _sealedCercaInput(valore) {
+    _sealedRicercaTesto = (valore || '').toLowerCase();
+    _sealedRenderElenco();
+}
+
+function _sealedRenderElenco() {
+    const elenco = document.getElementById('sealedElenco');
+    if (!elenco) return;
+
+    const eur = (v) => '€ ' + Number(v || 0).toLocaleString('it-IT', { maximumFractionDigits: 0 });
+
+    let righe = [..._sealedProdottiComputati];
+    if (_sealedRicercaTesto) righe = righe.filter(r => r.nome.toLowerCase().includes(_sealedRicercaTesto));
+
+    if (_sealedOrdinamento === 'valore') righe.sort((a, b) => b.valoreTotale - a.valoreTotale);
+    else if (_sealedOrdinamento === 'quantita') righe.sort((a, b) => b.qty - a.qty);
+    else righe.sort((a, b) => a.nome.localeCompare(b.nome));
+
+    if (righe.length === 0) {
+        elenco.innerHTML = '<p style="text-align:center; color:var(--text-muted); font-size:0.82rem; padding:1.2rem 0;">Nessun prodotto corrisponde alla ricerca.</p>';
+        return;
+    }
+
+    elenco.innerHTML = righe.map(r => {
+        const immagineSrc = r.immagine ? (_urlImmagineVisualizzabile(r.immagine, 96) || '') : '';
+        const fig = immagineSrc
+            ? `<img class="pg-fig" src="${immagineSrc}" alt="" onerror="this.style.display='none';">`
+            : '<div class="pg-fig"></div>';
+        return `
+            <div class="pg-riga" data-tocca onclick="if (typeof apriModificaCarta === 'function') apriModificaCarta('${r.id}');">
+                ${fig}
+                <div class="pg-testo"><b>${escapeHtml(r.nome)}</b><span>×${r.qty} · ${eur(r.prezzoUnitario)} cad.</span></div>
+                <div class="pg-destra"><b>${eur(r.valoreTotale)}</b>totale</div>
+            </div>`;
+    }).join('');
+}
+
+
+// ── PAGINA "SET" (2026-08-30) ───────────────────────────────────────────
+// Sesto widget con pagina di dettaglio propria. Riusa
+// CATALOGO_WIDGET.set_completamento.preview() per intero (dati.voci: già
+// TUTTE le espansioni, non solo le prime 4 del ball — nessun taglio da
+// togliere qui, a differenza delle altre pagine). Sola consultazione:
+// nessun click sulle righe, nessuna ricerca, ordinamento fisso per
+// percentuale (deciso da Claudio) — stesso ordine già dato dal preview.
+async function renderPaginaSet() {
+    const container = document.getElementById('setContenuto');
+    if (!container) return;
+
+    const def = CATALOGO_WIDGET.set_completamento;
+    let dati;
+    try {
+        dati = def.preview().dati;
+    } catch (e) {
+        console.error('renderPaginaSet:', e);
+        container.innerHTML = '<p style="text-align:center; color:var(--text-muted); font-size:0.85rem; padding:1rem 0;">Errore nel caricamento.</p>';
+        return;
+    }
+
+    const voci = (dati && dati.voci) || [];
+    if (voci.length === 0) {
+        container.innerHTML = `
+            <div class="page-header">
+                <span class="page-title">Set</span>
+            </div>
+            <p style="text-align:center; color:var(--text-muted); font-size:0.85rem; padding:2rem 0;">Nessuna espansione trovata.</p>
+        `;
+        return;
+    }
+
+    const totale = voci.length;
+    const inLibreria = dati.inLibreria || 0;
+    const riconosciute = dati.riconosciute || 0;
+    const prima = voci[0];
+
+    const righe = voci.map(v => {
+        const haBarra = v.totale && v.perc != null;
+        const testa = haBarra
+            ? `<b>${escapeHtml(v.nome)}</b><span>${v.hai}/${v.totale} · ${Math.round(v.perc)}%</span>`
+            : `<b>${escapeHtml(v.nome)}</b><span>${v.hai} cart${v.hai === 1 ? 'a' : 'e'}</span>`;
+        const barra = haBarra
+            ? `<div class="pg-barra-track"><div class="pg-barra-fill" style="width:${v.perc}%"></div></div>`
+            : '<span style="font-size:0.7rem; color:var(--text-muted);">Avanzamento non disponibile — libreria set da compilare</span>';
+        return `<div class="pg-riga-set"><div class="pg-riga-set-testa">${testa}</div>${barra}</div>`;
+    }).join('');
+
+    container.innerHTML = `
+        <div class="page-header">
+            <span class="page-title">Set</span>
+        </div>
+        <div class="pg-pagina">
+            <div class="pg-intro">
+                <div class="pg-grande">${totale}</div>
+                <div class="pg-sotto">${prima.totale && prima.perc != null ? `${prima.nome}: ${Math.round(prima.perc)}% completo` : `${prima.nome} in testa`}</div>
+            </div>
+            <div class="pg-stat">
+                <div><b>${totale}</b><span>Espansioni</span></div>
+                <div><b>${inLibreria}</b><span>In libreria</span></div>
+                <div><b>${riconosciute}</b><span>Carte riconosciute</span></div>
+            </div>
+            <div class="pg-elenco">${righe}</div>
+        </div>
+    `;
+}
+
+
 // ── PAGINA "CONDIVIDI" ────────────────────────────────────────────────
 // Elenca tutto il condivisibile reale: ogni binder pubblico (Scambio,
 // Wishlist, altre location, extra) più Sealed, che non è un binder — vive
@@ -3604,9 +3802,9 @@ async function renderPaginaCondividi() {
 
     const iconaPerTipo = { wishlist: 'fa-heart', location: 'fa-layer-group', extra: 'fa-box-archive' };
     const righeBinder = pubblici.map(b => `
-        <div class="widget-picker-riga" onclick="_condividiElementoWidget('binder-pubblico.html', '${b.id}', '${b.tipo}', event)">
-            <i class="fa-solid ${iconaPerTipo[b.tipo] || 'fa-layer-group'}"></i>
-            <span style="flex:1;">${escapeHtml(b.nome || b.location_valore || b.tipo)}</span>
+        <div class="pg-riga" data-tocca onclick="_condividiElementoWidget('binder-pubblico.html', '${b.id}', '${b.tipo}', event)">
+            <div class="pg-fig" style="display:flex; align-items:center; justify-content:center;"><i class="fa-solid ${iconaPerTipo[b.tipo] || 'fa-layer-group'}"></i></div>
+            <div class="pg-testo"><b>${escapeHtml(b.nome || b.location_valore || b.tipo)}</b></div>
             <i class="fa-solid fa-share-nodes" style="color:var(--text-muted);"></i>
         </div>`).join('');
 
@@ -3614,13 +3812,13 @@ async function renderPaginaCondividi() {
     // nello schema — vive in un currentMode a parte), quindi riga fissa,
     // nessun binderId da passare.
     const rigaSealed = `
-        <div class="widget-picker-riga" onclick="_condividiElementoWidget('sealed.html', null, null, event)">
-            <i class="fa-solid fa-box"></i>
-            <span style="flex:1;">Sealed</span>
+        <div class="pg-riga" data-tocca onclick="_condividiElementoWidget('sealed.html', null, null, event)">
+            <div class="pg-fig" style="display:flex; align-items:center; justify-content:center;"><i class="fa-solid fa-box"></i></div>
+            <div class="pg-testo"><b>Sealed</b></div>
             <i class="fa-solid fa-share-nodes" style="color:var(--text-muted);"></i>
         </div>`;
 
-    container.innerHTML = righeBinder + rigaSealed;
+    container.innerHTML = `<div class="pg-elenco">${righeBinder + rigaSealed}</div>`;
 }
 
 // Stessa identica logica di costruzione URL di _linkPubblicoCondivisione

@@ -451,8 +451,71 @@
             `;
         }
 
-        function _doppioneSpostaInScambio(cardId) {
-            alert('Spostamento in Scambio non ancora disponibile — serve prima vedere data/cards.repository.js per capire come dividere le copie di una carta tra due binder.');
+        // "Sposta in Scambio" (2026-08-30, missione #15 "Fai spazio").
+        // Spostamento COMPLETO: semplice update di 'location'. Spostamento
+        // PARZIALE (tieni N, sposta il resto): legge la riga grezza per
+        // intero via cardsSelectById() (data/cards.repository.js — tutte
+        // le colonne reali, non gli alias JS di carteReali, per non
+        // rischiare di perdere reverse_holo/first_ed/url/dispositivo mai
+        // mappati lato JS), la duplica con qty/location nuovi, azzera
+        // claimed_by/claimed_at sulla NUOVA riga (non ancora reclamata da
+        // nessuno — quelli della riga originale non si toccano), riduce la
+        // quantità della riga originale.
+        async function _doppioneSpostaInScambio(cardId) {
+            const card = carteReali.find(c => String(c.id) === String(cardId));
+            if (!card) return;
+            const qty = Number(card.qty) || 1;
+
+            if (card.location === 'Scambio') {
+                alert('Questa carta è già in Scambio.');
+                return;
+            }
+            if (qty <= 1) {
+                alert('Questa carta non ha copie extra — spostarla tutta in Scambio non lascerebbe nessuna copia nella location attuale. Usa "Modifica carta" per farlo comunque, se è quello che vuoi.');
+                return;
+            }
+
+            const input = prompt(`Quante copie vuoi spostare in Scambio? La carta ne ha ${qty} in totale.`, String(qty - 1));
+            if (input === null) return;
+            const mossa = parseInt(input, 10);
+            if (!Number.isInteger(mossa) || mossa < 1 || mossa > qty) {
+                alert('Numero non valido.');
+                return;
+            }
+
+            if (mossa === qty) {
+                // Tutte le copie: nessuno split, solo location aggiornata.
+                const { error } = await cardsUpdateCampo('carte', cardId, 'location', 'Scambio');
+                if (error) { alert('Errore nello spostamento: ' + error.message); return; }
+            } else {
+                // Parziale: duplica la riga grezza, riduce l'originale.
+                const { data: riga, error: errSelect } = await cardsSelectById(cardId);
+                if (errSelect || !riga) { alert('Errore nella lettura della carta: ' + (errSelect ? errSelect.message : 'non trovata')); return; }
+
+                const nuovaRiga = { ...riga };
+                delete nuovaRiga.id;          // nuova riga, nuovo id generato dal DB
+                delete nuovaRiga.created_at;  // e nuove date, non quelle della riga originale
+                delete nuovaRiga.updated_at;
+                nuovaRiga.qty = mossa;
+                nuovaRiga.location = 'Scambio';
+                nuovaRiga.claimed_by = null;  // non ancora reclamata da nessuno
+                nuovaRiga.claimed_at = null;
+
+                const { error: errIns } = await cardsInsertNellaCollezione(nuovaRiga);
+                if (errIns) { alert('Errore nella creazione della copia in Scambio: ' + errIns.message); return; }
+
+                const { error: errUpd } = await cardsUpdateCampo('carte', cardId, 'qty', qty - mossa);
+                if (errUpd) { alert('La copia è stata creata in Scambio, ma la quantità originale non si è aggiornata: ' + errUpd.message + '. Correggi manualmente da "Modifica carta".'); }
+            }
+
+            // Stesso motivo del fix in _doppioneApriModifica: chiudiImmagineIngrandita()
+            // non esiste lato privato, chiudo il modale direttamente.
+            document.getElementById('immagineModal').style.display = 'none';
+            document.getElementById('flipCardInner').classList.remove('flipped');
+            if (_flipCardTimeout) { clearTimeout(_flipCardTimeout); _flipCardTimeout = null; }
+
+            await caricaCarteReali(); // ricarica carteReali con la modifica
+            if (typeof renderPaginaDoppioni === 'function') renderPaginaDoppioni();
         }
 
         function _doppioneApriModifica(cardId) {
