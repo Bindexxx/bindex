@@ -529,7 +529,14 @@ async function missioniInserisciCompletamento(userId, missioneId, finestra, peri
         missione_id: missioneId,
         finestra,
         periodo,
-        origine: 'automatico',
+        // CORRETTO 2026-08-31: vincolo CHECK verificato via pg_constraint
+        // (missioni_completate_origine_check) ammette SOLO 'normale' o
+        // 'skip' — 'automatico' (valore originale di questa funzione,
+        // mai verificato) avrebbe fatto fallire OGNI insert con una
+        // violazione CHECK, rompendo silenziosamente l'intera
+        // funzionalità missioni. Trovato solo perché la verifica per
+        // ricompensaConsumaSkip() sotto ha controllato lo stesso vincolo.
+        origine: 'normale',
         completato_il: new Date().toISOString(),
     });
 }
@@ -549,5 +556,69 @@ async function ricompenseInserisci(userId, tipo, riferimentoId, quantita) {
         riferimento_id: riferimentoId,
         quantita: quantita || 1,
         ottenuto_il: new Date().toISOString(),
+    });
+}
+
+// Saldo disponibile di un tipo di ricompensa. 'inventario_ricompense' è un
+// REGISTRO AD ACCUMULO (verificato via information_schema, 2026-08-31:
+// id/owner_id/tipo/riferimento_id/quantita/ottenuto_il — nessuna colonna
+// "consumato"/flag, nessun saldo aggiornabile con UPDATE) — il saldo è
+// sempre SOMMA(quantita) per tipo, righe negative = consumo (vedi
+// ricompensaConsumaSkip sotto).
+async function ricompenseSaldo(userId, tipo) {
+    const { data, error } = await supabaseClient.from('inventario_ricompense')
+        .select('quantita').eq('owner_id', userId).eq('tipo', tipo);
+    if (error) return { data: 0, error };
+    const saldo = (data || []).reduce((s, r) => s + (Number(r.quantita) || 0), 0);
+    return { data: saldo, error: null };
+}
+
+// "Consuma uno skip" (2026-08-31, comportamento deciso da Claudio: marca
+// automaticamente la missione scelta come completata, invece di doverla
+// soddisfare per davvero). Nessuna UI la consuma ancora — funzione pronta
+// per quando ci sarà.
+//
+// Il consumo si registra come una riga con quantita NEGATIVA dello stesso
+// tipo ('skip_missione'), non un UPDATE — coerente col fatto che
+// 'inventario_ricompense' è un registro ad accumulo, mai una riga di
+// saldo da aggiornare (stesso principio già seguito ovunque in questo
+// file: mai distruggere lo storico).
+//
+// origine: 'skip' — valore VERIFICATO via pg_constraint
+// (missioni_completate_origine_check ammette solo 'normale'/'skip'), non
+// inventato. La verifica ha anche scoperto che missioniInserisciCompletamento()
+// sopra usava 'automatico', un valore che avrebbe violato questo stesso
+// vincolo su OGNI completamento — corretto in questo stesso giro (vedi
+// commento su quella funzione).
+//
+// NON atomico: controllo saldo + consumo + completamento missione sono 3
+// chiamate sequenziali separate, nessuna RPC/transazione dedicata — fuori
+// scope per una funzione "minore, nessuna UI la usa ancora". Rischio
+// teorico: due tap quasi simultanei potrebbero consumare più skip di
+// quanti disponibili. Se/quando questa funzione avrà una UI reale,
+// valutare una RPC SECURITY DEFINER dedicata per renderla atomica (stesso
+// motivo per cui altre operazioni critiche del progetto — es.
+// registra_apertura_binder_pubblico — sono RPC e non chiamate dirette).
+async function ricompensaConsumaSkip(userId, missioneId, finestra, periodo) {
+    const { data: saldo, error: errSaldo } = await ricompenseSaldo(userId, 'skip_missione');
+    if (errSaldo) return { error: errSaldo };
+    if (saldo < 1) return { error: { message: 'Nessuno skip disponibile' } };
+
+    const { error: errConsumo } = await supabaseClient.from('inventario_ricompense').insert({
+        owner_id: userId, tipo: 'skip_missione', riferimento_id: missioneId, quantita: -1,
+        ottenuto_il: new Date().toISOString(),
+    });
+    if (errConsumo) return { error: errConsumo };
+
+    // Stesso meccanismo anti-doppio-accredito di missioniInserisciCompletamento
+    // (insert nudo, mai upsert — error.code '23505' se questa missione
+    // risultasse già completata: a quel punto lo skip è già stato
+    // consumato sopra ma il completamento fallisce per conflitto, non per
+    // colonna sbagliata — un caso limite noto, non gestito automaticamente
+    // qui: da decidere quando questa funzione avrà una UI reale se
+    // rimborsare lo skip in quel caso specifico).
+    return supabaseClient.from('missioni_completate').insert({
+        owner_id: userId, missione_id: missioneId, finestra, periodo, origine: 'skip',
+        completato_il: new Date().toISOString(),
     });
 }
