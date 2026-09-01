@@ -4251,12 +4251,21 @@ function _clickTastoFisico() {
 // tutti e 5: chi ha il canale sottoscritto in questo momento risulta
 // "collegato". DIFENSIVO: se il canale non si sottoscrive per qualunque
 // motivo (Realtime disattivato sul progetto, rete, ecc.) non succede
-// nulla di visibile all'utente — solo un avviso in console, la barra
-// semplicemente non mostra il numero, come se questa funzione non fosse
-// mai stata chiamata. Email invece di un eventuale username personalizzato
-// (quello vive altrove, non verificato in questa sessione — vedi
-// commento su ricompensaConsumaSkip per lo stesso principio: meglio un
-// dato certo che uno indovinato).
+// nulla di visibile all'utente — solo un avviso in console.
+//
+// SICUREZZA (corretto 2026-09-01, segnalato da Claudio): un canale
+// Realtime come questo NON è protetto da RLS a meno che il progetto non
+// abbia i "private channels" di Supabase configurati esplicitamente (non
+// verificato in questa sessione, nessun accesso diretto al DB). Chiunque
+// conosca il nome del canale — visibile a chiunque legga il codice
+// sorgente del sito — potrebbe collegarsi e leggere cosa viene
+// trasmesso, senza bisogno di essere autenticato come uno degli utenti
+// reali. Per questo qui si traccia SOLO una chiave anonima (l'id utente,
+// già necessario come chiave di presenza) e NESSUN dato identificativo
+// (niente email, niente nome) — la barra mostra solo un conteggio, non
+// ha mai bisogno di sapere CHI è online. Se in futuro servisse mostrare
+// i nomi, va prima verificato/configurato un canale privato con
+// autorizzazione RLS lato Supabase, non aggiunto qui alla leggera.
 async function _avviaPresenzaLive() {
     if (typeof CSBar === 'undefined' || typeof supabaseClient === 'undefined') return;
     try {
@@ -4272,7 +4281,7 @@ async function _avviaPresenzaLive() {
             })
             .subscribe(async (status) => {
                 if (status === 'SUBSCRIBED') {
-                    await canale.track({ email: user.email, entrato_il: new Date().toISOString() });
+                    await canale.track({ online: true }); // nessun dato identificativo, vedi nota sopra
                 } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
                     console.warn('[presenza] canale realtime non disponibile (status: ' + status + ') — controllare che Realtime sia attivo sul progetto Supabase.');
                 }
