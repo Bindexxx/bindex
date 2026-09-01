@@ -4,6 +4,15 @@
 // aggiornamento in tempo reale.
 
 
+        // Le quattro tab che condividono la stessa tabella e possono quindi
+        // passare alla vista compatta mobile. Unica fonte per i due punti che
+        // ne hanno bisogno: renderViewTable (decide quale layout disegnare) e
+        // il listener di resize in fondo al file (decide quando ridisegnare).
+        // Prima erano due elenchi scritti a mano in posti diversi, e infatti
+        // si erano scollati — vedi il FIX del 2026-09-01 sul resize.
+        const MODI_CON_VISTA_COMPATTA = ['visualizzazione', 'scambio', 'wishlist', 'sealed'];
+
+
         async function caricaCarteReali() {
             const userId = await authGetUserId();
             if (!userId) return;
@@ -188,7 +197,7 @@
             // vista compatta "vera", già pensata apposta per questo, ora si
             // applica a tutte le tab con la tabella condivisa, non solo a
             // Visualizzazione.
-            const modalitaCompatta = ['visualizzazione', 'scambio', 'wishlist', 'sealed'].includes(currentMode) && window.innerWidth <= 640;
+            const modalitaCompatta = MODI_CON_VISTA_COMPATTA.includes(currentMode) && window.innerWidth <= 640;
             pannelloTabella.style.display = modalitaCompatta ? 'none' : '';
             contenitoreCompatto.style.display = modalitaCompatta ? '' : 'none';
 
@@ -394,10 +403,19 @@
         // attraversando la soglia (es. ruotando il telefono, o ridimensionando
         // la finestra da desktop) — filterTable() richiama renderViewTable
         // con i dati già filtrati, senza rileggere dal database.
+        //
+        // FIX (2026-09-01): la condizione controllava SOLO 'visualizzazione',
+        // ma la vista compatta si applica a quattro tab (vedi
+        // modalitaCompatta in renderViewTable, che elenca visualizzazione/
+        // scambio/wishlist/sealed). Su Scambio, Wishlist e Sealed il layout
+        // restava quindi bloccato su tabella o su schedine finché non si
+        // cambiava tab e si tornava indietro. Stesso elenco usato in
+        // renderViewTable, tenuto in una costante condivisa (dichiarata in
+        // cima al file) così i due punti non possono più scollarsi.
         window.addEventListener('resize', () => {
             clearTimeout(_resizeTimeout);
             _resizeTimeout = setTimeout(() => {
-                if (currentMode === 'visualizzazione') filterTable();
+                if (MODI_CON_VISTA_COMPATTA.includes(currentMode)) filterTable();
             }, 200);
         });
 
@@ -652,8 +670,18 @@
                 alert(`"${etichetta}" non può essere vuoto.`); return;
             }
 
-            if (String(valore) === String(valoreAttuale)) return; // nessuna modifica reale
-            if (!confirm(`Salvare "${etichetta}" = "${valore}"?`)) return;
+            // FIX (2026-09-01): il confronto era String(valore) contro
+            // String(valoreAttuale) sui valori GREZZI. Sul campo Note (tipo
+            // 'facoltativo') un campo già vuoto arriva qui come '' e viene
+            // convertito a null poco sopra: 'null' !== '' , quindi il
+            // controllo "nessuna modifica reale" non scattava e compariva la
+            // conferma «Salvare "Note" = "null"?» seguita da una scrittura
+            // inutile. Normalizzando vuoto/null/undefined allo stesso valore
+            // il caso si chiude da solo, e per i numeri il confronto resta
+            // identico a prima (12 e "12" continuano a coincidere).
+            const _normalizza = (v) => (v === null || v === undefined) ? '' : String(v);
+            if (_normalizza(valore) === _normalizza(valoreAttuale)) return; // nessuna modifica reale
+            if (!confirm(`Salvare "${etichetta}" = "${valore === null ? '(vuoto)' : valore}"?`)) return;
 
             const { error } = await cardsUpdateCampo(tabella, id, campo, valore);
             if (error) { alert(`❌ Errore nel salvare "${etichetta}": ` + error.message); return; }

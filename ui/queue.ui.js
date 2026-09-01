@@ -64,6 +64,39 @@
             return carteReali.filter(c => c.tabella === 'wishlist' && c.prezzoObiettivo != null && c.price > 0 && c.price <= c.prezzoObiettivo);
         }
 
+
+        // ── ANTI-RIPETIZIONE DELLE NOTIFICHE (2026-09-01) ────────────────────────
+        // Solo in memoria, per-scheda: si azzera ad ogni ricaricamento della
+        // pagina, esattamente come _daFareUltimoStato e
+        // _contatoriNotifichePrecedenti in ui/phone.ui.js (stesso identico
+        // pattern già usato nel progetto per non ripetere un avviso). NON è
+        // il sistema "letto/non letto" del badge, che vive su localStorage
+        // (prefMatchVistiGet) ed è una cosa diversa: quello dice "l'utente ha
+        // aperto la tab", questo dice "l'avviso è già comparso a schermo".
+        //
+        // Conseguenza voluta: dopo un F5, se ci sono ancora match o obiettivi
+        // non visti, l'avviso ricompare una volta sola. Se preferisci che non
+        // ricompaia MAI più dopo la prima volta, va salvato su localStorage
+        // con una coppia prefNotificheGiaViste Get/Set in
+        // data/preferences.repository.js — scelta rimandata a te, questa
+        // versione non tocca nessun altro file.
+        const _giaNotificati = new Set();
+
+        // Manda a CSBar un avviso per ogni elemento mai notificato prima in
+        // questa sessione. chiaveDi() deve restituire una chiave stabile tra
+        // un giro di polling e l'altro (per i match è la stessa
+        // _chiaveMatch del badge), avvisoDi() la coppia [tipo, extra] da
+        // passare a CSBar.avvisa().
+        function _notificaUnaVolta(elementi, chiaveDi, avvisoDi) {
+            (elementi || []).forEach(el => {
+                const chiave = chiaveDi(el);
+                if (!chiave || _giaNotificati.has(chiave)) return;
+                _giaNotificati.add(chiave);
+                const [tipo, extra] = avvisoDi(el);
+                CSBar.avvisa(tipo, extra);
+            });
+        }
+
         function _contaAlertPrezzoNonVisti() {
             const visti = _alertPrezzoVisti();
             const conCard = _cardeConAllertaPrezzo();
@@ -258,10 +291,39 @@
             // registrati sopra per il traguardo, che sono un'altra cosa).
             // Un avviso per elemento, raggruppati per tipo (group) così più
             // notifiche ravvicinate si accorpano invece di spammare.
+            //
+            // FIX (2026-09-01), due problemi corretti insieme:
+            //
+            // 1) RIPETIZIONE OGNI 60 SECONDI. aggiornaBadgeMatch() gira nel
+            //    ciclo di polling lento (_pollingWidgetIntervalLento in
+            //    ui/phone.ui.js), ma "visto" viene segnato SOLO quando
+            //    l'utente apre davvero la tab (_segnaMatchVisti /
+            //    _segnaAlertPrezzoVisti, chiamate da caricaMatch). Finché
+            //    non la apre, gli stessi elementi restavano "non visti" e
+            //    l'avviso ripartiva ad ogni giro: il raggruppamento di
+            //    statusbar.js non lo impediva, perché su gruppo già presente
+            //    richiama comunque enqueue() e quindi rimostra il popup.
+            //    _giaNotificati (in memoria, vedi sopra) fa notificare ogni
+            //    elemento UNA volta sola per sessione. Il badge numerico
+            //    resta invariato: continua a contare tutti i non visti, non
+            //    solo quelli appena notificati.
+            //
+            // 2) NOME CARTA "undefined". Le righe di carteReali usano il
+            //    campo 'name' (il rename da 'nome' del database avviene in
+            //    caricaCarteReali, ui/cards.ui.js) — 'c.nome' era sempre
+            //    undefined e la notifica diceva "undefined ha raggiunto il
+            //    tuo prezzo obiettivo".
+            //
+            // Email: mostrato solo il nome prima della chiocciola, come già
+            // fa tutto il resto del sito (renderPaginaMatch, caricaMatch).
             if (typeof CSBar !== 'undefined') {
-                nuoviScambio.forEach(m => CSBar.avvisa('match-trovato', { text: `Hai una carta che interessa a ${m.altra_email || 'qualcuno del gruppo'}.` }));
-                nuoviWishlist.forEach(m => CSBar.avvisa('match-trovato', { text: `${m.altra_email || 'Qualcuno del gruppo'} ha una carta della tua Wishlist.` }));
-                carteAlertPrezzo.forEach(c => CSBar.avvisa('prezzo-obiettivo', { text: `${c.nome} ha raggiunto il tuo prezzo obiettivo.` }));
+                const _nomeUtenteMatch = (email) => (email || '').split('@')[0] || 'qualcuno del gruppo';
+                _notificaUnaVolta(nuoviScambio, m => _chiaveMatch(m, 'scambio'), m =>
+                    ['match-trovato', { text: `Hai una carta che interessa a ${_nomeUtenteMatch(m.altra_email)}.` }]);
+                _notificaUnaVolta(nuoviWishlist, m => _chiaveMatch(m, 'wishlist'), m =>
+                    ['match-trovato', { text: `${_nomeUtenteMatch(m.altra_email)} ha una carta della tua Wishlist.` }]);
+                _notificaUnaVolta(carteAlertPrezzo, c => 'prezzo-' + c.id, c =>
+                    ['prezzo-obiettivo', { text: `${c.name || 'Una carta della tua Wishlist'} ha raggiunto il tuo prezzo obiettivo.` }]);
             }
 
             _numNuoviMatchScambio = nuoviScambio.length;

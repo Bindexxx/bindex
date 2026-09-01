@@ -2442,7 +2442,17 @@ function _onResizeHandlePointerDown(e) {
     };
     tile.classList.add('widget-tile-resizing');
     window.addEventListener('pointermove', _onResizeHandlePointerMove);
+    // FIX (2026-09-01): serve ANCHE pointercancel, non solo pointerup. Se il
+    // gesto viene interrotto dal sistema (gesto di navigazione del telefono,
+    // notifica in arrivo, cambio scheda a metà trascinamento) il browser
+    // manda pointercancel e non manderà mai pointerup: senza questa riga il
+    // listener di pointermove restava agganciato per sempre e _resizeState
+    // non veniva mai azzerato, lasciando la tessera bloccata in stato
+    // "in ridimensionamento" fino al ricaricamento della pagina. Il libro
+    // sfogliabile del Binder (_libroInitGesti, ui/binder.ui.js) gestiva già
+    // entrambi gli eventi, qui mancava.
     window.addEventListener('pointerup', _onResizeHandlePointerUp, { once: true });
+    window.addEventListener('pointercancel', _onResizeHandlePointerUp, { once: true });
 }
 
 function _onResizeHandlePointerMove(e) {
@@ -2491,6 +2501,11 @@ function _onResizeHandlePointerUp() {
     }
     _resizeState = null;
     window.removeEventListener('pointermove', _onResizeHandlePointerMove);
+    // Rimossi entrambi a mano: 'once' toglie solo quello che è scattato
+    // davvero, l'altro resterebbe agganciato e se ne accumulerebbe uno ad
+    // ogni ridimensionamento.
+    window.removeEventListener('pointerup', _onResizeHandlePointerUp);
+    window.removeEventListener('pointercancel', _onResizeHandlePointerUp);
 }
 
 // ── DRAG & DROP (riordino) ────────────────────────────────────────────
@@ -2522,7 +2537,11 @@ function _onWidgetPointerDown(e) {
         iniziato: false, ghost: null,
     };
     window.addEventListener('pointermove', _onWidgetPointerMove);
+    // FIX (2026-09-01): stesso motivo del ridimensionamento qui sopra — senza
+    // pointercancel un gesto interrotto dal sistema lasciava il "fantasma"
+    // della tessera appiccicato allo schermo e _dragState mai azzerato.
     window.addEventListener('pointerup', _onWidgetPointerUp, { once: true });
+    window.addEventListener('pointercancel', _onWidgetPointerUp, { once: true });
 }
 
 function _avviaDragVero(tile) {
@@ -2624,6 +2643,8 @@ function _onWidgetPointerUp() {
     }
     _dragState = null;
     window.removeEventListener('pointermove', _onWidgetPointerMove);
+    window.removeEventListener('pointerup', _onWidgetPointerUp);
+    window.removeEventListener('pointercancel', _onWidgetPointerUp);
 }
 
 // ── PEEK — anteprima al tocco lungo, senza aprire il popup fullscreen ────
@@ -4325,25 +4346,51 @@ async function initPhoneShell() {
             // sempre sovrascritto con quello reale al momento della
             // chiamata (vedi avvisa() nei punti di aggancio) — qui sono
             // solo fallback se mai chiamati senza 'extra'.
+            // FIX (2026-09-01) sui 'target': erano '#traguardi' e '#scambio',
+            // che NON esistono come id in index.html (le sezioni reali sono
+            // 'missioni' e 'match'; "scambio" è un currentMode della tab
+            // Visualizzazione, non una sezione). E anche '#wishlist', che
+            // come id esiste, non sarebbe bastato: statusbar.js su un target
+            // che inizia per '#' imposta location.hash, ma questa app non usa
+            // il routing via hash (nessun listener hashchange) e le
+            // view-section sono in display:none finché non attive — il clic
+            // sulla notifica non apriva nulla. Ora i target puntano alle
+            // sezioni vere e ci pensa onNotificationClick qui sotto ad
+            // aprirle davvero.
             notificationTypes: {
                 'missione-completata': {
                     icon: '\u2726', title: 'Missione completata', text: '',
-                    target: '#traguardi', group: 'missioni-oggi', groupLabel: 'missioni completate',
+                    target: '#missioni', group: 'missioni-oggi', groupLabel: 'missioni completate',
                 },
                 'traguardo-sbloccato': {
                     icon: '\u2b50', title: 'Traguardo sbloccato', text: '',
-                    target: '#traguardi', group: 'traguardi-oggi', groupLabel: 'traguardi sbloccati',
+                    // I traguardi vivono nella stessa pagina delle missioni
+                    // (#missioniListaTraguardi dentro la sezione 'missioni').
+                    target: '#missioni', group: 'traguardi-oggi', groupLabel: 'traguardi sbloccati',
                     priority: 'high',
                 },
                 'match-trovato': {
                     icon: '\u21c4', title: 'Nuovo Match', text: '',
-                    target: '#scambio', group: 'match-nuovi', groupLabel: 'nuovi Match',
+                    target: '#match', group: 'match-nuovi', groupLabel: 'nuovi Match',
                 },
                 'prezzo-obiettivo': {
                     icon: '\u2713', title: 'Prezzo obiettivo raggiunto', text: '',
                     target: '#wishlist', group: 'prezzo-obiettivo', groupLabel: 'obiettivi di prezzo raggiunti',
                     priority: 'high',
                 },
+            },
+
+            // Apertura reale della sezione al clic sulla notifica. Se questo
+            // gestore c'è, statusbar.js lo usa AL POSTO di location.hash
+            // (vedi openNotification) — quindi il target torna ad essere solo
+            // un'etichetta della destinazione, letta qui. apriDettaglioWidget
+            // gestisce già 'missioni', 'match' e 'wishlist': sono tutte e tre
+            // nell'elenco delle sezioni con pagina propria, nessun caso nuovo
+            // da aggiungere lì.
+            onNotificationClick: (n) => {
+                if (!n || !n.target) return;
+                const sezione = n.target.charAt(0) === '#' ? n.target.slice(1) : n.target;
+                apriDettaglioWidget(sezione, null);
             },
 
             // Suoni/densità/matita (2026-09-01): spostati dalla vecchia

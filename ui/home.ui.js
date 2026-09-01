@@ -546,24 +546,31 @@
                 if (errUpd) { alert('La copia è stata creata in Scambio, ma la quantità originale non si è aggiornata: ' + errUpd.message + '. Correggi manualmente da "Modifica carta".'); }
             }
 
-            // Stesso motivo del fix in _doppioneApriModifica: chiudiImmagineIngrandita()
-            // non esiste lato privato, chiudo il modale direttamente.
-            document.getElementById('immagineModal').style.display = 'none';
-            document.getElementById('flipCardInner').classList.remove('flipped');
-            if (_flipCardTimeout) { clearTimeout(_flipCardTimeout); _flipCardTimeout = null; }
+            // FIX (2026-09-01): il commento precedente diceva che
+            // chiudiImmagineIngrandita() "non esiste lato privato" e chiudeva
+            // il modale a mano. Non era vero: la funzione è definita in
+            // ui/modals.ui.js, regolarmente caricato da index.html. La
+            // chiusura manuale saltava tre reset che solo quella funzione fa
+            // (nascondere #flipCardScene, togliere la classe fullscreen da
+            // #immagineModalContent e sbloccare lo scroll del body), quindi
+            // dopo questa azione la pagina restava con lo scroll bloccato.
+            chiudiImmagineIngrandita();
 
             await caricaCarteReali(); // ricarica carteReali con la modifica
             if (typeof renderPaginaDoppioni === 'function') renderPaginaDoppioni();
         }
 
         function _doppioneApriModifica(cardId) {
-            // chiudiImmagineIngrandita() esiste SOLO in ui/wishlist.ui.js
-            // (pagina pubblica, un file HTML diverso) — mai caricata qui,
-            // l'avrei chiamata a vuoto. Chiudo il modale direttamente,
-            // stesso identico codice.
-            document.getElementById('immagineModal').style.display = 'none';
-            document.getElementById('flipCardInner').classList.remove('flipped');
-            if (_flipCardTimeout) { clearTimeout(_flipCardTimeout); _flipCardTimeout = null; }
+            // FIX (2026-09-01): il commento precedente sosteneva che
+            // chiudiImmagineIngrandita() vivesse SOLO in ui/wishlist.ui.js
+            // (pagina pubblica) e che qui sarebbe stata chiamata a vuoto.
+            // In realtà esiste anche in ui/modals.ui.js, caricato da
+            // index.html: la chiusura manuale lasciava lo scroll del body
+            // bloccato e la classe fullscreen attaccata al modale, che la
+            // successiva apertura in modalità immagine semplice ereditava
+            // per un istante. Stessa correzione fatta in
+            // _doppioneSpostaInScambio qui sopra.
+            chiudiImmagineIngrandita();
             if (typeof apriModificaCarta === 'function') apriModificaCarta(cardId);
         }
 
