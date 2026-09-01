@@ -226,6 +226,43 @@ async function missioniMatchAttiviTotale(userId) {
     return { data: (scambio || []).length + (wishlist || []).length, error: null };
 }
 
+// ── Match cumulativi (traguardi #46-55, Fase 2 sbloccata 2026-09-01) ────
+// 'action' nuovo: 'match_trovato'. La 'chiave' arriva già pronta dal
+// chiamante (ui/queue.ui.js:aggiornaBadgeMatch()) — stessa identica
+// formula di _chiaveMatch() (mia_carta_id+altra_wishlist_id / mia_wishlist_id
+// +altra_carta_id), NON ricalcolata qui, per non rischiare che le due
+// versioni si scollino nel tempo (stesso principio già dichiarato nel
+// commento originale di _chiaveMatch in quel file).
+//
+// DEDUP IN SCRITTURA (a differenza di missioniBinderPubblicoVisitatoRegistra
+// sotto): un match è "trovato" una volta sola nella vita del dato, non ha
+// senso riloggarlo ogni volta che il badge si aggiorna — verificato che
+// NESSUNA missione esistente in CATALOGO_MISSIONI dipende da un conteggio
+// di occorrenze ripetute su questo evento (a differenza della visita a un
+// binder, dove invece una missione giornaliera esistente lo richiede — vedi
+// nota su missioniBinderPubblicoVisitatoRegistra). Quindi qui deduplicare
+// subito in scrittura è sicuro e tiene 'activity_log' più pulita.
+async function missioniMatchTrovatiRegistraNuovi(userId, chiavi) {
+    if (!chiavi || chiavi.length === 0) return { error: null };
+    const { data, error: errLettura } = await supabaseClient.from('activity_log')
+        .select('details').eq('user_id', userId).eq('action', 'match_trovato');
+    if (errLettura) return { error: errLettura };
+    const gia = new Set((data || []).map(r => r.details && r.details.chiave).filter(Boolean));
+    const nuove = [...new Set(chiavi)].filter(c => !gia.has(c));
+    if (nuove.length === 0) return { error: null };
+    return supabaseClient.from('activity_log').insert(
+        nuove.map(chiave => ({ user_id: userId, source: 'sito', action: 'match_trovato', details: { chiave } }))
+    );
+}
+
+// Dedup già garantito in scrittura sopra: un count semplice basta, nessun
+// bisogno di Set lato client qui (a differenza di
+// missioniBinderVisitatiDistintiTotale sotto).
+async function missioniMatchTrovatiTotale(userId) {
+    return supabaseClient.from('activity_log').select('id', { count: 'exact', head: true })
+        .eq('user_id', userId).eq('action', 'match_trovato');
+}
+
 // Colonna VERIFICATA (information_schema, 2026-08-31): 'created_at' anche
 // su 'binders'.
 async function missioniBinderPubblicatiPeriodo(userId, inizioISO, fineISO) {
@@ -321,11 +358,39 @@ async function missioniEstensioneFunzioneUsataRegistra(userId) {
     });
 }
 
-// Aggancio: ui/phone.ui.js — visita di un binder pubblico altrui via Match.
-async function missioniBinderPubblicoVisitatoRegistra(userId) {
+// Aggancio: ui/phone.ui.js:_apriBinderAltruiMatch() — visita di un binder
+// pubblico altrui via Match.
+//
+// MODIFICATA (2026-09-01): aggiunto binderId nel payload — serve per
+// contare binder DISTINTI (traguardi #56-65, vedi
+// missioniBinderVisitatiDistintiTotale sotto), oltre alle visite totali già
+// usate dalla missione giornaliera esistente (metrica
+// binder_pubblico_visitato_periodo, >=1 al giorno).
+//
+// NIENTE DEDUP QUI IN SCRITTURA (a differenza di
+// missioniMatchTrovatiRegistraNuovi sopra): quella missione giornaliera
+// richiede di contare OGNI visita nel giorno, anche a un binder già
+// visitato in passato — se deduplicassi qui in scrittura, una volta
+// visitati tutti i binder distinti del gruppo quella missione diventerebbe
+// impossibile da completare per sempre. Il dedup per il traguardo "binder
+// distinti" avviene solo in lettura, vedi funzione sotto.
+async function missioniBinderPubblicoVisitatoRegistra(userId, binderId) {
     return supabaseClient.from('activity_log').insert({
-        user_id: userId, source: 'sito', action: 'binder_pubblico_visitato', details: {},
+        user_id: userId, source: 'sito', action: 'binder_pubblico_visitato',
+        details: { binderId: binderId || null },
     });
+}
+
+// Conteggio binder DISTINTI visitati nel tempo (traguardi #56-65) — dedup
+// lato client via Set, stesso pattern già usato in
+// missioniDettaglioCarteDistintePeriodo/missioniWidgetDistintiPeriodo (la
+// scrittura sopra non dedupliza, per il motivo spiegato lì).
+async function missioniBinderVisitatiDistintiTotale(userId) {
+    const { data, error } = await supabaseClient.from('activity_log').select('details')
+        .eq('user_id', userId).eq('action', 'binder_pubblico_visitato');
+    if (error) return { data: 0, error };
+    const distinti = new Set((data || []).map(r => r.details && r.details.binderId).filter(Boolean));
+    return { data: distinti.size, error: null };
 }
 
 // Aggancio: ui/phone.ui.js — generazione di un QR di condivisione.
