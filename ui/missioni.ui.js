@@ -676,6 +676,33 @@ const TRAGUARDI_SINGOLI = [
     { id: 't_collezionista_completo', titolo: 'Collezionista completo', categoria: 'meta',
       metrica: 'categorie_traguardi_distinte_totale', operatore: '>=', valore: 5,
       ricompensa: { tipo: 'bustina', quantita: 2 } },
+
+    // #99/#100 (2026-09-01, DECISIONE RIBALTATA rispetto alla sessione
+    // precedente — lì si era deciso "soglie fisse, mai percentuale
+    // dinamica": Claudio ha esplicitamente richiesto il cambio per poter
+    // aggiungere/togliere traguardi in futuro senza dover ritoccare due
+    // numeri hardcoded ogni volta. Motivo per cui ora ha senso: prima il
+    // catalogo doveva ancora stabilizzarsi (100 voci "vere" del documento
+    // di design); ora che si prevede crescita libera nel tempo (obiettivo
+    // dichiarato: arrivare anche a 150+), una soglia fissa richiederebbe
+    // manutenzione perenne — la percentuale no.
+    //
+    // metrica 'percentuale_traguardi_sbloccati' = riscossi / totale * 100,
+    // calcolata in MOTORE_MISSIONI.raccogliDati(). Il totale ESCLUDE questi
+    // due traguardi stessi (vedi _totaleTraguardiPerPercentuale sotto,
+    // filtro per metrica — non per id: qualunque futuro traguardo
+    // auto-referenziale con la stessa metrica verrebbe escluso allo stesso
+    // modo, automaticamente), altrimenti il 100% non sarebbe mai
+    // raggiungibile per davvero (non puoi contare te stesso prima di
+    // sbloccarti).
+    { id: 't_maestro_cardsync', titolo: 'Maestro CardSync', categoria: 'meta',
+      metrica: 'percentuale_traguardi_sbloccati', operatore: '>=', valore: 50,
+      ricompensa: { tipo: 'stampino', riferimento: 'maestro_cardsync' } },
+
+    { id: 't_leggenda_cardsync', titolo: 'Leggenda CardSync', categoria: 'meta',
+      metrica: 'percentuale_traguardi_sbloccati', operatore: '>=', valore: 100,
+      ricompensa: { tipo: 'stampino', riferimento: 'leggendario_esclusivo' },
+      nota: 'Documento originale: "stampino leggendario esclusivo + 250 Polvere + Bustina speciale" — ricompensa composta semplificata a un solo tipo (stampino), coerente con TUTTI gli altri traguardi del catalogo (nessuno ha mai più di una ricompensa contemporanea, il campo "bonus" esistente è per premi PROBABILISTICI di missione, non applicabile qui). Da rivedere con Claudio se vuole davvero il pacchetto multiplo.' },
 ];
 
 const CATALOGO_TRAGUARDI = [
@@ -691,6 +718,16 @@ const CATALOGO_TRAGUARDI = [
     ...SCALA_BINDER_VISITATI,
     ...TRAGUARDI_SINGOLI,
 ];
+
+// Denominatore per #99/#100 (percentuale_traguardi_sbloccati) — esclude i
+// traguardi che usano QUESTA STESSA metrica (t_maestro_cardsync,
+// t_leggenda_cardsync), non per id ma per metrica: qualunque futuro
+// traguardo auto-referenziale con la stessa metrica verrebbe escluso allo
+// stesso modo senza bisogno di aggiornare questa riga. Calcolato una sola
+// volta al caricamento del catalogo (statico per la durata della sessione
+// del browser — cambia solo se il codice cambia, non a runtime in base ai
+// dati dell'utente).
+const _totaleTraguardiPerPercentuale = CATALOGO_TRAGUARDI.filter(t => t.metrica !== 'percentuale_traguardi_sbloccati').length;
 // AGGIORNATO (2026-09-01): #46-55 (Match) e #56-65 (binder visitati) ora
 // INCLUSI (vedi SCALA_MATCH_TROVATI/SCALA_BINDER_VISITATI sopra). #98
 // (Collezionista completo) era già incluso in TRAGUARDI_SINGOLI con
@@ -698,11 +735,15 @@ const CATALOGO_TRAGUARDI = [
 // soglia necessaria: entrambe le nuove scale sono categoria 'social', già
 // esistente (SCALA_BINDER_APERTURE), quindi il numero di categorie
 // distinte resta 5.
-// Traguardi #99/#100 (soglie su traguardi sbloccati totali) restano
-// PENDING: le soglie originali (50/100) presumono il catalogo completo a
-// 100 voci — con queste due scale aggiunte il catalogo è più vicino a
-// quel numero ma il conteggio va comunque rifatto a mente fredda quando
-// tutta la Fase 2 sarà chiusa, come già deciso.
+// Traguardi #99/#100: CHIUSI (2026-09-01) con soglia dinamica (percentuale,
+// non numero fisso) — vedi t_maestro_cardsync/t_leggenda_cardsync in
+// TRAGUARDI_SINGOLI sopra e _totaleTraguardiPerPercentuale sopra. Decisione
+// esplicita di Claudio: si vuole poter aggiungere/togliere traguardi in
+// futuro (es. crescita del catalogo verso 150) senza dover ritoccare due
+// soglie hardcoded ogni volta — ribalta la decisione "soglie fisse, mai
+// percentuale" presa in una sessione precedente, qui documentata per
+// evitare che una sessione futura la annulli per errore pensando fosse
+// ancora valida.
 
 
 // ----------------------------------------------------------------------------
@@ -787,6 +828,7 @@ const _FRASI_TRAGUARDO = {
     binder_aperture_totale: { frase: v => `${v} ${v === 1 ? 'visita totale' : 'visite totali'} al tuo binder da parte del gruppo` },
     carte_totali: { frase: v => `${v} ${v === 1 ? 'carta' : 'carte'} in collezione` },
     categorie_traguardi_distinte_totale: { testo: v => `Sblocca almeno un traguardo in ${v} categorie diverse.` },
+    percentuale_traguardi_sbloccati: { testo: v => `Sblocca il ${v}% dei traguardi disponibili del catalogo.` },
     doppioni_totali: { frase: v => `${v} ${v === 1 ? 'doppione' : 'doppioni'} in collezione` },
     giorno_perfetto_mai: { testo: () => 'Completa il 100% delle missioni assegnate in un giorno, almeno una volta.' },
     location_distinte: { frase: v => `${v} location${v === 1 ? '' : ' diverse'}` },
@@ -1108,10 +1150,27 @@ const MOTORE_MISSIONI = {
             const t = CATALOGO_TRAGUARDI.find(x => x.id === traguardoId);
             return t ? t.categoria : null;
         };
-        const categorieTraguardi = (traguardiRiscossiIdTotale && traguardiRiscossiIdTotale.error)
-            ? (console.warn('[missioni] raccolta dati (categorie traguardi):', traguardiRiscossiIdTotale.error.message), new Set())
-            : new Set(((traguardiRiscossiIdTotale && traguardiRiscossiIdTotale.data) || [])
-                .map(row => row.traguardo_id).map(_categoriaTraguardoDi).filter(Boolean));
+        const _idsTraguardiRiscossi = (traguardiRiscossiIdTotale && traguardiRiscossiIdTotale.error)
+            ? (console.warn('[missioni] raccolta dati (traguardi riscossi):', traguardiRiscossiIdTotale.error.message), [])
+            : ((traguardiRiscossiIdTotale && traguardiRiscossiIdTotale.data) || []).map(row => row.traguardo_id);
+        const categorieTraguardi = new Set(_idsTraguardiRiscossi.map(_categoriaTraguardoDi).filter(Boolean));
+
+        // #99/#100 "percentuale_traguardi_sbloccati" (2026-09-01, soglia
+        // dinamica invece di numero fisso — vedi nota su
+        // t_maestro_cardsync/t_leggenda_cardsync in TRAGUARDI_SINGOLI).
+        // Stesso array _idsTraguardiRiscossi sopra, ma escludendo dal
+        // NUMERATORE i traguardi con questa stessa metrica — simmetrico al
+        // denominatore _totaleTraguardiPerPercentuale, altrimenti sbloccare
+        // t_maestro_cardsync (50%) farebbe salire la percentuale contando
+        // anche se stesso, potendo superare il 100% prima che tutti i
+        // traguardi "reali" siano davvero sbloccati.
+        const _traguardiSbloccatiPerPercentuale = _idsTraguardiRiscossi.filter(id => {
+            const t = CATALOGO_TRAGUARDI.find(x => x.id === id);
+            return t && t.metrica !== 'percentuale_traguardi_sbloccati';
+        }).length;
+        const percentualeTraguardiSbloccati = _totaleTraguardiPerPercentuale > 0
+            ? Math.round((_traguardiSbloccatiPerPercentuale / _totaleTraguardiPerPercentuale) * 100)
+            : 0;
 
         // Missione #78 "Esplora il gruppo" (2026-08-30): OR tra apertura
         // widget Binders e apertura widget Match — "collezione condivisa O
@@ -1174,6 +1233,7 @@ const MOTORE_MISSIONI = {
             collezione_e_social_oggi: categorieOggi.has('inserimento') && categorieOggi.has('social'),
             tutte_categorie_coperte_settimana: categorieSettimana.size >= totaleCategorieCatalogo,
             categorie_traguardi_distinte_totale: categorieTraguardi.size,
+            percentuale_traguardi_sbloccati: percentualeTraguardiSbloccati,
             apertura_visualizzazione_periodo: v(aperturaVisualizzazione, 'count'),
             apertura_wishlist_obiettivi_periodo: v(aperturaWishlistObiettivi, 'count'),
             apertura_prezzi_periodo: v(aperturaPrezzi, 'count'),
