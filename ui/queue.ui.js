@@ -68,7 +68,12 @@
             const visti = _alertPrezzoVisti();
             const conCard = _cardeConAllertaPrezzo();
             const nonVisti = conCard.filter(c => !visti.has(String(c.id)));
-            return { count: nonVisti.length, chiavi: conCard.map(c => String(c.id)) };
+            // AGGIUNTO (2026-09-01): nonVistiCarte espone le carte vere, non
+            // solo il conteggio — serve alle notifiche di sistema per dire
+            // QUALE carta ha raggiunto il prezzo obiettivo. Additivo, non
+            // rompe i due punti di chiamata esistenti (che leggono solo
+            // count/chiavi).
+            return { count: nonVisti.length, chiavi: conCard.map(c => String(c.id)), nonVistiCarte: nonVisti };
         }
 
 
@@ -246,7 +251,18 @@
             const visti = _matchVisti();
             const nuoviScambio = (dataScambio || []).filter(m => !visti.has(_chiaveMatch(m, 'scambio')));
             const nuoviWishlist = (dataWishlist || []).filter(m => !visti.has(_chiaveMatch(m, 'wishlist')));
-            const { count: alertPrezzoNonVisti } = _contaAlertPrezzoNonVisti();
+            const { count: alertPrezzoNonVisti, nonVistiCarte: carteAlertPrezzo } = _contaAlertPrezzoNonVisti();
+
+            // Notifiche di sistema (2026-09-01): riuso ESATTAMENTE i "non
+            // visti" del badge (stesso concetto — non i match cumulativi
+            // registrati sopra per il traguardo, che sono un'altra cosa).
+            // Un avviso per elemento, raggruppati per tipo (group) così più
+            // notifiche ravvicinate si accorpano invece di spammare.
+            if (typeof CSBar !== 'undefined') {
+                nuoviScambio.forEach(m => CSBar.avvisa('match-trovato', { text: `Hai una carta che interessa a ${m.altra_email || 'qualcuno del gruppo'}.` }));
+                nuoviWishlist.forEach(m => CSBar.avvisa('match-trovato', { text: `${m.altra_email || 'Qualcuno del gruppo'} ha una carta della tua Wishlist.` }));
+                carteAlertPrezzo.forEach(c => CSBar.avvisa('prezzo-obiettivo', { text: `${c.nome} ha raggiunto il tuo prezzo obiettivo.` }));
+            }
 
             _numNuoviMatchScambio = nuoviScambio.length;
             _numNuoviMatchWishlist = nuoviWishlist.length;

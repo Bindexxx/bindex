@@ -2909,6 +2909,17 @@ async function renderPaginaMissioni() {
     if (typeof _aggiornaPallinoMenu === 'function') { /* nessun pallino per missioni al momento, placeholder per coerenza futura */ }
 
     const idNuove = new Set(nuoveMissioni.map(m => m.id));
+
+    // Notifiche di sistema (2026-09-01): un avviso per elemento, con i
+    // titoli reali del catalogo (m.titolo/t.titolo, già in CATALOGO_MISSIONI/
+    // CATALOGO_TRAGUARDI — non inventati). Raggruppate per tipo (group) così
+    // completare più missioni di fila accorpa in un'unica notifica invece
+    // di spammarne una per ciascuna.
+    if (typeof CSBar !== 'undefined') {
+        nuoveMissioni.forEach(m => CSBar.avvisa('missione-completata', { text: m.titolo }));
+        nuoviTraguardi.forEach(t => CSBar.avvisa('traguardo-sbloccato', { text: t.titolo }));
+    }
+
     const righeMissioni = missioniOggiPool.map(m => _righeMissioneHtml(m, dati, idNuove.has(m.id))).join('');
     // Settimanali/mensili (2026-08-30, generalizzato): ora estratte a
     // sorte come le giornaliere, NON più "tutte visibili sempre" — mostro
@@ -4261,6 +4272,34 @@ async function initPhoneShell() {
             installPrompt: false,       // fuori scope in questa integrazione
             systemNotifications: false, // fuori scope in questa integrazione
             watchNetwork: true,
+
+            // Notifiche di sistema (2026-09-01, 4 eventi confermati da
+            // Claudio — "scambio da confermare" rimandato: non esiste
+            // ancora come funzione nel progetto, richiede una feature a
+            // sé, non solo un aggancio). 'text' di default sotto viene
+            // sempre sovrascritto con quello reale al momento della
+            // chiamata (vedi avvisa() nei punti di aggancio) — qui sono
+            // solo fallback se mai chiamati senza 'extra'.
+            notificationTypes: {
+                'missione-completata': {
+                    icon: '\u2726', title: 'Missione completata', text: '',
+                    target: '#traguardi', group: 'missioni-oggi', groupLabel: 'missioni completate',
+                },
+                'traguardo-sbloccato': {
+                    icon: '\u2b50', title: 'Traguardo sbloccato', text: '',
+                    target: '#traguardi', group: 'traguardi-oggi', groupLabel: 'traguardi sbloccati',
+                    priority: 'high',
+                },
+                'match-trovato': {
+                    icon: '\u21c4', title: 'Nuovo Match', text: '',
+                    target: '#scambio', group: 'match-nuovi', groupLabel: 'nuovi Match',
+                },
+                'prezzo-obiettivo': {
+                    icon: '\u2713', title: 'Prezzo obiettivo raggiunto', text: '',
+                    target: '#wishlist', group: 'prezzo-obiettivo', groupLabel: 'obiettivi di prezzo raggiunti',
+                    priority: 'high',
+                },
+            },
 
             // Suoni/densità/matita (2026-09-01): spostati dalla vecchia
             // barra (sempre nascosta ora) ai "quickActions" della tendina
