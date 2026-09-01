@@ -2937,7 +2937,7 @@ async function renderPaginaMissioni() {
         { prefisso: 't_doppioni_', titolo: 'Doppioni', metrica: 'doppioni_totali' },
         { prefisso: 't_missioni_', titolo: 'Missioni completate', metrica: 'missioni_completate_totale' },
     ];
-    const righeScale = scale.map(s => {
+    const righeScale = scale.map((s, i) => {
         const voci = CATALOGO_TRAGUARDI.filter(t => t.id.startsWith(s.prefisso)).sort((a, b) => a.valore - b.valore);
         const valoreAttuale = dati[s.metrica] || 0;
         const prossima = voci.find(t => valoreAttuale < t.valore);
@@ -2948,10 +2948,22 @@ async function renderPaginaMissioni() {
         // Stessa struttura/classi già usate per le barre di avanzamento
         // della pagina Set (.pg-riga-set/.pg-barra-track/.pg-barra-fill,
         // vedi renderPaginaSet()) — coerenza visiva, zero CSS nuovo.
+        // Espansione al tap (2026-08-31, stessa richiesta/stesso pattern
+        // già fatto per le missioni): mostra descrizione + ricompensa del
+        // PROSSIMO scalino non ancora raggiunto. Solo qui in questo
+        // render, non tocca la pagina Set che riusa la stessa classe
+        // .pg-riga-set senza onclick (verificato, nessun conflitto).
+        const idBase = 'traguardoScalaDettaglio-' + i;
         return `
-            <div class="pg-riga-set">
-                <div class="pg-riga-set-testa"><b>${s.titolo}</b><span>prossimo: ${escapeHtml(prossima.titolo)} (${valoreAttuale}/${prossima.valore})</span></div>
-                <div class="pg-barra-track"><div class="pg-barra-fill" style="width:${perc}%"></div></div>
+            <div>
+                <div class="pg-riga-set" style="cursor:pointer;" onclick="_toggleDettaglioMissione('scala-${i}')">
+                    <div class="pg-riga-set-testa"><b>${s.titolo}</b><span>prossimo: ${escapeHtml(prossima.titolo)} (${valoreAttuale}/${prossima.valore}) <i class="fa-solid fa-chevron-down" id="missioneDettaglio-scala-${i}-chevron" style="font-size:0.65rem; transition:transform 0.2s;"></i></span></div>
+                    <div class="pg-barra-track"><div class="pg-barra-fill" style="width:${perc}%"></div></div>
+                </div>
+                <div id="missioneDettaglio-scala-${i}" style="display:none; padding:0.3rem 0.2rem 0.6rem; font-size:0.78rem; color:var(--text-muted); line-height:1.4;">
+                    <div>${escapeHtml(prossima.descrizione || prossima.titolo)}</div>
+                    <div style="margin-top:0.25rem; color:var(--primary); font-weight:600;">${_testoRicompensa(prossima.ricompensa)}</div>
+                </div>
             </div>`;
     }).join('');
 
