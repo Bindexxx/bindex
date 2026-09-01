@@ -3023,6 +3023,17 @@ async function renderPaginaMissioni() {
 
     if (nuoveMissioni.length || nuoviTraguardi.length) {
         _beep(1200, 90); // stesso beep di conferma usato altrove (apertura dettaglio: 880Hz, qui più acuto per distinguere "vinto")
+        // Status bar (2026-09-01): rileggo il saldo vero solo se è successo
+        // qualcosa (evita una query in più ad ogni apertura della pagina
+        // Missioni quando non cambia nulla).
+        if (typeof CSBar !== 'undefined') {
+            (async () => {
+                try {
+                    const { data: saldo, error } = await ricompenseSaldo(userId, 'polvere');
+                    if (!error) CSBar.setCurrency({ value: saldo || 0 });
+                } catch (e) { console.error('[statusbar] aggiornamento saldo polvere:', e); }
+            })();
+        }
     }
 }
 
@@ -4028,9 +4039,21 @@ function _aggiornaOrologioStatusBar() {
 // Pulsa mentre è in corso una VERA chiamata a Supabase (non ad ogni
 // ricalcolo locale gratuito da carteReali) — usata attorno al polling
 // "lento" e a caricaAvvisiHome.
+// AGGIORNATA (2026-09-01, integrazione status bar): il vecchio puntino
+// #phoneSyncDot è nascosto via CSS (vedi statusbar.css, blocco di
+// integrazione) — questa funzione ora pilota lo stato "connessione" della
+// nuova barra invece del puntino. Firma invariata, tutti i punti di
+// chiamata esistenti nel file continuano a funzionare senza modifiche.
+// Non è un mapping perfetto (CSBar distingue online/connecting/offline,
+// qui abbiamo solo "sta sincronizzando ora / non sta sincronizzando"), ma
+// è la stessa semplificazione già implicita nel vecchio puntino
+// acceso/spento — nessuna informazione persa.
 function _impostaSyncAttivo(attivo) {
-    const dot = document.getElementById('phoneSyncDot');
+    const dot = document.getElementById('phoneSyncDot'); // lasciato per rollback, nascosto via CSS
     if (dot) dot.classList.toggle('attivo', attivo);
+    if (typeof CSBar !== 'undefined' && CSBar.getConnection) {
+        CSBar.setConnection(attivo ? 'connecting' : 'online');
+    }
 }
 
 // ── SUONI RETRO (Web Audio, nessun file esterno) ─────────────────────────
@@ -4216,11 +4239,78 @@ async function initPhoneShell() {
 
     _caricaLayoutWidget();
     await renderWidgetHome();
-    _aggiornaOrologioStatusBar();
-    setInterval(_aggiornaOrologioStatusBar, 30000);
+    // _aggiornaOrologioStatusBar()/relativo setInterval RIMOSSI da qui
+    // (2026-09-01): la nuova status bar (CSBar) ha un proprio orologio
+    // interno. Funzione lasciata definita più sopra (dead code, per
+    // rollback) — il vecchio elemento #phoneStatusOra è nascosto via CSS.
 
     const iconaSuoni = document.getElementById('iconaSuoniWidgetHome');
     if (iconaSuoni) iconaSuoni.className = prefSuoniWidgetGet() ? 'fa-solid fa-volume-high' : 'fa-solid fa-volume-xmark';
+
+    // ── STATUS BAR (2026-09-01) ─────────────────────────────────────────
+    // Prima integrazione: solo estetica/interazione base (orologio, stato
+    // connessione, tendina, valuta) — niente notifiche automatiche,
+    // presenza live, coda offline o PWA (rimandati, "fase 2" per esplicita
+    // decisione di Claudio). Montata dentro #phoneScreen (non sul body:
+    // resta nel mockup del telefono, non copre tutto il browser — vedi
+    // opts.container in statusbar.js).
+    if (typeof CSBar !== 'undefined') {
+        CSBar.init({
+            container: '#phoneScreen',
+            persist: true,
+            installPrompt: false,       // fuori scope in questa integrazione
+            systemNotifications: false, // fuori scope in questa integrazione
+            watchNetwork: true,
+
+            // Suoni/densità/matita (2026-09-01): spostati dalla vecchia
+            // barra (sempre nascosta ora) ai "quickActions" della tendina
+            // — Claudio ha confermato l'approccio. Cambia la scopribilità
+            // (prima visibili solo sulla pagina widget, ora sempre
+            // raggiungibili dalla tendina): nota, non un difetto silenzioso.
+            // 'active' letto dallo stato REALE del progetto al momento
+            // dell'avvio, cosi CSBar parte sincronizzato — poi le due
+            // funzioni restano allineate perché ogni tap passa sempre da
+            // qui (onToggle chiama SEMPRE la funzione reale del progetto).
+            quickActions: [
+                { id: 'suoni', label: 'Suoni', glyph: '\u266a', active: prefSuoniWidgetGet(), onToggle: () => toggleSuoniWidgetHome() },
+                { id: 'densita', label: 'Densità comoda', glyph: '\u25a6', active: _densitaCompatta, onToggle: () => toggleDensitaWidgetHome() },
+                { id: 'modifica', label: 'Personalizza widget', glyph: '\u270e', type: 'action', onToggle: () => toggleModificaWidgetHome() },
+            ],
+
+            onSettings: () => apriDettaglioWidget('impostazioni'),
+            // Riusa il vero menu profilo (#profiloContainer, spostato qui
+            // sotto), non ricostruito — chiama la stessa funzione che
+            // apriva/chiudeva il menu dalla vecchia barra.
+            onProfile: () => { if (typeof toggleMenuProfilo === 'function') toggleMenuProfilo(); },
+        });
+
+        // #profiloContainer (menu profilo completo: nome, email, cambio
+        // username, logout) esiste già nell'HTML dentro la vecchia barra
+        // (ora nascosta) — spostato qui via appendChild, stesso nodo DOM,
+        // stessa logica interna intatta (il menu si posiziona da solo
+        // rispetto al proprio contenitore, non rispetto alla pagina).
+        // Il pulsante profilo "finto" di CSBar resta nascosto via CSS
+        // (.csb-profile { display:none }) al suo posto.
+        const profiloContainer = document.getElementById('profiloContainer');
+        const csbRight = document.querySelector('#phoneScreen .csb-right');
+        if (profiloContainer && csbRight) csbRight.appendChild(profiloContainer);
+
+        // Valuta (2026-09-01): collegata al saldo reale di
+        // inventario_ricompense tramite ricompenseSaldo() già esistente
+        // (data/missioni.repository.js) — 'polvere' è il tipo ricompensa
+        // reale usato in tutto il catalogo missioni/traguardi, non
+        // inventato. Aggiornata di nuovo dopo ogni valutazione missioni
+        // (vedi renderPaginaMissioni), dove vengono davvero accreditate
+        // nuove ricompense.
+        (async () => {
+            try {
+                const userId = await authGetUserId();
+                if (!userId) return;
+                const { data: saldo, error } = await ricompenseSaldo(userId, 'polvere');
+                if (!error) CSBar.setCurrency({ value: saldo || 0, glyph: '\u2727', label: 'Polvere' });
+            } catch (e) { console.error('[statusbar] saldo polvere iniziale:', e); }
+        })();
+    }
 
     avviaPollingWidgetHome();
 
