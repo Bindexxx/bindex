@@ -2925,9 +2925,25 @@ async function renderPaginaMissioni() {
         ${altreMissioni.length ? `<div class="pg-titoletto" style="margin-top:0.8rem;">Settimanali, mensili &amp; permanenti</div><div class="pg-elenco">${righeAltre}</div>` : ''}
     `;
 
-    // Traguardi: vista compatta per non riversare 65 righe su mobile — per
+    // Traguardi: vista compatta per non riversare 65+ righe su mobile — per
     // ogni scala mostra il prossimo scalino non ancora raggiunto (o "tutti
     // sbloccati" se completa), più il conteggio totale sbloccati in alto.
+    //
+    // BUG TROVATO E CORRETTO (2026-09-01, segnalato da Claudio: "la pagina
+    // Traguardi non mostra Maestro CardSync/Leggenda CardSync"): la causa
+    // reale non erano le due voci nuove in sé, ma un problema preesistente
+    // più ampio, mai notato prima perché nessuno aveva ancora controllato
+    // a fondo. Questo array 'scale' elencava SOLO 6 scale (carte, valore,
+    // location, wishlist, doppioni, missioni) — le altre 4 già esistenti
+    // (t_accessi_, t_binder_aperture_, aggiunte in sessione 2026-08-30) non
+    // sono MAI comparse in questa pagina, così come i 4 TRAGUARDI_SINGOLI
+    // (t_giorno_impeccabile, t_collezionista_completo, aggiunti in sessioni
+    // precedenti, e t_maestro_cardsync/t_leggenda_cardsync di oggi): non
+    // esisteva alcun blocco di rendering per loro, non solo mancavano dalla
+    // lista. idTraguardiSbloccati sotto era già calcolato ma MAI usato in
+    // questo render (codice morto, lasciato con lo stesso nome per non
+    // introdurre confusione se in futuro serve davvero evidenziare i
+    // "nuovi" — vedi nota su righeSingoli sotto).
     const idTraguardiSbloccati = new Set(nuoviTraguardi.map(t => t.id));
     const scale = [
         { prefisso: 't_carte_', titolo: 'Carte', metrica: 'carte_totali' },
@@ -2936,6 +2952,10 @@ async function renderPaginaMissioni() {
         { prefisso: 't_wishlist_', titolo: 'Wishlist', metrica: 'wishlist_totale' },
         { prefisso: 't_doppioni_', titolo: 'Doppioni', metrica: 'doppioni_totali' },
         { prefisso: 't_missioni_', titolo: 'Missioni completate', metrica: 'missioni_completate_totale' },
+        { prefisso: 't_accessi_', titolo: 'Accessi', metrica: 'accessi_totali' },
+        { prefisso: 't_binder_aperture_', titolo: 'Binder aperti dal gruppo', metrica: 'binder_aperture_totale' },
+        { prefisso: 't_match_', titolo: 'Match trovati', metrica: 'match_trovati_totale' },
+        { prefisso: 't_binder_visitati_', titolo: 'Binder visitati', metrica: 'binder_visitati_distinti_totale' },
     ];
     const righeScale = scale.map((s, i) => {
         const voci = CATALOGO_TRAGUARDI.filter(t => t.id.startsWith(s.prefisso)).sort((a, b) => a.valore - b.valore);
@@ -2967,7 +2987,39 @@ async function renderPaginaMissioni() {
             </div>`;
     }).join('');
 
-    containerTraguardi.innerHTML = `<div class="pg-elenco">${righeScale}</div>`;
+    // Traguardi "singoli" (non in scala, soglia unica) — MAI renderizzati
+    // prima in questa pagina (vedi nota sopra). Testo di stato diverso a
+    // seconda del tipo di metrica: booleano ('==' → sbloccato/non ancora),
+    // altrimenti valore/soglia (percentuale o conteggio). Sbloccato = la
+    // metrica soddisfa GIA' la condizione ora, stessa semplificazione già
+    // usata sopra per "tutti sbloccati" nelle scale (non interroga
+    // traguardi_riscossi direttamente, ricalcola dal valore corrente —
+    // coerente, non un'invenzione nuova).
+    const _statoSingoloTesto = (t, dati) => {
+        const valore = dati[t.metrica];
+        if (t.operatore === '==') return valore ? 'Sbloccato' : 'Non ancora';
+        const unita = t.metrica === 'percentuale_traguardi_sbloccati' ? '%' : '';
+        return `${valore || 0}${unita} / ${t.valore}${unita}`;
+    };
+    const righeSingoli = TRAGUARDI_SINGOLI.map((t, i) => {
+        const sbloccato = MOTORE_MISSIONI.valuta(t, dati);
+        const idBase = 'singolo-' + i;
+        return `
+            <div>
+                <div class="pg-riga-set" style="cursor:pointer;" onclick="_toggleDettaglioMissione('${idBase}')">
+                    <div class="pg-riga-set-testa">
+                        <b>${escapeHtml(t.titolo)}</b>
+                        <span>${sbloccato ? '<i class="fa-solid fa-trophy" style="color:var(--success);"></i> ' : ''}${_statoSingoloTesto(t, dati)} <i class="fa-solid fa-chevron-down" id="missioneDettaglio-${idBase}-chevron" style="font-size:0.65rem; transition:transform 0.2s;"></i></span>
+                    </div>
+                </div>
+                <div id="missioneDettaglio-${idBase}" style="display:none; padding:0.3rem 0.2rem 0.6rem; font-size:0.78rem; color:var(--text-muted); line-height:1.4;">
+                    <div>${escapeHtml(t.descrizione || t.titolo)}</div>
+                    <div style="margin-top:0.25rem; color:var(--primary); font-weight:600;">${_testoRicompensa(t.ricompensa)}</div>
+                </div>
+            </div>`;
+    }).join('');
+
+    containerTraguardi.innerHTML = `<div class="pg-elenco">${righeScale}${righeSingoli}</div>`;
 
     if (nuoveMissioni.length || nuoviTraguardi.length) {
         _beep(1200, 90); // stesso beep di conferma usato altrove (apertura dettaglio: 880Hz, qui più acuto per distinguere "vinto")
