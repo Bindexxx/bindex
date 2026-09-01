@@ -224,6 +224,25 @@
                 trovaMatch('trova_match_wishlist_scambio', userId),
             ]);
 
+            // Traguardi #46-55 "Match" (Fase 2, 2026-09-01): registra le
+            // chiavi di TUTTI i match attualmente trovati — non solo quelli
+            // "non visti" del badge locale qui sotto, sono due concetti
+            // diversi ("visto" è per-dispositivo/localStorage; il traguardo
+            // è cumulativo per-utente sul DB, dedup lato server). Agganciato
+            // qui e non in ui/phone.ui.js:renderPaginaMatch() perché questa
+            // funzione gira SEMPRE all'avvio (vedi commento sopra), mentre
+            // quella pagina solo se l'utente la apre manualmente — copertura
+            // più ampia, un solo punto invece di due.
+            (async () => {
+                try {
+                    const chiavi = [
+                        ...(dataScambio || []).map(m => _chiaveMatch(m, 'scambio')),
+                        ...(dataWishlist || []).map(m => _chiaveMatch(m, 'wishlist')),
+                    ];
+                    await missioniMatchTrovatiRegistraNuovi(userId, chiavi);
+                } catch (e) { console.error('[missioni] registrazione match trovati:', e); }
+            })();
+
             const visti = _matchVisti();
             const nuoviScambio = (dataScambio || []).filter(m => !visti.has(_chiaveMatch(m, 'scambio')));
             const nuoviWishlist = (dataWishlist || []).filter(m => !visti.has(_chiaveMatch(m, 'wishlist')));

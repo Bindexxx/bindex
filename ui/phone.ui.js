@@ -3148,10 +3148,13 @@ function _apriBinderAltruiMatch(ownerAltro, binderAltro) {
     // scrivibile direttamente (a differenza della "popolarità" m18-20, che
     // conta le aperture anonime da binder-pubblico.html e passa per la RPC
     // SECURITY DEFINER di migration 33). Fire-and-forget, come gli altri.
+    // AGGIORNATO (2026-09-01): passo anche binderAltro — serve al traguardo
+    // cumulativo #56-65 "binder visitati" per contare binder DISTINTI (non
+    // solo le visite totali, già usate dalla missione #70 sopra).
     (async () => {
         try {
             const userId = await authGetUserId();
-            if (userId) await missioniBinderPubblicoVisitatoRegistra(userId);
+            if (userId) await missioniBinderPubblicoVisitatoRegistra(userId, binderAltro);
         } catch (e) { console.error('[missioni] registrazione visita binder pubblico:', e); }
     })();
     const url = new URL('binder-pubblico.html?u=' + encodeURIComponent(ownerAltro), window.location.href);

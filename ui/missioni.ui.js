@@ -607,6 +607,59 @@ const SCALA_BINDER_APERTURE = _generaScalaTraguardi('t_binder_aperture', 'binder
 // NOTA: traguardi #56-65 originali (binder visitati da TE) restano FASE 2
 // permanentemente bloccati, stesso motivo delle missioni #21/#22 sopra.
 
+// FASE 2 sbloccata (2026-09-01): traguardi #46-55 "Match" — cumulativo
+// storico vero (missioniMatchTrovatiRegistraNuovi/Totale in
+// data/missioni.repository.js, dedup in scrittura), non più il conteggio
+// "istantaneo" match_attivi_totale (quello resta riservato alle missioni
+// giornaliere m24/m25/m75, dove ha senso un valore che sale e scende nel
+// tempo — un traguardo permanente non può basarsi su una metrica che può
+// diminuire). Categoria 'social': già esistente (SCALA_BINDER_APERTURE),
+// nessun impatto sulla soglia di t_collezionista_completo (resta 5).
+// Scaglioni 2/3/4 aggiunti su richiesta di Claudio (2026-09-01): soglie
+// alte del documento originale (fino a 2500) NON ridotte — "sarà usato da
+// tanti utenti" — solo aggiunti scaglioni bassi iniziali per rendere il
+// progresso visibile subito anche con un gruppo piccolo.
+const SCALA_MATCH_TROVATI = _generaScalaTraguardi('t_match', 'match_trovati_totale', 'social', [
+    { soglia: 1,    titolo: 'Prima connessione',    ricompensa: { tipo: 'polvere', quantita: 5 } },
+    { soglia: 2,    titolo: 'Doppia occasione',     ricompensa: { tipo: 'polvere', quantita: 5 } },
+    { soglia: 3,    titolo: 'Si allarga la rete',   ricompensa: { tipo: 'polvere', quantita: 6 } },
+    { soglia: 4,    titolo: 'Quasi tutti connessi', ricompensa: { tipo: 'polvere', quantita: 8 } },
+    { soglia: 5,    titolo: 'Primo contatto',       ricompensa: { tipo: 'polvere', quantita: 10 } },
+    { soglia: 10,   titolo: 'Social collector',     ricompensa: { tipo: 'stampino', riferimento: 'social' } },
+    { soglia: 25,   titolo: 'Connesso',             ricompensa: { tipo: 'polvere', quantita: 25 } },
+    { soglia: 50,   titolo: 'Cacciatore di Match',  ricompensa: { tipo: 'bustina', quantita: 1 } },
+    { soglia: 100,  titolo: 'Matchmaker',           ricompensa: { tipo: 'stampino', riferimento: 'raro' } },
+    { soglia: 250,  titolo: 'Network',              ricompensa: { tipo: 'polvere', quantita: 75 } },
+    { soglia: 500,  titolo: 'Connettore',           ricompensa: { tipo: 'bustina', quantita: 2 } },
+    { soglia: 1000, titolo: 'Nodo della rete',      ricompensa: { tipo: 'stampino', riferimento: 'leggendario' } },
+    { soglia: 2500, titolo: 'Leggenda sociale',     ricompensa: { tipo: 'polvere', quantita: 250 } },
+]);
+
+// FASE 2 sbloccata (2026-09-01): traguardi #56-65 "binder visitati (da
+// TE)" — DIVERSO da SCALA_BINDER_APERTURE sopra (quella è "aperti dagli
+// ALTRI", pivot necessario per mancanza di identità visitatore sulla
+// pagina pubblica anonima binder-pubblico.html). Qui l'identità c'è
+// davvero: evento loggato da ui/phone.ui.js:_apriBinderAltruiMatch(),
+// utente autenticato, dal pannello Match del sito. Conteggio binder
+// DISTINTI (non visite totali — vedi missioniBinderVisitatiDistintiTotale,
+// dedup solo in lettura). Stessa logica di scaglioni bassi di
+// SCALA_MATCH_TROVATI sopra.
+const SCALA_BINDER_VISITATI = _generaScalaTraguardi('t_binder_visitati', 'binder_visitati_distinti_totale', 'social', [
+    { soglia: 1,    titolo: 'Prima visita',        ricompensa: { tipo: 'polvere', quantita: 3 } },
+    { soglia: 2,    titolo: 'Seconda tappa',       ricompensa: { tipo: 'polvere', quantita: 4 } },
+    { soglia: 3,    titolo: 'Giro del gruppo',     ricompensa: { tipo: 'polvere', quantita: 5 } },
+    { soglia: 4,    titolo: 'Nessuno ti sfugge',   ricompensa: { tipo: 'polvere', quantita: 6 } },
+    { soglia: 5,    titolo: 'Curioso',             ricompensa: { tipo: 'polvere', quantita: 5 } },
+    { soglia: 10,   titolo: 'Esploratore',         ricompensa: { tipo: 'polvere', quantita: 10 } },
+    { soglia: 25,   titolo: 'Viaggiatore sociale', ricompensa: { tipo: 'stampino', riferimento: 'esploratore' } },
+    { soglia: 50,   titolo: 'Conoscitore',         ricompensa: { tipo: 'bustina', quantita: 1 } },
+    { soglia: 100,  titolo: 'Giro dei binder',     ricompensa: { tipo: 'polvere', quantita: 50 } },
+    { soglia: 250,  titolo: 'Esploratore esperto', ricompensa: { tipo: 'stampino', riferimento: 'raro' } },
+    { soglia: 500,  titolo: 'Cercatore',           ricompensa: { tipo: 'polvere', quantita: 100 } },
+    { soglia: 1000, titolo: 'Grande esploratore',  ricompensa: { tipo: 'bustina', quantita: 2 } },
+    { soglia: 2500, titolo: 'Conosci tutti',       ricompensa: { tipo: 'stampino', riferimento: 'leggendario' } },
+]);
+
 // Traguardi singoli (non in scala)
 const TRAGUARDI_SINGOLI = [
     { id: 't_giorno_impeccabile', titolo: 'Giorno impeccabile', categoria: 'meta',
@@ -634,13 +687,22 @@ const CATALOGO_TRAGUARDI = [
     ...SCALA_MISSIONI_TOTALI,
     ...SCALA_ACCESSI,
     ...SCALA_BINDER_APERTURE,
+    ...SCALA_MATCH_TROVATI,
+    ...SCALA_BINDER_VISITATI,
     ...TRAGUARDI_SINGOLI,
 ];
-// Traguardi #46-55 (Match), #56-65 (binder visitati), #98 (Collezionista
-// completo, categorie) restano FASE 2 — non inclusi qui.
-// Traguardi #99/#100 (soglie su traguardi sbloccati totali) sono PENDING:
-// le soglie originali (50/100) presumono il catalogo completo a 100 voci,
-// da ricalcolare quando anche il resto della Fase 2 sarà implementato.
+// AGGIORNATO (2026-09-01): #46-55 (Match) e #56-65 (binder visitati) ora
+// INCLUSI (vedi SCALA_MATCH_TROVATI/SCALA_BINDER_VISITATI sopra). #98
+// (Collezionista completo) era già incluso in TRAGUARDI_SINGOLI con
+// criterio ridotto (5 categorie, non "tutte") — nessuna modifica alla
+// soglia necessaria: entrambe le nuove scale sono categoria 'social', già
+// esistente (SCALA_BINDER_APERTURE), quindi il numero di categorie
+// distinte resta 5.
+// Traguardi #99/#100 (soglie su traguardi sbloccati totali) restano
+// PENDING: le soglie originali (50/100) presumono il catalogo completo a
+// 100 voci — con queste due scale aggiunte il catalogo è più vicino a
+// quel numero ma il conteggio va comunque rifatto a mente fredda quando
+// tutta la Fase 2 sarà chiusa, come già deciso.
 
 
 // ----------------------------------------------------------------------------
@@ -731,6 +793,8 @@ const _FRASI_TRAGUARDO = {
     missioni_completate_totale: { frase: v => `${v} ${v === 1 ? 'missione completata' : 'missioni completate'} in totale` },
     valore_collezione: { frase: v => `${v} € di valore totale della collezione` },
     wishlist_totale: { frase: v => `${v} ${v === 1 ? 'carta' : 'carte'} in Wishlist` },
+    match_trovati_totale: { frase: v => `${v} ${v === 1 ? 'Match trovato' : 'Match trovati'} in totale` },
+    binder_visitati_distinti_totale: { frase: v => `${v} ${v === 1 ? 'binder diverso visitato' : 'binder diversi visitati'}` },
 };
 
 // "oggi"/"questa settimana"/ecc. — solo per le missioni (i traguardi sono
@@ -946,7 +1010,7 @@ const MOTORE_MISSIONI = {
             locationDistinte, locationAggiuntaOggi, espansioneMax,
             prezziAggiornatiOggi, prezziAggiornatiSettimana, prezziScaduti,
             wishlistTotale, wishlistObiettivi,
-            matchAttivi, binderPubblicatiOggi,
+            matchAttivi, matchTrovatiTotale, binderPubblicatiOggi, binderVisitatiDistinti,
             codaVuota, codaAzzerataOggi,
             missioniTotali, missioniOggi,
             accessoOggi, accessiTotali, giorniConsecutivi,
@@ -975,7 +1039,9 @@ const MOTORE_MISSIONI = {
             missioniWishlistTotale(userId),
             missioniWishlistObiettiviRaggiunti(userId),
             missioniMatchAttiviTotale(userId),
+            missioniMatchTrovatiTotale(userId),
             missioniBinderPubblicatiPeriodo(userId, oggi.inizioISO, oggi.fineISO),
+            missioniBinderVisitatiDistintiTotale(userId),
             missioniErroriCodaVuota(userId),
             missioniCodaErroriAzzerataOggi(userId),
             missioniCompletateTotale(userId),
@@ -1088,7 +1154,9 @@ const MOTORE_MISSIONI = {
             wishlist_totale: v(wishlistTotale, 'count'),
             wishlist_obiettivi_raggiunti: v(wishlistObiettivi, 'count'),
             match_attivi_totale: v(matchAttivi),
+            match_trovati_totale: v(matchTrovatiTotale, 'count'),
             binder_pubblicati_periodo: v(binderPubblicatiOggi, 'count'),
+            binder_visitati_distinti_totale: v(binderVisitatiDistinti),
             errori_coda_vuota: v(codaVuota),
             coda_errori_azzerata_oggi: v(codaAzzerataOggi),
             missioni_completate_totale: v(missioniTotali, 'count'),
