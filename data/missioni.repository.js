@@ -18,18 +18,18 @@
 // dedupllicasse da sola (1 riga/giorno anche con reload multipli), non
 // solo un semplice insert: implementato di conseguenza.
 //
-// 3 ASSUNZIONI SEGNALATE, non stub ma da tenere d'occhio (implementate,
-// funzionanti, ma non verificate al 100% contro il codice reale):
-//   - missioniLocationDistinte: legge da 'location', non da
-//     DISTINCT carte.location — da confermare con Claudio.
-//   - missioniCarteStessaEspansioneMax: formato del codice carta (sigla =
-//     prefisso prima dello spazio) — non verificata contro il vero parser
-//     sigle di ui/phone.ui.js (_ballLeggiCodice/_ballSetBase, non letto
-//     in questa sessione).
-//   - missioniWishlistObiettiviRaggiunti: assume che 'wishlist' condivida
-//     i nomi colonna di 'carte' (prezzo, prezzo_obiettivo) — non
-//     verificata direttamente (la query information_schema copriva solo
-//     activity_log/carte/binders).
+// TUTTE le assunzioni segnalate nella prima stesura sono state verificate
+// e risolte in questa sessione (2026-08-31):
+//   - missioniWishlistObiettiviRaggiunti: CONFERMATO — 'wishlist' condivide
+//     davvero i nomi colonna di 'carte' (prezzo, prezzo_obiettivo),
+//     verificato via information_schema.
+//   - missioniCarteStessaEspansioneMax: CORRETTO — ora riusa il vero
+//     parser sigle _ballLeggiCodice/_ballSetBase di ui/phone.ui.js (letto
+//     per intero in questa sessione) invece di un'approssimazione.
+//   - missioniLocationDistinte: DECISO con dati reali — conta DISTINCT
+//     carte.location, non le righe della tabella 'location' (i due numeri
+//     divergono davvero sui dati reali del gruppo, verificato con una
+//     query di confronto).
 //
 // Dipende da: supabaseClient. Per il match automatico riusa trovaMatch()
 // già definita in data/prices.repository.js (stessa RPC di
@@ -75,10 +75,22 @@ async function missioniDoppioniTotali(userId) {
 // carte.location (i valori davvero assegnati a qualche carta, che
 // potrebbero non coincidere 1:1 con le location "create" ma vuote),
 // cambiare qui.
+// DECISIONE (2026-08-31, confermata con dati reali su richiesta di
+// Claudio): conta DISTINCT carte.location, non le righe della tabella
+// 'location'. Verificato con una query di confronto sui due utenti reali:
+// i numeri NON coincidono in nessuno dei due casi — un utente aveva 11
+// location create ma 12 usate (almeno un valore orfano su qualche carta,
+// mai presente/non più presente nella tabella location), l'altro 1
+// location creata ma 0 usate (slot creato, mai assegnato a una carta).
+// Contare la tabella 'location' premierebbe la creazione di slot vuoti
+// invece dell'organizzazione reale della collezione — DISTINCT su
+// carte.location misura l'azione vera ("quante location usi davvero") ed
+// è immune sia agli slot vuoti sia cattura comunque i valori orfani.
 async function missioniLocationDistinte(userId) {
-    const { data, error } = await supabaseClient.from('location').select('nome').eq('owner_id', userId);
+    const { data, error } = await supabaseClient.from('carte').select('location')
+        .eq('owner_id', userId).eq('stato', 'collezione').not('location', 'is', null);
     if (error) return { data: 0, error };
-    return { data: (data || []).length, error: null };
+    return { data: new Set((data || []).map(r => r.location)).size, error: null };
 }
 
 async function missioniLocationAggiuntaPeriodo(userId, inizioISO, fineISO) {
@@ -87,23 +99,30 @@ async function missioniLocationAggiuntaPeriodo(userId, inizioISO, fineISO) {
         .gte('created_at', inizioISO).lt('created_at', fineISO);
 }
 
-// Raggruppa per sigla-espansione (prefisso del codice carta, prima dello
-// spazio — es. "ASC 123/217" -> "ASC") e ritorna la dimensione del gruppo
-// più numeroso. Nome colonna VERIFICATO: 'codice', non 'code'. ASSUNZIONE
-// sul formato del valore: non verificata contro il vero parser sigle di
-// ui/phone.ui.js (_ballLeggiCodice/_ballSetBase, non letto in questa
-// sessione) — se quel parser usa una convenzione diversa (es. separatore
-// diverso, sigle X-prefix da deduplicare — vedi nota "X-prefix sigle" nei
-// learnings), allineare qui.
+// Raggruppa per set base (dopo aver ricondotto varianti X-prefix/PPS/BOO e
+// alias) e ritorna la dimensione del gruppo più numeroso. Riusa il vero
+// parser sigle di ui/phone.ui.js — _ballLeggiCodice()/_ballSetBase() —
+// letto per intero in questa sessione (2026-08-31), non più
+// un'approssimazione "prefisso prima dello spazio": quel parser gestisce
+// varianti X (XASC -> ASC, stesso set), bustine premio PPS<n>-<SIGLA>,
+// Trick or Trade BOO<n>-<SIGLA>, e una tabella di alias per sigle non
+// standard (SM->SMP, TR->RO, ecc.) — duplicare una versione semplificata
+// qui avrebbe prodotto conteggi sbagliati (es. XASC contato come set
+// diverso da ASC). _ballLeggiCodice è una funzione pura (nessuna
+// dipendenza da DOM/supabaseClient), risolta al momento della chiamata
+// come le altre costanti globali già referenziate in questo file — deve
+// solo essere caricata da qualche parte nella pagina (ui/phone.ui.js),
+// l'ordine esatto rispetto a questo file non è vincolante.
 async function missioniCarteStessaEspansioneMax(userId) {
     const { data, error } = await supabaseClient.from('carte').select('codice')
         .eq('owner_id', userId).eq('stato', 'collezione');
     if (error) return { data: 0, error };
     const conteggi = {};
     (data || []).forEach(r => {
-        const sigla = (r.codice || '').trim().split(/\s+/)[0];
-        if (!sigla) return;
-        conteggi[sigla] = (conteggi[sigla] || 0) + 1;
+        const letto = typeof _ballLeggiCodice === 'function' ? _ballLeggiCodice(r.codice) : null;
+        const set = letto ? letto.set : null;
+        if (!set) return;
+        conteggi[set] = (conteggi[set] || 0) + 1;
     });
     const max = Object.values(conteggi).reduce((m, n) => Math.max(m, n), 0);
     return { data: max, error: null };
