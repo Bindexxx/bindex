@@ -1,0 +1,1410 @@
+/* ==========================================================================
+   CardSync Pocket — Barra di stato + tendina notifiche
+   File: statusbar.css   —   versione 5.3
+
+   COERENZA CON I WIDGET
+   La barra non ha più una sua tavolozza: legge le stesse variabili che
+   il tuo progetto definisce su body[data-tema], cioè
+       --sfondo --tile --tile-bordo --testo --testo-2
+       --pannello --linea --incasso
+   Quindi cambiando tema con il tuo tasto "Tema" cambia anche la barra,
+   senza che tu debba fare niente. I valori dopo la virgola dentro var()
+   sono solo una rete di sicurezza se la barra viene usata da sola.
+
+   Tutte le classi hanno prefisso .csb- : nessuna collisione con .pkdx-tile,
+   .btn, .pill, .coda o gli altri pezzi del progetto.
+   ========================================================================== */
+
+/* Le misure stanno su :root perché servono anche fuori dalla barra:
+   al <body> per lo spazio in alto, e alle tue pagine a schermo intero.
+   I colori invece stanno su .csb-root, così seguono il tema. */
+:root {
+  --csb-h: 34px;
+  --csb-top: env(safe-area-inset-top, 0px);
+}
+
+.csb-root {
+  /* misure di forma, solo interne alla barra */
+  --csb-raggio: 22px;      /* schede: come le tile piccole, un filo meno */
+  --csb-raggio-sm: 14px;
+  --csb-raggio-pill: 999px;
+  --csb-vetro: blur(18px) saturate(1.35);
+
+  /* colori presi dal tema del progetto */
+  --csb-pannello: var(--pannello, #ffffff);
+  --csb-tile: var(--tile, rgba(252, 252, 250, 0.74));
+  --csb-tile-bordo: var(--tile-bordo, transparent);
+  --csb-testo: var(--testo, #1c1c1c);
+  --csb-testo-2: var(--testo-2, #5f5e5a);
+  --csb-linea: var(--linea, #e2e2df);
+  --csb-incasso: var(--incasso, rgba(0, 0, 0, 0.045));
+
+  /* accenti della barra */
+  --csb-accento: #3b7dd8;          /* lo stesso blu di .btn.attivo */
+  --csb-accento-rgb: 59, 125, 216;
+  --csb-attesa: #c8892b;           /* lo stesso ambra di .coda */
+  --csb-ball: #e0403a;             /* la pokeball resta una pokeball */
+
+  font-family: inherit;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* --- tema scuro: il vetro deve schiarire, non scurire --- */
+body[data-tema="scuro"] .csb-root {
+  --csb-accento: #5a95e4;
+  --csb-accento-rgb: 90, 149, 228;
+}
+
+/* --- tema retro: niente vetro, angoli vivi, ombre piene --- */
+body[data-tema="retro"] .csb-root {
+  --csb-accento: #9bbc0f;
+  --csb-accento-rgb: 155, 188, 15;
+  --csb-attesa: #d9c34a;
+  --csb-raggio: 6px;
+  --csb-raggio-sm: 4px;
+  --csb-raggio-pill: 4px;
+  --csb-vetro: none;
+}
+
+/* il progetto può spegnere il vetro ovunque */
+body.senza-vetro .csb-root { --csb-vetro: none; }
+body.senza-vetro[data-tema="chiaro"] .csb-root { --csb-tile: #f4f4f2; }
+body.senza-vetro[data-tema="scuro"] .csb-root { --csb-tile: #24242a; }
+
+@media (prefers-reduced-transparency: reduce) {
+  .csb-root { --csb-vetro: none; }
+}
+
+/* Spinge il contenuto del sito sotto la barra.
+   La classe viene aggiunta automaticamente da statusbar.js. */
+html.csb-has-bar body {
+  padding-top: calc(var(--csb-h) + var(--csb-top));
+}
+
+/* Blocco scorrimento compatibile con Safari iOS. */
+body.csb-locked {
+  position: fixed;
+  left: 0;
+  right: 0;
+  width: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+.csb-root *,
+.csb-root *::before,
+.csb-root *::after {
+  box-sizing: border-box;
+}
+
+.csb-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* --------------------------------------------------------------------------
+   Barra
+   -------------------------------------------------------------------------- */
+
+.csb-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 9004;
+  height: calc(var(--csb-h) + var(--csb-top));
+  padding-top: var(--csb-top);
+  padding-left: 12px;
+  padding-right: 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--csb-tile);
+  -webkit-backdrop-filter: var(--csb-vetro);
+  backdrop-filter: var(--csb-vetro);
+  border-bottom: 0.5px solid var(--csb-linea);
+  color: var(--csb-testo);
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  cursor: grab;
+  transition: background 0.25s ease, border-color 0.25s ease;
+}
+
+body[data-tema="retro"] .csb-bar {
+  border-bottom: 2px solid var(--tile-bordo, #9bbc0f);
+  box-shadow: 0 3px 0 rgba(0, 0, 0, 0.4);
+}
+
+/* Con la tendina scesa la barra perde lo sfondo e diventa parte della
+   tendina: altrimenti la fascia e il suo bordo tagliano in due il
+   contenuto che le passa sotto. */
+.csb-bar.is-shade-open {
+  background: transparent;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  border-bottom-color: transparent;
+  box-shadow: none;
+}
+
+body[data-tema="retro"] .csb-bar.is-shade-open {
+  border-bottom-color: transparent;
+  box-shadow: none;
+}
+
+.csb-bar.is-dragging { cursor: grabbing; }
+.csb-bar.is-locked { cursor: default; }
+
+.csb-left,
+.csb-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+
+.csb-center {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+}
+
+/* Orario ------------------------------------------------------------------ */
+
+.csb-clock {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--csb-testo);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+}
+
+body[data-tema="retro"] .csb-clock { letter-spacing: 0.06em; }
+
+/* Pokeball ---------------------------------------------------------------- */
+
+.csb-ball-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.csb-ball {
+  appearance: none;
+  padding: 0;
+  position: relative;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+  background: linear-gradient(180deg, #b9bcc2 0 47%, #eceef1 47% 100%);
+  border: 1px solid rgba(0, 0, 0, 0.55);
+  cursor: pointer;
+  opacity: 0.5;
+  transition: background 0.3s ease, box-shadow 0.3s ease, opacity 0.3s ease;
+}
+
+.csb-ball::before {
+  content: "";
+  position: absolute;
+  left: -1px;
+  right: -1px;
+  top: 50%;
+  height: 1.6px;
+  transform: translateY(-50%);
+  background: rgba(0, 0, 0, 0.62);
+}
+
+.csb-ball::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 4.6px;
+  height: 4.6px;
+  margin: -2.3px 0 0 -2.3px;
+  border-radius: 50%;
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.62);
+}
+
+.csb-ball[data-state="connecting"] {
+  background: linear-gradient(180deg, var(--csb-attesa) 0 47%, #eceef1 47% 100%);
+  opacity: 1;
+  animation: csb-blink 0.9s steps(1, end) infinite;
+}
+
+.csb-ball[data-state="online"] {
+  background: linear-gradient(180deg, var(--csb-ball) 0 47%, #f7f8fa 47% 100%);
+  opacity: 1;
+  box-shadow: 0 0 0 3px rgba(224, 64, 58, 0.14);
+  animation: csb-breathe 3s ease-in-out infinite;
+}
+
+@keyframes csb-blink {
+  50% { opacity: 0.4; }
+}
+
+@keyframes csb-breathe {
+  0%, 100% { box-shadow: 0 0 0 2px rgba(224, 64, 58, 0.1); }
+  50% { box-shadow: 0 0 0 4px rgba(224, 64, 58, 0.2); }
+}
+
+/* Pannellino diagnostica della pokeball ----------------------------------- */
+
+.csb-pop {
+  position: absolute;
+  top: calc(100% + 10px);
+  left: -12px;
+  z-index: 9005;
+  width: 224px;
+  padding: 12px 14px;
+  border-radius: var(--csb-raggio-sm);
+  background: var(--csb-pannello);
+  border: 0.5px solid var(--csb-linea);
+  box-shadow: 0 12px 30px -10px rgba(0, 0, 0, 0.35);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  cursor: default;
+  color: var(--csb-testo);
+}
+
+.csb-pop[hidden] { display: none; }
+
+body[data-tema="retro"] .csb-pop {
+  border: 2px solid var(--tile-bordo, #9bbc0f);
+  box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.5);
+}
+
+.csb-pop-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 11px;
+}
+
+.csb-pop-k { color: var(--csb-testo-2); }
+
+.csb-pop-v {
+  color: var(--csb-testo);
+  font-weight: 600;
+  text-align: right;
+}
+
+/* Centro: ticker + contatore --------------------------------------------- */
+
+.csb-center-btn {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  padding: 0 6px;
+  max-width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--csb-testo-2);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  opacity: 0;
+  transform: translateY(-3px);
+  transition: opacity 0.25s ease, transform 0.25s ease, color 0.2s ease;
+  pointer-events: none;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.csb-center-btn.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.csb-center-btn.is-alert {
+  color: var(--csb-testo);
+  font-weight: 600;
+}
+
+.csb-center-btn span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.csb-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--csb-accento);
+  flex: 0 0 auto;
+}
+
+/* Pillole di destra: presenza, coda e risorsa ------------------------------ */
+
+.csb-presence,
+.csb-sync,
+.csb-currency {
+  display: none;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  border-radius: var(--csb-raggio-pill);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.csb-presence.is-visible,
+.csb-sync.is-visible,
+.csb-currency.is-visible { display: inline-flex; }
+
+/* Quante persone stanno aiutando il gruppo in questo momento */
+.csb-presence {
+  background: var(--csb-incasso);
+  color: var(--csb-testo-2);
+  cursor: pointer;
+  border: 0;
+  font: inherit;
+  font-size: 11px;
+  padding: 3px 9px 3px 7px;
+  transition: background 0.3s ease, color 0.3s ease;
+}
+
+.csb-presence:active { opacity: 0.6; }
+
+.csb-presence svg {
+  width: 11px;
+  height: 12px;
+  display: block;
+  flex: 0 0 auto;
+}
+
+/* quando entra qualcuno, la pillola si accende un istante */
+.csb-presence.is-up {
+  background: var(--csb-accento);
+  color: #fff;
+  font-weight: 600;
+}
+
+/* stessa identica pillola di .coda nel tuo header */
+.csb-sync {
+  background: var(--csb-attesa);
+  color: #fff;
+  font-weight: 600;
+}
+
+.csb-sync .csb-sync-glyph { font-size: 12px; line-height: 1; display: inline-block; }
+.csb-sync.is-flushing .csb-sync-glyph { animation: csb-spin 0.9s linear infinite; }
+
+.csb-currency {
+  background: var(--csb-incasso);
+  color: var(--csb-testo-2);
+  transition: background 0.3s ease, color 0.3s ease;
+}
+
+.csb-currency .csb-cur-glyph { font-size: 12px; line-height: 1; }
+
+.csb-currency.is-up {
+  background: var(--csb-accento);
+  color: #fff;
+  font-weight: 600;
+}
+
+/* Tasti a destra ---------------------------------------------------------- */
+
+.csb-icon {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border-radius: var(--csb-raggio-pill);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--csb-testo-2);
+  cursor: pointer;
+  transition: color 0.18s ease, background 0.18s ease;
+}
+
+.csb-icon:hover {
+  color: var(--csb-testo);
+  background: var(--csb-incasso);
+}
+
+.csb-icon:active { opacity: 0.6; }
+
+.csb-icon svg { width: 16px; height: 16px; display: block; }
+
+.csb-root :focus-visible {
+  outline: 2px solid var(--csb-accento);
+  outline-offset: 2px;
+}
+
+.csb-avatar {
+  width: 23px;
+  height: 23px;
+  border-radius: 50%;
+  background: var(--csb-incasso) center / cover no-repeat;
+  color: var(--csb-testo-2);
+  font-size: 10px;
+  font-weight: 650;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.csb-profile { width: 27px; height: 27px; }
+
+body[data-tema="retro"] .csb-avatar { border-radius: 3px; }
+
+/* --------------------------------------------------------------------------
+   Banner "heads-up" — stessa scheda dei widget, ma appoggiata in alto
+   -------------------------------------------------------------------------- */
+
+.csb-heads {
+  position: fixed;
+  top: calc(var(--csb-h) + var(--csb-top) + 8px);
+  left: 50%;
+  z-index: 9003;
+  width: min(456px, calc(100% - 24px));
+  transform: translate(-50%, calc(-100% - var(--csb-h) - 24px));
+  transition: transform 0.4s cubic-bezier(0.3, 0.85, 0.35, 1), opacity 0.25s ease;
+  opacity: 0;
+  visibility: hidden;
+  touch-action: none;
+}
+
+.csb-heads.is-visible {
+  transform: translate(-50%, 0);
+  opacity: 1;
+  visibility: visible;
+}
+
+.csb-heads.is-dragging { transition: none; }
+
+.csb-heads-btn {
+  appearance: none;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  padding: 12px 14px;
+  border: 1px solid var(--csb-tile-bordo);
+  border-radius: var(--csb-raggio);
+  background: var(--csb-pannello);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05),
+    0 14px 30px -14px rgba(0, 0, 0, 0.4);
+  color: var(--csb-testo-2);
+}
+
+body[data-tema="retro"] .csb-heads-btn {
+  border: 3px solid var(--tile-bordo, #9bbc0f);
+  box-shadow: 5px 5px 0 rgba(0, 0, 0, 0.5);
+}
+
+.csb-heads-ico {
+  font-size: 17px;
+  line-height: 1.1;
+  width: 22px;
+  text-align: center;
+  flex: 0 0 auto;
+  color: var(--csb-accento);
+}
+
+.csb-heads-body {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.csb-heads-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--csb-testo);
+}
+
+.csb-heads-text {
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--csb-testo-2);
+  overflow-wrap: anywhere;
+}
+
+.csb-heads-grip {
+  display: block;
+  width: 30px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--csb-linea);
+  margin: 7px auto 0;
+}
+
+/* --------------------------------------------------------------------------
+   Tendina
+   -------------------------------------------------------------------------- */
+
+.csb-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 9000;
+  background: rgba(0, 0, 0, 0.35);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.22s ease, visibility 0s linear 0.22s;
+}
+
+.csb-backdrop.is-active {
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 0.22s ease, visibility 0s;
+}
+
+.csb-shade {
+  position: fixed;
+  top: 0;
+  left: 50%;
+  width: min(480px, 100%);
+  z-index: 9001;
+  max-height: 82vh;
+  display: flex;
+  flex-direction: column;
+  padding-top: calc(var(--csb-h) + var(--csb-top));
+  background: var(--csb-pannello);
+  border-radius: 0 0 24px 24px;
+  box-shadow: 0 18px 44px -14px rgba(0, 0, 0, 0.45);
+  --csb-y: -100%;
+  transform: translate3d(-50%, var(--csb-y), 0);
+  visibility: hidden;
+  overflow: hidden;
+  outline: none;
+  color: var(--csb-testo);
+}
+
+body[data-tema="retro"] .csb-shade {
+  border-radius: 0 0 6px 6px;
+  border: 3px solid var(--tile-bordo, #9bbc0f);
+  border-top: 0;
+  box-shadow: 5px 5px 0 rgba(0, 0, 0, 0.5);
+}
+
+.csb-shade.is-visible { visibility: visible; }
+
+.csb-shade.is-animating {
+  transition: transform 0.28s cubic-bezier(0.3, 0.8, 0.35, 1);
+}
+
+/* Scorre tutto il contenuto della tendina, non solo l'elenco: così se un
+   giorno ci sarà più roba di quanta ne entra, si raggiunge scorrendo
+   invece di sparire sotto il bordo. */
+.csb-shade-inner {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  padding: 16px 16px 0;
+}
+
+/* Countdown bustina ------------------------------------------------------- */
+
+.csb-count {
+  border-radius: var(--csb-raggio);
+  background: var(--csb-tile);
+  border: 1px solid var(--csb-tile-bordo);
+  padding: 12px 14px 13px;
+  margin-bottom: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  touch-action: none;
+}
+
+.csb-count[hidden] { display: none; }
+
+body[data-tema="retro"] .csb-count {
+  border-width: 3px;
+  box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.45);
+}
+
+.csb-count-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.csb-count-label {
+  font-size: 12px;
+  color: var(--csb-testo-2);
+}
+
+.csb-count-time {
+  font-size: 15px;
+  font-weight: 650;
+  color: var(--csb-testo);
+  font-variant-numeric: tabular-nums;
+}
+
+/* barra identica a .barra-out / .barra-in dei widget */
+.csb-count-track {
+  display: block;
+  height: 6px;
+  border-radius: var(--csb-raggio-pill);
+  background: var(--csb-incasso);
+  overflow: hidden;
+}
+
+.csb-count-fill {
+  display: block;
+  height: 100%;
+  width: 0%;
+  border-radius: inherit;
+  background: var(--csb-accento);
+  transition: width 0.6s linear;
+}
+
+body[data-tema="retro"] .csb-count-track {
+  border-radius: 0;
+  height: 10px;
+  border: 2px solid var(--tile-bordo, #9bbc0f);
+  background: transparent;
+  padding: 1px;
+}
+
+body[data-tema="retro"] .csb-count-fill {
+  border-radius: 0;
+  background: repeating-linear-gradient(90deg,
+    var(--csb-accento) 0 5px, transparent 5px 8px);
+}
+
+.csb-count.is-ready .csb-count-fill { background: var(--csb-attesa); }
+.csb-count.is-ready .csb-count-time { color: var(--csb-attesa); }
+
+.csb-count-action {
+  appearance: none;
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 9px 14px;
+  border-radius: var(--csb-raggio-pill);
+  border: 0;
+  background: var(--csb-attesa);
+  color: #fff;
+}
+
+.csb-count-action[hidden] { display: none; }
+.csb-count-action:active { opacity: 0.7; }
+
+/* Righe proposta e coda --------------------------------------------------- */
+
+.csb-cta,
+.csb-pending {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  border-radius: var(--csb-raggio);
+  padding: 11px 13px;
+  margin-bottom: 10px;
+  font-size: 12px;
+  line-height: 1.4;
+  touch-action: none;
+}
+
+.csb-cta[hidden],
+.csb-pending[hidden] { display: none; }
+
+.csb-cta {
+  background: var(--csb-incasso);
+  color: var(--csb-testo-2);
+}
+
+.csb-pending {
+  background: rgba(200, 137, 43, 0.14);
+  color: var(--csb-attesa);
+  font-weight: 600;
+}
+
+.csb-cta-ico,
+.csb-pending-ico {
+  font-size: 16px;
+  line-height: 1;
+  flex: 0 0 auto;
+  width: 20px;
+  text-align: center;
+}
+
+.csb-cta-ico { color: var(--csb-accento); }
+
+.csb-cta-text,
+.csb-pending-text { flex: 1 1 auto; min-width: 0; }
+
+.csb-cta-btn,
+.csb-pending-btn {
+  appearance: none;
+  cursor: pointer;
+  flex: 0 0 auto;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 7px 13px;
+  border-radius: var(--csb-raggio-pill);
+  border: 0;
+  color: #fff;
+}
+
+.csb-cta-btn { background: var(--csb-accento); }
+.csb-pending-btn { background: var(--csb-attesa); }
+
+.csb-cta-btn:active,
+.csb-pending-btn:active { opacity: 0.7; }
+.csb-pending-btn[disabled] { opacity: 0.5; cursor: default; }
+
+.csb-cta-close {
+  appearance: none;
+  cursor: pointer;
+  flex: 0 0 auto;
+  border: 0;
+  background: transparent;
+  color: var(--csb-testo-2);
+  font: inherit;
+  font-size: 15px;
+  line-height: 1;
+  padding: 4px 2px;
+  opacity: 0.7;
+}
+
+.csb-cta-close:active { opacity: 0.4; }
+
+/* Tasti rapidi — quattro tile in miniatura -------------------------------- */
+
+.csb-quick {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  padding-bottom: 12px;
+  touch-action: none;
+}
+
+.csb-quick-btn {
+  appearance: none;
+  border: 1px solid var(--csb-tile-bordo);
+  background: var(--csb-tile);
+  border-radius: var(--csb-raggio-sm);
+  padding: 11px 4px 9px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  color: var(--csb-testo-2);
+  font: inherit;
+  font-size: 10px;
+  cursor: pointer;
+  transition: background 0.18s ease, color 0.18s ease;
+}
+
+body[data-tema="retro"] .csb-quick-btn {
+  border-width: 3px;
+  box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.45);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+
+body[data-tema="retro"] .csb-quick-btn:active {
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0 rgba(0, 0, 0, 0.45);
+}
+
+.csb-quick-btn .csb-glyph { font-size: 16px; line-height: 1; }
+
+.csb-quick-btn:active { opacity: 0.7; }
+
+.csb-quick-btn.is-on {
+  background: var(--csb-accento);
+  border-color: var(--csb-accento);
+  color: #fff;
+  font-weight: 600;
+}
+
+.csb-quick-btn.is-busy .csb-glyph {
+  animation: csb-spin 0.9s linear infinite;
+  display: inline-block;
+}
+
+@keyframes csb-spin {
+  to { transform: rotate(360deg); }
+}
+
+.csb-quick-label { text-align: center; line-height: 1.2; }
+
+/* Riga preferenze: tema e suono ------------------------------------------- */
+
+.csb-prefs {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 0 2px 13px;
+  border-bottom: 0.5px solid var(--csb-linea);
+  touch-action: none;
+}
+
+.csb-swatches {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.csb-swatch {
+  appearance: none;
+  cursor: pointer;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid var(--csb-linea);
+  transition: box-shadow 0.2s ease, transform 0.14s ease;
+}
+
+body[data-tema="retro"] .csb-swatch { border-radius: 3px; }
+
+.csb-swatch:active { transform: scale(0.92); }
+
+.csb-swatch.is-on {
+  box-shadow: 0 0 0 2px var(--csb-pannello), 0 0 0 4px var(--csb-accento);
+}
+
+.csb-sound-btn {
+  appearance: none;
+  cursor: pointer;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font: inherit;
+  font-size: 11px;
+  padding: 4px 11px;
+  border-radius: var(--csb-raggio-pill);
+  border: 0;
+  background: var(--csb-incasso);
+  color: var(--csb-testo-2);
+}
+
+.csb-sound-btn:active { opacity: 0.6; }
+.csb-sound-btn.is-muted { opacity: 0.55; }
+.csb-sound-btn .csb-glyph { font-size: 12px; line-height: 1; }
+
+body[data-tema="retro"] .csb-sound-btn {
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+
+/* Elenco notifiche -------------------------------------------------------- */
+
+.csb-notif-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 13px 2px 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--csb-testo-2);
+}
+
+body[data-tema="retro"] .csb-notif-head {
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+
+.csb-clear {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--csb-accento);
+  font: inherit;
+  font-size: 12px;
+  padding: 2px 4px;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.csb-clear:active { opacity: 0.6; }
+.csb-clear[hidden] { display: none; }
+
+/* Riga di suggerimento del tutorial, mostrata una volta sola */
+.csb-tip {
+  font-size: 11.5px;
+  line-height: 1.4;
+  color: var(--csb-testo-2);
+  background: var(--csb-incasso);
+  border-radius: var(--csb-raggio-sm);
+  padding: 9px 12px;
+  margin-bottom: 9px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  opacity: 0;
+  max-height: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  margin-bottom: 0;
+  overflow: hidden;
+  transition: opacity 0.3s ease, max-height 0.3s ease, padding 0.3s ease,
+    margin 0.3s ease;
+}
+
+.csb-tip.is-visible {
+  opacity: 1;
+  max-height: 70px;
+  padding-top: 9px;
+  padding-bottom: 9px;
+  margin-bottom: 9px;
+}
+
+.csb-tip .csb-glyph {
+  font-size: 15px;
+  flex: 0 0 auto;
+  color: var(--csb-testo-2);
+}
+
+body[data-tema="retro"] .csb-tip { text-transform: uppercase; letter-spacing: .05em; }
+
+/* la mano che dimostra il gesto */
+@keyframes csb-mostra-gesto {
+  0% { transform: translateX(0); }
+  22% { transform: translateX(-84px); }
+  48% { transform: translateX(-84px); }
+  70% { transform: translateX(0); }
+  100% { transform: translateX(0); }
+}
+
+.csb-notif.is-demo {
+  animation: csb-mostra-gesto 2.4s cubic-bezier(0.3, 0.8, 0.35, 1) 2;
+}
+
+.csb-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-bottom: 16px;
+  min-height: 0;
+}
+
+/* Involucro: tiene il tasto Cancella nascosto sotto la notifica */
+.csb-notif-wrap {
+  position: relative;
+  border-radius: var(--csb-raggio-sm);
+  overflow: hidden;
+  flex: 0 0 auto;
+  touch-action: pan-y;
+}
+
+.csb-notif-wrap.is-collapsing {
+  transition: height 0.2s ease, opacity 0.2s ease, margin 0.2s ease;
+  height: 0 !important;
+  opacity: 0;
+}
+
+/* Indizio di eliminazione: non esiste finché non trascini, e non è
+   rosso. È l'incasso del tema con una crocetta, come una pill spenta. */
+.csb-notif-hint {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 78px;
+  border-radius: inherit;
+  background: var(--csb-incasso);
+  color: var(--csb-testo-2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 17px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+}
+
+.csb-notif-wrap.is-swiping .csb-notif-hint { opacity: 1; }
+
+/* superata la soglia, l'indizio si fa deciso: stai per eliminare */
+.csb-notif-wrap.is-armed .csb-notif-hint {
+  color: var(--csb-testo);
+  transform: scale(1.18);
+  transition: opacity 0.15s ease, transform 0.15s ease, color 0.15s ease;
+}
+
+.csb-notif {
+  appearance: none;
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  text-align: left;
+  border: 1px solid var(--csb-tile-bordo);
+  border-radius: var(--csb-raggio-sm);
+  /* due strati: la tinta della tile SOPRA il pannello pieno. Il colore
+     resta identico a quello delle tile, ma niente traspare da sotto. */
+  background: linear-gradient(var(--csb-tile), var(--csb-tile)), var(--csb-pannello);
+  padding: 12px 13px;
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  color: var(--csb-testo-2);
+  font: inherit;
+  cursor: pointer;
+  transition: background 0.18s ease;
+}
+
+body[data-tema="retro"] .csb-notif {
+  border-width: 3px;
+}
+
+.csb-notif:active { opacity: 0.75; }
+
+.csb-notif-ico {
+  font-size: 17px;
+  line-height: 1.1;
+  flex: 0 0 auto;
+  width: 20px;
+  text-align: center;
+}
+
+.csb-notif-body {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.csb-notif-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--csb-testo);
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+/* pallino "da leggere", nella lingua delle vostre pill */
+.csb-notif.is-new .csb-notif-title::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--csb-accento);
+  flex: 0 0 auto;
+}
+
+.csb-badge {
+  font-size: 11px;
+  font-weight: 600;
+  color: #fff;
+  background: var(--csb-accento);
+  border-radius: var(--csb-raggio-pill);
+  padding: 1px 7px;
+  flex: 0 0 auto;
+}
+
+.csb-notif-text {
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--csb-testo-2);
+  overflow-wrap: anywhere;
+}
+
+.csb-notif-time {
+  flex: 0 0 auto;
+  font-size: 11px;
+  color: var(--csb-testo-2);
+  opacity: 0.75;
+  font-variant-numeric: tabular-nums;
+  padding-top: 2px;
+}
+
+.csb-empty {
+  text-align: center;
+  color: var(--csb-testo-2);
+  font-size: 12px;
+  line-height: 1.6;
+  padding: 30px 16px 34px;
+}
+
+/* ---- notifiche che richiedono un intervento manuale ---- */
+
+/* intestazione della sezione in cima all'elenco */
+.csb-sez {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--csb-attesa);
+  padding: 2px 2px 1px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+body[data-tema="retro"] .csb-sez {
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+
+.csb-notif.is-intervento {
+  background: linear-gradient(rgba(200, 137, 43, 0.12), rgba(200, 137, 43, 0.12)),
+    var(--csb-pannello);
+}
+
+body[data-tema="retro"] .csb-notif.is-intervento {
+  border-color: var(--csb-attesa);
+}
+
+/* niente pallino blu: qui il segnale è l'etichetta */
+.csb-notif.is-intervento.is-new .csb-notif-title::before { display: none; }
+
+.csb-tag {
+  font-size: 10px;
+  font-weight: 600;
+  color: #fff;
+  background: var(--csb-attesa);
+  border-radius: var(--csb-raggio-pill);
+  padding: 2px 8px;
+  flex: 0 0 auto;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+/* queste non si eliminano con il gesto: rimbalzano indietro */
+.csb-notif-wrap.is-bloccata .csb-notif-hint {
+  background: transparent;
+  color: var(--csb-attesa);
+  font-size: 14px;
+}
+
+.csb-notif.is-settling {
+  transition: transform 0.26s cubic-bezier(0.3, 0.8, 0.35, 1), opacity 0.18s ease;
+}
+
+/* Maniglia ---------------------------------------------------------------- */
+
+.csb-handle {
+  flex: 0 0 auto;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: grab;
+  touch-action: none;
+}
+
+.csb-handle:active { cursor: grabbing; }
+
+.csb-handle i {
+  display: block;
+  width: 38px;
+  height: 5px;
+  border-radius: 3px;
+  background: var(--csb-linea);
+}
+
+body[data-tema="retro"] .csb-handle i { border-radius: 0; height: 6px; }
+
+/* --------------------------------------------------------------------------
+   Animazioni ridotte
+   -------------------------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .csb-ball,
+  .csb-ball[data-state="online"],
+  .csb-ball[data-state="connecting"],
+  .csb-quick-btn.is-busy .csb-glyph,
+  .csb-sync.is-flushing .csb-sync-glyph {
+    animation: none;
+  }
+  .csb-shade.is-animating,
+  .csb-heads,
+  .csb-count-fill,
+  /* ---- notifiche che richiedono un intervento manuale ---- */
+
+/* intestazione della sezione in cima all'elenco */
+.csb-sez {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--csb-attesa);
+  padding: 2px 2px 1px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+body[data-tema="retro"] .csb-sez {
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+
+.csb-notif.is-intervento {
+  background: linear-gradient(rgba(200, 137, 43, 0.12), rgba(200, 137, 43, 0.12)),
+    var(--csb-pannello);
+}
+
+body[data-tema="retro"] .csb-notif.is-intervento {
+  border-color: var(--csb-attesa);
+}
+
+/* niente pallino blu: qui il segnale è l'etichetta */
+.csb-notif.is-intervento.is-new .csb-notif-title::before { display: none; }
+
+.csb-tag {
+  font-size: 10px;
+  font-weight: 600;
+  color: #fff;
+  background: var(--csb-attesa);
+  border-radius: var(--csb-raggio-pill);
+  padding: 2px 8px;
+  flex: 0 0 auto;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+/* queste non si eliminano con il gesto: rimbalzano indietro */
+.csb-notif-wrap.is-bloccata .csb-notif-hint {
+  background: transparent;
+  color: var(--csb-attesa);
+  font-size: 14px;
+}
+
+.csb-notif.is-settling {
+    transition-duration: 0.01s;
+  }
+  .csb-center-btn { transition: opacity 0.01s; }
+}
+
+/* ==========================================================================
+   INNESTI SUL PROGETTO
+   Poche regole che riguardano elementi TUOI, non della barra. Servono
+   perché la barra sta sopra tutto e non deve coprire le cose sbagliate.
+   Se un giorno togli la barra, puoi cancellare questo blocco intero.
+   ========================================================================== */
+
+/* La testata delle pagine a schermo intero finirebbe sotto la barra. */
+html.csb-has-bar #pageOverlay .page-header {
+  padding-top: calc(18px + var(--csb-h) + env(safe-area-inset-top, 0px));
+}
+
+/* I momenti immersivi devono coprire la barra, come su un telefono
+   quando parte un video: sbusto, scanner, sbircia, annulla. */
+html.csb-has-bar #scanner { z-index: 9200; }
+html.csb-has-bar #sbusto { z-index: 9210; }
+html.csb-has-bar #sbircia { z-index: 9220; }
+html.csb-has-bar #annulla { z-index: 9230; }
+
+/* Nel tema retro le righe di scansione devono passare anche sulla barra,
+   altrimenti la barra sembra incollata sopra allo schermo invece che
+   dentro. */
+html.csb-has-bar #crt { z-index: 9300; }
+
+
+/* ==========================================================================
+   CardSync Pro — integrazione nel mockup del telefono (2026-09-01)
+   Nessuna riga sopra questo blocco è stata toccata: tutto quello che serve
+   per il progetto reale vive qui, in coda, così resta ovvio cosa è
+   originale della libreria (v5.3) e cosa è stato aggiunto per l'integrazione.
+   Se un giorno si aggiorna statusbar.css a una versione nuova, questo
+   blocco si può copiare in fondo al nuovo file senza modifiche.
+
+   Montata dentro #phoneScreen (non sul body): la barra deve restare nel
+   mockup del telefono, non coprire l'intero browser desktop — vedi
+   opts.container in statusbar.js, passato da CSBar.init() in
+   ui/phone.ui.js.
+   ========================================================================== */
+
+/* --- Variabili: dal vocabolario della libreria (--sfondo, --tile, ecc.)
+   alle variabili reali del tema del sito (--bg-color, --card-bg, ecc.,
+   definite in index.html per :root/.theme-verde/.theme-pokemon/.dark-mode
+   e le loro combinazioni). Bastano queste per far seguire alla barra
+   qualunque tema/combinazione già esistente, via normale cascata CSS —
+   nessun JavaScript di sincronizzazione tema necessario. */
+#phoneScreen {
+  --sfondo: var(--bg-color);
+  --tile: var(--card-bg);
+  --tile-bordo: var(--border-color);
+  --testo: var(--text-dark);
+  --testo-2: var(--text-muted);
+  --pannello: var(--card-bg);
+  --linea: var(--border-color);
+  --incasso: var(--primary-light);
+
+  /* Altezza barra allineata a --phone-barra-stato-h (già usata da
+     #phonePagineWrap per lo spazio del contenuto sotto la vecchia barra,
+     vedi index.html) — così non serve toccare quel layout. Nessun notch
+     dentro un mockup ridimensionato: safe-area-inset non ha senso qui. */
+  --csb-h: var(--phone-barra-stato-h, 2.5rem);
+  --csb-top: 0px;
+}
+
+/* --- Posizionamento: da "rispetto al viewport" a "rispetto allo schermo
+   del telefono" (#phoneScreen è già position:relative via il proprio
+   position:absolute, fa da riferimento per i figli). Stessi 4 elementi
+   della libreria che usano position:fixed, nessun altro toccato. */
+#phoneScreen .csb-bar,
+#phoneScreen .csb-heads,
+#phoneScreen .csb-backdrop,
+#phoneScreen .csb-shade {
+  position: absolute;
+}
+
+/* --- Selettore tema interno della tendina (chiaro/scuro/retro) nascosto:
+   il tema si cambia da Impostazioni, che già esiste nel sito — un secondo
+   selettore qui sarebbe un doppione, e per di più non funzionante (scrive
+   data-tema, che il sito reale non legge). */
+#phoneScreen .csb-swatches {
+  display: none;
+}
+
+/* --- Pulsante profilo di CSBar nascosto: al suo posto viene spostato via
+   JS il vero #profiloContainer del sito (menu completo: nome, email,
+   cambio username, logout — già esistente e testato), non ricostruito da
+   zero. Vedi initPhoneShell() in ui/phone.ui.js. */
+#phoneScreen .csb-profile {
+  display: none;
+}
+
+/* --- Leggero adattamento tono accento in dark mode, stesso spirito della
+   variante "scuro" originale della libreria (che però leggeva data-tema,
+   qui leggiamo la classe reale del sito). */
+body.dark-mode #phoneScreen .csb-root {
+  --csb-accento: #5a95e4;
+  --csb-accento-rgb: 90, 149, 228;
+}
+
+/* --- Vecchia barra di stato (#phoneBarraStato, index.html) nascosta per
+   intero: orologio, pallino sync, ingranaggio Impostazioni sostituiti
+   dalla nuova barra; suoni/densità/matita spostati fra i "quickActions"
+   della tendina (vedi initPhoneShell in ui/phone.ui.js). L'unico pezzo
+   ancora vivo, #profiloContainer (menu profilo completo), viene spostato
+   via JS dentro la nuova barra PRIMA che l'utente veda qualcosa — nessun
+   markup duplicato o riscritto, lo stesso nodo DOM di sempre. */
+#phoneBarraStato {
+  display: none;
+}
