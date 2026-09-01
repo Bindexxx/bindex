@@ -4244,6 +4244,42 @@ function _clickTastoFisico() {
     // Se sei già sulla Home, non fa nulla.
 }
 
+// ── PRESENZA LIVE (2026-09-01, punto 4 status bar) ──────────────────────
+// Supabase Realtime, prima volta usato nel progetto — solo Presence pura
+// (channel().track()), effimera: nessuna tabella, nessuna RLS, nessuna
+// migration, niente scritto su Postgres. Un canale unico condiviso da
+// tutti e 5: chi ha il canale sottoscritto in questo momento risulta
+// "collegato". DIFENSIVO: se il canale non si sottoscrive per qualunque
+// motivo (Realtime disattivato sul progetto, rete, ecc.) non succede
+// nulla di visibile all'utente — solo un avviso in console, la barra
+// semplicemente non mostra il numero, come se questa funzione non fosse
+// mai stata chiamata. Email invece di un eventuale username personalizzato
+// (quello vive altrove, non verificato in questa sessione — vedi
+// commento su ricompensaConsumaSkip per lo stesso principio: meglio un
+// dato certo che uno indovinato).
+async function _avviaPresenzaLive() {
+    if (typeof CSBar === 'undefined' || typeof supabaseClient === 'undefined') return;
+    try {
+        const { data: { user } } = await supabaseClient.auth.getUser();
+        if (!user) return;
+        const canale = supabaseClient.channel('presenza-cardsync', {
+            config: { presence: { key: user.id } },
+        });
+        canale
+            .on('presence', { event: 'sync' }, () => {
+                const stato = canale.presenceState();
+                CSBar.setPresence({ count: Object.keys(stato).length, label: 'persone stanno usando CardSync' });
+            })
+            .subscribe(async (status) => {
+                if (status === 'SUBSCRIBED') {
+                    await canale.track({ email: user.email, entrato_il: new Date().toISOString() });
+                } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+                    console.warn('[presenza] canale realtime non disponibile (status: ' + status + ') — controllare che Realtime sia attivo sul progetto Supabase.');
+                }
+            });
+    } catch (e) { console.error('[presenza] errore avvio:', e); }
+}
+
 // ── AVVIO ─────────────────────────────────────────────────────────────
 async function initPhoneShell() {
     _spostaHomeNellaPaginaPrincipale();
@@ -4333,6 +4369,8 @@ async function initPhoneShell() {
         const profiloContainer = document.getElementById('profiloContainer');
         const csbRight = document.querySelector('#phoneScreen .csb-right');
         if (profiloContainer && csbRight) csbRight.appendChild(profiloContainer);
+
+        _avviaPresenzaLive(); // fire-and-forget, vedi commento sulla funzione sopra
 
         // Valuta (2026-09-01): collegata al saldo reale di
         // inventario_ricompense tramite ricompenseSaldo() già esistente
