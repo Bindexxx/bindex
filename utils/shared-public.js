@@ -20,10 +20,42 @@
 //    correzione) → Cardmarket lo blocca se richiesto da un altro dominio,
 //    tentiamo il proxy come ripiego (funziona solo per alcune, meglio di
 //    niente per lo storico).
-function _urlImmagineVisualizzabile(immagine) {
+// SICUREZZA (2026-09-01): copia identica, per logica e motivazioni, di
+// _urlImmagineVisualizzabile in utils/formatters.js — vedi lì il commento
+// esteso sul perché il valore grezzo non può essere restituito. Qui la
+// correzione è ancora più importante che nel sito privato: su queste
+// pagine i dati appartengono a CHI CONDIVIDE e chi li subisce è il
+// visitatore. Le due copie devono restare allineate: se tocchi una,
+// tocca anche l'altra.
+// La firma accetta ora anche 'larghezza' (prima fissa a 64) così le due
+// versioni sono intercambiabili; chi chiama senza secondo parametro
+// continua a ottenere esattamente 64 come prima.
+function _urlImmagineSicura(url) {
+    return String(url).replace(/"/g, '&quot;');
+}
+
+function _urlImmagineVisualizzabile(immagine, larghezza) {
     if (!immagine) return null;
-    if (immagine.startsWith('data:') || immagine.includes('supabase.co')) return immagine;
-    return `https://images.weserv.nl/?url=${encodeURIComponent(immagine)}&w=64`;
+    const valore = String(immagine).trim();
+
+    if (/^data:image\/(png|jpe?g|gif|webp|avif);base64,[A-Za-z0-9+/=\s]+$/i.test(valore)) {
+        return _urlImmagineSicura(valore);
+    }
+
+    let indirizzo;
+    try {
+        indirizzo = new URL(valore);
+    } catch (_) {
+        return null;
+    }
+    if (indirizzo.protocol !== 'http:' && indirizzo.protocol !== 'https:') return null;
+
+    const host = indirizzo.hostname.toLowerCase();
+    if (indirizzo.protocol === 'https:' && (host === 'supabase.co' || host.endsWith('.supabase.co'))) {
+        return _urlImmagineSicura(indirizzo.href);
+    }
+
+    return _urlImmagineSicura(`https://images.weserv.nl/?url=${encodeURIComponent(indirizzo.href)}&w=${larghezza || 64}`);
 }
 
 function formattaEuro(v) {
