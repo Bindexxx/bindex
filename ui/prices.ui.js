@@ -237,7 +237,7 @@
             } else {
                 lista.innerHTML = _elencoPrezziScaduti.map(c => `
                     <div style="display:flex; justify-content:space-between; align-items:center; gap:0.6rem; padding:0.5rem 0; border-bottom:1px solid var(--border-color);">
-                        <span style="font-size:0.85rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"><strong>${escapeHtml(c.name)}</strong> <code style="font-size:0.72rem;">${c.code}</code></span>
+                        <span style="font-size:0.85rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"><strong>${escapeHtml(c.name)}</strong> <code style="font-size:0.72rem;">${escapeHtml(c.code)}</code></span>
                         <span style="font-size:0.75rem; color:var(--text-muted); flex-shrink:0;">${c.ultimoTesto}</span>
                     </div>`).join('');
             }

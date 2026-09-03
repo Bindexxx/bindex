@@ -428,7 +428,7 @@
             document.getElementById('flipCardStats').innerHTML = `
                 <div class="pg-testo">
                     <b>${escapeHtml(card.name || '')}</b>
-                    <span><code style="background:none; color:inherit; padding:0;">${card.code}</code> · ${card.location || '—'}</span>
+                    <span><code style="background:none; color:inherit; padding:0;">${escapeHtml(card.code)}</code> · ${escapeHtml(card.location || '—')}</span>
                 </div>
             `;
             const prezzoTesto = (card.price != null ? Number(card.price) : 0).toFixed(2) + ' €';

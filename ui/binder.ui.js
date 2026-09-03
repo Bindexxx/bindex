@@ -370,7 +370,7 @@ function renderBinderGrigliaImmagini() {
         const card = carteQuestaPagina[i];
         if (card) {
             const idAttr = String(card.id).replace(/'/g, "\\'");
-            const nomeAttr = (card.name || '').replace(/"/g, '&quot;');
+            const nomeAttr = escapeHtml(card.name || '').replace(/"/g, '&quot;'); // SICUREZZA 2026-09-01: escapeHtml PRIMA, vedi nota sotto
             const immagineSrc = _urlImmagineVisualizzabile(card.immagine, 300);
             html += `
                 <div class="binder-slot binder-slot-filled" onclick="apriImmagineIngrandita('${idAttr}')" title="${nomeAttr}">
@@ -1469,7 +1469,7 @@ function _libroHtmlPagina(indicePagina) {
             continue;
         }
         const idAttr = String(card.id).replace(/'/g, "\\'");
-        const nomeAttr = (card.name || '').replace(/"/g, '&quot;');
+        const nomeAttr = escapeHtml(card.name || '').replace(/"/g, '&quot;'); // SICUREZZA 2026-09-01: escapeHtml PRIMA, vedi nota sotto
         const immagineSrc = _urlImmagineVisualizzabile(card.immagine, 300);
         tasche += `
             <div class="binder-slot binder-slot-filled" onclick="_libroClickCarta('${idAttr}')" title="${nomeAttr}">

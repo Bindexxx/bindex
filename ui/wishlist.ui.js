@@ -34,7 +34,7 @@ function apriFlipCard(id) {
 
     document.getElementById('flipCardStats').innerHTML = `
         <div style="font-weight:800; font-size:0.95rem; margin-bottom:0.2rem;">${escapeHtml(card.name)}</div>
-        <div style="font-size:0.78rem; opacity:0.85; margin-bottom:0.6rem;"><code style="background:none; color:inherit; padding:0;">${card.code}</code></div>
+        <div style="font-size:0.78rem; opacity:0.85; margin-bottom:0.6rem;"><code style="background:none; color:inherit; padding:0;">${escapeHtml(card.code)}</code></div>
         <div style="font-size:0.85rem;">Vuole: <strong>${card.qtyDisponibile}</strong></div>
         ${card.notes ? `<div style="font-size:0.78rem; opacity:0.85; margin-top:0.4rem;">✨ ${escapeHtml(card.notes)}</div>` : ''}
     `;
@@ -169,10 +169,10 @@ function renderLista() {
                        onchange="toggleSelezione('${c.id}', this.checked)">
                 ${(() => { const immagineSrc = _urlImmagineVisualizzabile(c.immagine); return immagineSrc ? `<img src="${immagineSrc}" alt="" class="card-thumb" onclick="event.stopPropagation(); apriFlipCard('${c.id}')" onerror="this.style.display='none';">` : ''; })()}
                 <div class="card-info">
-                    <div class="card-name">${escapeHtml(c.name)}${c.code ? ` <span style="color:var(--text-muted); font-weight:600;">(${c.code})</span>` : ''}</div>
+                    <div class="card-name">${escapeHtml(c.name)}${c.code ? ` <span style="color:var(--text-muted); font-weight:600;">(${escapeHtml(c.code)})</span>` : ''}</div>
                     <div class="card-meta">
-                        <span class="badge">${c.lang}</span>
-                        <span class="badge">${c.cond}</span>
+                        <span class="badge">${escapeHtml(c.lang)}</span>
+                        <span class="badge">${escapeHtml(c.cond)}</span>
                         <span class="badge">Vuole ${c.qtyDisponibile}</span>
                         ${c.prezzoObiettivo != null ? `<span class="badge">🎯 max ${formattaEuro(c.prezzoObiettivo)}</span>` : ''}
                         ${c.notes ? `<span class="badge">✨ ${escapeHtml(c.notes)}</span>` : ''}

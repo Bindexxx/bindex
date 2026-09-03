@@ -364,7 +364,17 @@ function _libroHtmlPagina(indicePagina) {
             continue;
         }
         const idAttr = String(card.id).replace(/'/g, "\\'");
-        const nomeAttr = (card.name || '').replace(/"/g, '&quot;');
+        // SICUREZZA (2026-09-01): prima qui c'era solo .replace(/"/g,'&quot;'),
+        // cioè le sole virgolette. Bastava per title="..." e alt="...", ma
+        // due righe sotto lo STESSO valore finisce dentro <span>...</span>,
+        // che è testo HTML: un nome carta contenente un tag veniva
+        // interpretato ed eseguito. Su queste pagine i dati sono di chi
+        // condivide il link e la vittima è il visitatore, quindi contava
+        // davvero. escapeHtml() neutralizza &, < e >; il .replace() che
+        // resta aggiunge le virgolette, che escapeHtml da solo non tocca —
+        // insieme il valore è sicuro in ENTRAMBI i contesti (dentro un
+        // testo, &quot; si legge come una normale virgoletta).
+        const nomeAttr = escapeHtml(card.name || '').replace(/"/g, '&quot;'); // SICUREZZA 2026-09-01: escapeHtml PRIMA, vedi nota sotto
         const immagineSrc = _urlImmagineVisualizzabile(card.immagine, 300);
         // Compatibilità di forma: binder-pubblico usa card.qty,
         // scambio/wishlist usano card.qtyDisponibile — stesso significato.

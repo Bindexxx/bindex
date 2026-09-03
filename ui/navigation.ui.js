@@ -63,7 +63,7 @@
                 const idAttr = String(c.id).replace(/'/g, "\\'");
                 return `
                     <div class="risultato-ricerca-globale" onclick="vaiARisultatoRicerca('${idAttr}', '${c.tabella}')">
-                        <span class="risultato-ricerca-globale-nome">${escapeHtml(c.name)}${c.code ? ` <span style="color:var(--text-muted); font-weight:600;">(${c.code})</span>` : ''}</span>
+                        <span class="risultato-ricerca-globale-nome">${escapeHtml(c.name)}${c.code ? ` <span style="color:var(--text-muted); font-weight:600;">(${escapeHtml(c.code)})</span>` : ''}</span>
                         <span class="risultato-ricerca-globale-pill" style="background-color:${et.bg}; color:${et.colore};">${et.testo}</span>
                     </div>
                 `;

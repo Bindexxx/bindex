@@ -192,10 +192,10 @@ function renderLista() {
                        onchange="toggleSelezione('${c.id}', this.checked)">
                 ${(() => { const immagineSrc = _urlImmagineVisualizzabile(c.immagine); return immagineSrc ? `<img src="${immagineSrc}" alt="" class="card-thumb" onclick="event.stopPropagation(); apriImmagineIngrandita('${immagineSrc}')" onerror="this.style.display='none';">` : ''; })()}
                 <div class="card-info">
-                    <div class="card-name">${escapeHtml(c.name)}${c.code ? ` <span style="color:var(--text-muted); font-weight:600;">(${c.code})</span>` : ''}</div>
+                    <div class="card-name">${escapeHtml(c.name)}${c.code ? ` <span style="color:var(--text-muted); font-weight:600;">(${escapeHtml(c.code)})</span>` : ''}</div>
                     <div class="card-meta">
-                        <span class="badge">${c.lang}</span>
-                        <span class="badge">${c.cond}</span>
+                        <span class="badge">${escapeHtml(c.lang)}</span>
+                        <span class="badge">${escapeHtml(c.cond)}</span>
                         <span class="badge">Disp. ${c.qtyDisponibile}</span>
                         <!-- A16 (18/08/2026): badge location rimosso — con il filtro
                              location='SCAMBIO' applicato in caricaCatalogo(), ogni riga
