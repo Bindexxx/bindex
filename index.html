@@ -4945,6 +4945,15 @@
     <script src="ui/missioni.ui.js"></script>
     <script src="statusbar.js"></script>
     <script src="ui/phone.ui.js"></script>
+    <!-- Notifica missioni/traguardi appena completati, senza dover aprire la
+         pagina Missioni (Claudio 2026-09-03). Va DOPO phone.ui.js e
+         statusbar.js: usa _beep() e CSBar, entrambe definite lì, e va dopo
+         ui/missioni.ui.js per MOTORE_MISSIONI. Tutte lette al momento della
+         chiamata (primo giro 20s dopo il load), quindi l'ordine è di
+         chiarezza più che di necessità — ma tenendolo per ultimo non c'è
+         modo di sbagliare. Si avvia da solo con un proprio listener di
+         'load': NON tocca il window.onload qui sotto. -->
+    <script src="ui/missioni-watcher.js"></script>
 
     <script>
         // ── CONFIGURAZIONE SUPABASE ──────────────────────────────────────────────
