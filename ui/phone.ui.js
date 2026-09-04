@@ -726,6 +726,98 @@ const CATALOGO_WIDGET = {
     // Quando arriverà il gacha: togliere 'bloccato', sostituire il preview
     // con quello vero e riempire il corpo in _ballCORPI, dove ognuno ha già
     // la sua voce pronta.
+    // ══════════════════════════════════════════════════════════════════
+    // BLOCCHI DELLA HOME FISSA DIVENTATI WIDGET (Claudio, 2026-09-03)
+    // ══════════════════════════════════════════════════════════════════
+    // I blocchi di #home erano cinque, ma solo TRE meritavano un widget:
+    //   - "Cosa richiede la tua attenzione" NON e' qui: il widget
+    //     'suggerimento' ("Prossima azione") calcola gia' esattamente le
+    //     stesse quattro voci con la stessa priorita' (coda errori ->
+    //     prezzi scaduti -> wishlist sotto obiettivo -> gruppo al lavoro).
+    //     Duplicarlo avrebbe pagato due volte le stesse 3 query.
+    //   - "Carte Totali / Valore Est." NON e' qui: gia' coperto da
+    //     'valore_collezione' e 'visualizzazione'.
+    //   - "Ultima sincronizzazione" NON e' qui: nessuna funzione in tutto
+    //     il progetto riempie #ultimaSincronizzazioneHome. E' un
+    //     contenitore morto che mostra "Caricamento..." per sempre. Non si
+    //     porta in un widget un dato che non esiste: prima va deciso da
+    //     dove viene.
+    primo_piano: {
+        titolo: 'In primo piano', icona: 'fa-crown',
+        // Stesso identico calcolo di renderBinderInPrimoPianoHome()
+        // (ui/home.ui.js): tre categorie da 3 carte, solo collezione,
+        // escluse le sealed. Tutto da carteReali, gia' in memoria:
+        // ZERO query nuove, si puo' rivalutare a ogni giro di polling
+        // senza costo.
+        preview: () => {
+            const carteSingole = (typeof carteReali !== 'undefined' ? carteReali : [])
+                .filter(c => c.stato === 'collezione' && c.tipo !== 'sealed');
+            const perValore = carteSingole.slice().sort((a, b) => (b.price || 0) - (a.price || 0)).slice(0, 3);
+            const conVariazione = carteSingole.filter(c => c.variazioneNumerica != null);
+            const su = conVariazione.filter(c => c.variazioneNumerica > 0).sort((a, b) => b.variazioneNumerica - a.variazioneNumerica).slice(0, 3);
+            const giu = conVariazione.filter(c => c.variazioneNumerica < 0).sort((a, b) => a.variazioneNumerica - b.variazioneNumerica).slice(0, 3);
+            const top = perValore[0];
+            if (!top) return { righe: ['Nessuna carta ancora'], dati: { perValore: [], su: [], giu: [] } };
+            const righe = [`${top.name || '—'}`, `€ ${(Number(top.price) || 0).toFixed(2)}`];
+            if (su[0]) righe.push(`↑ ${su[0].name || '—'}`);
+            return {
+                righe,
+                immagine: top.immagine || null,
+                rarita: top.rarita || null,
+                dati: {
+                    perValore: perValore.map(c => ({ id: c.id, nome: c.name, prezzo: Number(c.price) || 0 })),
+                    su: su.map(c => ({ id: c.id, nome: c.name, var: c.variazioneNumerica })),
+                    giu: giu.map(c => ({ id: c.id, nome: c.name, var: c.variazioneNumerica })),
+                },
+            };
+        },
+        // Stesso gesto della home fissa: la carta si apre nel flip-modal,
+        // non cambia tab.
+        azione: (dati) => {
+            const primo = dati && dati.perValore && dati.perValore[0];
+            if (primo && typeof apriFlipCardHome === 'function') apriFlipCardHome(primo.id);
+        },
+    },
+    carte_recenti: {
+        titolo: 'Ultime aggiunte', icona: 'fa-clock',
+        // Da carteReali per createdAt, come caricaAttivitaRecentiHome().
+        // Nessuna query.
+        preview: () => {
+            const collezione = (typeof carteReali !== 'undefined' ? carteReali : [])
+                .filter(c => c.stato === 'collezione');
+            const ultime = collezione.slice()
+                .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
+                .slice(0, 5);
+            if (ultime.length === 0) return { righe: ['Nessuna carta ancora'], dati: { lista: [] } };
+            const quando = (c) => c.createdAt
+                ? new Date(c.createdAt).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' })
+                : '—';
+            return {
+                righe: ultime.slice(0, 3).map(c => `${c.name || '—'} · ${quando(c)}`),
+                immagine: ultime[0].immagine || null,
+                badge: null,
+                dati: { lista: ultime.map(c => ({ id: c.id, nome: c.name, quando: quando(c) })) },
+            };
+        },
+        tab: 'visualizzazione',
+    },
+    prezzi_recenti: {
+        titolo: 'Prezzi aggiornati', icona: 'fa-clock-rotate-left',
+        // UNICO dei tre che costa una query (storico_prezzi, via
+        // _ultimiPrezziAggiornati in ui/home.ui.js, a blocchi da 500 id).
+        // renderWidgetHome gira anche dal polling: senza freno questa
+        // query partirebbe a ogni giro. Da qui la cache a tempo qui
+        // sotto — stessa lezione delle 47 query di valutaEAssegna.
+        preview: async () => {
+            const righeCache = await _prezziRecentiConCache();
+            if (!righeCache.length) return { righe: ['Nessun controllo ancora'], dati: { lista: [] } };
+            return {
+                righe: righeCache.slice(0, 3).map(r => `${r.nome} · ${r.quando}`),
+                dati: { lista: righeCache },
+            };
+        },
+        tab: 'prezzi',
+    },
     bustina: {
         titolo: 'Bustina', icona: 'fa-gift', bloccato: true,
         preview: () => ({ righe: ['In arrivo'], dati: { placeholder: true, testo: 'Aprirai le bustine da qui' } }),
@@ -760,6 +852,38 @@ const CATALOGO_WIDGET = {
         },
     },
 };
+
+// Cache dei "prezzi aggiornati di recente". La lettura di storico_prezzi
+// e' l'unica query dei tre widget nuovi, e renderWidgetHome viene
+// richiamata anche dal polling: senza freno partirebbe a ogni giro, per un
+// dato che cambia raramente. 5 minuti sono abbondantemente sotto la
+// frequenza con cui i prezzi si aggiornano davvero.
+const TTL_PREZZI_RECENTI_MS = 5 * 60 * 1000;
+let _cachePrezziRecenti = { quando: 0, righe: [] };
+
+async function _prezziRecentiConCache() {
+    if (Date.now() - _cachePrezziRecenti.quando < TTL_PREZZI_RECENTI_MS) return _cachePrezziRecenti.righe;
+    // Se la funzione non c'e' (ordine di caricamento, file non presente)
+    // il widget mostra "nessun controllo" invece di rompere il render.
+    if (typeof _ultimiPrezziAggiornati !== 'function' || typeof carteReali === 'undefined') return [];
+    try {
+        const collezione = carteReali.filter(c => c.stato === 'collezione');
+        const eventi = await _ultimiPrezziAggiornati(collezione.map(c => c.id), 5);
+        const righe = eventi
+            .map(ev => ({ ev, card: collezione.find(c => String(c.id) === String(ev.carta_id)) }))
+            .filter(x => x.card) // la carta potrebbe essere stata eliminata nel frattempo
+            .map(({ ev, card }) => ({
+                id: card.id,
+                nome: card.name || '—',
+                quando: new Date(ev.registrato_il).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' }),
+            }));
+        _cachePrezziRecenti = { quando: Date.now(), righe };
+        return righe;
+    } catch (e) {
+        console.error('[widget prezzi_recenti]', e);
+        return [];
+    }
+}
 
 const ORDINE_WIDGET_DEFAULT = ['visualizzazione', 'inserimento', 'prezzi', 'binder', 'sealed'];
 // TEMPORANEO (Claudio, 2026-08-28): nessun limite, per poter provare tutti
@@ -1321,6 +1445,9 @@ function _ballParticelle() {
 // starebbe solo a un corpo illeggibile. Il titolo per esteso resta quello
 // vero del catalogo e ricompare su 2x1/1x2/2x2, dove il testo sta fuori.
 const _ballTITOLI_BREVI = {
+    primo_piano: 'In vetrina',
+    carte_recenti: 'Recenti',
+    prezzi_recenti: 'Controlli',
     visualizzazione: 'Visualizza',
     inserimento: 'Inserisci',
     prezzi: 'Prezzi',
@@ -1351,6 +1478,13 @@ const _ballTITOLI_BREVI = {
 // Il colore serve solo al tema futuro "ball colorate": oggi la calotta la
 // decide _ballTemaAttivo().
 const _ballASPETTO = {
+    // Blocchi della home fissa diventati widget (2026-09-03). Emblemi
+    // scelti fra quelli gia' disegnati, nessun disegno nuovo:
+    // 'album' per la vetrina delle carte in primo piano, 'piu' per le
+    // ultime aggiunte, 'orologio' per i prezzi controllati di recente.
+    primo_piano:      { emblema: 'album',       colore: '#D4A017' },
+    carte_recenti:    { emblema: 'piu',         colore: '#3B7DD8' },
+    prezzi_recenti:   { emblema: 'orologio',    colore: '#F2C230' },
     visualizzazione:  { emblema: 'carte',       colore: '#3B7DD8' },
     inserimento:      { emblema: 'piu',         colore: '#D4342C' },
     prezzi:           { emblema: 'monete',      colore: '#F2C230' },
