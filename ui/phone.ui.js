@@ -742,6 +742,50 @@ const CATALOGO_WIDGET = {
     //     contenitore morto che mostra "Caricamento..." per sempre. Non si
     //     porta in un widget un dato che non esiste: prima va deciso da
     //     dove viene.
+    variazione_valore: {
+        titolo: 'Variazione valore', icona: 'fa-arrow-trend-up',
+        tagliaDefault: '6x5', // il grafico e la scomposizione hanno bisogno di altezza
+        // Sostituisce il segnaposto "arrivera' con lo storico del valore
+        // totale" che stava nella home fissa da mesi. Ora lo storico c'e'
+        // (tabella storico_valore_collezione, migration 36) e viene
+        // riempito da ui/storico-valore.avvio.js a ogni apertura.
+        preview: async () => {
+            const righe = await _storicoValoreConCache();
+
+            // UN SOLO GIORNO NON E' UNA VARIAZIONE. Va detto, non
+            // mostrato come "zero": zero significherebbe "non e'
+            // cambiato niente", che e' un'altra cosa e sarebbe una bugia
+            // il primo giorno.
+            if (!righe.length) return { righe: ['In raccolta', 'nessun dato ancora'], badge: false, dati: null };
+            if (righe.length < 2) {
+                return {
+                    righe: ['In raccolta', 'serve un secondo giorno'],
+                    badge: false,
+                    dati: { soloUnGiorno: true, valore: Number(righe[0].valore_totale) || 0 },
+                };
+            }
+
+            const c = storicoValoreConfronta(righe);
+            const eur = (v) => (v >= 0 ? '+' : '−') + '€ ' + Math.abs(Number(v) || 0).toFixed(2);
+            const testo = [eur(c.variazione)];
+            if (c.carteAggiunte > 0) testo.push(`${c.carteAggiunte} cart${c.carteAggiunte === 1 ? 'a aggiunta' : 'e aggiunte'}`);
+
+            return {
+                righe: testo,
+                badge: false,
+                // 'ok' o 'allerta' accendono il semaforo della sfera: qui
+                // NON si usano. Un calo di valore non e' un problema da
+                // risolvere e non deve far agitare la ball come fa un
+                // errore in coda.
+                dati: {
+                    ...c,
+                    serie: righe.map(r => Number(r.valore_totale) || 0),
+                    valoreOggi: Number(righe[righe.length - 1].valore_totale) || 0,
+                    giorniMisurati: righe.length,
+                },
+            };
+        },
+    },
     primo_piano: {
         titolo: 'In primo piano', icona: 'fa-crown',
         // Tre categorie da tre carte: sotto questa taglia le miniature non
@@ -876,6 +920,32 @@ const CATALOGO_WIDGET = {
 // richiamata anche dal polling: senza freno partirebbe a ogni giro, per un
 // dato che cambia raramente. 5 minuti sono abbondantemente sotto la
 // frequenza con cui i prezzi si aggiornano davvero.
+// Lo storico del valore cambia una volta al giorno: interrogarlo a ogni
+// giro di polling sarebbe sprecato. 15 minuti sono generosi e restano
+// molto sotto la frequenza con cui il dato si muove davvero.
+const TTL_STORICO_VALORE_MS = 15 * 60 * 1000;
+let _cacheStoricoValore = { quando: 0, righe: [] };
+
+async function _storicoValoreConCache() {
+    if (Date.now() - _cacheStoricoValore.quando < TTL_STORICO_VALORE_MS) return _cacheStoricoValore.righe;
+    if (typeof storicoValoreUltimiGiorni !== 'function' || typeof authGetUserId !== 'function') return [];
+    try {
+        const userId = await authGetUserId();
+        if (!userId) return [];
+        const { data } = await storicoValoreUltimiGiorni(userId, 30);
+        // Come per i prezzi recenti: MAI mettere in cache un risultato
+        // vuoto. Il primo giro puo' capitare prima che la tabella abbia
+        // righe o mentre la rete e' giu', e memorizzare quel vuoto
+        // significherebbe mostrare "in raccolta" per un quarto d'ora a un
+        // widget che i dati ce li ha.
+        if (data && data.length) _cacheStoricoValore = { quando: Date.now(), righe: data };
+        return data || [];
+    } catch (e) {
+        console.error('[widget variazione_valore]', e);
+        return [];
+    }
+}
+
 const TTL_PREZZI_RECENTI_MS = 5 * 60 * 1000;
 let _cachePrezziRecenti = { quando: 0, righe: [] };
 
@@ -1507,6 +1577,7 @@ function _ballParticelle() {
 // starebbe solo a un corpo illeggibile. Il titolo per esteso resta quello
 // vero del catalogo e ricompare su 2x1/1x2/2x2, dove il testo sta fuori.
 const _ballTITOLI_BREVI = {
+    variazione_valore: 'Variazione',
     primo_piano: 'In vetrina',
     carte_recenti: 'Recenti',
     prezzi_recenti: 'Controlli',
@@ -1544,6 +1615,7 @@ const _ballASPETTO = {
     // scelti fra quelli gia' disegnati, nessun disegno nuovo:
     // 'album' per la vetrina delle carte in primo piano, 'piu' per le
     // ultime aggiunte, 'orologio' per i prezzi controllati di recente.
+    variazione_valore:{ emblema: 'monete',      colore: '#3FA45B' },
     primo_piano:      { emblema: 'album',       colore: '#D4A017' },
     carte_recenti:    { emblema: 'piu',         colore: '#3B7DD8' },
     prezzi_recenti:   { emblema: 'orologio',    colore: '#F2C230' },
@@ -2127,6 +2199,60 @@ function _ballElencoRighe(voci) {
 }
 
 const _ballCORPI = {
+    // La frase che Claudio voleva leggere: "valore salito di 45 euro,
+    // aggiunte tre carte ieri dal valore complessivo di 43 euro". La
+    // scomposizione arriva gia' pronta da storicoValoreConfronta().
+    variazione_valore: (d) => {
+        if (!d) return { inline: '', blocco: '' };
+        const eur = (v) => '€ ' + Math.abs(Number(v) || 0).toFixed(2);
+        const segno = (v) => (Number(v) >= 0 ? '+' : '−');
+
+        if (d.soloUnGiorno) {
+            return {
+                inline: `<div class="ball-k-big ball-k-mono">${eur(d.valore)}</div>` +
+                        '<span class="ball-k-lab">primo giorno misurato</span>',
+                blocco: '<span class="ball-k-lab ball-attesa">La variazione compare domani, quando ci sara' + "'" + ' un secondo giorno da confrontare.</span>',
+            };
+        }
+
+        const colore = d.variazione >= 0 ? 'var(--success)' : 'var(--danger)';
+        const inline =
+            `<div class="ball-k-big ball-k-mono" style="color:${colore}">${segno(d.variazione)}${eur(d.variazione)}</div>` +
+            `<span class="ball-k-lab">${eur(d.valoreOggi)} in totale</span>`;
+
+        // Le due voci della scomposizione. Compaiono solo se hanno
+        // qualcosa da dire: una riga "acquisti: 0,00" e' rumore.
+        const voci = [];
+        if (d.carteAggiunte > 0) {
+            voci.push(`<div class="ball-riga">
+                <span class="ball-nome">${d.carteAggiunte} cart${d.carteAggiunte === 1 ? 'a aggiunta' : 'e aggiunte'}</span>
+                <span class="ball-dato">${segno(d.daAggiunte)}${eur(d.daAggiunte)}</span>
+            </div>`);
+        }
+        if (d.rimozioniSospette) {
+            // Limite noto, spiegato nella migration 36: una carta uscita
+            // dalla collezione non lascia traccia, quindi finirebbe nel
+            // residuo e verrebbe letta come "i prezzi sono scesi". Quando
+            // i pezzi calano si dice cosa e' successo invece di attribuire
+            // il calo ai prezzi.
+            voci.push(`<div class="ball-riga">
+                <span class="ball-nome">${d.pezziInMeno} pezz${d.pezziInMeno === 1 ? 'o uscito' : 'i usciti'} dalla collezione</span>
+                <span class="ball-dato">—</span>
+            </div>`);
+            voci.push('<span class="ball-k-lab ball-attesa">Con dei pezzi in uscita non si puo' + "'" + ' distinguere quanto sia movimento dei prezzi.</span>');
+        } else if (d.daPrezzi != null && Math.abs(d.daPrezzi) >= 0.01) {
+            voci.push(`<div class="ball-riga">
+                <span class="ball-nome">movimento dei prezzi</span>
+                <span class="ball-dato">${segno(d.daPrezzi)}${eur(d.daPrezzi)}</span>
+            </div>`);
+        }
+
+        const grafico = (d.serie && d.serie.length > 1) ? _ballSparkline(d.serie, colore) : '';
+        const nota = `<span class="ball-k-lab">${d.giorniMisurati} giorn${d.giorniMisurati === 1 ? 'o' : 'i'} misurat${d.giorniMisurati === 1 ? 'o' : 'i'}</span>`;
+
+        return { inline, blocco: grafico + voci.join('') + nota };
+    },
+
     // Le tre categorie della home fissa: valore piu' alto, oscillazione in
     // su, oscillazione in giu'. Stesse tre carte per categoria.
     primo_piano: (d) => {
