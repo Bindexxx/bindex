@@ -766,9 +766,196 @@ const ORDINE_WIDGET_DEFAULT = ['visualizzazione', 'inserimento', 'prezzi', 'bind
 // i widget del catalogo insieme in home. Da RIPRISTINARE a 10 quando finito
 // — è l'unica riga da cambiare, usata solo qui sotto e in _mostraWidget().
 const MAX_WIDGET_VISIBILI = Infinity;
-const TAGLIE_CICLO = ['1x1', '2x1', '1x2', '2x2']; // ordine di ciclo del ridimensionamento
+// TAGLIE_CICLO — SUPERATO dalla griglia a 6 colonne (2026-09-03). Resta
+// SOLO come elenco delle 4 taglie del vecchio modello a 2 colonne: serve a
+// _migraTagliaWidget() per riconoscere un layout salvato prima del cambio.
+// Non usarlo più come whitelist delle taglie ammesse: oggi sono libere.
+const TAGLIE_CICLO = ['1x1', '2x1', '1x2', '2x2'];
 
-let _layoutWidget = null; // [{id, visibile, size}], ordine = ordine di visualizzazione
+// ── GRIGLIA WIDGET: 6 COLONNE (Claudio, 2026-09-03) ─────────────────────
+// "Massima personalizzazione possibile e immaginabile": icone piccolissime
+// E widget che riempiono la pagina. Entrambe erano impossibili non per un
+// limite del codice ma perche' la griglia aveva 2 colonne — con 2 colonne
+// una cella e' mezzo schermo, quindi un'icona non puo' essere piccola e un
+// widget non puo' essere largo 6.
+//
+// PERCHE' 6 E NON DI PIU': sotto i ~44px un bersaglio non e' piu' toccabile
+// con affidabilita'. Su uno schermo telefono 6 colonne danno ~55px (sopra
+// soglia); 8 ne darebbero ~40 (sotto). "Il minimo" ha un pavimento fisico
+// ed e' piu' o meno qui.
+const COLONNE_GRIGLIA_WIDGET = 6;
+
+// Tetto di sicurezza all'altezza. Il limite VERO e' l'altezza della pagina
+// ed e' calcolato dal vivo in _onResizeHandlePointerDown (maxRowSpan): un
+// widget non puo' crescere oltre lo schermo che lo contiene. Questo qui
+// serve solo a impedire che un layout salvato corrotto produca un widget
+// alto 400 righe.
+const RIGHE_MAX_WIDGET = 24;
+
+// Soglia sotto la quale la tessera diventa ICONA STATICA (niente sfera,
+// niente animazione, solo icona + numerino di notifica).
+// Claudio: "non saranno piu' widget con animazione ma icone statiche con
+// numerino di notifica".
+// NOTA: questa soglia risolve un conflitto con una decisione precedente
+// dello stesso Claudio, incisa nel CSS: "la ball non deve MAI
+// rimpicciolire" (--ball-misura fissa a 90px). In una cella da 55px una
+// sfera da 90px non ci sta. Le due regole convivono cosi': sotto la soglia
+// la sfera non c'e' proprio, sopra la soglia e' quella di sempre, intatta.
+// Non abbassare questa soglia senza rendere la sfera elastica.
+const CELLE_MIN_PER_SFERA = 3;
+
+// Versione del formato di _layoutWidget salvato in cardsyncWidgetLayout.
+// 1 (implicita, nessun campo 'v') = modello a 2 colonne.
+// 2 = modello a 6 colonne. Vedi _migraTagliaWidget().
+const VERSIONE_LAYOUT_WIDGET = 2;
+
+// FORMA della tessera, per il CSS interno della sfera. Il vecchio modello
+// aveva 4 taglie fisse e il CSS ci aveva scritto sopra ~25 regole
+// (dimensioni di font, righe da nascondere, altezza degli sparkline). Con
+// le taglie libere quelle regole sarebbero morte: qui le 4 forme
+// sopravvivono come SOGLIE, cosi' il CSS e' stato solo rinominato e non
+// riscritto — e le taglie intermedie che prima non potevano esistere
+// (4x2, 5x3...) ricadono nella forma piu' vicina invece di restare nude.
+//   wf-piccolo = ex 1x1   wf-largo  = ex 2x1
+//   wf-alto    = ex 1x2   wf-grande = ex 2x2
+function _formaWidget(col, row) {
+    const largo = col >= 5;
+    const alto = row >= 3;
+    if (largo && alto) return 'wf-grande';
+    if (largo) return 'wf-largo';
+    if (alto) return 'wf-alto';
+    return 'wf-piccolo';
+}
+
+// Spezza 'CxR' nei due numeri, con difesa contro valori corrotti.
+function _leggiTaglia(size) {
+    const m = /^(\d+)x(\d+)$/.exec(String(size || ''));
+    if (!m) return { col: 3, row: 2 }; // = il vecchio 1x1, default sensato
+    const col = Math.max(1, Math.min(COLONNE_GRIGLIA_WIDGET, parseInt(m[1], 10)));
+    const row = Math.max(1, Math.min(RIGHE_MAX_WIDGET, parseInt(m[2], 10)));
+    return { col, row };
+}
+
+// MIGRAZIONE DEI LAYOUT SALVATI — la parte delicata del cambio.
+// Nel vecchio modello '2x1' voleva dire "tutta la larghezza"; a 6 colonne
+// vorrebbe dire "un terzo". Senza questa conversione, alla prima apertura
+// la home di tutti e cinque i membri del gruppo risulterebbe scombinata.
+//
+// I fattori NON sono scelti a caso: sono quelli che rendono la migrazione
+// INVISIBILE. Colonne x3 (2 -> 6). Righe x2, perche' la riga passa da
+// 108px a 48px + 11.2px di gap = 107.2px ogni due. Tenendo il gap
+// identico (0.7rem), la larghezza di 3 nuove colonne e' W/2 - 0.5*gap,
+// esattamente la stessa del vecchio 1x1. Ogni widget esistente resta
+// quindi della stessa identica dimensione in pixel: cambia solo cio' che
+// da oggi in poi si PUO' fare, non cio' che si vede al primo avvio.
+//
+//   vecchio 1x1 -> 3x2      vecchio 1x2 -> 3x4
+//   vecchio 2x1 -> 6x2      vecchio 2x2 -> 6x4
+function _migraTagliaWidget(size) {
+    const m = /^(\d+)x(\d+)$/.exec(String(size || ''));
+    if (!m) return '3x2';
+    const col = Math.max(1, Math.min(2, parseInt(m[1], 10))) * 3;
+    const row = Math.max(1, Math.min(2, parseInt(m[2], 10))) * 2;
+    return col + 'x' + row;
+}
+
+// ── PAGINE MULTIPLE DELLA HOME (Claudio, 2026-09-03) ────────────────────
+// Ogni riga di _layoutWidget porta un campo 'pagina' (0 = prima pagina).
+// Il numero di pagine NON e' uno stato salvato: e' dedotto ogni volta dal
+// massimo 'pagina' fra i widget visibili. Cosi' non esiste il caso di una
+// pagina "che esiste ma non contiene niente" da dover ripulire: svuoti
+// l'ultima pagina e sparisce da se'.
+//
+// PERCHE' NESSUN GESTORE DI SWIPE SCRITTO A MANO. Sulla stessa superficie
+// convivono tre gesti: lo scatto verticale fra home fissa e pagina widget
+// (scroll-snap gia' esistente), il trascinamento dei widget, e ora lo
+// scorrimento orizzontale fra pagine. Gli ASSI sono pero' diversi:
+// scroll-snap-type y sul contenitore esterno, x su quello interno, e il
+// browser li tiene separati da solo. Un gestore di pointer scritto a mano
+// avrebbe dovuto arbitrare fra i tre — ed e' esattamente il terreno dei
+// bug di pointercancel gia' incontrati in questo progetto. L'unico
+// intervento necessario e' touch-action:none sulle tessere in modifica
+// (in index.html), perche' li' il trascinamento deve vincere sullo
+// scorrimento.
+let _paginaWidgetCorrente = 0;
+
+// Quante pagine esistono davvero. In modifica se ne mostra SEMPRE una in
+// piu', vuota: e' li' che si spinge un widget per creare una pagina nuova,
+// senza bisogno di un pulsante "aggiungi pagina" e senza stato da salvare.
+function _numeroPagineWidget() {
+    const visibili = (_layoutWidget || []).filter(w => w.visibile);
+    const maxPagina = visibili.reduce((m, w) => Math.max(m, w.pagina || 0), 0);
+    return maxPagina + 1 + (_editModeWidget ? 1 : 0);
+}
+
+// Sposta un widget alla pagina precedente/successiva. Unico modo previsto
+// per cambiare pagina a un widget: il trascinamento fino al bordo dello
+// schermo per "passare di la'" e' molto piu' fragile su touch (va
+// arbitrato con lo scorrimento orizzontale, e su dito grosso parte da
+// solo), mentre due frecce funzionano al primo colpo. Si potra' aggiungere
+// il trascinamento in seguito SOPRA questo, non al suo posto.
+function _spostaWidgetInPagina(instanceId, delta) {
+    const w = (_layoutWidget || []).find(x => x.instanceId === instanceId);
+    if (!w) return;
+    const nuova = Math.max(0, (w.pagina || 0) + delta);
+    if (nuova === (w.pagina || 0)) return;
+    w.pagina = nuova;
+    _salvaLayoutWidget();
+    _paginaWidgetCorrente = nuova;
+    renderWidgetHome();
+}
+
+// Riordino DENTRO la pagina: scambia con il widget visibile precedente/
+// successivo della STESSA pagina. Il vecchio _spostaWidget lavorava su
+// indici dell'intero elenco visibile e, con le pagine, avrebbe fatto
+// saltare un widget da una pagina all'altra come effetto collaterale
+// invisibile.
+function _spostaWidgetNellaPagina(instanceId, direzione) {
+    if (!_layoutWidget) return;
+    const w = _layoutWidget.find(x => x.instanceId === instanceId);
+    if (!w) return;
+    const pagina = w.pagina || 0;
+    const compagni = _layoutWidget.filter(x => x.visibile && (x.pagina || 0) === pagina);
+    const pos = compagni.indexOf(w);
+    const altro = compagni[pos + direzione];
+    if (!altro) return;
+    const iA = _layoutWidget.indexOf(w);
+    const iB = _layoutWidget.indexOf(altro);
+    _layoutWidget[iA] = altro;
+    _layoutWidget[iB] = w;
+    _salvaLayoutWidget();
+    renderWidgetHome();
+}
+
+// Scorre alla pagina indicata (puntini in basso, o ritorno dopo un
+// re-render). 'istantaneo' serve durante il ridimensionamento, che
+// ridisegna a ogni movimento del dito: li' un'animazione morbida
+// produrrebbe uno sfarfallio continuo.
+function _vaiAllaPaginaWidget(indice, istantaneo) {
+    const cont = document.getElementById('phoneWidgetPagine');
+    if (!cont) return;
+    const max = _numeroPagineWidget() - 1;
+    _paginaWidgetCorrente = Math.max(0, Math.min(max, indice));
+    cont.scrollTo({ left: _paginaWidgetCorrente * cont.clientWidth, behavior: istantaneo ? 'auto' : 'smooth' });
+    _aggiornaPuntiniPagine();
+}
+
+function _gestisciScrollPaginePagineWidget() {
+    const cont = document.getElementById('phoneWidgetPagine');
+    if (!cont) return;
+    const indice = Math.round(cont.scrollLeft / Math.max(cont.clientWidth, 1));
+    if (indice === _paginaWidgetCorrente) return;
+    _paginaWidgetCorrente = indice;
+    _aggiornaPuntiniPagine();
+}
+
+function _aggiornaPuntiniPagine() {
+    document.querySelectorAll('#phoneWidgetPuntini .widget-puntino').forEach((el, i) => {
+        el.classList.toggle('attivo', i === _paginaWidgetCorrente);
+    });
+}
+
+let _layoutWidget = null; // [{id, visibile, size, pagina}], ordine = ordine di visualizzazione
 let _editModeWidget = false;
 let _densitaCompatta = false;
 let _pollingWidgetInterval = null;
@@ -791,21 +978,39 @@ function _caricaLayoutWidget() {
     try { salvato = JSON.parse(prefWidgetLayoutGet() || 'null'); } catch (_) { salvato = null; }
 
     if (!Array.isArray(salvato) || salvato.length === 0) {
-        _layoutWidget = ORDINE_WIDGET_DEFAULT.map(id => ({ id, instanceId: _nuovoInstanceId(), visibile: true, size: '1x1', mini: false, cartaId: null }));
+        // '3x2' = il vecchio '1x1' nella griglia a 6 colonne: mezza
+        // larghezza, stessa altezza di prima. Primo avvio identico a com'era.
+        _layoutWidget = ORDINE_WIDGET_DEFAULT.map(id => ({ id, instanceId: _nuovoInstanceId(), visibile: true, size: '3x2', mini: false, cartaId: null, pagina: 0, v: VERSIONE_LAYOUT_WIDGET }));
         return;
     }
     let generatoQualcheId = false;
+    let migratoQualcosa = false;
     const validi = salvato
         .filter(w => CATALOGO_WIDGET[w.id])
         .map(w => {
             if (!w.instanceId) generatoQualcheId = true; // layout salvato PRIMA di questa sessione: assegna una volta, si salva sotto
+            // Riga scritta col modello a 2 colonne (nessun campo 'v'):
+            // converti una volta sola. Il campo 'v' scritto qui sotto
+            // impedisce che la conversione venga rifatta al prossimo avvio
+            // — rifarla moltiplicherebbe di nuovo e sfonderebbe la griglia.
+            let size;
+            if (w.v === VERSIONE_LAYOUT_WIDGET) {
+                const t = _leggiTaglia(w.size);
+                size = t.col + 'x' + t.row;
+            } else {
+                migratoQualcosa = true;
+                size = _migraTagliaWidget(w.size);
+            }
             return {
                 id: w.id,
                 instanceId: w.instanceId || _nuovoInstanceId(),
                 visibile: !!w.visibile,
-                size: TAGLIE_CICLO.includes(w.size) ? w.size : '1x1',
+                size: size,
                 mini: !!w.mini,
                 cartaId: w.cartaId != null ? w.cartaId : null,
+                // Layout salvato prima delle pagine: tutto sulla prima.
+                pagina: Math.max(0, parseInt(w.pagina, 10) || 0),
+                v: VERSIONE_LAYOUT_WIDGET,
             };
         });
     // Bootstrap a riga singola SOLO per i widget normali: le copie di un
@@ -814,12 +1019,12 @@ function _caricaLayoutWidget() {
     // copia vuota e invisibile che nessuno ha chiesto.
     Object.entries(CATALOGO_WIDGET).forEach(([id, def]) => {
         if (def.multiIstanza) return;
-        if (!validi.find(w => w.id === id)) validi.push({ id, instanceId: _nuovoInstanceId(), visibile: false, size: '1x1', mini: false, cartaId: null });
+        if (!validi.find(w => w.id === id)) validi.push({ id, instanceId: _nuovoInstanceId(), visibile: false, size: '3x2', mini: false, cartaId: null, pagina: 0, v: VERSIONE_LAYOUT_WIDGET });
     });
     _layoutWidget = validi;
     // Persiste subito gli instanceId appena generati per un layout vecchio,
     // così al prossimo giro non li rigenera (restano stabili tra i render).
-    if (generatoQualcheId) _salvaLayoutWidget(false); // migrazione interna, non un'azione utente — vedi missioni m94/m95
+    if (generatoQualcheId || migratoQualcosa) _salvaLayoutWidget(false); // migrazione interna, non un'azione utente — vedi missioni m94/m95
 }
 
 // daAzioneUtente=false SOLO per la migrazione di un layout vecchio in
@@ -2015,8 +2220,8 @@ function _ballCorpoWidget(id, anteprima) {
 async function renderWidgetHome() {
     if (!_layoutWidget) _caricaLayoutWidget();
 
-    const grid = document.getElementById('phoneWidgetGrid');
-    if (!grid) return;
+    const cont = document.getElementById('phoneWidgetPagine');
+    if (!cont) return;
 
     const visibili = _layoutWidget.filter(w => w.visibile);
     const primoRender = !_primoRenderWidgetFatto;
@@ -2042,8 +2247,10 @@ async function renderWidgetHome() {
 
         const controlliEdit = _editModeWidget ? `
             <div class="widget-edit-controls" onclick="event.stopPropagation()">
-                <button type="button" onclick="_spostaWidget(${indice}, -1)" title="Sposta su" ${indice === 0 ? 'disabled' : ''}><i class="fa-solid fa-arrow-up"></i></button>
-                <button type="button" onclick="_spostaWidget(${indice}, 1)" title="Sposta giù" ${indice === visibili.length - 1 ? 'disabled' : ''}><i class="fa-solid fa-arrow-down"></i></button>
+                <button type="button" onclick="_spostaWidgetNellaPagina('${w.instanceId}', -1)" title="Sposta su"><i class="fa-solid fa-arrow-up"></i></button>
+                <button type="button" onclick="_spostaWidgetNellaPagina('${w.instanceId}', 1)" title="Sposta giù"><i class="fa-solid fa-arrow-down"></i></button>
+                <button type="button" onclick="_spostaWidgetInPagina('${w.instanceId}', -1)" title="Pagina precedente" ${(w.pagina || 0) === 0 ? 'disabled' : ''}><i class="fa-solid fa-chevron-left"></i></button>
+                <button type="button" onclick="_spostaWidgetInPagina('${w.instanceId}', 1)" title="Pagina successiva"><i class="fa-solid fa-chevron-right"></i></button>
                 <button type="button" onclick="_nascondiWidget('${w.instanceId}')" title="Rimuovi dalla home" class="widget-edit-remove"><i class="fa-solid fa-xmark"></i></button>
             </div>
             <div class="widget-resize-handle" data-widget-id="${w.instanceId}" title="Trascina per ridimensionare"><i class="fa-solid fa-up-right-and-down-left-from-center"></i></div>` : '';
@@ -2116,7 +2323,11 @@ async function renderWidgetHome() {
         // Taglie grandi: due slot, uno accanto alla sfera e uno sotto (il
         // secondo solo dove c'è altezza, cioè 1x2 e 2x2 — vedi il CSS).
         // Con BALL_ATTIVA a false si torna al corpo originale del sito.
-        const grande = BALL_ATTIVA && w.size !== '1x1' && !w.mini;
+        // Sotto CELLE_MIN_PER_SFERA la tessera e' un'icona statica: niente
+        // sfera, niente corpo ricco. Sopra, tutto come prima.
+        const _t = _leggiTaglia(w.size);
+        const _iconaStatica = w.mini || _t.col < CELLE_MIN_PER_SFERA || _t.row < 2;
+        const grande = BALL_ATTIVA && !_iconaStatica && !(_t.col === 3 && _t.row === 2);
         let corpo;
         if (grande) {
             const c = _ballCorpoWidget(w.id, anteprima);
@@ -2139,7 +2350,7 @@ async function renderWidgetHome() {
         }
 
         return `
-            <div class="widget-tile ${classeStato} ${classeCascata} widget-size-${w.size} ${w.mini ? 'widget-tile-mini' : ''}" ${stileRitardo} data-widget-id="${w.instanceId}" data-widget-index="${indice}" ${azioneClick}>
+            <div class="widget-tile ${classeStato} ${classeCascata} widget-size-${w.size} widget-col-${_t.col} widget-row-${_t.row} ${_formaWidget(_t.col, _t.row)} ${_iconaStatica ? 'widget-tile-mini' : ''}" ${stileRitardo} data-widget-id="${w.instanceId}" data-widget-index="${indice}" ${azioneClick}>
                 ${controlliEdit}
                 ${badge}
                 <div class="tile-tinta"></div><div class="tile-alone"></div>
@@ -2150,23 +2361,60 @@ async function renderWidgetHome() {
     let tileAggiungi = '';
     if (_editModeWidget && visibili.length < MAX_WIDGET_VISIBILI) {
         tileAggiungi = `
-            <div class="widget-tile widget-tile-aggiungi" onclick="_apriPickerAggiungiWidget()">
+            <div class="widget-tile widget-tile-aggiungi widget-col-3 widget-row-2 wf-piccolo" onclick="_apriPickerAggiungiWidget()">
                 <i class="fa-solid fa-plus widget-tile-icon"></i>
                 <div class="widget-tile-titolo">Aggiungi</div>
             </div>`;
     }
 
-    grid.innerHTML = tessere.join('') + tileAggiungi;
+    // ── COMPOSIZIONE DELLE PAGINE ───────────────────────────────────────
+    // Le tessere sono gia' state costruite tutte insieme (con Promise.all,
+    // che va lasciato in un blocco solo: spezzarlo per pagina moltiplica
+    // le query). Qui si distribuiscono soltanto.
+    const nPagine = _numeroPagineWidget();
+    // Uscendo dalla modifica la pagina vuota di cortesia sparisce: se
+    // l'utente era proprio li', va riportato sull'ultima pagina vera,
+    // altrimenti resterebbe su uno scorrimento che non esiste piu' e i
+    // puntini indicherebbero una pagina sbagliata.
+    if (_paginaWidgetCorrente > nPagine - 1) _paginaWidgetCorrente = nPagine - 1;
+    const classiGriglia = 'widget-griglia'
+        + (BALL_ATTIVA ? ' ball-ui' : '')
+        + (_editModeWidget ? ' in-modifica-widget' : '');
+    const paginaHtml = [];
+    for (let p = 0; p < nPagine; p++) {
+        const dentro = visibili
+            .map((w, i) => ({ w: w, html: tessere[i] }))
+            .filter(x => (x.w.pagina || 0) === p)
+            .map(x => x.html)
+            .join('');
+        // Il tassello "Aggiungi" sta sull'ultima pagina REALE, non su
+        // quella vuota di cortesia che compare solo in modifica.
+        const ultimaReale = p === nPagine - 1 - (_editModeWidget ? 1 : 0);
+        const vuota = !dentro && !(ultimaReale && tileAggiungi);
+        paginaHtml.push(`
+            <div class="widget-pagina" data-pagina="${p}">
+                <div class="${classiGriglia}">${dentro}${ultimaReale ? tileAggiungi : ''}</div>
+                ${vuota && _editModeWidget ? '<div class="widget-pagina-vuota">Pagina vuota<br><small>spingi qui un widget con la freccia \u203a</small></div>' : ''}
+            </div>`);
+    }
+
+    const puntini = nPagine > 1
+        ? `<div id="phoneWidgetPuntini">${Array.from({ length: nPagine }, (_, i) =>
+            `<button type="button" class="widget-puntino${i === _paginaWidgetCorrente ? ' attivo' : ''}" onclick="_vaiAllaPaginaWidget(${i})" aria-label="Pagina ${i + 1}"></button>`).join('')}</div>`
+        : '';
+
+    // Il ridimensionamento ridisegna a ogni movimento del dito: senza
+    // questa riga lo scorrimento orizzontale tornerebbe a zero e la pagina
+    // "scapperebbe" alla prima sotto le dita.
+    const scrollPrima = Math.min(cont.scrollLeft, _paginaWidgetCorrente * cont.clientWidth);
+    cont.innerHTML = paginaHtml.join('');
+    const vecchiPuntini = document.getElementById('phoneWidgetPuntini');
+    if (vecchiPuntini) vecchiPuntini.remove();
+    if (puntini) cont.insertAdjacentHTML('afterend', puntini);
+    cont.scrollLeft = scrollPrima;
+
     _primoRenderWidgetFatto = true;
     _ballAttenzioni = attenzioni;
-
-    // Aggancio del CSS della grafica ball: tutte le regole nuove in
-    // index.html vivono sotto ".ball-ui", quindi spegnendo BALL_ATTIVA la
-    // classe sparisce e torna in vigore da sola la resa originale.
-    grid.classList.toggle('ball-ui', BALL_ATTIVA);
-    // In modifica i riquadri tornano visibili (vedi .ball-ui.in-modifica-widget
-    // in index.html): senza, non si capirebbe dove afferrare un widget.
-    grid.classList.toggle('in-modifica-widget', _editModeWidget);
 
     // Al primo render, dopo la cascata d'ingresso, un giro di semaforo
     // così chi ha qualcosa da fare si fa notare subito invece di aspettare
@@ -2222,6 +2470,13 @@ async function _eseguiAzioneWidget(instanceId, evt) {
     apriDettaglioWidget(def.tab || w.id, punto);
 }
 
+// SUPERATA dalle pagine multiple (2026-09-03) e senza piu' chiamanti: con
+// le pagine, muovere per indice sull'elenco visibile faceva saltare un
+// widget da una pagina all'altra come effetto collaterale invisibile. Le
+// frecce su/giu' usano ora _spostaWidgetNellaPagina(instanceId, dir), che
+// resta dentro la pagina. Lasciata qui perche' innocua e perche' un
+// eventuale onclick residuo in una schermata non ancora aggiornata
+// continuerebbe a funzionare invece di lanciare un errore.
 function _spostaWidget(indiceVisibile, direzione) {
     const visibili = _layoutWidget.filter(w => w.visibile);
     const target = visibili[indiceVisibile];
@@ -2289,7 +2544,8 @@ function _mostraWidget(id) {
 function _aggiungiIstanzaWidget(id) {
     const visibiliCount = _layoutWidget.filter(w => w.visibile).length;
     if (visibiliCount >= MAX_WIDGET_VISIBILI) { alert(`Massimo ${MAX_WIDGET_VISIBILI} widget in home.`); return; }
-    const nuovo = { id, instanceId: _nuovoInstanceId(), visibile: true, size: '1x1', mini: false, cartaId: null };
+    // Nasce sulla pagina che stai guardando, non sempre sulla prima.
+    const nuovo = { id, instanceId: _nuovoInstanceId(), visibile: true, size: '3x2', mini: false, cartaId: null, pagina: _paginaWidgetCorrente, v: VERSIONE_LAYOUT_WIDGET };
     _layoutWidget.push(nuovo);
     _salvaLayoutWidget();
     _chiudiPickerAggiungiWidget();
@@ -2418,7 +2674,9 @@ function _onResizeHandlePointerDown(e) {
     e.preventDefault();
     const id = e.currentTarget.dataset.widgetId;
     const tile = document.querySelector(`.widget-tile[data-widget-id="${id}"]`);
-    const grid = document.getElementById('phoneWidgetGrid');
+    // Con le pagine multiple le griglie sono N: quella giusta e' quella che
+    // contiene QUESTA tessera, non piu' un id unico nel documento.
+    const grid = tile ? tile.closest('.widget-griglia') : null;
     const w = _layoutWidget.find(x => x.instanceId === id);
     if (!tile || !grid || !w) return;
     const tileRect = tile.getBoundingClientRect();
@@ -2430,15 +2688,27 @@ function _onResizeHandlePointerDown(e) {
     // Dimensione di UNA cella dedotta dalla tessera stessa (che oggi
     // occupa 1-2 celle in ciascun asse): più affidabile che ricalcolare a
     // mano le colonne in px.
-    const colSpanAttuale = (w.size === '2x1' || w.size === '2x2') ? 2 : 1;
-    const rowSpanAttuale = (w.size === '1x2' || w.size === '2x2') ? 2 : 1;
+    const _ta = _leggiTaglia(w.size);
+    const colSpanAttuale = _ta.col;
+    const rowSpanAttuale = _ta.row;
     const cellW = (tileRect.width - gap * (colSpanAttuale - 1)) / colSpanAttuale;
     const cellH = (tileRect.height - rowGap * (rowSpanAttuale - 1)) / rowSpanAttuale;
 
     _resizeState = {
         id, originLeft: tileRect.left, originTop: tileRect.top,
         cellW, cellH, gap, rowGap,
-        maxColSpan: numColonneGriglia >= 2 ? 2 : 1,
+        maxColSpan: Math.max(1, numColonneGriglia),
+        // Tetto in altezza = quante righe stanno nella PAGINA visibile, non
+        // nella griglia (che cresce col contenuto). Cosi' "un widget solo
+        // che riempie la pagina" (Claudio) e' esattamente il massimo
+        // raggiungibile trascinando, e non si puo' andare oltre lo schermo.
+        maxRowSpan: (() => {
+            const wrap = grid.closest('.widget-pagina') || document.getElementById('phoneWidgetHomeWrap') || grid.parentElement;
+            const hVisibile = wrap ? wrap.clientHeight : 0;
+            const cellHTot = cellH + rowGap;
+            if (!hVisibile || cellHTot <= 0) return RIGHE_MAX_WIDGET;
+            return Math.max(1, Math.min(RIGHE_MAX_WIDGET, Math.floor((hVisibile + rowGap) / cellHTot)));
+        })(),
     };
     tile.classList.add('widget-tile-resizing');
     window.addEventListener('pointermove', _onResizeHandlePointerMove);
@@ -2457,7 +2727,7 @@ function _onResizeHandlePointerDown(e) {
 
 function _onResizeHandlePointerMove(e) {
     if (!_resizeState) return;
-    const { id, originLeft, originTop, cellW, cellH, gap, rowGap, maxColSpan } = _resizeState;
+    const { id, originLeft, originTop, cellW, cellH, gap, rowGap, maxColSpan, maxRowSpan } = _resizeState;
 
     // Quante celle sono "coperte" dalla posizione del dito, arrotondato
     // alla cella più vicina — segue il movimento in tempo reale, ogni
@@ -2479,10 +2749,16 @@ function _onResizeHandlePointerMove(e) {
     // stessa cella 1×1, ma il contenuto si riduce a sola icona (vedi
     // .widget-tile-mini in index.html). Altrimenti dimensione normale,
     // ed uscire da mini se prima lo era.
-    const vuoleMini = colSpanGrezzo <= 0 && rowSpanGrezzo <= 0;
+    // Il flag 'mini' esplicito non serve piu': con 6 colonne la modalita'
+    // icona si ottiene semplicemente restringendo a 1-2 celle, ed e' la
+    // taglia stessa a deciderla (vedi _iconaStatica in renderWidgetHome).
+    // Trascinare oltre l'angolo opposto porta quindi alla taglia minima
+    // reale, 1x1, che ORA e' davvero un'icona da ~55px e non piu' una
+    // cella larga mezzo schermo.
+    const vuoleMini = false;
     const colSpan = Math.max(1, Math.min(maxColSpan, colSpanGrezzo));
-    const rowSpan = Math.max(1, Math.min(2, rowSpanGrezzo));
-    const nuovaTaglia = vuoleMini ? '1x1' : `${colSpan}x${rowSpan}`;
+    const rowSpan = Math.max(1, Math.min(maxRowSpan, rowSpanGrezzo));
+    const nuovaTaglia = `${colSpan}x${rowSpan}`;
 
     if (w.size !== nuovaTaglia || w.mini !== vuoleMini) {
         w.size = nuovaTaglia;
@@ -4466,6 +4742,8 @@ async function initPhoneShell() {
 
     const paginaWrap = document.getElementById('phonePagineWrap');
     if (paginaWrap) paginaWrap.addEventListener('scroll', _gestisciScrollPagine, { passive: true });
+    const contPagineWidget = document.getElementById('phoneWidgetPagine');
+    if (contPagineWidget) contPagineWidget.addEventListener('scroll', _gestisciScrollPaginePagineWidget, { passive: true });
     _aggiornaTastoFisico();
     _aggiornaMatitaBarraGlobale();
 
