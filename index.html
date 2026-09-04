@@ -1601,6 +1601,13 @@
            tutta la pagina e quelle miniature ci si perdevano dentro. Il
            rapporto 1:1,37 e' quello di una carta vera ed e' mantenuto in
            tutte le misure. */
+        /* La tessera diventa un "contenitore" misurabile dal CSS, cosi' le
+           carte dentro possono essere espresse in percentuale della SUA
+           larghezza invece che in pixel fissi. inline-size e non size:
+           serve solo la larghezza, e chiedere anche l'altezza imporrebbe
+           alla tessera un'altezza definita che qui non ha. */
+        .ball-ui .widget-tile { container-type: inline-size; }
+
         .ball-ui .ball-mini {
             width: 46px; height: 63px; border-radius: 6px;
             flex: 0 0 auto; position: relative; overflow: hidden;
@@ -1649,10 +1656,38 @@
         body.senza-anim-widget .ball-ui .ball-mini.holo::after { animation: none; opacity: 0; }
 
         /* Misure per taglia, come nel mockup: più spazio, carte più grandi. */
-        /* Piu' la tessera e' grande, piu' grandi le carte. Prima era al
-           contrario: il widget grande le faceva PIU' piccole della base. */
+        /* MISURE DI RIPIEGO a scalini, per browser senza container query.
+           Sono anche il punto di partenza: il blocco @supports qui sotto le
+           sostituisce con una misura continua. */
         .ball-ui .wf-alto .ball-mini { width: 54px; height: 74px; }
         .ball-ui .wf-grande .ball-mini { width: 68px; height: 93px; }
+
+        /* CARTE CHE SCALANO CON IL WIDGET (Claudio, 2026-09-03: "dovrebbero
+           scalare con la grandezza del widget, sono troppo piccole").
+           I tre scalini qui sopra erano fissi: un widget largo mezzo
+           schermo e uno largo tutta la pagina mostravano carte identiche.
+           9cqw = 9% della larghezza della tessera, che e' circa quanto
+           serve perche' tre carte affiancate riempiano una delle tre
+           colonne di "In primo piano". clamp tiene i due estremi: mai sotto
+           i 38px (illeggibile) e mai sopra i 150px (su un widget a tutta
+           pagina diventerebbero piu' grandi delle carte vere).
+           height:auto piu' aspect-ratio: l'altezza segue la larghezza da
+           sola, mantenendo le proporzioni di una carta. */
+        @supports (container-type: inline-size) {
+            .ball-ui .ball-mini,
+            .ball-ui .wf-alto .ball-mini,
+            .ball-ui .wf-grande .ball-mini {
+                width: clamp(38px, 9cqw, 150px);
+                height: auto;
+                aspect-ratio: 46 / 63;
+            }
+            /* Gli elenchi (Ultime aggiunte) hanno cinque carte in fila su
+               tutta la larghezza, non tre dentro un terzo: la stessa
+               percentuale li renderebbe sproporzionati. */
+            .ball-ui .ball-slot-blocco > .ball-strip .ball-mini {
+                width: clamp(38px, 7cqw, 130px);
+            }
+        }
 
         .ball-ui .ball-etichetta-strip {
             display: block; margin-top: 0.3rem;
