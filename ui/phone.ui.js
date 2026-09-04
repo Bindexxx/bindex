@@ -762,12 +762,23 @@ const CATALOGO_WIDGET = {
             if (su[0]) righe.push(`↑ ${su[0].name || '—'}`);
             return {
                 righe,
-                immagine: top.immagine || null,
-                rarita: top.rarita || null,
+                // NIENTE 'immagine': con una foto la tessera perde la sfera
+                // e mostra icona piatta + miniatura (vedi il ramo BALL_ATTIVA
+                // in renderWidgetHome). Il risultato era che questo widget e
+                // "Ultime aggiunte" venivano resi in due modi diversi a
+                // seconda che la prima carta avesse o meno una foto — un
+                // dettaglio che non c'entra niente con il widget. La sfera
+                // resta sempre; la foto della carta si vede aprendola.
+                badge: false,
+                // 'immagine' e 'rarita' servono a _ballMiniCarta per
+                // disegnare le miniature nel corpo grande (vedi _ballCORPI).
+                // Senza, il widget ricadeva sul corpo generico a tre righe
+                // di testo — che e' il motivo per cui non somigliava per
+                // niente al blocco della home fissa.
                 dati: {
-                    perValore: perValore.map(c => ({ id: c.id, nome: c.name, prezzo: Number(c.price) || 0 })),
-                    su: su.map(c => ({ id: c.id, nome: c.name, var: c.variazioneNumerica })),
-                    giu: giu.map(c => ({ id: c.id, nome: c.name, var: c.variazioneNumerica })),
+                    perValore: perValore.map(c => ({ id: c.id, nome: c.name, prezzo: Number(c.price) || 0, immagine: c.immagine, rarita: c.rarita })),
+                    su: su.map(c => ({ id: c.id, nome: c.name, varia: c.variazioneNumerica, immagine: c.immagine, rarita: c.rarita })),
+                    giu: giu.map(c => ({ id: c.id, nome: c.name, varia: c.variazioneNumerica, immagine: c.immagine, rarita: c.rarita })),
                 },
             };
         },
@@ -794,9 +805,10 @@ const CATALOGO_WIDGET = {
                 : '—';
             return {
                 righe: ultime.slice(0, 3).map(c => `${c.name || '—'} · ${quando(c)}`),
-                immagine: ultime[0].immagine || null,
-                badge: null,
-                dati: { lista: ultime.map(c => ({ id: c.id, nome: c.name, quando: quando(c) })) },
+                // Vedi la nota in 'primo_piano': niente immagine, cosi' la
+                // sfera c'e' sempre. E niente numerino: sarebbe il giorno.
+                badge: false,
+                dati: { lista: ultime.map(c => ({ id: c.id, nome: c.name, quando: quando(c), immagine: c.immagine, rarita: c.rarita })) },
             };
         },
         tab: 'visualizzazione',
@@ -813,6 +825,7 @@ const CATALOGO_WIDGET = {
             if (!righeCache.length) return { righe: ['Nessun controllo ancora'], dati: { lista: [] } };
             return {
                 righe: righeCache.slice(0, 3).map(r => `${r.nome} · ${r.quando}`),
+                badge: false, // sarebbe il giorno dell'ultimo controllo, non un conteggio
                 dati: { lista: righeCache },
             };
         },
@@ -875,7 +888,10 @@ async function _prezziRecentiConCache() {
             .map(({ ev, card }) => ({
                 id: card.id,
                 nome: card.name || '—',
+                variante: card.variation || '',
                 quando: new Date(ev.registrato_il).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' }),
+                immagine: card.immagine,
+                rarita: card.rarita,
             }));
         _cachePrezziRecenti = { quando: Date.now(), righe };
         return righe;
@@ -2036,7 +2052,85 @@ function _ballPulsante(testo, azione) {
 }
 
 // ── I QUATTRO CORPI ──────────────────────────────────────────────────────
+// ── CORPI DEI TRE WIDGET NATI DALLA HOME FISSA (2026-09-03) ─────────────
+// Claudio, vedendo la prima versione: "non assomigliano per niente a cio'
+// che ho in home e quindi non mi servono a sostituirla". Aveva ragione: i
+// widget non definivano un corpo, quindi _ballCorpoWidget ripiegava su
+// _ballCorpoGenerico (tre righe di testo accanto alla sfera). Qui i corpi
+// ricostruiscono davvero i blocchi della home fissa, con gli stessi
+// mattoni gia' usati dagli altri widget: _ballMiniCarta per le miniature,
+// .ball-strip per le file di carte, .ball-riga per gli elenchi.
+//
+// COME SI COMPORTANO ALLE VARIE TAGLIE: 'inline' sta accanto alla sfera e
+// si vede sempre; 'blocco' sta sotto e il CSS ne mostra sempre meno man
+// mano che la tessera si abbassa (vedi .wf-largo .ball-slot-blocco). Quindi
+// le tre categorie complete si vedono sulle taglie alte, mentre su una
+// tessera bassa resta la prima. Nessun controllo di taglia da scrivere qui.
+function _ballFilaCarte(titolo, carte, origine) {
+    if (!carte || !carte.length) return '';
+    return `<span class="ball-k-lab">${titolo}</span>` +
+        '<div class="ball-strip">' + carte.map(c => _ballMiniCarta(c, undefined, origine)).join('') + '</div>';
+}
+
+function _ballElencoRighe(voci) {
+    if (!voci || !voci.length) return '';
+    return voci.map(v => `
+        <div class="ball-riga ball-clic" onclick="_ballAzioneRiga(event,'carta','${String(v.id).replace(/'/g, "\\'")}','${v.origine || ''}')">
+            <span class="ball-nome">${v.nome}</span><span class="ball-dato">${v.dato}</span>
+        </div>`).join('');
+}
+
 const _ballCORPI = {
+    // Le tre categorie della home fissa: valore piu' alto, oscillazione in
+    // su, oscillazione in giu'. Stesse tre carte per categoria.
+    primo_piano: (d) => {
+        if (!d) return { inline: '', blocco: '' };
+        const top = (d.perValore && d.perValore[0]) || null;
+        const eur = (v) => '€ ' + Number(v || 0).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        const inline = '<p class="ball-k-tit">In vetrina</p>' +
+            (top
+                ? `<div class="ball-k-big ball-k-mono">${eur(top.prezzo)}</div><span class="ball-k-lab">${top.nome}</span>`
+                : '<div class="ball-k-mid">—</div><span class="ball-k-lab">nessuna carta ancora</span>');
+        const blocco =
+            _ballFilaCarte('Valore più alto', d.perValore, 'top_valore') +
+            _ballFilaCarte('Oscillazione +', d.su, 'oscillazione_su') +
+            _ballFilaCarte('Oscillazione −', d.giu, 'oscillazione_giu');
+        return { inline, blocco };
+    },
+
+    // Elenco delle ultime aggiunte, nome + data, come il pannello
+    // "Attività recenti" della home fissa.
+    carte_recenti: (d) => {
+        if (!d || !d.lista || !d.lista.length) {
+            return { inline: '<p class="ball-k-tit">Ultime aggiunte</p><div class="ball-k-mid">—</div><span class="ball-k-lab">nessuna carta ancora</span>', blocco: '' };
+        }
+        const inline = '<p class="ball-k-tit">Ultime aggiunte</p>' +
+            `<div class="ball-k-mid">${d.lista[0].nome}</div>` +
+            `<span class="ball-k-lab">aggiunta il ${d.lista[0].quando}</span>`;
+        const blocco =
+            '<div class="ball-strip">' + d.lista.map(c => _ballMiniCarta(c, undefined, 'ultime_aggiunte')).join('') + '</div>' +
+            _ballElencoRighe(d.lista.map(c => ({ id: c.id, nome: c.nome, dato: c.quando, origine: 'ultime_aggiunte' })));
+        return { inline, blocco };
+    },
+
+    // Stesso elenco per i controlli prezzo recenti. La variante e' mostrata
+    // accanto al nome come fa la home fissa.
+    prezzi_recenti: (d) => {
+        if (!d || !d.lista || !d.lista.length) {
+            return { inline: '<p class="ball-k-tit">Prezzi</p><div class="ball-k-mid">—</div><span class="ball-k-lab">nessun controllo ancora</span>', blocco: '' };
+        }
+        const inline = '<p class="ball-k-tit">Prezzi</p>' +
+            `<div class="ball-k-mid">${d.lista[0].nome}</div>` +
+            `<span class="ball-k-lab">controllata il ${d.lista[0].quando}</span>`;
+        const blocco = _ballElencoRighe(d.lista.map(c => ({
+            id: c.id,
+            nome: c.nome + (c.variante ? ` <span class="ball-k-lab">${c.variante}</span>` : ''),
+            dato: c.quando,
+            origine: 'prezzi_recenti',
+        })));
+        return { inline, blocco };
+    },
+
     set_completamento: (d) => {
         if (!d) return { inline: '', blocco: '' };
         if (!d.voci || !d.voci.length) {
@@ -2400,7 +2494,16 @@ async function renderWidgetHome() {
         // attivi, non un numero già dentro il testo) ha la precedenza;
         // altrimenti resta il comportamento di sempre per tutti gli altri.
         const primoNumero = (anteprima.righe[0] || '').match(/\d[\d.,]*/);
-        const valoreBadge = anteprima.badge != null ? anteprima.badge : (primoNumero ? primoNumero[0] : null);
+        // 'badge: false' = questo widget NON ha un numerino, non estrarlo.
+        // Serve agli elenchi con le date (Ultime aggiunte, Prezzi
+        // aggiornati): il numero pescato da righe[0] era il GIORNO della
+        // prima voce, mostrato come se fosse un conteggio di notifiche —
+        // "23" per una carta aggiunta il 23/08. Difetto visto in uno
+        // screenshot di Claudio il 2026-09-03.
+        // null e undefined restano "estrai in automatico", come sempre:
+        // nessun widget esistente cambia comportamento.
+        const valoreBadge = anteprima.badge === false ? null
+            : (anteprima.badge != null ? anteprima.badge : (primoNumero ? primoNumero[0] : null));
         const badge = (valoreBadge != null && prefBadgeWidgetGet()) ? `<div class="widget-badge">${valoreBadge}</div>` : '';
 
         // Bordo colorato per rarità SOLO se la carta ha davvero un campo
