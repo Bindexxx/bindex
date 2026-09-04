@@ -1013,6 +1013,15 @@
             align-items: center; justify-content: center;
             padding: 0.2rem;
             min-height: 0;
+            overflow: hidden;
+        }
+        /* Rete di sicurezza: anche se un giorno qualcuno rimettesse la
+           sfera dentro una tessera icona, non deve poter debordare sulle
+           vicine. E' il difetto che si vedeva nello screenshot del
+           2026-09-03: sfere da 90px in celle da 50, sovrapposte fra loro. */
+        .widget-tile-mini .pkdx-icon-wrap { display: none; }
+        .widget-tile-mini .widget-tile-icon {
+            font-size: 1.1rem; margin: 0; line-height: 1;
         }
         .widget-tile-mini .widget-tile-titolo,
         .widget-tile-mini .widget-tile-righe,
