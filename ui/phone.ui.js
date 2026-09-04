@@ -3027,6 +3027,7 @@ async function renderWidgetHome() {
 
     _primoRenderWidgetFatto = true;
     _ballAttenzioni = attenzioni;
+    _potaContenutoFuoriTessera();
 
     // Al primo render, dopo la cascata d'ingresso, un giro di semaforo
     // così chi ha qualcosa da fare si fa notare subito invece di aspettare
@@ -3034,6 +3035,44 @@ async function renderWidgetHome() {
     if (primoRender && BALL_ATTIVA) setTimeout(_ballGiraSemaforo, 900);
 
     if (_editModeWidget) _attivaDragEResize();
+}
+
+// ── NIENTE RIGHE TAGLIATE A META' (Claudio, 2026-09-03) ─────────────────
+// La tessera ha altezza fissa e taglia cio' che esce. Con un elenco, il
+// taglio cadeva a meta' di una riga: si leggeva mezza scritta e mezza data,
+// che sembra un difetto di resa piu' che un limite di spazio.
+// Qui, a disegno finito, si nasconde ogni blocco che NON ci sta per intero.
+// Il risultato e' un elenco che finisce dove finisce la tessera, come le
+// liste dei widget di un telefono vero.
+//
+// PERCHE' DOPO IL DISEGNO E NON PRIMA: quante righe ci stiano dipende dal
+// font, dalla densita' scelta, dalla lingua e dalla larghezza della
+// tessera. Calcolarlo in anticipo vorrebbe dire indovinare l'altezza di un
+// testo non ancora impaginato; misurarlo dopo e' esatto.
+//
+// COSTO: una lettura di geometria su poche decine di elementi. Gira anche
+// durante il ridimensionamento (che ridisegna a ogni movimento del dito),
+// quindi resta volutamente minimale: nessuna scrittura di stile se non
+// serve, e nessun ciclo annidato.
+function _potaContenutoFuoriTessera() {
+    document.querySelectorAll('.widget-tile .ball-slot-blocco').forEach(blocco => {
+        const tessera = blocco.closest('.widget-tile');
+        if (!tessera) return;
+        const stile = getComputedStyle(tessera);
+        const fondo = tessera.getBoundingClientRect().bottom - (parseFloat(stile.paddingBottom) || 0);
+
+        // I candidati sono i blocchi "atomici": una riga di elenco, una
+        // colonna di categoria con le sue carte, un grafico. Mai le
+        // singole carte dentro una fila — nascondere la terza carta di
+        // tre lascerebbe una categoria monca, che e' peggio del taglio.
+        blocco.querySelectorAll(':scope > .ball-riga, :scope > .ball-gruppi > .ball-gruppo, :scope > .ball-spark, :scope > .ball-strip').forEach(pezzo => {
+            // Sempre ripristinato prima di misurare: la tessera puo' essere
+            // stata ingrandita dall'ultimo giro e cio' che prima non ci
+            // stava ora ci sta.
+            pezzo.style.display = '';
+            if (pezzo.getBoundingClientRect().bottom > fondo + 1) pezzo.style.display = 'none';
+        });
+    });
 }
 
 // Esegue l'azione del widget: 'azione' personalizzata nel catalogo se
