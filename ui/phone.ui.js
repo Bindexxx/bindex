@@ -2286,13 +2286,27 @@ async function renderWidgetHome() {
         // rimettere BALL_ATTIVA a false in cima al file riporta tutto com'era.
         // I widget con immagine (Ultima carta, Carta del giorno) restano
         // senza ball e mostrano la carta, per scelta di Claudio.
+        // Taglia e modalita' icona: DEVONO stare prima della visuale.
+        // BUG 2026-09-03 (segnalato da Claudio con screenshot): erano
+        // calcolate piu' sotto, quindi la sfera veniva costruita anche a
+        // taglia minima — 90px dentro una cella da ~50px, con le sfere che
+        // si sovrapponevano l'una sull'altra e l'incisione del titolo
+        // ancora leggibile. Ora la modalita' icona esclude la sfera in
+        // partenza.
+        const _t = _leggiTaglia(w.size);
+        const _iconaStatica = w.mini || _t.col < CELLE_MIN_PER_SFERA || _t.row < 2;
+
         let visuale;
-        if (BALL_ATTIVA && !anteprima.immagine) {
+        if (BALL_ATTIVA && !anteprima.immagine && !_iconaStatica) {
             const aspetto = _ballASPETTO[w.id] || { emblema: 'piu', colore: null };
             // L'incisione compare solo sulle 1x1: sulle altre taglie il
             // titolo per esteso sta fuori dalla ball, dove c'è spazio.
             let inciso = null;
-            if (w.size === '1x1' && !w.mini && prefScritteBallGet()) {
+            // Incisione solo sulla forma piccola (ex 1x1). Con le taglie
+            // libere, confrontare w.size con la stringa '1x1' era diventato
+            // sbagliato: '1x1' ora e' l'ICONA, dove non c'e' nemmeno la
+            // sfera su cui incidere.
+            if (_t.col <= 4 && _t.row <= 2 && prefScritteBallGet()) {
                 const chiedeAttenzione = !!_ballChiedeAttenzione(w.id, anteprima);
                 inciso = chiedeAttenzione
                     ? _ballAccorcia(anteprima.righe[0])
@@ -2325,8 +2339,6 @@ async function renderWidgetHome() {
         // Con BALL_ATTIVA a false si torna al corpo originale del sito.
         // Sotto CELLE_MIN_PER_SFERA la tessera e' un'icona statica: niente
         // sfera, niente corpo ricco. Sopra, tutto come prima.
-        const _t = _leggiTaglia(w.size);
-        const _iconaStatica = w.mini || _t.col < CELLE_MIN_PER_SFERA || _t.row < 2;
         const grande = BALL_ATTIVA && !_iconaStatica && !(_t.col === 3 && _t.row === 2);
         let corpo;
         if (grande) {
