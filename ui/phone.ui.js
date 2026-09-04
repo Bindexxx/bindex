@@ -2297,7 +2297,22 @@ async function renderWidgetHome() {
         const _iconaStatica = w.mini || _t.col < CELLE_MIN_PER_SFERA || _t.row < 2;
 
         let visuale;
-        if (BALL_ATTIVA && !anteprima.immagine && !_iconaStatica) {
+        if (BALL_ATTIVA && !anteprima.immagine && _iconaStatica) {
+            // SFERA FERMA (Claudio: "devono essere comunque piccole
+            // pokeball, senza movimento e senza nome, non icone a caso").
+            // Stessa sfera delle taglie grandi, ridotta al lato della
+            // cella, ma SPOGLIATA di tutto cio' che si muove o occupa
+            // spazio: niente alone, polvere, ombra, punti esclamativi del
+            // semaforo, vetro con riflesso che scorre, anelli, particelle.
+            // Niente incisione: a questa misura il testo sarebbe illeggibile
+            // ed e' proprio quello che si vedeva nello screenshot.
+            // Restano il corpo della sfera e il badge numerico.
+            const aspettoMini = _ballASPETTO[w.id] || { emblema: 'piu', colore: null };
+            visuale = `
+                <div class="pkdx-icon-wrap pkdx-ball-statica"><div class="pkdx-ball">
+                    <div class="pkdx-ball-body">${_ballSvgCache(aspettoMini.emblema, aspettoMini.colore, null)}</div>
+                </div></div>`;
+        } else if (BALL_ATTIVA && !anteprima.immagine) {
             const aspetto = _ballASPETTO[w.id] || { emblema: 'piu', colore: null };
             // L'incisione compare solo sulle 1x1: sulle altre taglie il
             // titolo per esteso sta fuori dalla ball, dove c'è spazio.
