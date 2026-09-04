@@ -744,6 +744,9 @@ const CATALOGO_WIDGET = {
     //     dove viene.
     primo_piano: {
         titolo: 'In primo piano', icona: 'fa-crown',
+        // Tre categorie da tre carte: sotto questa taglia le miniature non
+        // ci stanno e il widget non mostrerebbe cio' per cui esiste.
+        tagliaDefault: '6x8',
         // Stesso identico calcolo di renderBinderInPrimoPianoHome()
         // (ui/home.ui.js): tre categorie da 3 carte, solo collezione,
         // escluse le sealed. Tutto da carteReali, gia' in memoria:
@@ -791,6 +794,7 @@ const CATALOGO_WIDGET = {
     },
     carte_recenti: {
         titolo: 'Ultime aggiunte', icona: 'fa-clock',
+        tagliaDefault: '6x6', // cinque righe di elenco più la fila di miniature
         // Da carteReali per createdAt, come caricaAttivitaRecentiHome().
         // Nessuna query.
         preview: () => {
@@ -815,6 +819,7 @@ const CATALOGO_WIDGET = {
     },
     prezzi_recenti: {
         titolo: 'Prezzi aggiornati', icona: 'fa-clock-rotate-left',
+        tagliaDefault: '6x5', // cinque righe di elenco, senza miniature
         // UNICO dei tre che costa una query (storico_prezzi, via
         // _ultimiPrezziAggiornati in ui/home.ui.js, a blocchi da 500 id).
         // renderWidgetHome gira anche dal polling: senza freno questa
@@ -893,7 +898,13 @@ async function _prezziRecentiConCache() {
                 immagine: card.immagine,
                 rarita: card.rarita,
             }));
-        _cachePrezziRecenti = { quando: Date.now(), righe };
+        // MAI mettere in cache un risultato vuoto. Il primo giro puo'
+        // capitare prima che carteReali sia popolato, o mentre la rete e'
+        // ancora giu': memorizzare quel vuoto significava mostrare "nessun
+        // controllo ancora" per cinque minuti su un widget che i dati ce li
+        // aveva. Difetto visto in uno screenshot di Claudio il 2026-09-03,
+        // dopo che lo stesso widget aveva funzionato poco prima.
+        if (righe.length) _cachePrezziRecenti = { quando: Date.now(), righe };
         return righe;
     } catch (e) {
         console.error('[widget prezzi_recenti]', e);
@@ -924,6 +935,23 @@ const TAGLIE_CICLO = ['1x1', '2x1', '1x2', '2x2'];
 // soglia); 8 ne darebbero ~40 (sotto). "Il minimo" ha un pavimento fisico
 // ed e' piu' o meno qui.
 const COLONNE_GRIGLIA_WIDGET = 6;
+
+// TETTO DI LARGHEZZA (Claudio, 2026-09-03: "voglio poter mettere i widget
+// in orizzontale per tutta la lunghezza anche").
+// In verticale la griglia ha 6 colonne fisse. In ORIZZONTALE invece e'
+// elastica (auto-fill di celle da 30-37px, vedi index.html), quindi su uno
+// schermo largo le colonne sono molte di piu' di 6 — e fermare la
+// larghezza a 6 impediva di occupare tutta la riga proprio dove c'era piu'
+// spazio. Il limite vero resta comunque quello vivo, calcolato in
+// _onResizeHandlePointerDown dal numero reale di colonne della griglia:
+// questo e' solo il tetto assoluto oltre il quale non si genera CSS.
+// NOTA sul ritorno in verticale: una larghezza maggiore di 6 su una
+// griglia da 6 colonne viene ridotta dal browser alla larghezza della
+// griglia (regola di CSS Grid sugli span che eccedono le tracce
+// esplicite). Quindi un widget portato a tutta lunghezza in orizzontale
+// si ritrova a tutta larghezza in verticale: nessun layout rotto, nessuna
+// conversione da scrivere.
+const COLONNE_MAX_WIDGET = 36;
 
 // Tetto di sicurezza all'altezza. Il limite VERO e' l'altezza della pagina
 // ed e' calcolato dal vivo in _onResizeHandlePointerDown (maxRowSpan): un
@@ -967,11 +995,29 @@ function _formaWidget(col, row) {
     return 'wf-piccolo';
 }
 
+// TAGLIA DI NASCITA. Su un telefono vero ogni widget arriva gia' della
+// dimensione giusta per cio' che mostra: il meteo piccolo, il calendario
+// grande. Qui invece nascevano tutti '3x2', la taglia in cui il corpo
+// ricco NON ci sta — quindi un widget appena aggiunto sembrava sempre
+// "solo una sfera con due righe" e bisognava allargarlo a mano per
+// scoprire a cosa serviva (Claudio: "se devo sostituire la home con dei
+// widget, i widget devono avere le funzioni giuste, altrimenti non
+// servono a niente").
+// La taglia si dichiara nel catalogo con 'tagliaDefault'; chi non la
+// dichiara continua a nascere '3x2' esattamente come prima.
+function _tagliaDiNascita(id) {
+    const def = CATALOGO_WIDGET[id];
+    const t = def && def.tagliaDefault;
+    if (!t) return '3x2';
+    const letta = _leggiTaglia(t);
+    return letta.col + 'x' + letta.row;
+}
+
 // Spezza 'CxR' nei due numeri, con difesa contro valori corrotti.
 function _leggiTaglia(size) {
     const m = /^(\d+)x(\d+)$/.exec(String(size || ''));
     if (!m) return { col: 3, row: 2 }; // = il vecchio 1x1, default sensato
-    const col = Math.max(1, Math.min(COLONNE_GRIGLIA_WIDGET, parseInt(m[1], 10)));
+    const col = Math.max(1, Math.min(COLONNE_MAX_WIDGET, parseInt(m[1], 10)));
     const row = Math.max(1, Math.min(RIGHE_MAX_WIDGET, parseInt(m[2], 10)));
     return { col, row };
 }
@@ -2087,10 +2133,13 @@ const _ballCORPI = {
         if (!d) return { inline: '', blocco: '' };
         const top = (d.perValore && d.perValore[0]) || null;
         const eur = (v) => '€ ' + Number(v || 0).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-        const inline = '<p class="ball-k-tit">In vetrina</p>' +
-            (top
-                ? `<div class="ball-k-big ball-k-mono">${eur(top.prezzo)}</div><span class="ball-k-lab">${top.nome}</span>`
-                : '<div class="ball-k-mid">—</div><span class="ball-k-lab">nessuna carta ancora</span>');
+        // NIENTE ball-k-tit qui: renderWidgetHome stampa gia' il titolo del
+        // widget accanto alla sfera, quindi si leggeva due volte ("In primo
+        // piano" e subito sotto "In vetrina"). Difetto visto in uno
+        // screenshot di Claudio il 2026-09-03.
+        const inline = top
+            ? `<div class="ball-k-big ball-k-mono">${eur(top.prezzo)}</div><span class="ball-k-lab">${top.nome}</span>`
+            : '<div class="ball-k-mid">—</div><span class="ball-k-lab">nessuna carta ancora</span>';
         const blocco =
             _ballFilaCarte('Valore più alto', d.perValore, 'top_valore') +
             _ballFilaCarte('Oscillazione +', d.su, 'oscillazione_su') +
@@ -2102,9 +2151,9 @@ const _ballCORPI = {
     // "Attività recenti" della home fissa.
     carte_recenti: (d) => {
         if (!d || !d.lista || !d.lista.length) {
-            return { inline: '<p class="ball-k-tit">Ultime aggiunte</p><div class="ball-k-mid">—</div><span class="ball-k-lab">nessuna carta ancora</span>', blocco: '' };
+            return { inline: '<div class="ball-k-mid">—</div><span class="ball-k-lab">nessuna carta ancora</span>', blocco: '' };
         }
-        const inline = '<p class="ball-k-tit">Ultime aggiunte</p>' +
+        const inline =
             `<div class="ball-k-mid">${d.lista[0].nome}</div>` +
             `<span class="ball-k-lab">aggiunta il ${d.lista[0].quando}</span>`;
         const blocco =
@@ -2117,9 +2166,9 @@ const _ballCORPI = {
     // accanto al nome come fa la home fissa.
     prezzi_recenti: (d) => {
         if (!d || !d.lista || !d.lista.length) {
-            return { inline: '<p class="ball-k-tit">Prezzi</p><div class="ball-k-mid">—</div><span class="ball-k-lab">nessun controllo ancora</span>', blocco: '' };
+            return { inline: '<div class="ball-k-mid">—</div><span class="ball-k-lab">nessun controllo ancora</span>', blocco: '' };
         }
-        const inline = '<p class="ball-k-tit">Prezzi</p>' +
+        const inline =
             `<div class="ball-k-mid">${d.lista[0].nome}</div>` +
             `<span class="ball-k-lab">controllata il ${d.lista[0].quando}</span>`;
         const blocco = _ballElencoRighe(d.lista.map(c => ({
@@ -2796,7 +2845,13 @@ function _mostraWidget(id) {
     const visibiliCount = _layoutWidget.filter(w => w.visibile).length;
     if (visibiliCount >= MAX_WIDGET_VISIBILI) { alert(`Massimo ${MAX_WIDGET_VISIBILI} widget in home.`); return; }
     const w = _layoutWidget.find(x => x.id === id);
-    if (w) w.visibile = true;
+    if (w) {
+        w.visibile = true;
+        w.pagina = _paginaWidgetCorrente; // compare dove stai guardando, non sulla prima pagina
+        // Se non e' mai stato ridimensionato a mano (e' ancora alla taglia
+        // di ripiego), nasce alla taglia giusta per il suo contenuto.
+        if (w.size === '3x2') w.size = _tagliaDiNascita(id);
+    }
     _salvaLayoutWidget();
     _chiudiPickerAggiungiWidget();
     renderWidgetHome();
@@ -2809,7 +2864,7 @@ function _aggiungiIstanzaWidget(id) {
     const visibiliCount = _layoutWidget.filter(w => w.visibile).length;
     if (visibiliCount >= MAX_WIDGET_VISIBILI) { alert(`Massimo ${MAX_WIDGET_VISIBILI} widget in home.`); return; }
     // Nasce sulla pagina che stai guardando, non sempre sulla prima.
-    const nuovo = { id, instanceId: _nuovoInstanceId(), visibile: true, size: '3x2', mini: false, cartaId: null, pagina: _paginaWidgetCorrente, v: VERSIONE_LAYOUT_WIDGET };
+    const nuovo = { id, instanceId: _nuovoInstanceId(), visibile: true, size: _tagliaDiNascita(id), mini: false, cartaId: null, pagina: _paginaWidgetCorrente, v: VERSIONE_LAYOUT_WIDGET };
     _layoutWidget.push(nuovo);
     _salvaLayoutWidget();
     _chiudiPickerAggiungiWidget();
