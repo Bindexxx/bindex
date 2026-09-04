@@ -5110,6 +5110,13 @@
          repository (li riusa: trovaMatch, correzioniManualiConta,
          userSettingsGet) e PRIMA di ui/missioni.ui.js. -->
     <script src="data/missioni.repository.js"></script>
+    <!-- Istantanea giornaliera del valore della collezione (migration 36,
+         2026-09-03). Va fra i repository e PRIMA degli ui/*.js: espone
+         storicoValoreRegistraOggi / storicoValoreUltimiGiorni /
+         storicoValoreConfronta, che serviranno all'avvio e al widget del
+         grafico. Oggi nessuno le chiama ancora: caricarlo non cambia nulla
+         di cio' che vedi, prepara solo il terreno. -->
+    <script src="data/storico-valore.repository.js"></script>
     <script src="state/app.state.js"></script>
     <script src="state/cards.state.js"></script>
     <script src="state/binder.state.js"></script>
