@@ -767,16 +767,24 @@
             scrollbar-width: none;
         }
         #phoneWidgetPagine::-webkit-scrollbar { display: none; }
+        /* PAGINA A DIMENSIONE FISSA (Claudio, 2026-09-03: "la grandezza
+           della pagina deve essere fissa, NON VOGLIO SCROLLARE").
+           overflow:hidden e non auto: la pagina di un telefono vero non
+           scorre in verticale, e' un rettangolo che contiene quel che ci
+           sta. Se metti piu' widget di quanti ne entrano, quelli in
+           eccesso vengono TAGLIATI invece di nascondersi dietro uno
+           scorrimento: e' il segnale che la pagina e' piena e che il
+           widget va spostato su un'altra con la freccia. Il
+           ridimensionamento rispetta gia' questo limite (maxRowSpan in
+           _onResizeHandlePointerDown misura l'altezza della pagina). */
         .widget-pagina {
             flex: 0 0 100%;
             height: 100%;
             box-sizing: border-box;
-            overflow-y: auto;
+            overflow: hidden;
             scroll-snap-align: start;
-            scrollbar-width: none;
             padding: 1.1rem 0.9rem calc(2.2rem + env(safe-area-inset-bottom));
         }
-        .widget-pagina::-webkit-scrollbar { display: none; }
 
         .widget-pagina-vuota {
             text-align: center;
@@ -1389,7 +1397,12 @@
         /* Mini: la sfera è già l'icona, resta solo lei. */
         .ball-ui .widget-tile-mini { padding: 0.2rem; }
         .ball-ui .widget-tile-mini .widget-tile-thumb-row { display: flex; }
-        .ball-ui .widget-tile-mini .widget-tile-thumb { width: 46px; height: 64px; }
+        /* In modalita' icona la carta si adatta alla cella invece di avere
+           una misura fissa: la cella e' ~50px, una miniatura da 46px fissi
+           la riempiva fino a toccare i bordi. */
+        .ball-ui .widget-tile-mini .widget-tile-thumb {
+            width: 100%; height: auto; aspect-ratio: 46 / 63; max-height: 100%;
+        }
 
         /* Densità compatta: con la sfera grande quanto il lato della cella,
            abbassare la riga vorrebbe dire rimpicciolire la sfera. Quindi la
@@ -1572,7 +1585,9 @@
            3 colonne di griglia e a tutta riga in orizzontale. */
         .ball-ui .ball-gruppi {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+            /* Tre carte da 68px piu' i loro spazi: sotto questa soglia le
+               tre categorie si impilerebbero anche dove c'e' posto. */
+            grid-template-columns: repeat(auto-fit, minmax(224px, 1fr));
             gap: 10px 14px;
             width: 100%;
         }
@@ -1580,8 +1595,14 @@
         .ball-ui .ball-gruppo .ball-strip { margin-top: 4px; }
 
         .ball-ui .ball-strip { display: flex; gap: 7px; }
+        /* Miniature ingrandite (Claudio, 2026-09-03). Le misure di prima
+           (32x44) erano tarate sul vecchio modello a 2 colonne, dove una
+           tessera grande era mezzo schermo. Ora un widget puo' occupare
+           tutta la pagina e quelle miniature ci si perdevano dentro. Il
+           rapporto 1:1,37 e' quello di una carta vera ed e' mantenuto in
+           tutte le misure. */
         .ball-ui .ball-mini {
-            width: 32px; height: 44px; border-radius: 5px;
+            width: 46px; height: 63px; border-radius: 6px;
             flex: 0 0 auto; position: relative; overflow: hidden;
             box-shadow: 0 1px 3px rgba(0,0,0,.18);
             cursor: pointer; display: block;
@@ -1628,8 +1649,10 @@
         body.senza-anim-widget .ball-ui .ball-mini.holo::after { animation: none; opacity: 0; }
 
         /* Misure per taglia, come nel mockup: più spazio, carte più grandi. */
-        .ball-ui .wf-alto .ball-mini { width: 30px; height: 42px; }
-        .ball-ui .wf-grande .ball-mini { width: 42px; height: 58px; }
+        /* Piu' la tessera e' grande, piu' grandi le carte. Prima era al
+           contrario: il widget grande le faceva PIU' piccole della base. */
+        .ball-ui .wf-alto .ball-mini { width: 54px; height: 74px; }
+        .ball-ui .wf-grande .ball-mini { width: 68px; height: 93px; }
 
         .ball-ui .ball-etichetta-strip {
             display: block; margin-top: 0.3rem;
