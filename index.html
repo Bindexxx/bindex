@@ -5159,6 +5159,11 @@
          modo di sbagliare. Si avvia da solo con un proprio listener di
          'load': NON tocca il window.onload qui sotto. -->
     <script src="ui/missioni-watcher.js"></script>
+    <!-- Scrive l'istantanea giornaliera del valore (migration 36) una volta
+         per sessione. Va dopo data/storico-valore.repository.js, di cui usa
+         le funzioni. Si avvia da solo con un proprio listener di 'load':
+         NON tocca il window.onload piu' sotto. -->
+    <script src="ui/storico-valore.avvio.js"></script>
 
     <script>
         // ── CONFIGURAZIONE SUPABASE ──────────────────────────────────────────────
