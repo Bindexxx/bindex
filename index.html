@@ -1015,13 +1015,26 @@
             min-height: 0;
             overflow: hidden;
         }
-        /* Rete di sicurezza: anche se un giorno qualcuno rimettesse la
-           sfera dentro una tessera icona, non deve poter debordare sulle
-           vicine. E' il difetto che si vedeva nello screenshot del
-           2026-09-03: sfere da 90px in celle da 50, sovrapposte fra loro. */
-        .widget-tile-mini .pkdx-icon-wrap { display: none; }
-        .widget-tile-mini .widget-tile-icon {
-            font-size: 1.1rem; margin: 0; line-height: 1;
+        /* SFERA FERMA a taglia minima. Il difetto dello screenshot del
+           2026-09-03 non era la sfera in se' ma la sua MISURA: --ball-misura
+           e' fissa a 90px, e in una cella da ~50px (37 in orizzontale) le
+           sfere debordavano una sull'altra. Qui la sfera viene legata al
+           lato della cella invece che a un valore assoluto, e resta
+           quadrata. La regola "la ball non deve MAI rimpicciolire" continua
+           a valere dove la sfera e' il soggetto, cioe' da 3 celle in su. */
+        .widget-tile-mini .pkdx-icon-wrap {
+            height: 100%;
+            width: auto;
+            max-width: 100%;
+            aspect-ratio: 1 / 1;
+        }
+        /* Ferma davvero: a questa misura qualunque movimento e' solo
+           rumore, e le parti animate non vengono nemmeno costruite
+           (vedi renderWidgetHome). Questa e' la rete di sicurezza. */
+        .pkdx-ball-statica,
+        .pkdx-ball-statica * {
+            animation: none !important;
+            transition: none !important;
         }
         .widget-tile-mini .widget-tile-titolo,
         .widget-tile-mini .widget-tile-righe,
