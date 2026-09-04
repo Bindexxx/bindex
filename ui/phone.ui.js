@@ -25,10 +25,12 @@
 
 // ── CATALOGO WIDGET DISPONIBILI ──────────────────────────────────────────
 // NOTA (Claudio, 2026-08-24): il widget "Home" che c'era qui è stato
-// rimosso — la Home ora è la pagina principale del telefono (swipe per
-// arrivare ai widget, non più il contrario), non ha più senso aprirla
-// come un dettaglio da un widget. Vedi #phoneHomePage in index.html e
-// initPhoneShell qui sotto per lo spostamento del nodo #home.
+// rimosso — non ha più senso aprire la Home come un dettaglio da un
+// widget.
+// AGGIORNAMENTO 2026-09-03: la home fissa (#phoneHomePage) è stata
+// eliminata del tutto. La home ORA È la pagina a widget, con le pagine
+// orizzontali stile telefono. Il commento qui sopra parlava di uno swipe
+// verticale fra due pagine che non esiste più.
 // ── LIBRERIA DEI SET ─────────────────────────────────────────────────────
 // Il codice carta è nella forma "SIGLA NUMERO" — es. "ASC 123" = carta 123
 // di Ascesa Eroica. La sigla identifica l'espansione; il numero da solo non
@@ -1203,6 +1205,10 @@ function _gestisciScrollPaginePagineWidget() {
     if (indice === _paginaWidgetCorrente) return;
     _paginaWidgetCorrente = indice;
     _aggiornaPuntiniPagine();
+    // Il tasto casetta compare/sparisce a seconda che tu sia sulla prima
+    // pagina o no: prima lo aggiornava lo scatto verticale, che non
+    // esiste piu'.
+    _aggiornaTastoFisico();
 }
 
 function _aggiornaPuntiniPagine() {
@@ -2186,8 +2192,13 @@ function _ballPulsante(testo, azione) {
 // tessera bassa resta la prima. Nessun controllo di taglia da scrivere qui.
 function _ballFilaCarte(titolo, carte, origine) {
     if (!carte || !carte.length) return '';
-    return `<span class="ball-k-lab">${titolo}</span>` +
-        '<div class="ball-strip">' + carte.map(c => _ballMiniCarta(c, undefined, origine)).join('') + '</div>';
+    // Titolo e fila avvolti insieme: dentro .ball-gruppi ogni figlio e'
+    // una colonna, quindi senza questo involucro il titolo finirebbe in
+    // una colonna e le sue carte in quella accanto.
+    return '<div class="ball-gruppo">' +
+        `<span class="ball-k-lab">${titolo}</span>` +
+        '<div class="ball-strip">' + carte.map(c => _ballMiniCarta(c, undefined, origine)).join('') + '</div>' +
+        '</div>';
 }
 
 function _ballElencoRighe(voci) {
@@ -2266,10 +2277,17 @@ const _ballCORPI = {
         const inline = top
             ? `<div class="ball-k-big ball-k-mono">${eur(top.prezzo)}</div><span class="ball-k-lab">${top.nome}</span>`
             : '<div class="ball-k-mid">—</div><span class="ball-k-lab">nessuna carta ancora</span>';
-        const blocco =
+        // Le tre categorie AFFIANCATE quando c'e' larghezza, impilate
+        // quando non ce n'e' (Claudio: "dovrebbe estendersi in orizzontale
+        // come nella home"). Il contenitore usa auto-fit nel CSS, quindi
+        // non serve sapere qui quanto e' largo il widget: si dispone da
+        // solo e si comporta bene sia a 3 colonne di griglia sia a tutta
+        // riga in orizzontale.
+        const blocco = '<div class="ball-gruppi">' +
             _ballFilaCarte('Valore più alto', d.perValore, 'top_valore') +
             _ballFilaCarte('Oscillazione +', d.su, 'oscillazione_su') +
-            _ballFilaCarte('Oscillazione −', d.giu, 'oscillazione_giu');
+            _ballFilaCarte('Oscillazione −', d.giu, 'oscillazione_giu') +
+            '</div>';
         return { inline, blocco };
     },
 
@@ -4907,51 +4925,42 @@ function avviaPollingWidgetHome() {
     }, INTERVALLO_WIDGET_LENTO_MS);
 }
 
-// ── HOME COME PAGINA PRINCIPALE — swipe verso i widget ───────────────────
-// #home viene spostato (appendChild — stesso nodo, stesso contenuto,
-// nessuna riscrittura) dentro #phoneHomePage una sola volta, all'avvio.
-// Le due pagine vivono dentro #phonePagineWrap con scroll-snap: swipe/
-// scroll in giù = widget, il bottone fisico (icona casetta) torna su.
-let _paginaAttivaTelefono = 'home';
+// ── LA HOME E' LA PAGINA A WIDGET ────────────────────────────────────────
+// HOME FISSA ELIMINATA (Claudio, 2026-09-03). Prima esistevano due pagine
+// sovrapposte, collegate da uno scatto verticale: #phoneHomePage (la
+// "classica", che conteneva #home e scorreva all'infinito) e la pagina a
+// widget. Ora c'e' solo la seconda, e le "pagine" sono quelle orizzontali
+// stile telefono.
+//
+// _paginaAttivaTelefono resta e vale sempre 'widget': era letta da
+// _aggiornaTastoFisico e da _aggiornaMatitaBarraGlobale, e toglierla
+// avrebbe voluto dire riscrivere anche quelle. Lasciarla come costante
+// costa nulla e mantiene leggibile il confronto con la versione
+// precedente. Se un giorno non servira' piu' a nessuno, si toglie insieme
+// alle sue due lettrici.
+const _paginaAttivaTelefono = 'widget';
 
-function _spostaHomeNellaPaginaPrincipale() {
-    const home = document.getElementById('home');
-    const paginaHome = document.getElementById('phoneHomePage');
-    if (home && paginaHome && home.parentElement !== paginaHome) {
-        paginaHome.appendChild(home);
-    }
-}
+// _spostaHomeNellaPaginaPrincipale() e _gestisciScrollPagine() sono state
+// RIMOSSE con la home fissa: la prima spostava #home dentro la pagina
+// classica, la seconda leggeva quale delle due pagine fosse a schermo.
+// Nessuna delle due ha piu' un oggetto su cui lavorare.
 
+// "Torna alla home" ora vuol dire "torna alla PRIMA pagina di widget",
+// che e' esattamente cio' che fa il tasto casetta su un telefono vero.
 function _vaiAllaPaginaHome() {
-    const wrap = document.getElementById('phonePagineWrap');
-    if (wrap) wrap.scrollTo({ top: 0, behavior: 'smooth' });
+    _vaiAllaPaginaWidget(0);
 }
 
-function _gestisciScrollPagine() {
-    const wrap = document.getElementById('phonePagineWrap');
-    if (!wrap) return;
-    const indice = Math.round(wrap.scrollTop / Math.max(wrap.clientHeight, 1));
-    _paginaAttivaTelefono = indice === 0 ? 'home' : 'widget';
-    _aggiornaTastoFisico();
-    _aggiornaMatitaBarraGlobale();
-}
-
-// Suoni/densità/matita nella barra di stato globale — visibili SOLO sulla
-// pagina widget (Claudio: "quando sei in visuale widget"); se stai
-// modificando e torni sulla Home, esce anche dalla modalità modifica
-// (non avrebbe senso restare in modifica senza vedere i widget).
+// Suoni/densita'/matita: prima comparivano solo sulla pagina widget e
+// sparivano sulla home fissa. Senza piu' la home fissa sei SEMPRE sui
+// widget, quindi restano sempre visibili — e la classe che li nascondeva
+// va tolta una volta, altrimenti resterebbe appiccicata dall'ultimo giro
+// prima dell'aggiornamento.
 function _aggiornaMatitaBarraGlobale() {
-    const idBottoniCondizionali = ['btnSuoniWidgetHome', 'btnDensitaWidgetHome', 'btnModificaWidgetHome'];
-    idBottoniCondizionali.forEach(id => {
+    ['btnSuoniWidgetHome', 'btnDensitaWidgetHome', 'btnModificaWidgetHome'].forEach(id => {
         const btn = document.getElementById(id);
-        if (btn) btn.classList.toggle('nascosto-in-home', _paginaAttivaTelefono !== 'widget');
+        if (btn) btn.classList.remove('nascosto-in-home');
     });
-    if (_paginaAttivaTelefono !== 'widget' && _editModeWidget) {
-        _editModeWidget = false;
-        const btnModifica = document.getElementById('btnModificaWidgetHome');
-        if (btnModifica) btnModifica.classList.remove('attivo');
-        renderWidgetHome();
-    }
 }
 
 // Bottone fisico unico — tre stati, vedi commento CSS su
@@ -4966,11 +4975,17 @@ function _aggiornaTastoFisico() {
         btn.classList.remove('nascosto');
         if (icona) icona.className = 'fa-solid fa-arrow-left';
         btn.title = 'Indietro';
-    } else if (_paginaAttivaTelefono === 'widget') {
+    } else if (_paginaWidgetCorrente > 0) {
+        // Sei su una pagina diversa dalla prima: la casetta riporta li'.
+        // Prima questo stato voleva dire "sei sui widget invece che sulla
+        // home fissa"; ora che la home fissa non c'e' piu', il criterio
+        // giusto e' la pagina orizzontale.
         btn.classList.remove('nascosto');
         if (icona) icona.className = 'fa-solid fa-house';
-        btn.title = 'Home';
+        btn.title = 'Prima pagina';
     } else {
+        // Prima pagina, nessun dettaglio aperto: non c'e' nessun posto
+        // dove tornare.
         btn.classList.add('nascosto');
     }
 }
@@ -4980,10 +4995,10 @@ function _clickTastoFisico() {
         chiudiDettaglioWidget(); // "Indietro": torna ai widget, non salta alla Home
         return;
     }
-    if (_paginaAttivaTelefono === 'widget') {
+    if (_paginaWidgetCorrente > 0) {
         _vaiAllaPaginaHome();
     }
-    // Se sei già sulla Home, non fa nulla.
+    // Se sei già sulla prima pagina, non fa nulla.
 }
 
 // ── PRESENZA LIVE (2026-09-01, punto 4 status bar) ──────────────────────
@@ -5033,7 +5048,7 @@ async function _avviaPresenzaLive() {
 
 // ── AVVIO ─────────────────────────────────────────────────────────────
 async function initPhoneShell() {
-    _spostaHomeNellaPaginaPrincipale();
+    // _spostaHomeNellaPaginaPrincipale() rimossa con la home fissa.
 
     _caricaLayoutWidget();
     await renderWidgetHome();
@@ -5185,8 +5200,8 @@ async function initPhoneShell() {
     window.addEventListener('resize', _gestisciResizeCorniceDebounced);
     window.addEventListener('orientationchange', _gestisciResizeCornice);
 
-    const paginaWrap = document.getElementById('phonePagineWrap');
-    if (paginaWrap) paginaWrap.addEventListener('scroll', _gestisciScrollPagine, { passive: true });
+    // Il listener di scroll verticale su #phonePagineWrap e' stato tolto
+    // con la home fissa: quel contenitore non scorre piu'.
     const contPagineWidget = document.getElementById('phoneWidgetPagine');
     if (contPagineWidget) contPagineWidget.addEventListener('scroll', _gestisciScrollPaginePagineWidget, { passive: true });
     _aggiornaTastoFisico();
