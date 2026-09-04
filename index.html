@@ -720,12 +720,15 @@
            .scrollTo(), vedi _vaiAllaPaginaHome in ui/phone.ui.js) per la
            navigazione via bottone, dove invece è voluto e non confligge
            con nessun gesto dell'utente in corso. */
+        /* Con la home fissa eliminata resta UNA sola pagina qui dentro,
+           quindi niente piu' scatto verticale: lo scorrimento fra pagine e'
+           solo orizzontale, dentro #phoneWidgetPagine. Il contenitore resta
+           perche' e' lui a dare l'ingombro sotto la barra di stato. */
         #phonePagineWrap {
             position: absolute;
             top: var(--phone-barra-stato-h, 2.5rem);
             left: 0; right: 0; bottom: 0;
-            overflow-y: auto;
-            scroll-snap-type: y mandatory;
+            overflow: hidden;
             /* FIX (Claudio: "si vedono due barre di scrolling"): questo
                contenitore serve solo per lo scatto tra le 2 pagine, non
                deve mai mostrare una sua barra di scorrimento visibile —
@@ -744,15 +747,6 @@
             scrollbar-width: none;
         }
         .phone-pagina::-webkit-scrollbar { display: none; }
-        #phoneHomePage {
-            padding: 1.1rem 1rem calc(1.1rem + env(safe-area-inset-bottom));
-        }
-        /* #home viene spostato qui dentro via JS ma resta un normale
-           .view-section altrove nel sito (display:none di default,
-           attivato/disattivato da switchTab) — qui invece deve restare
-           SEMPRE visibile, è una pagina a sé, non un dettaglio. */
-        #phoneHomePage #home.view-section { display: block !important; }
-
         /* ── PAGINE ORIZZONTALI DELLA HOME (Claudio, 2026-09-03) ────────
            Il padding e lo scorrimento verticale si spostano da qui alle
            singole pagine: il contenitore deve restare rigido, altrimenti
@@ -1572,6 +1566,19 @@
            barre interne (i, u) sono l'illustrazione e il testo della carta
            disegnata: restano visibili sotto l'immagine vera, così se questa
            non carica non resta un buco. */
+        /* Le tre categorie di "In primo piano" affiancate quando c'e'
+           spazio, impilate quando non ce n'e'. auto-fit fa tutto da solo:
+           nessun controllo di taglia lato JavaScript, e funziona uguale a
+           3 colonne di griglia e a tutta riga in orizzontale. */
+        .ball-ui .ball-gruppi {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+            gap: 10px 14px;
+            width: 100%;
+        }
+        .ball-ui .ball-gruppo { min-width: 0; }
+        .ball-ui .ball-gruppo .ball-strip { margin-top: 4px; }
+
         .ball-ui .ball-strip { display: flex; gap: 7px; }
         .ball-ui .ball-mini {
             width: 32px; height: 44px; border-radius: 5px;
@@ -3643,12 +3650,30 @@
                     </div>
                 </div>
                 <div id="phonePushBanner"><i class="fa-solid fa-bell"></i><span id="phonePushBannerTesto"></span></div>
+                <!-- HOME FISSA ELIMINATA (Claudio, 2026-09-03).
+                     Qui c'era #phoneHomePage, la "pagina classica" che
+                     conteneva #home e che si raggiungeva con lo scatto
+                     verticale. Tolta perche' su un telefono vero non
+                     esiste una home sotto la home: finche' restavano
+                     entrambe, l'app somigliava a un sito con dei widget
+                     attaccati sopra invece che a un telefono.
+                     COPERTURA VERIFICATA PRIMA DI TOGLIERLA, blocco per
+                     blocco: le due stat-card stanno nei widget
+                     'valore_collezione' e 'visualizzazione'; gli avvisi in
+                     'suggerimento'; il binder in primo piano in
+                     'primo_piano'; le due attivita' recenti in
+                     'carte_recenti' e 'prezzi_recenti'; la variazione del
+                     valore in 'variazione_valore'. L'unico blocco senza
+                     widget era "ultima sincronizzazione", che pero' non lo
+                     riempiva nessuna funzione del progetto: mostrava
+                     "Caricamento..." per sempre.
+                     #home RESTA nel documento piu' in basso come normale
+                     .view-section nascosta: non e' stato cancellato perche'
+                     e' ancora un bersaglio di switchTab e perche' il suo
+                     markup e' la traccia di cosa i widget devono coprire.
+                     Se un giorno vorrai cancellarlo davvero, quello e' il
+                     punto. -->
                 <div id="phonePagineWrap">
-                    <div id="phoneHomePage" class="phone-pagina">
-                        <!-- #home viene spostato qui via JS (appendChild, non riscritto)
-                             da initPhoneShell in ui/phone.ui.js — resta lo stesso nodo,
-                             stesso contenuto, stessi id di sempre. -->
-                    </div>
                     <div id="phoneWidgetHomeWrap" class="phone-pagina">
                         <div class="phone-home-header">
                             <div class="logo">
