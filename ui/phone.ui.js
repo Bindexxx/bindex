@@ -1137,13 +1137,161 @@ function _migraTagliaWidget(size) {
 // scorrimento.
 let _paginaWidgetCorrente = 0;
 
+// ── TRABOCCAMENTO NELLA PAGINA SUCCESSIVA (Claudio, 2026-09-03) ─────────
+// La pagina ha altezza fissa e non scorre. Prima, i widget che non ci
+// stavano venivano semplicemente tagliati dal bordo e toccava all'utente
+// accorgersene e spostarli a mano. Ora traboccano da soli: quello che non
+// entra passa alla pagina dopo, a cascata.
+//
+// IL CAMPO 'pagina' RESTA L'INTENZIONE DELL'UTENTE, NON IL RISULTATO.
+// Il traboccamento e' una decisione di IMPAGINAZIONE, presa a ogni render,
+// e NON viene riscritta nel layout salvato. E' la scelta importante di
+// questo pezzo, per due motivi:
+//   - ruotando lo schermo la pagina cambia forma e capienza; se il
+//     traboccamento fosse salvato, una rotazione riscriverebbe per sempre
+//     la disposizione che l'utente aveva costruito a mano;
+//   - quando lo spazio torna (rotazione indietro, widget rimpicciolito),
+//     i widget traboccati rientrano da soli al loro posto.
+// Quindi: l'utente dice DOVE vuole che un widget cominci, la capienza
+// decide dove finisce davvero.
+
+// Misura colonne, altezza di riga, spazi e altezza utile di una pagina.
+// Legge dal DOM gia' impaginato quando c'e' (unico modo affidabile, visto
+// che in orizzontale le colonne sono elastiche e non le sa nemmeno il
+// CSS finche' non misura); al primo render ripiega sulle costanti.
+function _misuraPaginaWidget() {
+    const grigliaEsistente = document.querySelector('.widget-griglia');
+    const paginaEsistente = document.querySelector('.widget-pagina');
+    let colonne = COLONNE_GRIGLIA_WIDGET;
+    let altezzaRiga = 48;
+    let spazio = 11.2;
+    let altezzaUtile = 0;
+
+    if (grigliaEsistente) {
+        const st = getComputedStyle(grigliaEsistente);
+        const cols = st.gridTemplateColumns.split(' ').filter(Boolean).length;
+        if (cols > 0) colonne = cols;
+        const riga = parseFloat(st.gridAutoRows);
+        if (riga > 0) altezzaRiga = riga;
+        const g = parseFloat(st.rowGap);
+        if (g >= 0) spazio = g;
+    }
+    if (paginaEsistente) {
+        const st = getComputedStyle(paginaEsistente);
+        altezzaUtile = paginaEsistente.clientHeight
+            - (parseFloat(st.paddingTop) || 0)
+            - (parseFloat(st.paddingBottom) || 0);
+    } else {
+        const wrap = document.getElementById('phoneWidgetHomeWrap');
+        // Ripiego per il primo render: l'altezza del contenitore meno un
+        // margine prudente per il padding della pagina, che non esiste
+        // ancora e non si puo' misurare.
+        if (wrap) altezzaUtile = wrap.clientHeight - 70;
+    }
+
+    const righe = Math.max(1, Math.floor((altezzaUtile + spazio) / (altezzaRiga + spazio)));
+    return { colonne, righe };
+}
+
+// Distribuisce i widget nelle pagine rispettando la capienza.
+// Riproduce l'algoritmo "sparse" di CSS Grid (auto-flow row): un cursore
+// che non torna mai indietro, e ogni elemento nel primo posto libero a
+// partire dal cursore. Riprodurlo invece di inventare una collocazione e'
+// il punto: se la simulazione e il browser non fossero d'accordo, i
+// widget verrebbero spostati di pagina per un traboccamento che poi non
+// avviene, o viceversa.
+function _distribuisciWidgetInPagine(visibili, misura) {
+    const { colonne, righe } = misura;
+    const pagine = [];
+    let corrente = null;
+    let occupate = null;
+    let curR = 0, curC = 0;
+
+    const nuovaPagina = () => {
+        corrente = [];
+        pagine.push(corrente);
+        occupate = [];
+        curR = 0; curC = 0;
+    };
+    const libero = (r, c, dr, dc) => {
+        for (let i = r; i < r + dr; i++) {
+            const riga = occupate[i];
+            if (!riga) continue;
+            for (let j = c; j < c + dc; j++) if (riga[j]) return false;
+        }
+        return true;
+    };
+    const segna = (r, c, dr, dc) => {
+        for (let i = r; i < r + dr; i++) {
+            if (!occupate[i]) occupate[i] = [];
+            for (let j = c; j < c + dc; j++) occupate[i][j] = true;
+        }
+    };
+
+    nuovaPagina();
+    let paginaVoluta = 0;
+
+    visibili.forEach(v => {
+        // Salto in avanti quando l'utente ha chiesto una pagina piu'
+        // avanti. Mai all'indietro: un widget assegnato alla pagina 1 non
+        // puo' finire sulla 0 solo perche' li' era rimasto un buco.
+        const voluta = Math.max(paginaVoluta, v.pagina || 0);
+        while (pagine.length - 1 < voluta) nuovaPagina();
+        paginaVoluta = voluta;
+
+        const t = _leggiTaglia(v.size);
+        const dc = Math.min(t.col, colonne);
+        const dr = t.row;
+
+        // Un widget piu' alto dell'intera pagina non entrerebbe mai da
+        // nessuna parte: lo si tiene dov'e' invece di mandarlo in un ciclo
+        // infinito di pagine nuove. Il ridimensionamento non permette di
+        // arrivarci, ma un layout salvato con una pagina piu' alta (o una
+        // rotazione) puo'.
+        const drEffettivo = Math.min(dr, righe);
+
+        let messo = false;
+        while (!messo) {
+            let r = curR, c = curC;
+            let trovato = null;
+            // Scansione in avanti dal cursore, riga per riga.
+            for (; r + drEffettivo <= righe && !trovato; r++, c = 0) {
+                for (; c + dc <= colonne; c++) {
+                    if (libero(r, c, drEffettivo, dc)) { trovato = { r, c }; break; }
+                }
+            }
+            if (trovato) {
+                segna(trovato.r, trovato.c, drEffettivo, dc);
+                curR = trovato.r; curC = trovato.c + dc;
+                corrente.push(v);
+                messo = true;
+            } else {
+                // Non entra: trabocca. Da qui in poi anche i successivi
+                // partiranno da questa pagina nuova.
+                nuovaPagina();
+                paginaVoluta = pagine.length - 1;
+            }
+        }
+    });
+
+    return pagine;
+}
+
+// Numero di pagine risultante dall'ultima impaginazione. Non e' piu'
+// deducibile dal solo campo 'pagina', perche' il traboccamento puo'
+// aggiungerne.
+let _paginePresenti = 1;
+
 // Quante pagine esistono davvero. In modifica se ne mostra SEMPRE una in
 // piu', vuota: e' li' che si spinge un widget per creare una pagina nuova,
 // senza bisogno di un pulsante "aggiungi pagina" e senza stato da salvare.
 function _numeroPagineWidget() {
     const visibili = (_layoutWidget || []).filter(w => w.visibile);
     const maxPagina = visibili.reduce((m, w) => Math.max(m, w.pagina || 0), 0);
-    return maxPagina + 1 + (_editModeWidget ? 1 : 0);
+    // Il massimo fra "dove l'utente ha chiesto di mettere le cose" e "dove
+    // sono finite davvero dopo il traboccamento".
+    const base = Math.max(maxPagina + 1, _paginePresenti);
+    return base + (_editModeWidget ? 1 : 0);
 }
 
 // Sposta un widget alla pagina precedente/successiva. Unico modo previsto
@@ -2828,6 +2976,11 @@ async function renderWidgetHome() {
     // Le tessere sono gia' state costruite tutte insieme (con Promise.all,
     // che va lasciato in un blocco solo: spezzarlo per pagina moltiplica
     // le query). Qui si distribuiscono soltanto.
+    // Impaginazione vera: chi non ci sta trabocca sulla pagina dopo.
+    const misura = _misuraPaginaWidget();
+    const distribuzione = _distribuisciWidgetInPagine(visibili, misura);
+    _paginePresenti = distribuzione.length;
+
     const nPagine = _numeroPagineWidget();
     // Uscendo dalla modifica la pagina vuota di cortesia sparisce: se
     // l'utente era proprio li', va riportato sull'ultima pagina vera,
@@ -2839,10 +2992,12 @@ async function renderWidgetHome() {
         + (_editModeWidget ? ' in-modifica-widget' : '');
     const paginaHtml = [];
     for (let p = 0; p < nPagine; p++) {
-        const dentro = visibili
-            .map((w, i) => ({ w: w, html: tessere[i] }))
-            .filter(x => (x.w.pagina || 0) === p)
-            .map(x => x.html)
+        // La pagina di destinazione arriva dalla distribuzione, non piu'
+        // dal campo 'pagina' letto direttamente: fra i due c'e' di mezzo il
+        // traboccamento.
+        const suQuestaPagina = distribuzione[p] || [];
+        const dentro = suQuestaPagina
+            .map(w => tessere[visibili.indexOf(w)])
             .join('');
         // Il tassello "Aggiungi" sta sull'ultima pagina REALE, non su
         // quella vuota di cortesia che compare solo in modifica.
