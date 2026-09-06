@@ -1461,6 +1461,12 @@
         }
         .ball-ui .ball-k-mid { font-size: 17px; font-weight: 600; line-height: 1.1; }
         .ball-ui .ball-k-mono { font-variant-numeric: tabular-nums; }
+        /* Due numeri affiancati (widget 'contributi'). min-width:0 sulle
+           colonne: senza, l'ellissi di .ball-k-lab non scatta e
+           l'etichetta lunga allarga la colonna facendo traboccare la
+           coppia fuori dalla tessera nelle taglie strette. */
+        .ball-ui .ball-k-duo { display: flex; gap: 18px; }
+        .ball-ui .ball-k-duo > div { min-width: 0; }
         .ball-ui .su { color: #2E9E5F; }
         .ball-ui .giu { color: #D4342C; }
 
@@ -5200,6 +5206,11 @@
          grafico. Oggi nessuno le chiama ancora: caricarlo non cambia nulla
          di cio' che vedi, prepara solo il terreno. -->
     <script src="data/storico-valore.repository.js"></script>
+    <!-- Contributi al gruppo (migration 37, 2026-09-03). Sola LETTURA: la
+         scrittura la fa l'estensione dal service worker, non il sito.
+         Espone contributiGruppoLeggi(), usata dal widget 'contributi' in
+         ui/phone.ui.js. Va qui, fra i repository e prima degli ui/*.js. -->
+    <script src="data/contributi.repository.js"></script>
     <script src="state/app.state.js"></script>
     <script src="state/cards.state.js"></script>
     <script src="state/binder.state.js"></script>
