@@ -2500,8 +2500,16 @@ const _ballCORPI = {
         if (!d.gruppo) {
             return {
                 inline,
-                blocco: '<div class="ball-barra-out"><div class="ball-barra-in" style="width:0%"></div></div>' +
-                        '<span class="ball-k-lab ball-attesa">Primi contributi in arrivo.</span>',
+                // .ball-quota: contenitore che rende la coppia
+                // barra+didascalia un blocco ATOMICO per
+                // _potaContenutoFuoriTessera(). Senza, in una tessera
+                // stretta la didascalia veniva tagliata a meta' dal bordo:
+                // la potatura conosce solo .ball-riga/.ball-gruppo/
+                // .ball-spark/.ball-strip e ignorava questi due elementi.
+                blocco: '<div class="ball-quota">' +
+                        '<div class="ball-barra-out"><div class="ball-barra-in" style="width:0%"></div></div>' +
+                        '<span class="ball-k-lab ball-attesa">Primi contributi in arrivo.</span>' +
+                        '</div>',
             };
         }
 
@@ -2510,9 +2518,14 @@ const _ballCORPI = {
         // 'gruppo' conta TUTTE le righe, comprese le proprie, quindi la
         // quota non puo' superare il 100%.
         const perc = Math.round((d.miei / d.gruppo) * 100);
+        // Stesso contenitore atomico del ramo qui sopra: o la quota si
+        // vede tutta, o sparisce tutta. Mezza didascalia e' peggio di
+        // nessuna didascalia.
         const blocco =
+            '<div class="ball-quota">' +
             `<div class="ball-barra-out"><div class="ball-barra-in" style="width:${perc}%"></div></div>` +
-            `<span class="ball-k-lab">${perc}% del lavoro del gruppo</span>`;
+            `<span class="ball-k-lab">${perc}% del lavoro del gruppo</span>` +
+            '</div>';
 
         return { inline, blocco };
     },
@@ -3170,7 +3183,11 @@ function _potaContenutoFuoriTessera() {
         // colonna di categoria con le sue carte, un grafico. Mai le
         // singole carte dentro una fila — nascondere la terza carta di
         // tre lascerebbe una categoria monca, che e' peggio del taglio.
-        blocco.querySelectorAll(':scope > .ball-riga, :scope > .ball-gruppi > .ball-gruppo, :scope > .ball-spark, :scope > .ball-strip').forEach(pezzo => {
+        // .ball-quota aggiunta il 2026-09-06 per il widget 'contributi':
+        // barra + didascalia della percentuale, che vanno nascoste
+        // INSIEME. Nessun altro widget usa questa classe, quindi la
+        // riga non cambia il comportamento di nulla di esistente.
+        blocco.querySelectorAll(':scope > .ball-riga, :scope > .ball-gruppi > .ball-gruppo, :scope > .ball-spark, :scope > .ball-strip, :scope > .ball-quota').forEach(pezzo => {
             // Sempre ripristinato prima di misurare: la tessera puo' essere
             // stata ingrandita dall'ultimo giro e cio' che prima non ci
             // stava ora ci sta.
