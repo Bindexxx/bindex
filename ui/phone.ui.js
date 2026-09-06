@@ -2806,9 +2806,17 @@ const _ballCORPI = {
             `<span class="ball-k-lab">${scaduti > 0 ? 'da aggiornare' : 'tutti aggiornati'}</span>` +
             (d.valore ? `<span class="ball-k-lab">€ ${d.valore.toLocaleString('it-IT', { maximumFractionDigits: 0 })} in collezione</span>` : '');
 
+        // .ball-quota (2026-09-06): didascalia e barra sono un blocco
+        // ATOMICO per _potaContenutoFuoriTessera(). Prima erano due figli
+        // diretti sciolti, che la potatura non conosce: in tessera stretta
+        // la riga "Aggiornati N/M" veniva tagliata a meta' dal bordo.
+        // Difetto preesistente, stesso identico caso gia' corretto sul
+        // widget 'contributi'.
         let blocco =
+            '<div class="ball-quota">' +
             '<div class="ball-barra-testo"><span>Aggiornati</span><span>' + aggiornati + '/' + totale + '</span></div>' +
-            `<div class="ball-barra-out"><div class="ball-barra-in" style="width:${perc.toFixed(1)}%"></div></div>`;
+            `<div class="ball-barra-out"><div class="ball-barra-in" style="width:${perc.toFixed(1)}%"></div></div>` +
+            '</div>';
 
         if (d.lista && d.lista.length) {
             blocco += '<div class="ball-riga-set">' + d.lista.slice(0, 3).map(v =>
