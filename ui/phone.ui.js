@@ -882,6 +882,34 @@ const CATALOGO_WIDGET = {
         },
         tab: 'prezzi',
     },
+    // Sostituisce il segnaposto "I tuoi contributi al gruppo — presto
+    // disponibili" della home fissa. Il dato ora esiste (migration 37) e lo
+    // scrive l'ESTENSIONE, non il sito: qui si legge soltanto.
+    // LIVELLO DI VISIBILITA' INTERMEDIO, deciso da Claudio: il proprio
+    // numero e il totale del gruppo, mai chi ha fatto quanto. Non
+    // aggiungere qui un elenco per utente: il vincolo vive nella RPC, ma
+    // romperlo comincerebbe da questa voce.
+    contributi: {
+        titolo: 'Contributi al gruppo', icona: 'fa-hands-helping',
+        // Due numeri affiancati piu' la barra della quota: sotto questa
+        // altezza la barra finisce appiccicata ai numeri.
+        tagliaDefault: '6x4',
+        preview: async () => {
+            const d = await _contributiConCache();
+            // DATO ASSENTE != TRE ZERI. Qui la RPC non ha risposto: non si
+            // puo' dire "zero", che sarebbe un'affermazione sul lavoro
+            // fatto dal gruppo.
+            if (!d) return { righe: ['Contributi al gruppo'], badge: false, dati: null };
+            return {
+                righe: [`${d.miei} cart${d.miei === 1 ? 'a' : 'e'} per il gruppo`],
+                // Sarebbe un conteggio di contributi, non di notifiche: un
+                // pallino permanente sull'icona. Stessa scelta di
+                // carte_recenti e prezzi_recenti.
+                badge: false,
+                dati: d,
+            };
+        },
+    },
     bustina: {
         titolo: 'Bustina', icona: 'fa-gift', bloccato: true,
         preview: () => ({ righe: ['In arrivo'], dati: { placeholder: true, testo: 'Aprirai le bustine da qui' } }),
@@ -981,6 +1009,35 @@ async function _prezziRecentiConCache() {
     } catch (e) {
         console.error('[widget prezzi_recenti]', e);
         return [];
+    }
+}
+
+// Contributi al gruppo (migration 37). Una RPC sola, ma renderWidgetHome
+// gira anche dal polling: senza freno partirebbe a ogni giro. Il dato si
+// muove solo quando qualcuno del gruppo lavora una riga altrui, quindi 5
+// minuti sono abbondanti.
+const TTL_CONTRIBUTI_MS = 5 * 60 * 1000;
+let _cacheContributi = { quando: 0, dati: null };
+
+// DIVERGENZA DELIBERATA DALLE DUE CACHE QUI SOPRA, che scartano il vuoto:
+// qui TRE ZERI SONO UN RISULTATO VALIDO e vanno messi in cache. Sono lo
+// stato reale finche' nessuno del gruppo ha lavorato una riga altrui —
+// stato che durera' giorni. Applicando la regola "mai mettere in cache un
+// vuoto" si rifarebbe la query a ogni giro di polling, per settimane, per
+// riottenere sempre gli stessi tre zeri.
+// Quello che NON si mette in cache e' il dato ASSENTE (errore, RPC caduta,
+// utente non ancora autenticato): quello si', va richiesto di nuovo.
+async function _contributiConCache() {
+    if (_cacheContributi.dati && Date.now() - _cacheContributi.quando < TTL_CONTRIBUTI_MS) return _cacheContributi.dati;
+    if (typeof contributiGruppoLeggi !== 'function') return null;
+    try {
+        const { data, error } = await contributiGruppoLeggi();
+        if (error || !data) return null;
+        _cacheContributi = { quando: Date.now(), dati: data };
+        return data;
+    } catch (e) {
+        console.error('[widget contributi]', e);
+        return null;
     }
 }
 
@@ -2410,6 +2467,54 @@ const _ballCORPI = {
         const nota = `<span class="ball-k-lab">${d.giorniMisurati} giorn${d.giorniMisurati === 1 ? 'o' : 'i'} misurat${d.giorniMisurati === 1 ? 'o' : 'i'}</span>`;
 
         return { inline, blocco: grafico + voci.join('') + nota };
+    },
+
+    // Disposizione scelta da Claudio: due numeri affiancati in alto, barra
+    // della quota in basso. La barra usa .ball-barra-out/.ball-barra-in,
+    // gli stessi mattoni del corpo 'prezzi' — niente CSS nuovo.
+    contributi: (d) => {
+        // La RPC non ha risposto. Non si scrive "0": sarebbe
+        // un'affermazione falsa sul lavoro del gruppo.
+        if (!d) {
+            return {
+                inline: '<div class="ball-k-mid">\u2014</div><span class="ball-k-lab">dati non disponibili</span>',
+                blocco: '',
+            };
+        }
+
+        // I due numeri hanno lo stesso peso visivo ma NON la stessa scala:
+        // 'miei' cresce senza tetto, 'personeAiutate' ha come massimo 4
+        // (cinque membri, te esclusa) e una volta arrivato li' resta fermo
+        // per sempre. Non e' un difetto: e' il dato vero, ed e' l'aspetto
+        // che il widget avra' fra qualche settimana.
+        const inline =
+            '<div class="ball-k-duo">' +
+                `<div><div class="ball-k-big ball-k-mono">${d.miei}</div><span class="ball-k-lab">carte</span></div>` +
+                `<div><div class="ball-k-big ball-k-mono">${d.personeAiutate}</div><span class="ball-k-lab">person${d.personeAiutate === 1 ? 'a' : 'e'}</span></div>` +
+            '</div>';
+
+        // GUARDIA SUL DENOMINATORE. Al primo giorno sono tre zeri
+        // legittimi: niente divisione, e nessun "0% del lavoro del gruppo",
+        // che e' vero ma si legge come un rimprovero quando il gruppo non
+        // ha ancora fatto niente.
+        if (!d.gruppo) {
+            return {
+                inline,
+                blocco: '<div class="ball-barra-out"><div class="ball-barra-in" style="width:0%"></div></div>' +
+                        '<span class="ball-k-lab ball-attesa">Primi contributi in arrivo.</span>',
+            };
+        }
+
+        // Intero, non decimale: con numeri piccoli (1 su 3) i decimali
+        // darebbero una precisione che il dato non ha.
+        // 'gruppo' conta TUTTE le righe, comprese le proprie, quindi la
+        // quota non puo' superare il 100%.
+        const perc = Math.round((d.miei / d.gruppo) * 100);
+        const blocco =
+            `<div class="ball-barra-out"><div class="ball-barra-in" style="width:${perc}%"></div></div>` +
+            `<span class="ball-k-lab">${perc}% del lavoro del gruppo</span>`;
+
+        return { inline, blocco };
     },
 
     // Le tre categorie della home fissa: valore piu' alto, oscillazione in
