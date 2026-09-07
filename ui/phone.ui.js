@@ -552,11 +552,26 @@ const CATALOGO_WIDGET = {
     //
     // Nessuna query nuova: tutto da carteReali, già in memoria.
     //
-    // NON portati dal mockup, e perché: bustina, polvere, fortuna, missioni
-    // e traguardi-a-punti appartengono a un'economia di gioco (aprire
-    // pacchetti, guadagnare valuta) che in CardSync non esiste. "Set
-    // completo" richiederebbe di sapere quante carte compone ogni set:
-    // dato non presente nello schema, e non lo deduco dal codice.
+    // AGGIORNATO 2026-09-07 — il paragrafo sotto era vero il 27/08, non lo
+    // è più per intero:
+    //   - 'missioni' è diventato un widget reale nel frattempo (vedi sotto
+    //     CATALOGO_WIDGET.missioni: RPC vera, pagina dedicata propria).
+    //   - 'bustina' è in corso di sblocco (Roadmap_Widget_Bustina_2026-09-07
+    //     + compilato di sessione): schema e RPC lato DB già in produzione,
+    //     verificati dal vivo con aperture reali.
+    //   - 'polvere' resta segnaposto per scelta esplicita di Claudio
+    //     (2026-09-07): la RPC che la genera esiste già (doppioni della
+    //     bustina), ma dove/come si spende è rimandato a una sessione
+    //     dedicata a parte.
+    //   - 'fortuna' e i "traguardi-a-punti" restano non implementati,
+    //     nessun cambiamento su questi due: il testo originale sotto vale
+    //     ancora SOLO per loro.
+    //
+    // NON portati dal mockup, e perché (testo originale): appartengono a
+    // un'economia di gioco (aprire pacchetti, guadagnare valuta) che in
+    // CardSync non esisteva ancora al 27/08. "Set completo" richiederebbe
+    // di sapere quante carte compone ogni set: dato non presente nello
+    // schema, e non lo deduco dal codice.
 
     valore_collezione: {
         titolo: 'Valore collezione', icona: 'fa-sack-dollar',
@@ -4121,10 +4136,14 @@ async function renderPaginaMissioni() {
         // Status bar (2026-09-01): rileggo il saldo vero solo se è successo
         // qualcosa (evita una query in più ad ogni apertura della pagina
         // Missioni quando non cambia nulla).
+        // AGGIORNATO 2026-09-07: usa polvere_saldo() (RPC, somma lato
+        // Postgres) invece di ricompenseSaldo(userId,'polvere') (somma
+        // lato client, tronca oltre ~1000 righe senza segnalarlo — vedi
+        // data/bustina.repository.js per il dettaglio).
         if (typeof CSBar !== 'undefined') {
             (async () => {
                 try {
-                    const { data: saldo, error } = await ricompenseSaldo(userId, 'polvere');
+                    const { data: saldo, error } = await polvereSaldoLeggi();
                     if (!error) CSBar.setCurrency({ value: saldo || 0 });
                 } catch (e) { console.error('[statusbar] aggiornamento saldo polvere:', e); }
             })();
@@ -5489,17 +5508,20 @@ async function initPhoneShell() {
         _avviaPresenzaLive(); // fire-and-forget, vedi commento sulla funzione sopra
 
         // Valuta (2026-09-01): collegata al saldo reale di
-        // inventario_ricompense tramite ricompenseSaldo() già esistente
-        // (data/missioni.repository.js) — 'polvere' è il tipo ricompensa
-        // reale usato in tutto il catalogo missioni/traguardi, non
-        // inventato. Aggiornata di nuovo dopo ogni valutazione missioni
-        // (vedi renderPaginaMissioni), dove vengono davvero accreditate
-        // nuove ricompense.
+        // inventario_ricompense. AGGIORNATO 2026-09-07: usa polvere_saldo()
+        // (RPC, somma lato Postgres) invece di ricompenseSaldo(userId,
+        // 'polvere') (data/missioni.repository.js, somma lato client —
+        // tronca oltre ~1000 righe senza segnalarlo, vedi
+        // data/bustina.repository.js per il dettaglio). 'polvere' resta il
+        // tipo ricompensa reale usato in tutto il catalogo missioni/
+        // traguardi, non inventato. Aggiornata di nuovo dopo ogni
+        // valutazione missioni (vedi renderPaginaMissioni), dove vengono
+        // davvero accreditate nuove ricompense.
         (async () => {
             try {
                 const userId = await authGetUserId();
                 if (!userId) return;
-                const { data: saldo, error } = await ricompenseSaldo(userId, 'polvere');
+                const { data: saldo, error } = await polvereSaldoLeggi();
                 if (!error) CSBar.setCurrency({ value: saldo || 0, glyph: '\u2727', label: 'Polvere' });
             } catch (e) { console.error('[statusbar] saldo polvere iniziale:', e); }
         })();
