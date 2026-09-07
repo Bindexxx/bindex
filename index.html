@@ -4754,6 +4754,7 @@
                 <div style="display:flex; gap:0.6rem; flex-wrap:wrap; margin-bottom: 1rem;">
                     <button class="btn-secondary" onclick="testBustinaStato()"><i class="fa-solid fa-gauge"></i> Stato bustina</button>
                     <button class="btn-secondary" onclick="testBustinaApri()"><i class="fa-solid fa-box-open"></i> Apri bustina</button>
+                    <button class="btn-secondary" onclick="testBustinaApriForzata()"><i class="fa-solid fa-crown"></i> Forza Leggendaria</button>
                 </div>
                 <pre id="bustinaTestOutput" style="white-space:pre-wrap; word-break:break-word; font-size:0.75rem; background:rgba(0,0,0,0.05); padding:0.7rem; border-radius:8px; max-height:300px; overflow:auto; margin:0;">In attesa...</pre>
             </div>
@@ -5329,6 +5330,12 @@
         async function testBustinaApri() {
             _bustinaTestScrivi('...');
             const { data, error } = await bustinaApri();
+            _bustinaTestScrivi(error ? { errore: error.message, dettagli: error } : data);
+        }
+
+        async function testBustinaApriForzata() {
+            _bustinaTestScrivi('...');
+            const { data, error } = await bustinaApriForzata('leggendarie');
             _bustinaTestScrivi(error ? { errore: error.message, dettagli: error } : data);
         }
 
