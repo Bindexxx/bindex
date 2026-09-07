@@ -56,6 +56,24 @@ async function bustinaApriForzata(raritaForzata) {
     return supabaseClient.rpc('apri_bustina', { p_rarita_forzata: raritaForzata });
 }
 
+// ── Saldo polvere (2026-09-07) ──────────────────────────────────────────
+// Vive qui e NON in data/missioni.repository.js perché quel file non è
+// stato letto in questa sessione (regola d'oro: mai toccare un file mai
+// esaminato senza prima leggerlo per intero) — anche se logicamente il
+// saldo polvere è di dominio più ampio (missioni/traguardi accreditano
+// polvere anche loro, non solo la bustina). Se in futuro si legge davvero
+// missioni.repository.js, valutare se spostarla lì; per ora resta
+// riusabile da qualunque punto del sito la importi.
+//
+// Sostituisce ricompenseSaldo(userId,'polvere') nei due punti in
+// ui/phone.ui.js che leggevano il saldo per la status bar — stesso motivo
+// di bustine_stato(): quella funzione somma le righe lato client e
+// PostgREST tronca oltre ~1000 righe senza segnalarlo. Con la bustina che
+// accredita polvere ad ogni doppione il rischio smette di essere teorico.
+async function polvereSaldoLeggi() {
+    return supabaseClient.rpc('polvere_saldo');
+}
+
 // ── Album e catalogo (tabelle, sola lettura — RLS le copre già) ────────
 
 // Le carte possedute dall'utente. owner_id esplicito nel filtro anche se
