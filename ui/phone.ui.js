@@ -925,9 +925,32 @@ const CATALOGO_WIDGET = {
             };
         },
     },
+    // SBLOCCATO (2026-09-07): schema/RPC lato DB già in produzione,
+    // verificati dal vivo (Roadmap_Widget_Bustina_2026-09-07.md + compilato
+    // di sessione). Nessun 'tab' esplicito: la chiave del catalogo
+    // ('bustina') coincide già con l'id della view-section e con la
+    // condizione in apriDettaglioWidget — stesso trucco già usato da
+    // 'missioni', vedi commento lì.
     bustina: {
-        titolo: 'Bustina', icona: 'fa-gift', bloccato: true,
-        preview: () => ({ righe: ['In arrivo'], dati: { placeholder: true, testo: 'Aprirai le bustine da qui' } }),
+        titolo: 'Bustina', icona: 'fa-gift',
+        preview: async () => {
+            try {
+                const userId = await authGetUserId();
+                if (!userId) return { righe: ['Accedi per aprire le bustine'], dati: { placeholder: true } };
+                const { data, error } = await bustinaStatoLeggi();
+                if (error) throw error;
+                if (data.giornaliera_disponibile) {
+                    return { righe: ['Bustina pronta!'], stato: 'ok', dati: data };
+                }
+                if (data.saldo_guadagnate > 0) {
+                    return { righe: [`${data.saldo_guadagnate} bustin${data.saldo_guadagnate === 1 ? 'a' : 'e'} da aprire`], stato: 'ok', dati: data };
+                }
+                return { righe: ['Torna domani'], dati: data };
+            } catch (e) {
+                console.error('[bustina widget] preview:', e);
+                return { righe: ['Bustina'], dati: { placeholder: true } };
+            }
+        },
     },
     polvere: {
         titolo: 'Polvere', icona: 'fa-wand-sparkles', bloccato: true,
@@ -3791,7 +3814,7 @@ async function apriDettaglioWidget(tabId, evt) {
     clearTimeout(_chiusuraDettaglioTimeout); // annulla un'eventuale chiusura ancora in corso (riapertura rapida)
 
     const container = document.querySelector('.container');
-    if (tabId === 'dafare' || tabId === 'match' || tabId === 'condividi' || tabId === 'missioni' || tabId === 'valore' || tabId === 'wishlist' || tabId === 'location' || tabId === 'doppioni' || tabId === 'sealed' || tabId === 'set') {
+    if (tabId === 'dafare' || tabId === 'match' || tabId === 'condividi' || tabId === 'missioni' || tabId === 'valore' || tabId === 'wishlist' || tabId === 'location' || tabId === 'doppioni' || tabId === 'sealed' || tabId === 'set' || tabId === 'bustina') {
         // MAI switchTab() qui: quella funzione ha una whitelist fissa di 5
         // tab (navigation.ui.js r.199) ed è segnata nella memoria di
         // progetto come "deve restare stabile e intoccata" — un bug reale
@@ -3812,6 +3835,7 @@ async function apriDettaglioWidget(tabId, evt) {
         if (tabId === 'doppioni') renderPaginaDoppioni();
         if (tabId === 'sealed') renderPaginaSealed();
         if (tabId === 'set') renderPaginaSet();
+        if (tabId === 'bustina') renderPaginaBustina();
     } else {
         switchTab(tabId, null);
     }
@@ -5009,6 +5033,135 @@ async function renderPaginaSet() {
     `;
 }
 
+
+// ── PAGINA "BUSTINA" (2026-09-07) ───────────────────────────────────────
+// Prima pagina reale del Widget Bustina — vedi Roadmap_Widget_Bustina_
+// 2026-09-07.md e il compilato di sessione per schema/RPC. Nessuna
+// cutscene/animazione vera qui: rimandata (serve prima il catalogo carte
+// definitivo, oggi solo 10 placeholder — vedi DA FARE #6 del compilato).
+// Le immagini SONO reali (bucket bustina-immagini) con fallback: è
+// esattamente la verifica "immagini/testi rispondono dai bucket" mai
+// ancora fatta (DA FARE #2), colta al volo qui invece di rimandarla
+// ancora.
+//
+// Struttura in due contenitori separati DENTRO lo stesso container
+// (bustinaStatoBox in testa, bustinaRisultatoBox sotto): _bustinaAggiornaStato()
+// ridisegna SOLO il primo. Se renderPaginaBustina() ridisegnasse l'intero
+// container ogni volta, un risultato appena mostrato da _bustinaPaginaApri()
+// sparirebbe subito dopo essere apparso.
+async function renderPaginaBustina() {
+    const container = document.getElementById('bustinaContenuto');
+    if (!container) return;
+
+    const userId = await authGetUserId();
+    if (!userId) {
+        container.innerHTML = '<p style="text-align:center; color:var(--text-muted); font-size:0.85rem; padding:1rem 0;">Accedi per aprire le bustine.</p>';
+        return;
+    }
+
+    container.innerHTML = `
+        <div class="page-header"><span class="page-title">Bustina</span></div>
+        <div class="pg-pagina">
+            <div id="bustinaStatoBox"><p class="pg-sotto" style="text-align:center;">Caricamento…</p></div>
+            <div id="bustinaRisultatoBox"></div>
+        </div>
+    `;
+    await _bustinaAggiornaStato();
+}
+
+// Rilegge SOLO stato/saldo (bustine_stato()) e ridisegna la testa della
+// pagina — MAI l'intero container, vedi nota sopra.
+async function _bustinaAggiornaStato() {
+    const box = document.getElementById('bustinaStatoBox');
+    if (!box) return;
+    try {
+        const { data, error } = await bustinaStatoLeggi();
+        if (error) throw error;
+
+        const puoAprire = data.giornaliera_disponibile || data.saldo_guadagnate > 0;
+        const testoStato = data.giornaliera_disponibile
+            ? 'Bustina giornaliera pronta!'
+            : (data.saldo_guadagnate > 0
+                ? `${data.saldo_guadagnate} bustin${data.saldo_guadagnate === 1 ? 'a' : 'e'} guadagnat${data.saldo_guadagnate === 1 ? 'a' : 'e'} da aprire`
+                : 'Nessuna bustina disponibile — torna domani');
+
+        box.innerHTML = `
+            <div class="pg-intro">
+                <div class="pg-grande">${data.aperte_totali}</div>
+                <div class="pg-sotto">bustine aperte in totale</div>
+            </div>
+            <div class="pg-stat">
+                <div><b>${data.aperte_giornaliere}</b><span>Giornaliere</span></div>
+                <div><b>${data.aperte_guadagnate}</b><span>Guadagnate</span></div>
+                <div><b>${data.saldo_guadagnate}</b><span>In saldo</span></div>
+            </div>
+            <p class="pg-sotto" style="text-align:center; margin:0.4rem 0 0.8rem;">${testoStato}</p>
+            <button class="btn-main" id="bustinaApriBtn" style="width:100%;" ${puoAprire ? '' : 'disabled'} onclick="_bustinaPaginaApri()">
+                <i class="fa-solid fa-box-open"></i> Apri bustina
+            </button>
+        `;
+    } catch (e) {
+        console.error('renderPaginaBustina/_bustinaAggiornaStato:', e);
+        box.innerHTML = '<p style="text-align:center; color:var(--danger); font-size:0.85rem; padding:1rem 0;">Errore nel caricamento dello stato.</p>';
+    }
+}
+
+async function _bustinaPaginaApri() {
+    const btn = document.getElementById('bustinaApriBtn');
+    const risultatoBox = document.getElementById('bustinaRisultatoBox');
+    if (btn) btn.disabled = true;
+    if (risultatoBox) risultatoBox.innerHTML = '<p class="pg-sotto" style="text-align:center;">Apertura in corso…</p>';
+
+    try {
+        const { data, error } = await bustinaApri();
+        if (error) throw error;
+        _bustinaMostraRisultato(data);
+        _beep(1200, 90); // stesso beep di conferma usato per missioni/traguardi completati
+    } catch (e) {
+        console.error('[bustina] apertura:', e);
+        // Messaggio della RPC mostrato as-is (es. "Nessuna bustina
+        // disponibile"): è già pensato per l'utente finale, non un errore
+        // tecnico da tradurre.
+        if (risultatoBox) {
+            risultatoBox.innerHTML = `<p style="text-align:center; color:var(--danger); font-size:0.85rem; padding:1rem 0;">${escapeHtml(e.message || 'Errore durante l\'apertura.')}</p>`;
+        }
+    }
+
+    // Sempre, esito o meno: saldo/disponibilità sono comunque da rileggere.
+    await _bustinaAggiornaStato();
+}
+
+// Elenco testuale + immagini reali (nessuna cutscene, vedi nota di testa).
+function _bustinaMostraRisultato(risultato) {
+    const box = document.getElementById('bustinaRisultatoBox');
+    if (!box) return;
+
+    const carte = risultato.carte.map(c => {
+        const { data: img } = bustinaImmagineUrl(c.rarita, c.nome_file);
+        const { data: imgFallback } = bustinaImmagineUrl(c.rarita, 'fallback');
+        const urlImg = img?.publicUrl || '';
+        const urlFallback = imgFallback?.publicUrl || '';
+        const badge = c.doppione
+            ? `<span class="ball-pill">Doppione · +${c.polvere} polvere</span>`
+            : '<span class="ball-pill acceso">Nuova!</span>';
+        return `
+            <div class="pg-riga" style="align-items:flex-start;">
+                <img class="pg-fig" src="${urlImg}" alt="" onerror="this.onerror=null; this.src='${urlFallback}';">
+                <div class="pg-testo">
+                    <b>${escapeHtml(c.nome)}</b>
+                    <div class="pg-sotto" style="margin:0.1rem 0;">${escapeHtml(c.rarita)}</div>
+                    ${badge}
+                </div>
+            </div>`;
+    }).join('');
+
+    box.innerHTML = `
+        <div class="pg-titoletto" style="margin-top:0.6rem;">Hai aperto:</div>
+        <div class="pg-elenco">${carte}</div>
+        ${risultato.polvere_totale > 0 ? `<p class="pg-sotto" style="text-align:center; margin-top:0.4rem;">+${risultato.polvere_totale} polvere totale dai doppioni</p>` : ''}
+        <p class="pg-sotto" style="text-align:center; margin-top:0.2rem;">Giorno ${risultato.cutscene_giorno}/30 · mesi completati: ${risultato.mesi_completati}</p>
+    `;
+}
 
 // ── PAGINA "CONDIVIDI" ────────────────────────────────────────────────
 // Elenca tutto il condivisibile reale: ogni binder pubblico (Scambio,
