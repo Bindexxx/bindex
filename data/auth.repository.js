@@ -39,3 +39,13 @@ async function authRequestPasswordReset(username) {
 async function authRequestUsernameChange(userId, nuovoUsername) {
     return creaRichiestaPendente(userId, 'username_change', { nuovo_username: nuovoUsername });
 }
+
+// Aggiunta 2026-09-07: prima funzione del sito che legge profiles.role.
+// Usata per ora solo dal blocco diagnostico "Test Bustina (admin)" in
+// index.html (#bustinaTestAdminGroup) — nessun altro punto del sito
+// controllava il ruolo lato client prima d'ora (verificato: zero
+// occorrenze di 'profiles'/'role' in index.html). Se in futuro serve
+// altrove, riusare questa, non duplicarla.
+async function authGetRuolo(userId) {
+    return supabaseClient.from('profiles').select('role').eq('id', userId).single();
+}
