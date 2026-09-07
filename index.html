@@ -4738,6 +4738,25 @@
                 <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 1rem;">Se qualcosa non funziona come dovrebbe, probabilmente hai incontrato un Caterpie selvatico (cioè un bug). Catturalo segnalandolo:</p>
                 <button class="btn-secondary" onclick="segnalaCaterpie()"><i class="fa-solid fa-bug"></i> Segnala un Caterpie</button>
             </div>
+
+            <!-- ═══ TEST BUSTINA (ADMIN, DIAGNOSTICO — 2026-09-07) ═══
+                 Nessuna UI vera (niente cutscene/laser/album): mostra solo
+                 il JSON grezzo ritornato dalle RPC, per verificare che il
+                 sito riesca a chiamarle. Nascosto di default; mostrato via
+                 JS solo se profiles.role='admin' (vedi initTestBustinaAdmin
+                 più sotto, chiamata da window.onload). DA RIMUOVERE quando
+                 arriva ui/bustina.ui.js definitivo (roadmap, passi 8-9). -->
+            <div class="settings-card" id="bustinaTestAdminGroup" style="display:none;">
+                <h3 style="margin-bottom: 0.3rem; color: var(--text-dark); display: flex; align-items: center; gap: 0.6rem; font-size: 1.15rem; font-weight: 800;">
+                    <i class="fa-solid fa-flask" style="color: var(--primary);"></i> Test Bustina (admin)
+                </h3>
+                <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 1rem;">Diagnostico temporaneo — chiama le RPC reali su produzione (xpfibrzsffurdlypxnrw). Visibile solo agli admin.</p>
+                <div style="display:flex; gap:0.6rem; flex-wrap:wrap; margin-bottom: 1rem;">
+                    <button class="btn-secondary" onclick="testBustinaStato()"><i class="fa-solid fa-gauge"></i> Stato bustina</button>
+                    <button class="btn-secondary" onclick="testBustinaApri()"><i class="fa-solid fa-box-open"></i> Apri bustina</button>
+                </div>
+                <pre id="bustinaTestOutput" style="white-space:pre-wrap; word-break:break-word; font-size:0.75rem; background:rgba(0,0,0,0.05); padding:0.7rem; border-radius:8px; max-height:300px; overflow:auto; margin:0;">In attesa...</pre>
+            </div>
         </div>
 
     </div>
@@ -5194,6 +5213,10 @@
     <script src="data/cards.repository.js"></script>
     <script src="data/queue.repository.js"></script>
     <script src="data/binder.repository.js"></script>
+    <!-- TEMPORANEO (2026-09-07): repository minimo per il blocco diagnostico
+         "Test Bustina (admin)" in #impostazioni. Verrà sostituito dal file
+         definitivo del passo 8 della roadmap Widget Bustina. -->
+    <script src="data/bustina.repository.js"></script>
     <script src="data/photos.repository.js"></script>
     <script src="data/prices.repository.js"></script>
     <script src="data/preferences.repository.js"></script>
@@ -5272,6 +5295,43 @@
         // gira nel browser di chiunque visiti il sito.
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+        // ── TEST BUSTINA (ADMIN, DIAGNOSTICO — 2026-09-07) ──────────────────────
+        // Vedi commento sul blocco #bustinaTestAdminGroup in #impostazioni.
+        // Chiamata da window.onload, DOPO controlloIngressoCardsync() (cioè
+        // dopo che login/estensione sono risolti) — prima authGetUserId()
+        // avrebbe potuto restituire null se il login non era ancora
+        // completato. DA RIMUOVERE insieme al blocco HTML quando arriva
+        // ui/bustina.ui.js definitivo.
+        async function initTestBustinaAdmin() {
+            const userId = await authGetUserId();
+            if (!userId) return;
+            const { data, error } = await authGetRuolo(userId);
+            if (error) {
+                console.error('initTestBustinaAdmin: errore lettura ruolo', error);
+                return;
+            }
+            if (data?.role === 'admin') {
+                document.getElementById('bustinaTestAdminGroup').style.display = 'block';
+            }
+        }
+
+        function _bustinaTestScrivi(risultato) {
+            const el = document.getElementById('bustinaTestOutput');
+            el.textContent = JSON.stringify(risultato, null, 2);
+        }
+
+        async function testBustinaStato() {
+            _bustinaTestScrivi('...');
+            const { data, error } = await bustinaStatoLeggi();
+            _bustinaTestScrivi(error ? { errore: error.message, dettagli: error } : data);
+        }
+
+        async function testBustinaApri() {
+            _bustinaTestScrivi('...');
+            const { data, error } = await bustinaApri();
+            _bustinaTestScrivi(error ? { errore: error.message, dettagli: error } : data);
+        }
+
         // ── AVVIO APP — punto d'ingresso unico, eseguito al caricamento pagina ──
         window.onload = async () => {
             // Ripristina Dark Mode e Temi salvati
@@ -5295,6 +5355,9 @@
             // prosegue direttamente (vedi funzione più sotto per i dettagli
             // di ciascun caso).
             await controlloIngressoCardsync();
+
+            // TEMPORANEO — vedi commento sulla funzione più sopra.
+            await initTestBustinaAdmin();
 
             // Home a widget (sessione 2026-08-23) — parte in parallelo,
             // non in sequenza dopo il controllo: il pannello #cardsyncPanel
