@@ -2,10 +2,11 @@
 // Widget "Bustina" (apertura buste) — vedi Roadmap_Widget_Bustina_2026-09-07
 // e il compilato di sessione per lo schema/RPC completi.
 //
-// VERSIONE MINIMA (2026-09-07): solo le due funzioni che wrappano le RPC già
+// VERSIONE MINIMA (2026-09-07): solo le funzioni che wrappano le RPC già
 // scritte, approvate e verificate dal vivo sul DB (bustina_05_rpc.sql,
-// REVISIONE 2). Servono al blocco diagnostico "Test Bustina (admin)" in
-// index.html per verificare che il sito riesca a chiamarle davvero.
+// REVISIONE 2, + bustina_07_forza_rarita.sql per la forzatura admin).
+// Servono al blocco diagnostico "Test Bustina (admin)" in index.html per
+// verificare che il sito riesca a chiamarle davvero.
 // NON è ancora il file definitivo del passo 8 della roadmap: mancano
 // lettura album (bustina_carte_possedute), URL immagini/testi dai bucket
 // bustina-immagini/bustina-testi, e tutta la logica che li useranno
@@ -29,9 +30,18 @@ async function bustinaStatoLeggi() {
 
 // Apre una bustina: consuma la giornaliera se disponibile, altrimenti una
 // guadagnata (ordine di consumo fisso, deciso da Claudio). Nessun parametro
-// accettato di proposito (vedi DEVIAZIONE #10 nel compilato — il bottone
-// "Forza Leggendaria" del prototipo non può funzionare finché non si decide
-// se aggiungere rarita_forzata con controllo is_admin() dentro la RPC).
+// qui: la forzatura rarita' (ex DEVIAZIONE #10, ora risolta) e' una firma
+// diversa della STESSA funzione DB — vedi bustinaApriForzata sotto.
 async function bustinaApri() {
     return supabaseClient.rpc('apri_bustina');
+}
+
+// Forza lo slot 4 alla rarita' passata — SOLO admin, verificato DENTRO la
+// RPC (is_admin(), mai lato client: vedi bustina_07_forza_rarita.sql). Chi
+// non e' admin riceve un'eccezione invece di un fallback silenzioso, per
+// scelta di Claudio. Il bottone "Forza Leggendaria" passa sempre
+// 'leggendarie', ma la funzione resta generica per qualunque rarita'
+// valida in bustina_probabilita.
+async function bustinaApriForzata(raritaForzata) {
+    return supabaseClient.rpc('apri_bustina', { p_rarita_forzata: raritaForzata });
 }
