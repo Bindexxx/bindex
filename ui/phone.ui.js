@@ -5188,6 +5188,7 @@ let _bustinaDragCarta = null;
 let _bustinaDragStartY = 0;
 let _bustinaCarteSwipate = 0;
 let _bustinaLaserStartPoint = { x: 0, y: 0 };
+let _bustinaNomeUtenteCorrente = 'Allenatore'; // sovrascritto in _bustinaAvviaEsperienza, vedi sotto
 const RARITA_CSS_BUSTINA = { 'comuni': 'comune', 'non comuni': 'non-comune', 'rare': 'rara', 'ultra rare': 'ultra-rara', 'leggendarie': 'leggendaria' };
 
 // ── audio (porta fedele: file veri per laser/swipe, sintesi Web Audio
@@ -5419,6 +5420,20 @@ async function _bustinaAvviaEsperienza(risultato) {
     textEl.innerText = await _bustinaFrase();
 
     const timerMinimo = new Promise(resolve => setTimeout(resolve, 1500));
+
+    // Nome utente reale (stessa fonte di #profiloMenuNome): sessione →
+    // email → _nomeDaEmail() (ui/auth.ui.js). Se per qualunque motivo la
+    // sessione non risponde, resta il fallback 'Allenatore' già impostato.
+    // In Promise.all insieme al resto: la cutscene non deve partire prima
+    // che il nome sia pronto, altrimenti il primo dialogo con [nome]
+    // mostrerebbe ancora il fallback per una race condition.
+    const nomeUtente = (async () => {
+        try {
+            const sessione = await authGetSession();
+            if (sessione?.user?.email) _bustinaNomeUtenteCorrente = _nomeDaEmail(sessione.user.email);
+        } catch (e) { /* resta 'Allenatore' */ }
+    })();
+
     const caricamento = (async () => {
         // Mese da usare: mesi_completati+1, clampato all'ultimo mese
         // REALMENTE presente nel bucket (decisione di Claudio: se manca
@@ -5455,7 +5470,7 @@ async function _bustinaAvviaEsperienza(risultato) {
         }
     })();
 
-    await Promise.all([caricamento, timerMinimo]);
+    await Promise.all([caricamento, timerMinimo, nomeUtente]);
     _bustinaOverlayPronto = true;
     wrapEl.classList.remove('scuote');
     wrapEl.classList.add('pronto');
@@ -5524,12 +5539,24 @@ function _bustinaAvviaCutscenePlayback() {
     (cd.actors || []).forEach(actor => {
         const img = document.createElement('img');
         img.className = 'bs-actor-sprite';
-        // asset vuoto → fallback al logo del sito (nel prototipo era
-        // l'avatar utente; qui non esiste ancora un concetto equivalente
-        // verificato — vedi nota di testa, sostituzione skin rimandata).
-        let assetUrl = 'favicon.ico';
+        // asset vuoto (2026-09-09, deciso con Claudio):
+        //   1) se actor.type è presente → sprite/{type}/fallback/standing.png
+        //      (campo 'type' = nome cartella 1:1, es. "personaggioprincipale",
+        //      "companion", "png" — l'admin scrive già il valore corretto
+        //      nel tool di creazione cutscene, nessuna traduzione qui)
+        //   2) direzione: SEMPRE 'standing' — lo sprite non cambia con la
+        //      direzione di movimento (rimandato, Claudio ha rinunciato nel
+        //      prototipo; un eventuale campo "direzione" nel json, se mai
+        //      comparirà, va ignorato per ora)
+        //   3) se manca anche actor.type → favicon.ico del sito (nessuna
+        //      categoria nota, non si può indovinare la cartella)
+        let assetUrl;
         if (actor.asset) {
             assetUrl = actor.asset.startsWith('http') ? actor.asset : bustinaAssetUrl(actor.asset).data.publicUrl;
+        } else if (actor.type) {
+            assetUrl = bustinaAssetUrl(`sprite/${actor.type}/fallback/standing.png`).data.publicUrl;
+        } else {
+            assetUrl = 'favicon.ico';
         }
         img.src = assetUrl;
 
@@ -5609,13 +5636,15 @@ function _bustinaAvviaCutscenePlayback() {
                         textEl.style.fontStyle = 'normal';
                         textEl.style.textAlign = 'left';
                     }
-                    // Placeholder [nome] SEMPRE sostituito con "Allenatore":
-                    // nel prototipo veniva da userData.username, ma qui non
-                    // esiste (ancora) una fonte verificata del nome utente
-                    // lato client in questo file — mai inventare una colonna/
-                    // variabile non controllata (regola d'oro). Da rivedere
-                    // se/quando emerge un punto reale da cui leggerlo.
-                    textEl.innerText = ev.text.replace(/\[nome\]/g, 'Allenatore');
+                    // Placeholder [nome] → nome utente reale, stessa fonte
+                    // già usata dal sito per #profiloMenuNome: sessione →
+                    // email → _nomeDaEmail() (funzione già esistente in
+                    // ui/auth.ui.js, es. "irene@cardsyncpro.local" →
+                    // "Irene") — nessuna colonna profiles inventata.
+                    // Risolto una volta in _bustinaAvviaEsperienza, prima
+                    // che la cutscene parta, e tenuto in
+                    // _bustinaNomeUtenteCorrente per tutta l'esperienza.
+                    textEl.innerText = ev.text.replace(/\[nome\]/g, _bustinaNomeUtenteCorrente);
                     boxEl.style.display = 'block';
                 }
             }
