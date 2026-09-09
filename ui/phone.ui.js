@@ -5034,21 +5034,22 @@ async function renderPaginaSet() {
 }
 
 
-// ── PAGINA "BUSTINA" (2026-09-07) ───────────────────────────────────────
-// Prima pagina reale del Widget Bustina — vedi Roadmap_Widget_Bustina_
-// 2026-09-07.md e il compilato di sessione per schema/RPC. Nessuna
-// cutscene/animazione vera qui: rimandata (serve prima il catalogo carte
-// definitivo, oggi solo 10 placeholder — vedi DA FARE #6 del compilato).
-// Le immagini SONO reali (bucket bustina-immagini) con fallback: è
-// esattamente la verifica "immagini/testi rispondono dai bucket" mai
-// ancora fatta (DA FARE #2), colta al volo qui invece di rimandarla
-// ancora.
-//
-// Struttura in due contenitori separati DENTRO lo stesso container
-// (bustinaStatoBox in testa, bustinaRisultatoBox sotto): _bustinaAggiornaStato()
-// ridisegna SOLO il primo. Se renderPaginaBustina() ridisegnasse l'intero
-// container ogni volta, un risultato appena mostrato da _bustinaPaginaApri()
-// sparirebbe subito dopo essere apparso.
+// ── PAGINA "BUSTINA" ─────────────────────────────────────────────────────
+// Storia: sbloccata il 2026-09-07 (prima pagina reale, solo stato+bottone),
+// esperienza cutscene/laser/swipe portata dal prototipo il 2026-09-09.
+// RISTRUTTURATO 2026-09-10 (Claudio: niente più pagina di stato con
+// bottone "Apri bustina" — il tap sul widget porta DIRETTAMENTE
+// nell'esperienza a schermo intero, in una delle due forme:
+//   - nessuna bustina disponibile → schermata countdown (mezzanotte
+//     Europe/Rome) + le stesse 4 statistiche di prima
+//   - almeno una disponibile     → pokéball pronta al tap; la RPC
+//     apri_bustina() parte SOLO al click sulla pokéball (opzione B,
+//     approvata da Claudio — diverso dalla decisione del 09/09 che la
+//     faceva partire subito), vedi _bustinaClickPokeball più sotto.
+// #bustinaContenuto (dentro la view-section #bustina, invariata: whitelist
+// apriDettaglioWidget, animazione "a pokéball" del container, tutto quello
+// che già c'era) resta SOLO come sfondo/fallback: la vera esperienza vive
+// nell'overlay #bustinaCutsceneOverlay che la ricopre subito.
 async function renderPaginaBustina() {
     const container = document.getElementById('bustinaContenuto');
     if (!container) return;
@@ -5059,85 +5060,56 @@ async function renderPaginaBustina() {
         return;
     }
 
-    container.innerHTML = `
-        <div class="page-header"><span class="page-title">Bustina</span></div>
-        <div class="pg-pagina">
-            <div id="bustinaStatoBox"><p class="pg-sotto" style="text-align:center;">Caricamento…</p></div>
-            <div id="bustinaRisultatoBox"></div>
-        </div>
-    `;
-    await _bustinaAggiornaStato();
-}
+    container.innerHTML = '<p class="pg-sotto" style="text-align:center; padding-top:1rem;">Caricamento…</p>';
 
-// Rilegge SOLO stato/saldo (bustine_stato()) e ridisegna la testa della
-// pagina — MAI l'intero container, vedi nota sopra.
-async function _bustinaAggiornaStato() {
-    const box = document.getElementById('bustinaStatoBox');
-    if (!box) return;
     try {
         const { data, error } = await bustinaStatoLeggi();
         if (error) throw error;
-
-        const puoAprire = data.giornaliera_disponibile || data.saldo_guadagnate > 0;
-        const testoStato = data.giornaliera_disponibile
-            ? 'Bustina giornaliera pronta!'
-            : (data.saldo_guadagnate > 0
-                ? `${data.saldo_guadagnate} bustin${data.saldo_guadagnate === 1 ? 'a' : 'e'} guadagnat${data.saldo_guadagnate === 1 ? 'a' : 'e'} da aprire`
-                : 'Nessuna bustina disponibile — torna domani');
-
-        box.innerHTML = `
-            <div class="pg-intro">
-                <div class="pg-grande">${data.aperte_totali}</div>
-                <div class="pg-sotto">bustine aperte in totale</div>
-            </div>
-            <div class="pg-stat">
-                <div><b>${data.aperte_giornaliere}</b><span>Giornaliere</span></div>
-                <div><b>${data.aperte_guadagnate}</b><span>Guadagnate</span></div>
-                <div><b>${data.saldo_guadagnate}</b><span>In saldo</span></div>
-            </div>
-            <p class="pg-sotto" style="text-align:center; margin:0.4rem 0 0.8rem;">${testoStato}</p>
-            <button class="btn-main" id="bustinaApriBtn" style="width:100%;" ${puoAprire ? '' : 'disabled'} onclick="_bustinaPaginaApri()">
-                <i class="fa-solid fa-box-open"></i> Apri bustina
-            </button>
-        `;
+        container.innerHTML = '';
+        _bustinaApriOverlay(data);
     } catch (e) {
-        console.error('renderPaginaBustina/_bustinaAggiornaStato:', e);
-        box.innerHTML = '<p style="text-align:center; color:var(--danger); font-size:0.85rem; padding:1rem 0;">Errore nel caricamento dello stato.</p>';
+        console.error('renderPaginaBustina:', e);
+        container.innerHTML = '<p style="text-align:center; color:var(--danger); font-size:0.85rem; padding:1rem 0;">Errore nel caricamento dello stato.</p>';
     }
 }
 
-async function _bustinaPaginaApri() {
-    const btn = document.getElementById('bustinaApriBtn');
-    const risultatoBox = document.getElementById('bustinaRisultatoBox');
-    if (btn) btn.disabled = true;
-    if (risultatoBox) risultatoBox.innerHTML = '<p class="pg-sotto" style="text-align:center;">Apertura in corso…</p>';
+// Costruisce (se serve) e apre l'overlay, mostrando la schermata giusta in
+// base allo stato reale appena letto — MAI dedotto/tenuto in cache da
+// prima: l'utente può aver aperto bustine da un altro dispositivo.
+function _bustinaApriOverlay(stato) {
+    _bustinaCostruisciOverlay();
+    _bustinaCountdownFerma(); // eventuale countdown di una apertura precedente
+    _bustinaRisultatoCorrente = null;
 
-    try {
-        const { data, error } = await bustinaApri();
-        if (error) throw error;
-        // ORDINE APPROVATO DA CLAUDIO (2026-09-09, opzione A): la RPC parte
-        // SUBITO — la bustina è già consumata a questo punto — il
-        // risultato resta in memoria e viene mostrato SOLO dopo
-        // cutscene+taglio busta+swipe. Se l'utente chiude a metà scena non
-        // si perde nulla lato dati (le carte sono già salvate), si perde
-        // solo la messinscena.
-        risultatoBox.innerHTML = '';
-        await _bustinaAvviaEsperienza(data);
-    } catch (e) {
-        console.error('[bustina] apertura:', e);
-        // Messaggio della RPC mostrato as-is (es. "Nessuna bustina
-        // disponibile"): è già pensato per l'utente finale, non un errore
-        // tecnico da tradurre.
-        if (risultatoBox) {
-            risultatoBox.innerHTML = `<p style="text-align:center; color:var(--danger); font-size:0.85rem; padding:1rem 0;">${escapeHtml(e.message || 'Errore durante l\'apertura.')}</p>`;
-        }
+    const overlay = document.getElementById('bustinaCutsceneOverlay');
+    overlay.classList.add('aperto');
+    _bustinaRicalcolaScale();
+
+    const puoAprire = stato.giornaliera_disponibile || stato.saldo_guadagnate > 0;
+    if (puoAprire) {
+        _bustinaMostraSchermata('bustinaLoaderScreen');
+        const wrapEl = document.getElementById('bustinaPokeballWrap');
+        wrapEl.classList.remove('scuote');
+        wrapEl.classList.add('pronto');
+        _bustinaOverlayPronto = true;
+        document.getElementById('bustinaPreloadText').innerText = '';
+        _bustinaFrase().then(f => {
+            // Solo se l'utente non ha già tappato la pokéball nel
+            // frattempo (in tal caso il testo appartiene già alla fase di
+            // caricamento vera, non va sovrascritto).
+            if (_bustinaOverlayPronto) document.getElementById('bustinaPreloadText').innerText = f;
+        });
+    } else {
+        _bustinaMostraSchermata('bustinaCountdownScreen');
+        _bustinaOverlayPronto = false;
+        document.getElementById('bustinaCdTotali').innerText = stato.aperte_totali;
+        document.getElementById('bustinaCdGiorn').innerText = stato.aperte_giornaliere;
+        document.getElementById('bustinaCdGuad').innerText = stato.aperte_guadagnate;
+        document.getElementById('bustinaCdSaldo').innerText = stato.saldo_guadagnate;
+        document.getElementById('bustinaCountdownFrase').innerText = '';
+        _bustinaFraseCountdown().then(f => { document.getElementById('bustinaCountdownFrase').innerText = f; });
+        _bustinaCountdownAvvia();
     }
-
-    // Sempre, esito o meno: saldo/disponibilità sono comunque da rileggere.
-    // (Se _bustinaAvviaEsperienza ha aperto l'overlay, questa chiamata
-    // ridisegna la testa della pagina SOTTO l'overlay stesso — pronta per
-    // quando l'utente chiude l'esperienza con "Continua"/"X".)
-    await _bustinaAggiornaStato();
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -5188,8 +5160,17 @@ let _bustinaDragCarta = null;
 let _bustinaDragStartY = 0;
 let _bustinaCarteSwipate = 0;
 let _bustinaLaserStartPoint = { x: 0, y: 0 };
-let _bustinaNomeUtenteCorrente = 'Allenatore'; // sovrascritto in _bustinaAvviaEsperienza, vedi sotto
+let _bustinaNomeUtenteCorrente = 'Allenatore'; // sovrascritto in _bustinaClickPokeball, vedi sotto
 const RARITA_CSS_BUSTINA = { 'comuni': 'comune', 'non comuni': 'non-comune', 'rare': 'rara', 'ultra rare': 'ultra-rara', 'leggendarie': 'leggendaria' };
+// Fattore di scala UNICO applicato a #bustinaScreenWrapper intero (non più
+// solo a #bustinaCutsceneViewport) — vedi _bustinaRicalcolaScale. Serve
+// anche a laser/drag per tradurre le coordinate "sullo schermo reale" in
+// coordinate del canvas 480×270 non scalato (vedi _bustinaLaserStart/Move).
+let _bustinaScale = 1;
+// Countdown "nessuna bustina disponibile" — timer separato da quello della
+// cutscene, ripulito da _bustinaCountdownFerma() ad ogni apertura/chiusura
+// dell'overlay per non lasciarne mai due attivi insieme.
+let _bustinaCountdownTimer = null;
 
 // ── audio (porta fedele: file veri per laser/swipe, sintesi Web Audio
 //    come fallback — IDENTICI al prototipo, solo col toggle in testa) ───
@@ -5298,6 +5279,91 @@ async function _bustinaFrase() {
     return fallback[Math.floor(Math.random() * fallback.length)];
 }
 
+// Seed numerico sulla data odierna (stesso algoritmo di _bustinaFrase,
+// estratto qui per non duplicarlo nella variante countdown sotto).
+function _bustinaSeedOggi() {
+    const oggi = new Date().toISOString().slice(0, 10);
+    let seed = 0;
+    for (let i = 0; i < oggi.length; i++) seed = (seed * 31 + oggi.charCodeAt(i)) % 10000000;
+    return seed;
+}
+
+// ── frase per la schermata "nessuna bustina disponibile" (2026-09-10) ──
+// Stessa logica di stabilità di _bustinaFrase (seed sulla data → stessa
+// frase per tutto il giorno, decisione di Claudio "fisse come
+// bustinaFrase"), ma file/array separati: sono frasi di ATTESA, non di
+// caricamento. NIENTE segnaposto tipo [tempo] nel json — il countdown vero
+// (HH:MM:SS) è un elemento a parte già in pagina, la frase è solo
+// atmosfera (decisione esplicita di Claudio, 2026-09-10).
+async function _bustinaFraseCountdown() {
+    const fallback = [
+        'Snorlax sta ancora dormendo di traverso sul sentiero.',
+        'Il Professor Oak è uscito a catturare qualche Pikachu.',
+        'Le Pokéball sono in carica al Centro Pokémon.',
+        'La Joy locale sta ancora controllando lo scorsoio.',
+        'Team Rocket ha smarrito di nuovo la chiave del magazzino.',
+        'Bill sta sistemando il suo PC di archiviazione.',
+        'Un Voltorb dorme sopra il distributore di bustine.',
+    ];
+    try {
+        const { data } = bustinaCountdownQuotesUrl();
+        const res = await fetch(`${data.publicUrl}?t=${Date.now()}`);
+        if (res.ok) {
+            const frasi = await res.json();
+            if (Array.isArray(frasi) && frasi.length > 0) return frasi[_bustinaSeedOggi() % frasi.length];
+        }
+    } catch (e) { /* fallback sotto */ }
+    return fallback[_bustinaSeedOggi() % fallback.length];
+}
+
+// ── countdown dal vivo fino al prossimo rinnovo (mezzanotte Europe/Rome,
+//    confermato dal corpo reale di bustine_stato() in produzione — la
+//    funzione ragiona in quel fuso, non in UTC, non in quello del
+//    browser). Un tick al secondo, robusto ai cambi ora legale perché
+//    ricalcola la lettura wall-clock ad ogni tick invece di sommare
+//    millisecondi a un timestamp fisso. ─────────────────────────────────
+function _bustinaMsAlRinnovo() {
+    const ora = new Date();
+    const parti = new Intl.DateTimeFormat('en-US', {
+        timeZone: 'Europe/Rome', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
+    }).formatToParts(ora).reduce((acc, p) => { acc[p.type] = p.value; return acc; }, {});
+    const secondiOggi = (parseInt(parti.hour, 10) % 24) * 3600 + parseInt(parti.minute, 10) * 60 + parseInt(parti.second, 10);
+    return (86400 - secondiOggi) * 1000 - ora.getMilliseconds();
+}
+
+function _bustinaFormattaCountdown(ms) {
+    const totSec = Math.max(0, Math.floor(ms / 1000));
+    const h = String(Math.floor(totSec / 3600)).padStart(2, '0');
+    const m = String(Math.floor((totSec % 3600) / 60)).padStart(2, '0');
+    const s = String(totSec % 60).padStart(2, '0');
+    return `${h}:${m}:${s}`;
+}
+
+function _bustinaCountdownTick() {
+    const el = document.getElementById('bustinaCountdownTimer');
+    if (!el) return;
+    const ms = _bustinaMsAlRinnovo();
+    el.innerText = _bustinaFormattaCountdown(ms);
+    // Rinnovo scattato mentre l'utente guarda la schermata: non
+    // indoviniamo un nuovo stato, si rilegge bustine_stato() per davvero
+    // (il countdown potrebbe anche azzerarsi qualche secondo prima/dopo
+    // per via di piccoli scarti di clock lato client, meglio verificare).
+    if (ms <= 500) {
+        _bustinaCountdownFerma();
+        bustinaStatoLeggi().then(({ data, error }) => { if (!error) _bustinaApriOverlay(data); });
+    }
+}
+
+function _bustinaCountdownAvvia() {
+    _bustinaCountdownFerma();
+    _bustinaCountdownTick();
+    _bustinaCountdownTimer = setInterval(_bustinaCountdownTick, 1000);
+}
+
+function _bustinaCountdownFerma() {
+    if (_bustinaCountdownTimer) { clearInterval(_bustinaCountdownTimer); _bustinaCountdownTimer = null; }
+}
+
 // ── costruzione overlay (idempotente: markup creato una sola volta,
 //    listener scopati attaccati una sola volta) ─────────────────────────
 function _bustinaCostruisciOverlay() {
@@ -5310,12 +5376,38 @@ function _bustinaCostruisciOverlay() {
             <div id="bustinaCloseBtn" onclick="_bustinaChiudiOverlay()"><i class="fa-solid fa-xmark"></i></div>
             <div id="bustinaScreenWrapper">
 
+                <!-- Bustina/e disponibili: pokéball pronta al tap. Niente
+                     RPC ancora — parte solo al click (vedi
+                     _bustinaClickPokeball più sotto: ordine deciso da
+                     Claudio 2026-09-10, opzione B). _bustinaApriOverlay la
+                     mostra già in stato 'pronto' quando c'è qualcosa da
+                     aprire; la classe 'scuote' torna utile solo DOPO il
+                     tap, mentre RPC+cutscene caricano davvero. -->
                 <div id="bustinaLoaderScreen" class="bs-screen attiva">
                     <div class="bs-pokeball-wrap scuote" id="bustinaPokeballWrap">
                         <div class="bs-pokeball" id="bustinaPokeball">
                             <div class="bs-pokeball-centro"><div class="bs-pokeball-centro-inner"></div></div>
                         </div>
-                        <div id="bustinaPreloadText">Connessione al server...</div>
+                        <div id="bustinaPreloadText"></div>
+                    </div>
+                </div>
+
+                <!-- Nessuna bustina disponibile: countdown al prossimo
+                     rinnovo (mezzanotte Europe/Rome — confermato dal corpo
+                     REALE di bustine_stato() in produzione, 2026-09-10:
+                     v_oggi := (now() AT TIME ZONE 'Europe/Rome')::date,
+                     non UTC) + le 4 statistiche che prima stavano nella
+                     vecchia pagina pg-* (ora rimossa). -->
+                <div id="bustinaCountdownScreen" class="bs-screen">
+                    <div class="bs-countdown-icona"><i class="fa-solid fa-clock"></i></div>
+                    <div class="bs-countdown-frase" id="bustinaCountdownFrase"></div>
+                    <div class="bs-countdown-timer" id="bustinaCountdownTimer">--:--:--</div>
+                    <div class="bs-countdown-sotto">alla prossima bustina giornaliera</div>
+                    <div class="bs-countdown-stats">
+                        <div><b id="bustinaCdTotali">0</b><span>Totali</span></div>
+                        <div><b id="bustinaCdGiorn">0</b><span>Giorn.</span></div>
+                        <div><b id="bustinaCdGuad">0</b><span>Guad.</span></div>
+                        <div><b id="bustinaCdSaldo">0</b><span>Saldo</span></div>
                     </div>
                 </div>
 
@@ -5381,7 +5473,8 @@ function _bustinaCostruisciOverlay() {
 
     document.getElementById('bustinaPokeballWrap').addEventListener('click', _bustinaClickPokeball);
     document.getElementById('bustinaCutsceneScreen').addEventListener('click', _bustinaClickCutscene);
-    window.addEventListener('resize', _bustinaRidimensionaViewport);
+    window.addEventListener('resize', _bustinaRicalcolaScale);
+    window.addEventListener('orientationchange', _bustinaRicalcolaScale);
 
     _bustinaOverlayCostruito = true;
 }
@@ -5392,47 +5485,96 @@ function _bustinaMostraSchermata(id) {
     if (target) target.classList.add('attiva');
 }
 
-function _bustinaRidimensionaViewport() {
+// Un solo fattore di scala per TUTTA l'esperienza (countdown, pokéball,
+// cutscene, laser, swipe, riepilogo): #bustinaScreenWrapper è un canvas
+// fisso 480×270 (vedi index.html), qui lo si riduce/ingrandisce in blocco
+// per riempire lo spazio disponibile dentro #bustinaGbFrame — che a sua
+// volta riempie #bustinaCutsceneOverlay, ancorato a #phoneScreen (la
+// cornice del telefono già esistente sul sito, non più tutto lo schermo
+// del browser). Richiesta esplicita e non negoziabile di Claudio
+// (2026-09-10): la pagina resta "calcolata" a 480×270 e viene solo
+// zoomata, mai ricalcolata per la dimensione reale — è l'unico modo che
+// non rompe la matematica dei movimenti della cutscene. _bustinaScale
+// viene riusato anche da laser/drag per tradurre le coordinate del tocco
+// (che arrivano in pixel reali, già scalati) in coordinate del canvas
+// 480×270 non scalato — vedi _bustinaLaserStart/Move.
+function _bustinaRicalcolaScale() {
     const overlay = document.getElementById('bustinaCutsceneOverlay');
     if (!overlay || !overlay.classList.contains('aperto')) return;
+    const frame = document.getElementById('bustinaGbFrame');
     const wrapper = document.getElementById('bustinaScreenWrapper');
-    const viewport = document.getElementById('bustinaCutsceneViewport');
-    if (!wrapper || !viewport) return;
-    const scale = Math.min(wrapper.clientWidth / 480, wrapper.clientHeight / 270);
-    viewport.style.transform = `scale(${scale})`;
+    if (!frame || !wrapper) return;
+    _bustinaScale = Math.max(0.01, Math.min(frame.clientWidth / 480, frame.clientHeight / 270));
+    wrapper.style.transform = `scale(${_bustinaScale})`;
 }
 
-// ── ingresso principale: risultato RPC già in mano, si mostra la scena ──
-async function _bustinaAvviaEsperienza(risultato) {
-    _bustinaCostruisciOverlay();
-    _bustinaRisultatoCorrente = risultato;
-
-    const overlay = document.getElementById('bustinaCutsceneOverlay');
-    overlay.classList.add('aperto');
-    _bustinaMostraSchermata('bustinaLoaderScreen');
+// ── tap sulla pokéball: la RPC parte SOLO ORA ───────────────────────────
+// Ordine deciso da Claudio 2026-09-10 (opzione B — cambia la decisione
+// del 09/09 che faceva partire apri_bustina() subito al tap sul widget):
+// finché la pokéball non viene toccata, NESSUNA bustina è consumata. Da
+// qui in poi il comportamento è identico a prima: RPC → cutscene/mese →
+// nome utente, tutto in parallelo con un tempo minimo di "carica", poi
+// l'animazione di apertura della pokéball e la cutscene vera.
+async function _bustinaClickPokeball() {
+    if (!_bustinaOverlayPronto) return;
+    _bustinaOverlayPronto = false;
+    _bustinaSuono('laser');
 
     const wrapEl = document.getElementById('bustinaPokeballWrap');
     const textEl = document.getElementById('bustinaPreloadText');
-    wrapEl.classList.add('scuote');
     wrapEl.classList.remove('pronto');
-    _bustinaOverlayPronto = false;
-
+    wrapEl.classList.add('scuote');
     textEl.innerText = await _bustinaFrase();
 
     const timerMinimo = new Promise(resolve => setTimeout(resolve, 1500));
 
+    // RPC vera — la bustina è consumata da qui in poi. Se fallisce (es.
+    // rinnovo appena scattato/consumata da un altro dispositivo nel
+    // frattempo) si mostra il messaggio della RPC as-is e si torna alla
+    // schermata corretta rileggendo lo stato reale, MAI si prosegue con
+    // dati inventati.
+    let risultato = null;
+    let erroreApertura = null;
+    const apertura = (async () => {
+        try {
+            const { data, error } = await bustinaApri();
+            if (error) throw error;
+            risultato = data;
+        } catch (e) {
+            erroreApertura = e;
+        }
+    })();
+
     // Nome utente reale (stessa fonte di #profiloMenuNome): sessione →
     // email → _nomeDaEmail() (ui/auth.ui.js). Se per qualunque motivo la
     // sessione non risponde, resta il fallback 'Allenatore' già impostato.
-    // In Promise.all insieme al resto: la cutscene non deve partire prima
-    // che il nome sia pronto, altrimenti il primo dialogo con [nome]
-    // mostrerebbe ancora il fallback per una race condition.
     const nomeUtente = (async () => {
         try {
             const sessione = await authGetSession();
             if (sessione?.user?.email) _bustinaNomeUtenteCorrente = _nomeDaEmail(sessione.user.email);
         } catch (e) { /* resta 'Allenatore' */ }
     })();
+
+    // Attende PRIMA il risultato della RPC (il calcolo del mese dipende
+    // da risultato.mesi_completati: non si può partire prima).
+    await apertura;
+
+    if (erroreApertura) {
+        await timerMinimo;
+        wrapEl.classList.remove('scuote');
+        // .innerText, non .innerHTML: nessun escaping manuale necessario.
+        textEl.innerText = erroreApertura.message || 'Errore durante l\'apertura.';
+        // Ririlegge lo stato vero (niente saldo "inventato") e ridisegna
+        // la schermata giusta dopo una breve pausa, per lasciare leggere
+        // il messaggio.
+        setTimeout(async () => {
+            const { data, error } = await bustinaStatoLeggi();
+            if (!error) _bustinaApriOverlay(data);
+        }, 1800);
+        return;
+    }
+
+    _bustinaRisultatoCorrente = risultato;
 
     const caricamento = (async () => {
         // Mese da usare: mesi_completati+1, clampato all'ultimo mese
@@ -5471,26 +5613,16 @@ async function _bustinaAvviaEsperienza(risultato) {
     })();
 
     await Promise.all([caricamento, timerMinimo, nomeUtente]);
-    _bustinaOverlayPronto = true;
-    wrapEl.classList.remove('scuote');
-    wrapEl.classList.add('pronto');
-}
 
-function _bustinaClickPokeball() {
-    if (!_bustinaOverlayPronto) return;
-    _bustinaOverlayPronto = false;
-    _bustinaSuono('laser');
-
+    // Ora sì: l'animazione "a scoppio" della pokéball, poi la cutscene.
     const pokeballEl = document.getElementById('bustinaPokeball');
-    const wrapEl = document.getElementById('bustinaPokeballWrap');
-    document.getElementById('bustinaPreloadText').innerText = '';
-    wrapEl.classList.remove('pronto');
+    wrapEl.classList.remove('scuote');
+    textEl.innerText = '';
     pokeballEl.classList.add('apertura');
 
     setTimeout(() => {
         pokeballEl.classList.remove('apertura');
         _bustinaMostraSchermata('bustinaCutsceneScreen');
-        _bustinaRidimensionaViewport();
         const r = _bustinaRisultatoCorrente;
         document.getElementById('bustinaValGiorno').innerText = r.cutscene_giorno;
         document.getElementById('bustinaValMesi').innerText = r.mesi_completati;
@@ -5641,7 +5773,7 @@ function _bustinaAvviaCutscenePlayback() {
                     // email → _nomeDaEmail() (funzione già esistente in
                     // ui/auth.ui.js, es. "irene@cardsyncpro.local" →
                     // "Irene") — nessuna colonna profiles inventata.
-                    // Risolto una volta in _bustinaAvviaEsperienza, prima
+                    // Risolto una volta in _bustinaClickPokeball, prima
                     // che la cutscene parta, e tenuto in
                     // _bustinaNomeUtenteCorrente per tutta l'esperienza.
                     textEl.innerText = ev.text.replace(/\[nome\]/g, _bustinaNomeUtenteCorrente);
@@ -5757,8 +5889,16 @@ function _bustinaLaserStart(e) {
 
     if (clientX !== null && clientY !== null && clientX >= rect.left && clientX <= rect.right && clientY >= rect.top && clientY <= rect.bottom && !_bustinaBustaTagliata) {
         _bustinaLaserDisegno = true;
+        // rect (getBoundingClientRect) è in pixel REALI a schermo, già
+        // scalati dal transform su #bustinaScreenWrapper. Il canvas invece
+        // ha risoluzione = offsetWidth/offsetHeight di .bs-booster-pack,
+        // cioè le dimensioni AUTORATE in CSS (non scalate). Per disegnare
+        // nel posto giusto va quindi convertito: coordinate-schermo /
+        // _bustinaScale = coordinate-canvas. La soglia di taglio (sotto)
+        // resta invece in coordinate-schermo, non va convertita: misura
+        // quanto ha viaggiato il dito sul vetro, indipendente dallo zoom.
         const startX = clientX - rect.left, startY = clientY - rect.top;
-        _bustinaLaserPunti = [{ x: startX, y: startY }];
+        _bustinaLaserPunti = [{ x: startX / _bustinaScale, y: startY / _bustinaScale }];
         _bustinaLaserStartPoint = { x: startX, y: startY };
         _bustinaSuono('laser');
     }
@@ -5776,7 +5916,7 @@ function _bustinaLaserMove(e) {
         if (clientX === null || clientY === null) return;
 
         const localX = clientX - rect.left, localY = clientY - rect.top;
-        _bustinaLaserPunti.push({ x: localX, y: localY });
+        _bustinaLaserPunti.push({ x: localX / _bustinaScale, y: localY / _bustinaScale });
         _bustinaDisegnaLaser();
 
         const distX = Math.abs(localX - _bustinaLaserStartPoint.x);
@@ -5797,7 +5937,14 @@ function _bustinaLaserMove(e) {
         if (clientY !== null) {
             let dy = clientY - _bustinaDragStartY;
             if (dy > 0) dy = 0;
-            _bustinaDragCarta.style.transform = `translateY(${dy}px) rotate(${dy / 40}deg)`;
+            // dy è un delta in pixel REALI (quanto si è mosso il dito):
+            // la traslazione va invece espressa in coordinate-canvas
+            // (dominio 480×270, poi scalato dall'ancestor) perché la
+            // carta segua il dito 1:1 a qualunque livello di zoom —
+            // altrimenti a schermo piccolo la carta si muoverebbe meno
+            // del dito. La rotazione resta su dy "reale": è un effetto
+            // visivo, non deve seguire pixel per pixel.
+            _bustinaDragCarta.style.transform = `translateY(${dy / _bustinaScale}px) rotate(${dy / 40}deg)`;
         }
     }
 }
@@ -5875,18 +6022,28 @@ function _bustinaMostraRiepilogo() {
     document.getElementById('bustinaSummaryScreen').style.display = 'block';
 }
 
-// ── chiusura: pulizia stato, ritorno alla pagina reale già dietro ──────
+// ── chiusura: pulizia stato, torna alla home come qualunque altro widget ─
+// RISTRUTTURATO 2026-09-10: non esiste più una "pagina bustina" dietro
+// l'overlay da ridisegnare (era _bustinaAggiornaStato, rimossa insieme
+// alla vecchia pagina pg-*) — l'overlay ORA È l'intera esperienza del
+// widget. Chiudere l'overlay deve quindi chiudere il widget stesso: si
+// riusa chiudiDettaglioWidget() (navigation.ui.js/phone.ui.js, la stessa
+// funzione del tasto fisico/freccia indietro per tutti gli altri widget),
+// così l'animazione di chiusura, il ripristino di #btnFisicoTelefono e il
+// ridisegno della home restano IDENTICI al resto del sito — zero
+// duplicazione, zero rischio di whitelist/stato disallineati.
 function _bustinaChiudiOverlay() {
     const overlay = document.getElementById('bustinaCutsceneOverlay');
     if (overlay) overlay.classList.remove('aperto');
     if (_bustinaCutsceneTimer) { clearInterval(_bustinaCutsceneTimer); _bustinaCutsceneTimer = null; }
+    _bustinaCountdownFerma();
     const musica = document.getElementById('bustinaGbMusic');
     if (musica) { musica.pause(); musica.removeAttribute('src'); }
     _bustinaDialogoAttivo = false;
     _bustinaLaserDisegno = false;
     _bustinaDragCarta = null;
     _bustinaOverlayPronto = false;
-    _bustinaAggiornaStato(); // ridisegna saldo/bottone sotto l'overlay ormai chiuso
+    chiudiDettaglioWidget();
 }
 
 // ── PAGINA "CONDIVIDI" ────────────────────────────────────────────────
