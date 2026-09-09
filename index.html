@@ -3570,6 +3570,256 @@
         .pg-riga-set-testa span { color: var(--text-muted); font-size: 0.78rem; font-variant-numeric: tabular-nums; }
         .pg-barra-track { height: 8px; border-radius: 999px; background: var(--primary-light); overflow: hidden; }
         .pg-barra-fill { height: 100%; border-radius: 999px; background: var(--primary); }
+
+        /* ═══════════════════════════════════════════════════════════════
+           WIDGET BUSTINA — CUTSCENE + APERTURA (2026-09-09)
+           Tutto lo stile del prototipo sbusto-main.zip, RISCRITTO scopato
+           sotto #bustinaCutsceneOverlay (mai selettori nudi come *,
+           body, button, .screen — quelli del prototipo originale
+           colliderebbero col resto del sito, vedi Roadmap_Widget_
+           Bustina_2026-09-07.md, sezione "COSA NON VA PORTATO COSÌ
+           COM'È"). Estetica retro/GameBoy tenuta identica al prototipo
+           SU RICHIESTA ESPLICITA di Claudio ("è una fedele e precisa
+           bozza di come lo voglio") — non integrata col tema pastello
+           di CardSync, è uno stile deliberatamente diverso per questa
+           sola esperienza.
+           ═══════════════════════════════════════════════════════════ */
+        #bustinaCutsceneOverlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 999999;
+            background: #000;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Press Start 2P', 'Courier New', monospace;
+        }
+        #bustinaCutsceneOverlay.aperto { display: flex; }
+        #bustinaCutsceneOverlay * { box-sizing: border-box; user-select: none; }
+
+        #bustinaGbFrame {
+            width: 100%;
+            height: 100%;
+            background: #111;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            padding: 10px;
+        }
+        #bustinaScreenWrapper {
+            width: 100%;
+            max-width: 480px;
+            aspect-ratio: 16 / 9;
+            background: #000;
+            border: 4px solid #1a1a1a;
+            border-radius: 8px;
+            overflow: hidden;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+        }
+        #bustinaCloseBtn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            z-index: 30;
+            background: rgba(0,0,0,0.6);
+            color: #ffd700;
+            border: 2px solid #ffd700;
+            border-radius: 50%;
+            width: 26px;
+            height: 26px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+
+        #bustinaCutsceneOverlay .bs-screen {
+            width: 100%;
+            height: 100%;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            padding: 12px;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+        #bustinaCutsceneOverlay .bs-screen.attiva { display: flex; }
+
+        #bustinaLoaderScreen {
+            background: #1a140f;
+            color: #f4e8c1;
+        }
+        .bs-pokeball-wrap {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+            cursor: default;
+            width: 90%;
+        }
+        .bs-pokeball-wrap.pronto { cursor: pointer; }
+        .bs-pokeball-wrap.scuote .bs-pokeball { animation: bsWobble 0.8s infinite ease-in-out; }
+        @keyframes bsWobble {
+            0% { transform: rotate(0deg); } 15% { transform: rotate(-15deg); }
+            30% { transform: rotate(12deg); } 45% { transform: rotate(-10deg); }
+            60% { transform: rotate(6deg); } 75%,100% { transform: rotate(0deg); }
+        }
+        .bs-pokeball {
+            width: 60px; height: 60px;
+            background: linear-gradient(to bottom, #ff3b3b 0%, #ff3b3b 48%, #222 48%, #222 52%, #fff 52%, #fff 100%);
+            border: 4px solid #111; border-radius: 50%; position: relative;
+            box-shadow: 0 6px 15px rgba(0,0,0,0.6), inset 0 0 10px rgba(0,0,0,0.4);
+            transition: filter 0.3s ease;
+        }
+        .bs-pokeball-wrap.pronto .bs-pokeball {
+            filter: drop-shadow(0 0 12px #ffd700);
+            animation: bsBounceReady 1s infinite alternate ease-in-out;
+        }
+        @keyframes bsBounceReady { 0% { transform: translateY(0) scale(1); } 100% { transform: translateY(-5px) scale(1.05); } }
+        .bs-pokeball-centro {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
+            width: 16px; height: 16px; background: #fff; border: 4px solid #222; border-radius: 50%;
+            box-shadow: inset 0 0 4px rgba(0,0,0,0.5);
+        }
+        .bs-pokeball-centro-inner {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
+            width: 5px; height: 5px; background: #ff3b3b; border-radius: 50%;
+        }
+        .bs-pokeball.apertura { animation: bsOpenAnim 0.6s forwards ease-in-out; }
+        @keyframes bsOpenAnim {
+            0% { transform: scale(1) rotate(0deg); filter: brightness(1); }
+            40% { transform: scale(1.3) rotate(-10deg); filter: brightness(3); }
+            70% { transform: scale(1.5) rotate(10deg); filter: brightness(5); background: #fff; }
+            100% { transform: scale(3); opacity: 0; filter: brightness(10); }
+        }
+        #bustinaPreloadText {
+            font-size: 0.55rem; line-height: 1.3; letter-spacing: 0.5px; text-align: center;
+            color: #ffd700; text-shadow: 1px 1px #000; min-height: 20px; max-width: 100%; word-break: break-word;
+        }
+
+        #bustinaCutsceneViewport {
+            width: 480px; height: 270px; position: relative; overflow: hidden;
+            transform-origin: center center;
+        }
+        #bustinaCutsceneScreen { background: #2c221e; color: #f4e8c1; cursor: pointer; padding: 0 !important; }
+        .bs-actor-sprite { position: absolute; pointer-events: none; z-index: 5; image-rendering: pixelated; object-fit: contain; }
+        .bs-stat-box {
+            position: absolute; top: 5px; left: 5px; z-index: 10; background: rgba(44,34,30,0.9);
+            padding: 4px; border-radius: 4px; border: 1px solid #ffd700; font-size: 0.45rem; line-height: 1.4; text-align: left;
+        }
+        .bs-dialogue-box {
+            position: absolute; bottom: 8px; left: 15px; width: 450px; min-height: 45px; background: #3b2219;
+            border: 3px solid #ffd700; padding: 6px; z-index: 10; text-align: left; display: none;
+        }
+        .bs-speaker-name { font-size: 0.5rem; color: #ffd700; font-weight: bold; margin-bottom: 3px; text-transform: uppercase; }
+        .bs-dialogue-text { font-size: 0.45rem; line-height: 0.65rem; color: #f4e8c1; }
+        .bs-dialogue-hint { font-size: 0.38rem; color: #ffd700; position: absolute; bottom: 2px; right: 4px; }
+
+        #bustinaPackScreen { background: #111; color: #fff; overflow: hidden; position: relative; }
+        .bs-sparkles { position: absolute; width: 100%; height: 100%; top: 0; left: 0; pointer-events: none; overflow: hidden; z-index: 20; }
+        .bs-firefly {
+            position: absolute; width: 4px; height: 4px; background: #ffff88; border-radius: 50%;
+            box-shadow: 0 0 8px #ffcc00, 0 0 15px #ffff00; animation: bsFloatFirefly 2.5s infinite ease-in-out;
+        }
+        @keyframes bsFloatFirefly {
+            0% { transform: translate(0,0) scale(0.3); opacity: 0; }
+            30% { opacity: 1; }
+            100% { transform: translate(var(--tx), var(--ty)) scale(1.2); opacity: 0; }
+        }
+        #bustinaBoosterContainer { display: flex; flex-direction: column; align-items: center; width: 100%; z-index: 4; }
+        .bs-booster-pack {
+            width: 130px; height: 185px;
+            background: linear-gradient(135deg, #222 0%, #444 30%, #b8860b 50%, #111 80%, #000 100%);
+            border: 3px solid #ffd700; border-radius: 10px; position: relative; cursor: crosshair; display: flex;
+            flex-direction: column; box-shadow: 0 12px 25px rgba(0,0,0,0.8), inset 0 0 15px rgba(255,215,0,0.6);
+            overflow: hidden; touch-action: none;
+        }
+        .bs-booster-shine {
+            position: absolute; top: -50%; left: -50%; width: 200%; height: 200%;
+            background: linear-gradient(105deg, transparent 40%, rgba(255,255,255,0.45) 50%, transparent 60%);
+            pointer-events: none; border-radius: 10px; animation: bsShineMove 3s infinite linear;
+        }
+        @keyframes bsShineMove {
+            0% { transform: translateX(-60%) translateY(-60%) rotate(25deg); }
+            100% { transform: translateX(60%) translateY(60%) rotate(25deg); }
+        }
+        .bs-booster-top {
+            height: 30px; background: linear-gradient(90deg,#555,#888,#555); border-bottom: 2px dashed #ffd700; display: flex;
+            align-items: center; justify-content: center; font-size: 0.35rem; color: #ffd700; font-weight: bold;
+            border-radius: 7px 7px 0 0; text-shadow: 1px 1px #000;
+        }
+        .bs-booster-bottom { flex: 1; display: flex; align-items: center; justify-content: center; font-size: 0.5rem; font-weight: bold; color: #ffd700; flex-direction: column; gap: 8px; }
+        .bs-booster-logo { width: 40px; height: 40px; object-fit: contain; filter: drop-shadow(0 0 5px #ffd700); }
+        #bustinaLaserCanvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 50; }
+        .bs-booster-pack.sliced-open { animation: bsPackOpenAnim 0.8s ease-out forwards; }
+        @keyframes bsPackOpenAnim {
+            0% { transform: scale(1); filter: brightness(2); }
+            50% { transform: scale(1.1) rotate(5deg); filter: brightness(3) drop-shadow(0 0 20px #00ffff); }
+            100% { transform: translateY(180px) scale(0.6) rotate(25deg); opacity: 0; }
+        }
+
+        .bs-card-container { position: relative; width: 155px; height: 215px; margin-top: 2px; z-index: 5; }
+        .bs-card-wrapper { position: absolute; width: 100%; height: 100%; cursor: grab; touch-action: none; display: flex; justify-content: center; align-items: center; }
+        .bs-card-wrapper.trascinamento { transition: none; cursor: grabbing; z-index: 99 !important; }
+        .bs-card-wrapper.ritorno { transition: transform 0.3s ease; }
+        .bs-card-swipata { transform: translateY(-350px) rotate(-15deg) !important; opacity: 0 !important; pointer-events: none; transition: transform 0.5s ease, opacity 0.5s ease; }
+        .bs-pokemon-card {
+            width: 155px; height: 215px;
+            background: radial-gradient(circle at center, rgba(245,230,205,0.9) 0%, rgba(196,164,124,0.95) 100%);
+            border-radius: 10px; border: 6px solid #5c3d29;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.8), inset 0 0 15px rgba(70,45,25,0.7);
+            display: flex; flex-direction: column; padding: 6px; position: relative; overflow: hidden; pointer-events: none;
+        }
+        .bs-card-inner-frame {
+            background: linear-gradient(135deg,#e6d3b3 0%,#cfb58c 100%); border: 2px solid #8c6b48; border-radius: 6px; flex: 1;
+            display: flex; flex-direction: column; padding: 6px; box-shadow: inset 0 0 8px rgba(0,0,0,0.4); z-index: 2; position: relative;
+        }
+        .bs-title-container {
+            position: absolute; top: 6px; left: 6px; width: 78%; height: 24px;
+            background: linear-gradient(to bottom,#4d3825,#2a1f15); border: 2px solid #1a130d; border-radius: 5px 5px 12px 5px;
+            box-shadow: inset 0 0 8px rgba(0,0,0,0.8), 1px 1px 2px rgba(0,0,0,0.5);
+            display: flex; align-items: center; justify-content: center; padding: 0 4px; z-index: 3;
+        }
+        .bs-card-image-box {
+            position: absolute; top: 34px; left: 6px; right: 6px; height: 65px;
+            background: linear-gradient(135deg,#2b231d 0%,#1a130d 100%); border: 2px solid #5c3d29; border-radius: 4px;
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.8), 0 2px 3px rgba(0,0,0,0.3);
+            display: flex; align-items: center; justify-content: center; overflow: hidden; z-index: 2;
+        }
+        .bs-card-image-box img { width: 100%; height: 100%; object-fit: cover; filter: sepia(0.2) contrast(1.1); }
+        .bs-card-description-box {
+            position: absolute; bottom: 6px; left: 6px; right: 6px; top: 103px;
+            background: rgba(0,0,0,0.15); border: 1px solid rgba(0,0,0,0.2); border-radius: 4px; padding: 4px 6px;
+            display: flex; align-items: center; justify-content: center; z-index: 2; overflow-y: auto;
+        }
+        .bs-card-description-text { font-family: Georgia, serif; font-size: 0.47rem; color: #3d2817; text-align: center; line-height: 1.35; font-style: italic; width: 100%; word-break: break-word; }
+        .bs-duplicate-tag { font-size: 0.3rem; color: #ff4444; font-weight: bold; position: absolute; top: 8px; right: 8px; background: rgba(0,0,0,0.85); padding: 2px 4px; border-radius: 2px; z-index: 15; border: 1px solid #ff4444; }
+        .bs-card-glow-reveal { animation: bsCardGlowFade 1.5s ease-out forwards; }
+        @keyframes bsCardGlowFade { 0% { filter: brightness(2.2); } 100% { filter: brightness(1); } }
+
+        #bustinaCutsceneOverlay button {
+            font-family: 'Press Start 2P', monospace; padding: 8px 10px; font-size: 0.45rem; cursor: pointer;
+            background: #3d2616; color: #ffcc00; border: 3px solid #ffd700; box-shadow: 2px 2px 0px #111; margin-top: 6px;
+        }
+        #bustinaCutsceneOverlay button:active { transform: translate(1px,1px); box-shadow: 0 0 0 #111; }
+
+        #bustinaSummaryScreen {
+            background: #2c221e; color: #f4e8c1; width: 96%; max-height: 96%; padding: 8px; border-radius: 4px;
+            overflow-y: auto; border: 2px solid #ffd700;
+        }
+        .bs-summary-titolo { text-align: center; background: #3b2219; color: #ffd700; font-size: 0.5rem; padding: 4px; margin-bottom: 6px; }
+        .bs-summary-table { width: 100%; border-collapse: collapse; font-size: 0.45rem; color: #000; background: #f4e8c1; }
+        .bs-summary-table th { background: #e6e6e6; }
+        .bs-summary-table th, .bs-summary-table td { padding: 3px; }
     </style>
 </head>
 <body>
@@ -3718,6 +3968,15 @@
                     </div>
                 </div>
                 <div id="phonePushBanner"><i class="fa-solid fa-bell"></i><span id="phonePushBannerTesto"></span></div>
+
+                <!-- Overlay cutscene/apertura Bustina (2026-09-09). Vuoto:
+                     stesso pattern minimo del resto del sito, riempito UNA
+                     SOLA VOLTA da _bustinaCostruisciOverlay() in
+                     ui/phone.ui.js al primo utilizzo (idempotente — le
+                     riaperture successive riusano lo stesso markup, non lo
+                     ricreano). position:fixed inset:0 con z-index molto
+                     alto: copre tutto lo schermo, sopra #phoneShell. -->
+                <div id="bustinaCutsceneOverlay"></div>
                 <!-- HOME FISSA ELIMINATA (Claudio, 2026-09-03).
                      Qui c'era #phoneHomePage, la "pagina classica" che
                      conteneva #home e che si raggiungeva con lo scatto
@@ -4503,10 +4762,12 @@
                  segnaposto gacha del 27/08) — stesso pattern minimo di
                  #valore/#wishlist/#location/#doppioni/#sealed/#set: nessun
                  markup qui, tutto riempito da renderPaginaBustina() in
-                 ui/phone.ui.js. Nessuna cutscene/animazione ancora (vedi
-                 commento in testa a quella funzione) — solo stato/saldo e
-                 risultato dell'apertura, con immagini reali dai bucket
-                 bustina-immagini. -->
+                 ui/phone.ui.js. AGGIORNATO 2026-09-09: l'apertura ora passa
+                 dall'esperienza completa (cutscene + taglio busta laser +
+                 swipe carte + riepilogo), vedi #bustinaCutsceneOverlay più
+                 sotto nel body — questa pagina resta solo stato/saldo e
+                 bottone "Apri bustina", la vecchia _bustinaMostraRisultato()
+                 (elenco statico) è stata sostituita interamente. -->
             <div id="bustinaContenuto"></div>
         </div>
 
