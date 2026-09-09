@@ -3616,12 +3616,28 @@
         }
         #bustinaCutsceneOverlay {
             display: none;
-            position: absolute; /* ancorato a #phoneScreen (suo genitore
-                                    diretto nel DOM), non più a tutta la
-                                    finestra: "fullscreen" ora significa
-                                    "riempie la cornice esistente del
-                                    telefono", non il viewport del browser
-                                    (Claudio, 2026-09-10 — non negoziabile). */
+            /* CORRETTO 2026-09-10 (bug: schermata nera finché non si
+               cliccava "indietro"): avevo ancorato questo overlay a
+               #phoneScreen con position:absolute, sul presupposto
+               sbagliato che "la cornice esistente" fosse il rettangolo
+               stretto del telefono. In realtà .container.container-
+               visibile (che apre OGNI widget, vedi
+               _posizionaContainerNelloSchermo in phone.ui.js) è già
+               position:fixed a TUTTA la finestra del browser, z-index:11
+               — decisione di Claudio del 2026-08-30 ("il cerchio ma a
+               schermo intero"). Il mio overlay, annidato dentro
+               #phoneShell (z-index:10, contesto di stacking separato),
+               restava SEMPRE sotto .container qualunque z-index gli
+               dessi: invisibile finché "indietro" non chiudeva
+               .container e lo scopriva. position:fixed (relativo al
+               viewport, non al DOM in cui vive: né #phoneShell né
+               #phoneScreen hanno transform/filter che lo confinerebbero)
+               con z-index 999999 risolve: compete con .container nello
+               STESSO contesto di stacking (la radice) e vince sempre,
+               indipendentemente da dove sta nel DOM. Copre la stessa area
+               di .container — che è esattamente "la cornice esistente"
+               in questo codebase. */
+            position: fixed;
             inset: 0;
             z-index: 999999;
             background: var(--bs-shell-dark);
@@ -3887,7 +3903,19 @@
             overflow-y: auto; border: 2px solid var(--bs-accent);
         }
         .bs-summary-titolo { text-align: center; background: var(--bs-box-bg); color: var(--bs-accent); font-size: 0.5rem; padding: 4px; margin-bottom: 6px; }
-        .bs-summary-table { width: 100%; border-collapse: collapse; font-size: 0.45rem; color: #000; background: var(--bs-text); }
+        .bs-summary-table {
+            width: 100%; border-collapse: collapse; font-size: 0.45rem; color: #000;
+            /* FIX 2026-09-10 (bug: nomi carta invisibili nel riepilogo):
+               qui c'era var(--bs-text), pensata come colore di TESTO —
+               usata per errore come SFONDO. In tema chiaro --bs-text è
+               scura (testo scuro su sfondo chiaro), quindi con
+               color:#000 sopra il risultato era nero su scuro,
+               illeggibile: il nome/rarità c'erano sempre, solo invisibili.
+               Sfondo "carta" tenuto fisso color pergamena (NON legato al
+               tema, come .bs-pokemon-card poco sopra — stessa logica: è
+               il materiale fisico della carta, non la console). */
+            background: #f4e8c1;
+        }
         .bs-summary-table th { background: #e6e6e6; }
         .bs-summary-table th, .bs-summary-table td { padding: 3px; }
     </style>
