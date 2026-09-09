@@ -103,3 +103,62 @@ function bustinaImmagineUrl(rarita, nomeFile) {
 function bustinaTestoUrl(rarita, nomeFile) {
     return supabaseClient.storage.from('bustina-testi').getPublicUrl(`${rarita}/${nomeFile}.txt`);
 }
+
+// ── Storage: bucket pubblico 'bustina-assets' — cutscene (2026-09-09) ──
+// Struttura decisa da Claudio in sessione (2026-09-09), tutta dentro una
+// sottocartella dedicata 'cutscene-data/' per isolare "tutto ciò che serve
+// alla cutscene" dal resto del bucket:
+//   cutscene-data/cutscene/mese{M}/giorno{N}.json   (M/N costruiti qui sotto)
+//   cutscene-data/background/...   (libera, il path completo sta SEMPRE
+//   cutscene-data/music/...         dentro il campo del json, es.
+//   cutscene-data/sprite/...        "background/trama1/1.png" — il codice
+//                                    NON deve mai sapere come sono
+//                                    organizzate: si limita a concatenare
+//                                    alla radice 'cutscene-data/'. Vedi
+//                                    bustinaAssetUrl sotto.)
+//   cutscene-data/sfx/strappare.mp3, cutscene-data/sfx/swush.mp3
+//   cutscene-data/quotes/loading_quotes.json
+//
+// Confermato dal json di esempio caricato da Claudio in sessione: i campi
+// background/music/actor.asset dentro i giorno{N}.json contengono GIÀ il
+// path relativo completo (sottocartelle incluse) — bustinaAssetUrl() si
+// limita a concatenarlo, non aggiunge/deduce nessun prefisso.
+
+// URL pubblico del file cutscene per un dato mese/giorno. mese e giorno
+// sono numeri interi (1-based), passati già calcolati/clampati dalla UI
+// (vedi _bustinaMeseCorrente in ui/phone.ui.js — il clamp all'ultimo mese
+// disponibile richiede bustinaCutsceneMesiDisponibili() sotto, PRIMA di
+// chiamare questa).
+function bustinaCutsceneUrl(mese, giorno) {
+    return supabaseClient.storage.from('bustina-assets').getPublicUrl(`cutscene-data/cutscene/mese${mese}/giorno${giorno}.json`);
+}
+
+// Elenca le sottocartelle dentro cutscene-data/cutscene/ per scoprire
+// quanti 'meseN' esistono DAVVERO nel bucket (decisione di Claudio: se
+// mesi_completati+1 supera i mesi disponibili, restare sull'ultimo
+// esistente — serve sapere qual è, non si può indovinare/hardcodare).
+function bustinaCutsceneMesiDisponibili() {
+    return supabaseClient.storage.from('bustina-assets').list('cutscene-data/cutscene', { limit: 1000 });
+}
+
+// URL pubblico di un asset citato DENTRO un giorno{N}.json (background,
+// music, actor.asset) — pathRelativo è il valore letto dal json così
+// com'è (es. "background/trama1/1.png"), concatenato alla radice
+// cutscene-data/ senza alcuna deduzione di cartella.
+function bustinaAssetUrl(pathRelativo) {
+    return supabaseClient.storage.from('bustina-assets').getPublicUrl(`cutscene-data/${pathRelativo}`);
+}
+
+// URL pubblico dei due effetti sonori fissi (taglio busta / swipe carta),
+// hardcoded nel prototipo originale, non citati da nessun json — cartella
+// dedicata 'sfx/' (decisione di Claudio in sessione).
+function bustinaSfxUrl(nomeFile) {
+    return supabaseClient.storage.from('bustina-assets').getPublicUrl(`cutscene-data/sfx/${nomeFile}`);
+}
+
+// URL pubblico delle frasi di caricamento — stessa sottocartella dedicata
+// 'cutscene-data/', in una cartella 'quotes/' propria (decisione di
+// Claudio: tutto ciò che serve alla cutscene sta insieme).
+function bustinaQuotesUrl() {
+    return supabaseClient.storage.from('bustina-assets').getPublicUrl('cutscene-data/quotes/loading_quotes.json');
+}
