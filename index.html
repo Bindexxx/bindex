@@ -3572,27 +3572,63 @@
         .pg-barra-fill { height: 100%; border-radius: 999px; background: var(--primary); }
 
         /* ═══════════════════════════════════════════════════════════════
-           WIDGET BUSTINA — CUTSCENE + APERTURA (2026-09-09)
-           Tutto lo stile del prototipo sbusto-main.zip, RISCRITTO scopato
-           sotto #bustinaCutsceneOverlay (mai selettori nudi come *,
-           body, button, .screen — quelli del prototipo originale
-           colliderebbero col resto del sito, vedi Roadmap_Widget_
-           Bustina_2026-09-07.md, sezione "COSA NON VA PORTATO COSÌ
-           COM'È"). Estetica retro/GameBoy tenuta identica al prototipo
-           SU RICHIESTA ESPLICITA di Claudio ("è una fedele e precisa
-           bozza di come lo voglio") — non integrata col tema pastello
-           di CardSync, è uno stile deliberatamente diverso per questa
-           sola esperienza.
+           WIDGET BUSTINA — CUTSCENE + APERTURA (2026-09-09, ristrutturato
+           2026-09-10: schermata countdown, tap-to-consume sulla pokéball,
+           overlay ancorato alla cornice del telefono invece che a tutto
+           lo schermo, palette derivata dal tema del sito).
+           Stile del prototipo sbusto-main.zip, RISCRITTO scopato sotto
+           #bustinaCutsceneOverlay (mai selettori nudi come *, body,
+           button, .screen). Estetica retro/GameBoy tenuta SU RICHIESTA
+           ESPLICITA di Claudio — non integrata col tema pastello di
+           CardSync nelle FORME (frame/bezel/font), ma nei COLORI sì:
+           le variabili --bs-* sotto derivano da var(--primary) del tema
+           attivo (viola/verde/pokémon) e seguono anche dark-mode "come il
+           resto del sito" (Claudio, 2026-09-10). Toccata SOLO la palette
+           "facile" (sfondo/bordi/box dialoghi/box statistiche/bottoni) —
+           NON la pokéball (rosso/bianco/nero, resta un'icona
+           riconoscibile) e NON i colori di rarità delle carte (portano
+           significato, vedi RARITA_CSS_BUSTINA in phone.ui.js).
            ═══════════════════════════════════════════════════════════ */
         #bustinaCutsceneOverlay {
+            /* Palette GameBoy chiara di default (light mode): plastica e
+               schermo "olive/LCD" tinti dal colore del tema attivo. */
+            --bs-shell: color-mix(in srgb, var(--primary) 18%, #cfcabb);
+            --bs-shell-dark: color-mix(in srgb, var(--primary) 30%, #9c9484);
+            --bs-screen-bg: color-mix(in srgb, var(--primary) 30%, #cdd9ad);
+            --bs-frame-border: color-mix(in srgb, var(--primary) 55%, #3a3a2c);
+            --bs-box-bg: color-mix(in srgb, var(--primary) 22%, #e7e2c9);
+            --bs-text: color-mix(in srgb, var(--primary) 15%, #26301b);
+            --bs-accent: color-mix(in srgb, var(--primary) 55%, #6b5a1a);
+            --bs-btn-bg: color-mix(in srgb, var(--primary) 20%, #dcd6b8);
+        }
+        body.dark-mode #bustinaCutsceneOverlay {
+            /* Palette GameBoy scura (dark mode): frame quasi nero,
+               schermo scuro tinto dal tema, oro come accento — stessa
+               "sensazione" del prototipo originale ma non più fissa. */
+            --bs-shell: #111;
+            --bs-shell-dark: #050505;
+            --bs-screen-bg: color-mix(in srgb, var(--primary) 28%, #140f0a);
+            --bs-frame-border: color-mix(in srgb, var(--primary) 45%, #000);
+            --bs-box-bg: color-mix(in srgb, var(--primary) 24%, #241a12);
+            --bs-text: #f4e8c1;
+            --bs-accent: #ffd700;
+            --bs-btn-bg: color-mix(in srgb, var(--primary) 20%, #2c1c10);
+        }
+        #bustinaCutsceneOverlay {
             display: none;
-            position: fixed;
+            position: absolute; /* ancorato a #phoneScreen (suo genitore
+                                    diretto nel DOM), non più a tutta la
+                                    finestra: "fullscreen" ora significa
+                                    "riempie la cornice esistente del
+                                    telefono", non il viewport del browser
+                                    (Claudio, 2026-09-10 — non negoziabile). */
             inset: 0;
             z-index: 999999;
-            background: #000;
+            background: var(--bs-shell-dark);
             align-items: center;
             justify-content: center;
             font-family: 'Press Start 2P', 'Courier New', monospace;
+            color: var(--bs-text);
         }
         #bustinaCutsceneOverlay.aperto { display: flex; }
         #bustinaCutsceneOverlay * { box-sizing: border-box; user-select: none; }
@@ -3600,25 +3636,38 @@
         #bustinaGbFrame {
             width: 100%;
             height: 100%;
-            background: #111;
+            background: var(--bs-shell);
             display: flex;
             align-items: center;
             justify-content: center;
             position: relative;
-            padding: 10px;
+            overflow: hidden; /* clip di sicurezza sul frame 480x270 prima
+                                  che il calcolo dello scale via JS abbia
+                                  applicato il transform (evita un flash
+                                  di contenuto fuori misura). */
         }
+        /* Canvas di gioco a risoluzione FISSA 480×270: TUTTE le schermate
+           (countdown, pokéball, cutscene, apertura busta, riepilogo)
+           vengono disegnate qui dentro come se questo fosse lo schermo
+           intero, poi l'intero blocco viene ridotto/ingrandito in un colpo
+           solo con transform:scale() calcolato in JS (_bustinaRicalcolaScale
+           in phone.ui.js) per riempire esattamente lo spazio disponibile
+           nella cornice del telefono, a qualunque orientamento/dimensione
+           — bande nere dove serve, MAI markup/coordinate ricalcolate per
+           dimensione reale dello schermo. Necessario perché i movimenti
+           della cutscene sono calcolati in coordinate 0-480/0-270 fisse:
+           cambiare la base con CSS fluido li avrebbe rotti di nuovo
+           (motivo per cui Claudio ha rifiutato l'alternativa fluida). */
         #bustinaScreenWrapper {
-            width: 100%;
-            max-width: 480px;
-            aspect-ratio: 16 / 9;
+            width: 480px;
+            height: 270px;
+            flex: 0 0 auto;
             background: #000;
-            border: 4px solid #1a1a1a;
+            border: 4px solid var(--bs-frame-border);
             border-radius: 8px;
             overflow: hidden;
             position: relative;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            transform-origin: center center;
             box-shadow: 0 10px 30px rgba(0,0,0,0.8);
         }
         #bustinaCloseBtn {
@@ -3627,8 +3676,8 @@
             right: 10px;
             z-index: 30;
             background: rgba(0,0,0,0.6);
-            color: #ffd700;
-            border: 2px solid #ffd700;
+            color: var(--bs-accent);
+            border: 2px solid var(--bs-accent);
             border-radius: 50%;
             width: 26px;
             height: 26px;
@@ -3655,9 +3704,26 @@
         #bustinaCutsceneOverlay .bs-screen.attiva { display: flex; }
 
         #bustinaLoaderScreen {
-            background: #1a140f;
-            color: #f4e8c1;
+            background: var(--bs-screen-bg);
+            color: var(--bs-text);
         }
+        /* ── Schermata countdown: nessuna bustina disponibile ── */
+        #bustinaCountdownScreen { background: var(--bs-screen-bg); color: var(--bs-text); gap: 10px; }
+        .bs-countdown-icona { font-size: 1.6rem; color: var(--bs-accent); opacity: 0.8; }
+        .bs-countdown-frase { font-size: 0.5rem; line-height: 1.5; max-width: 90%; }
+        .bs-countdown-timer {
+            font-family: 'Share Tech Mono', 'Courier New', monospace;
+            font-size: 1.1rem; letter-spacing: 2px; color: var(--bs-accent);
+            text-shadow: 1px 1px #000; margin: 4px 0;
+        }
+        .bs-countdown-sotto { font-size: 0.4rem; opacity: 0.75; margin-bottom: 6px; }
+        .bs-countdown-stats {
+            display: flex; gap: 14px; background: var(--bs-box-bg);
+            border: 2px solid var(--bs-frame-border); border-radius: 6px;
+            padding: 8px 12px; font-size: 0.4rem; text-align: center;
+        }
+        .bs-countdown-stats div { display: flex; flex-direction: column; gap: 3px; }
+        .bs-countdown-stats b { font-size: 0.65rem; color: var(--bs-accent); }
         .bs-pokeball-wrap {
             display: flex;
             flex-direction: column;
@@ -3681,7 +3747,7 @@
             transition: filter 0.3s ease;
         }
         .bs-pokeball-wrap.pronto .bs-pokeball {
-            filter: drop-shadow(0 0 12px #ffd700);
+            filter: drop-shadow(0 0 12px var(--bs-accent));
             animation: bsBounceReady 1s infinite alternate ease-in-out;
         }
         @keyframes bsBounceReady { 0% { transform: translateY(0) scale(1); } 100% { transform: translateY(-5px) scale(1.05); } }
@@ -3703,28 +3769,32 @@
         }
         #bustinaPreloadText {
             font-size: 0.55rem; line-height: 1.3; letter-spacing: 0.5px; text-align: center;
-            color: #ffd700; text-shadow: 1px 1px #000; min-height: 20px; max-width: 100%; word-break: break-word;
+            color: var(--bs-accent); text-shadow: 1px 1px #000; min-height: 20px; max-width: 100%; word-break: break-word;
         }
 
+        /* Non più scalato individualmente: riempie semplicemente il suo
+           .bs-screen genitore, che a sua volta riempie #bustinaScreenWrapper
+           (480×270 fisso) — lo scale unico è applicato una volta sola al
+           wrapper intero (vedi commento sopra #bustinaScreenWrapper). */
         #bustinaCutsceneViewport {
-            width: 480px; height: 270px; position: relative; overflow: hidden;
-            transform-origin: center center;
+            width: 100%; height: 100%; position: relative; overflow: hidden;
         }
-        #bustinaCutsceneScreen { background: #2c221e; color: #f4e8c1; cursor: pointer; padding: 0 !important; }
+        #bustinaCutsceneScreen { background: var(--bs-screen-bg); color: var(--bs-text); cursor: pointer; padding: 0 !important; }
         .bs-actor-sprite { position: absolute; pointer-events: none; z-index: 5; image-rendering: pixelated; object-fit: contain; }
         .bs-stat-box {
-            position: absolute; top: 5px; left: 5px; z-index: 10; background: rgba(44,34,30,0.9);
-            padding: 4px; border-radius: 4px; border: 1px solid #ffd700; font-size: 0.45rem; line-height: 1.4; text-align: left;
+            position: absolute; top: 5px; left: 5px; z-index: 10; background: rgba(0,0,0,0.55);
+            padding: 4px; border-radius: 4px; border: 1px solid var(--bs-accent); font-size: 0.45rem; line-height: 1.4; text-align: left;
+            color: var(--bs-text);
         }
         .bs-dialogue-box {
-            position: absolute; bottom: 8px; left: 15px; width: 450px; min-height: 45px; background: #3b2219;
-            border: 3px solid #ffd700; padding: 6px; z-index: 10; text-align: left; display: none;
+            position: absolute; bottom: 8px; left: 15px; width: 450px; min-height: 45px; background: var(--bs-box-bg);
+            border: 3px solid var(--bs-accent); padding: 6px; z-index: 10; text-align: left; display: none;
         }
-        .bs-speaker-name { font-size: 0.5rem; color: #ffd700; font-weight: bold; margin-bottom: 3px; text-transform: uppercase; }
-        .bs-dialogue-text { font-size: 0.45rem; line-height: 0.65rem; color: #f4e8c1; }
-        .bs-dialogue-hint { font-size: 0.38rem; color: #ffd700; position: absolute; bottom: 2px; right: 4px; }
+        .bs-speaker-name { font-size: 0.5rem; color: var(--bs-accent); font-weight: bold; margin-bottom: 3px; text-transform: uppercase; }
+        .bs-dialogue-text { font-size: 0.45rem; line-height: 0.65rem; color: var(--bs-text); }
+        .bs-dialogue-hint { font-size: 0.38rem; color: var(--bs-accent); position: absolute; bottom: 2px; right: 4px; }
 
-        #bustinaPackScreen { background: #111; color: #fff; overflow: hidden; position: relative; }
+        #bustinaPackScreen { background: var(--bs-shell-dark); color: var(--bs-text); overflow: hidden; position: relative; }
         .bs-sparkles { position: absolute; width: 100%; height: 100%; top: 0; left: 0; pointer-events: none; overflow: hidden; z-index: 20; }
         .bs-firefly {
             position: absolute; width: 4px; height: 4px; background: #ffff88; border-radius: 50%;
@@ -3808,16 +3878,16 @@
 
         #bustinaCutsceneOverlay button {
             font-family: 'Press Start 2P', monospace; padding: 8px 10px; font-size: 0.45rem; cursor: pointer;
-            background: #3d2616; color: #ffcc00; border: 3px solid #ffd700; box-shadow: 2px 2px 0px #111; margin-top: 6px;
+            background: var(--bs-btn-bg); color: var(--bs-accent); border: 3px solid var(--bs-accent); box-shadow: 2px 2px 0px #111; margin-top: 6px;
         }
         #bustinaCutsceneOverlay button:active { transform: translate(1px,1px); box-shadow: 0 0 0 #111; }
 
         #bustinaSummaryScreen {
-            background: #2c221e; color: #f4e8c1; width: 96%; max-height: 96%; padding: 8px; border-radius: 4px;
-            overflow-y: auto; border: 2px solid #ffd700;
+            background: var(--bs-screen-bg); color: var(--bs-text); width: 96%; max-height: 96%; padding: 8px; border-radius: 4px;
+            overflow-y: auto; border: 2px solid var(--bs-accent);
         }
-        .bs-summary-titolo { text-align: center; background: #3b2219; color: #ffd700; font-size: 0.5rem; padding: 4px; margin-bottom: 6px; }
-        .bs-summary-table { width: 100%; border-collapse: collapse; font-size: 0.45rem; color: #000; background: #f4e8c1; }
+        .bs-summary-titolo { text-align: center; background: var(--bs-box-bg); color: var(--bs-accent); font-size: 0.5rem; padding: 4px; margin-bottom: 6px; }
+        .bs-summary-table { width: 100%; border-collapse: collapse; font-size: 0.45rem; color: #000; background: var(--bs-text); }
         .bs-summary-table th { background: #e6e6e6; }
         .bs-summary-table th, .bs-summary-table td { padding: 3px; }
     </style>
@@ -5012,25 +5082,6 @@
                 <button class="btn-secondary" onclick="segnalaCaterpie()"><i class="fa-solid fa-bug"></i> Segnala un Caterpie</button>
             </div>
 
-            <!-- ═══ TEST BUSTINA (ADMIN, DIAGNOSTICO — 2026-09-07) ═══
-                 Nessuna UI vera (niente cutscene/laser/album): mostra solo
-                 il JSON grezzo ritornato dalle RPC, per verificare che il
-                 sito riesca a chiamarle. Nascosto di default; mostrato via
-                 JS solo se profiles.role='admin' (vedi initTestBustinaAdmin
-                 più sotto, chiamata da window.onload). DA RIMUOVERE quando
-                 arriva ui/bustina.ui.js definitivo (roadmap, passi 8-9). -->
-            <div class="settings-card" id="bustinaTestAdminGroup" style="display:none;">
-                <h3 style="margin-bottom: 0.3rem; color: var(--text-dark); display: flex; align-items: center; gap: 0.6rem; font-size: 1.15rem; font-weight: 800;">
-                    <i class="fa-solid fa-flask" style="color: var(--primary);"></i> Test Bustina (admin)
-                </h3>
-                <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 1rem;">Diagnostico temporaneo — chiama le RPC reali su produzione (xpfibrzsffurdlypxnrw). Visibile solo agli admin.</p>
-                <div style="display:flex; gap:0.6rem; flex-wrap:wrap; margin-bottom: 1rem;">
-                    <button class="btn-secondary" onclick="testBustinaStato()"><i class="fa-solid fa-gauge"></i> Stato bustina</button>
-                    <button class="btn-secondary" onclick="testBustinaApri()"><i class="fa-solid fa-box-open"></i> Apri bustina</button>
-                    <button class="btn-secondary" onclick="testBustinaApriForzata()"><i class="fa-solid fa-crown"></i> Forza Leggendaria</button>
-                </div>
-                <pre id="bustinaTestOutput" style="white-space:pre-wrap; word-break:break-word; font-size:0.75rem; background:rgba(0,0,0,0.05); padding:0.7rem; border-radius:8px; max-height:300px; overflow:auto; margin:0;">In attesa...</pre>
-            </div>
         </div>
 
     </div>
@@ -5487,9 +5538,10 @@
     <script src="data/cards.repository.js"></script>
     <script src="data/queue.repository.js"></script>
     <script src="data/binder.repository.js"></script>
-    <!-- TEMPORANEO (2026-09-07): repository minimo per il blocco diagnostico
-         "Test Bustina (admin)" in #impostazioni. Verrà sostituito dal file
-         definitivo del passo 8 della roadmap Widget Bustina. -->
+    <!-- data/bustina.repository.js: usata da renderPaginaBustina()/motore
+         cutscene in ui/phone.ui.js (widget "Bustina"). I bottoni
+         diagnostici admin che stavano in #impostazioni sono stati tolti
+         il 2026-09-10 (Claudio: la UI vera è ormai completa). -->
     <script src="data/bustina.repository.js"></script>
     <script src="data/photos.repository.js"></script>
     <script src="data/prices.repository.js"></script>
@@ -5569,49 +5621,6 @@
         // gira nel browser di chiunque visiti il sito.
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-        // ── TEST BUSTINA (ADMIN, DIAGNOSTICO — 2026-09-07) ──────────────────────
-        // Vedi commento sul blocco #bustinaTestAdminGroup in #impostazioni.
-        // Chiamata da window.onload, DOPO controlloIngressoCardsync() (cioè
-        // dopo che login/estensione sono risolti) — prima authGetUserId()
-        // avrebbe potuto restituire null se il login non era ancora
-        // completato. DA RIMUOVERE insieme al blocco HTML quando arriva
-        // ui/bustina.ui.js definitivo.
-        async function initTestBustinaAdmin() {
-            const userId = await authGetUserId();
-            if (!userId) return;
-            const { data, error } = await authGetRuolo(userId);
-            if (error) {
-                console.error('initTestBustinaAdmin: errore lettura ruolo', error);
-                return;
-            }
-            if (data?.role === 'admin') {
-                document.getElementById('bustinaTestAdminGroup').style.display = 'block';
-            }
-        }
-
-        function _bustinaTestScrivi(risultato) {
-            const el = document.getElementById('bustinaTestOutput');
-            el.textContent = JSON.stringify(risultato, null, 2);
-        }
-
-        async function testBustinaStato() {
-            _bustinaTestScrivi('...');
-            const { data, error } = await bustinaStatoLeggi();
-            _bustinaTestScrivi(error ? { errore: error.message, dettagli: error } : data);
-        }
-
-        async function testBustinaApri() {
-            _bustinaTestScrivi('...');
-            const { data, error } = await bustinaApri();
-            _bustinaTestScrivi(error ? { errore: error.message, dettagli: error } : data);
-        }
-
-        async function testBustinaApriForzata() {
-            _bustinaTestScrivi('...');
-            const { data, error } = await bustinaApriForzata('leggendarie');
-            _bustinaTestScrivi(error ? { errore: error.message, dettagli: error } : data);
-        }
-
         // ── AVVIO APP — punto d'ingresso unico, eseguito al caricamento pagina ──
         window.onload = async () => {
             // Ripristina Dark Mode e Temi salvati
@@ -5635,9 +5644,6 @@
             // prosegue direttamente (vedi funzione più sotto per i dettagli
             // di ciascun caso).
             await controlloIngressoCardsync();
-
-            // TEMPORANEO — vedi commento sulla funzione più sopra.
-            await initTestBustinaAdmin();
 
             // Home a widget (sessione 2026-08-23) — parte in parallelo,
             // non in sequenza dopo il controllo: il pannello #cardsyncPanel
