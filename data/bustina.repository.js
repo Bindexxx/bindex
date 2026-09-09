@@ -162,3 +162,16 @@ function bustinaSfxUrl(nomeFile) {
 function bustinaQuotesUrl() {
     return supabaseClient.storage.from('bustina-assets').getPublicUrl('cutscene-data/quotes/loading_quotes.json');
 }
+
+// URL pubblico delle frasi per la schermata "nessuna bustina disponibile"
+// (countdown pre-rinnovo, 2026-09-10). File separato da loading_quotes.json
+// (stessa cartella 'quotes/'): sono frasi diverse per tono/contesto (non
+// "sto aprendo", ma "aspetta") — tenerle divise evita che le due schermate
+// peschino a caso l'una dalle frasi dell'altra. Formato atteso: array JSON
+// di sole stringhe, SENZA alcun segnaposto tipo [tempo] — il countdown vero
+// e proprio (HH:MM:SS) è renderizzato a parte dal codice, la frase è solo
+// atmosfera (decisione di Claudio: "più comodo se nel json scrivo solo
+// frasi e niente codice [tempo]").
+function bustinaCountdownQuotesUrl() {
+    return supabaseClient.storage.from('bustina-assets').getPublicUrl('cutscene-data/quotes/countdown_quotes.json');
+}
