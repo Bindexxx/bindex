@@ -1139,25 +1139,33 @@ const RIGHE_MAX_WIDGET = 24;
 // Non abbassare questa soglia senza rendere la sfera elastica.
 const CELLE_MIN_PER_SFERA = 3;
 
-// STANDARD 2×2 IN ZONA ICONA (Claudio, 2026-09-10, dallo screenshot del
-// widget "Prezzi" ridotto a una striscia larga 1 cella ma alta parecchie
-// righe): la modalita' icona (vedi _iconaStatica sotto, stessa soglia)
-// nascondeva gia' il contenuto ricco, ma i due assi restavano liberi di
-// muoversi indipendenti — una cella poteva finire 1x6 o 6x1, un buco vuoto
-// enorme intorno a un'iconcina minuscola. Ora quando UN asse entra in zona
-// icona, ANCHE l'altro si ferma a un massimo di 2 celle: l'icona resta
-// sempre un quadratino compatto (2x2 o piu' piccolo), mai una striscia.
-// Standard fisso uguale per tutti i widget per ora — Claudio si e'
-// riservato di valutare eccezioni per singolo widget in futuro (stesso
-// pattern di 'tagliaDefault' nel catalogo, non ancora fatto).
-// Applicato in due punti SOLI: _onResizeHandlePointerMove (non si puo'
-// creare uno stato fuori standard trascinando) e la migrazione dentro
+// STANDARD 2×2 IN ZONA ICONA (Claudio, 2026-09-10). La modalita' icona
+// (vedi _iconaStatica sotto, stessa soglia) nasconde gia' il contenuto
+// ricco, ma i due assi restavano liberi di muoversi indipendenti fino a
+// un minimo di 1 cella — due bug distinti, corretti in due momenti:
+//   1) una cella poteva finire 1x6 o 6x1 (striscia lunga e vuota) — primo
+//      giro di fix, sotto.
+//   2) BUG (Claudio, screenshot 2026-09-10: "mi permette di rendere i
+//      widget troppo piccoli"): il fix del punto 1 usava Math.min(x, 2),
+//      che puo' SOLO abbassare un valore gia' grande — su un asse gia'
+//      piccolo (es. 1) non fa nulla, quindi 1x1 restava raggiungibile
+//      trascinando fino in fondo. Math.min non e' un pavimento, e' un
+//      tetto: serviva FISSARE la taglia, non limitarla solo dall'alto.
+// Ora: in zona icona la taglia e' SEMPRE esattamente 2x2, mai piu' piccola
+// e mai piu' "a striscia" — uno standard fisso, non un intervallo.
+// Standard uguale per tutti i widget per ora — Claudio si e' riservato di
+// valutare eccezioni per singolo widget in futuro (stesso pattern di
+// 'tagliaDefault' nel catalogo, non ancora fatto).
+// Applicata in TRE punti: _onResizeHandlePointerMove (non si puo' creare
+// uno stato fuori standard trascinando), la migrazione dentro
 // _caricaLayoutWidget() (corregge una volta sola, e salva, chi aveva gia'
-// uno stato fuori standard da prima di questa regola).
+// uno stato fuori standard da prima di questa regola) e _tagliaEffettiva
+// (rete di sicurezza a ogni render, nel caso qualche altro punto in
+// futuro scriva w.size senza passare da qui).
 function _correggiTagliaZonaIcona(col, row) {
     const zonaIcona = col < CELLE_MIN_PER_SFERA || row < 2;
     if (!zonaIcona) return { col, row };
-    return { col: Math.min(col, 2), row: Math.min(row, 2) };
+    return { col: 2, row: 2 };
 }
 
 // Versione del formato di _layoutWidget salvato in cardsyncWidgetLayout.
@@ -1335,10 +1343,17 @@ function _misuraPaginaWidget() {
 // corpo pensato per la taglia grande, sovrapponendosi comunque.
 function _tagliaEffettiva(w, misura) {
     const t = _leggiTaglia(w.size);
-    return {
-        col: Math.max(1, Math.min(t.col, misura.colonne)),
-        row: Math.max(1, Math.min(t.row, misura.righe)),
-    };
+    let col = Math.max(1, Math.min(t.col, misura.colonne));
+    let row = Math.max(1, Math.min(t.row, misura.righe));
+    ({ col, row } = _correggiTagliaZonaIcona(col, row));
+    // Rete di sicurezza finale: lo standard 2x2 e' un PAVIMENTO, ma non
+    // deve mai superare lo spazio VERO disponibile in questo render —
+    // altrimenti su una griglia estrema (meno di 2 colonne/righe reali)
+    // si ricrea esattamente il bug del widget che sparisce oltre i bordi
+    // che _tagliaEffettiva doveva risolvere in primo luogo.
+    col = Math.min(col, misura.colonne);
+    row = Math.min(row, misura.righe);
+    return { col, row };
 }
 
 // Distribuisce i widget nelle pagine rispettando la capienza.
