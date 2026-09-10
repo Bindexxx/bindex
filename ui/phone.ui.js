@@ -3772,21 +3772,43 @@ function _nascondiPeek() {
 }
 
 // ── APERTURA/CHIUSURA DETTAGLIO FULLSCREEN DENTRO IL FRAME ───────────────
+// Rettangolo REALE dello schermo dentro la cornice pokedex (#phoneScreen)
+// — unica fonte di verità per chiunque debba starci dentro: sia .container
+// (ogni widget, sotto) sia l'overlay bustina (vedi _bustinaRicalcolaScale
+// in fondo al file). Un solo posto dove può disallinearsi, non due.
+function _rettangoloSchermoCornice() {
+    const schermo = document.getElementById('phoneScreen');
+    if (!schermo) return null;
+    const rect = schermo.getBoundingClientRect();
+    const raggio = getComputedStyle(schermo).borderRadius;
+    return { top: rect.top, left: rect.left, width: rect.width, height: rect.height, borderRadius: raggio };
+}
+
+// RISTRUTTURATA 2026-09-10 (Claudio, istruzione valida per TUTTO il sito,
+// non solo bustina): "cornice pokedex" (#phoneFrameBox, l'immagine rosso/
+// bianco) deve sempre occupare il massimo spazio disponibile, e TUTTO
+// ciò che il sito mostra deve restare CONTENUTO al suo interno. Questo
+// ANNULLA la decisione del 2026-08-30 ("il cerchio ma a schermo intero")
+// che mandava .container a tutta la finestra del browser ignorando
+// completamente la cornice — da oggi .container torna a essere agganciato
+// al rettangolo REALE di #phoneScreen (lo "schermo" ritagliato dentro la
+// cornice pokedex), esattamente per ogni widget (missioni/valore/
+// wishlist/doppioni/sealed/set/binder/bustina/impostazioni, tutti passano
+// da qui). Effetto collaterale ACCETTATO da Claudio: su desktop con
+// finestre larghe, i widget con tabelle/griglie lunghe (binder, set,
+// traguardi, prezzi — segnalati esplicitamente, vedi risposta di Claudio)
+// avranno meno spazio orizzontale/verticale reale e faranno più scroll
+// interno — nessuna eccezione per ora, da verificare widget per widget
+// quando Claudio li prova dal vivo.
 function _posizionaContainerNelloSchermo() {
     const container = document.querySelector('.container');
-    if (!container) return;
-    // MODIFICATO (2026-08-30, Claudio: "il cerchio ma a schermo intero"):
-    // prima il container era confinato al rettangolo di #phoneScreen (la
-    // cornice del telefono simulato) — ora copre l'intera finestra del
-    // browser. Il punto di origine del cerchio (--pokeball-x/-y, impostato
-    // da _impostaOrigineAnimazione) resta relativo al click reale
-    // dell'utente, quindi funziona invariato. Nessun bordo arrotondato:
-    // a schermo intero non c'è una cornice da rispettare.
-    container.style.top = '0px';
-    container.style.left = '0px';
-    container.style.width = window.innerWidth + 'px';
-    container.style.height = window.innerHeight + 'px';
-    container.style.borderRadius = '0px';
+    const r = _rettangoloSchermoCornice();
+    if (!container || !r) return;
+    container.style.top = r.top + 'px';
+    container.style.left = r.left + 'px';
+    container.style.width = r.width + 'px';
+    container.style.height = r.height + 'px';
+    container.style.borderRadius = r.borderRadius;
 }
 
 // ── APERTURA/CHIUSURA — animazione "a Pokéball" ──────────────────────────
@@ -5488,19 +5510,37 @@ function _bustinaMostraSchermata(id) {
 // Un solo fattore di scala per TUTTA l'esperienza (countdown, pokéball,
 // cutscene, laser, swipe, riepilogo): #bustinaScreenWrapper è un canvas
 // fisso 480×270 (vedi index.html), qui lo si riduce/ingrandisce in blocco
-// per riempire lo spazio disponibile dentro #bustinaGbFrame — che a sua
-// volta riempie #bustinaCutsceneOverlay, ancorato a #phoneScreen (la
-// cornice del telefono già esistente sul sito, non più tutto lo schermo
-// del browser). Richiesta esplicita e non negoziabile di Claudio
-// (2026-09-10): la pagina resta "calcolata" a 480×270 e viene solo
-// zoomata, mai ricalcolata per la dimensione reale — è l'unico modo che
-// non rompe la matematica dei movimenti della cutscene. _bustinaScale
-// viene riusato anche da laser/drag per tradurre le coordinate del tocco
-// (che arrivano in pixel reali, già scalati) in coordinate del canvas
-// 480×270 non scalato — vedi _bustinaLaserStart/Move.
+// per riempire lo spazio disponibile dentro #bustinaGbFrame.
+// RIVISTO 2026-09-10 (Claudio: "cornice pokedex" — tutto ciò che il sito
+// mostra deve starci dentro, non a tutta la finestra del browser):
+// l'overlay stesso viene ora agganciato al rettangolo REALE di
+// #phoneScreen tramite _rettangoloSchermoCornice() (stessa funzione usata
+// da _posizionaContainerNelloSchermo per .container, unica fonte di
+// verità) invece di riempire l'intero viewport con "inset:0". Resta
+// position:fixed (non absolute) apposta: .container ha un padding
+// (calc(2.6rem + safe-area) 1rem 1rem) che sposterebbe verso l'interno
+// un discendente position:absolute — da fixed l'overlay è un fratello di
+// .container nello stesso contesto di stacking di radice, ignora quel
+// padding e combacia esattamente col rettangolo schermo, bordo a bordo.
+// _bustinaScale resta calcolato sullo spazio DISPONIBILE dentro quel
+// rettangolo (non più tutta la finestra) — richiesta esplicita e non
+// negoziabile di Claudio: la pagina resta "calcolata" a 480×270 e viene
+// solo zoomata, mai ricalcolata per la dimensione reale. _bustinaScale è
+// riusato anche da laser/drag per tradurre le coordinate del tocco in
+// coordinate del canvas 480×270 non scalato — vedi _bustinaLaserStart/Move.
 function _bustinaRicalcolaScale() {
     const overlay = document.getElementById('bustinaCutsceneOverlay');
     if (!overlay || !overlay.classList.contains('aperto')) return;
+
+    const r = _rettangoloSchermoCornice();
+    if (r) {
+        overlay.style.top = r.top + 'px';
+        overlay.style.left = r.left + 'px';
+        overlay.style.width = r.width + 'px';
+        overlay.style.height = r.height + 'px';
+        overlay.style.borderRadius = r.borderRadius;
+    }
+
     const frame = document.getElementById('bustinaGbFrame');
     const wrapper = document.getElementById('bustinaScreenWrapper');
     if (!frame || !wrapper) return;
