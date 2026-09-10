@@ -1279,6 +1279,17 @@ const MOTORE_MISSIONI = {
             // l'aggancio diretto. Zittisce solo un avviso fuorviante che
             // segnalava un buco senza mai aver avuto effetti pratici.
             layout_modificato_periodo: 0,
+            // OTTIMIZZAZIONE (Claudio, 2026-09-10, dallo screenshot Network
+            // con decine di POST 409 su traguardi_riscossi): il dato per
+            // saltare i traguardi GIA' sbloccati prima di ritentare l'insert
+            // era già calcolato qui sopra (_idsTraguardiRiscossi, oggi usato
+            // solo per categorie/percentuale) — semplicemente non veniva mai
+            // restituito. Esposto qui con underscore iniziale apposta: non è
+            // una metrica da confrontare con un operatore in valuta() (nessun
+            // catalogo la referenzia come 'metrica'), è solo dato di servizio
+            // per _valutaEAssegnaUnGiro sotto. Zero query in più: stesso giro
+            // di Promise.all di sempre, solo un valore in più esposto.
+            _traguardiRiscossiIds: _idsTraguardiRiscossi,
         };
     },
 
@@ -1344,7 +1355,17 @@ const MOTORE_MISSIONI = {
             m.finestra === 'una_tantum' || (pool[m.finestra] || []).some(p => p.id === m.id)
         );
         const missioniSoddisfatte = inGioco.filter(m => this.valuta(m, dati));
-        const traguardiSoddisfatti = this.valutaTraguardi(dati);
+        // FIX (Claudio, 2026-09-10): prima si ritentava l'insert per OGNI
+        // traguardo soddisfatto, inclusi quelli sbloccati mesi fa — 409
+        // garantito e ignorato, ma pur sempre una richiesta di rete sprecata
+        // ad ogni apertura della pagina Missioni, per sempre. Il filtro qui
+        // usa lo stesso identico elenco già raccolto in raccogliDati()
+        // (dati._traguardiRiscossiIds, vedi sopra) — nessuna query in più.
+        // Il vincolo UNIQUE lato DB resta comunque la vera rete di
+        // sicurezza anti-doppio-accredito (questo filtro è solo per non
+        // sprecare chiamate su casi che sappiamo già essere no-op).
+        const _giaRiscossi = new Set(dati._traguardiRiscossiIds || []);
+        const traguardiSoddisfatti = this.valutaTraguardi(dati).filter(t => !_giaRiscossi.has(t.id));
 
         const nuoveMissioni = [];
         for (const m of missioniSoddisfatte) {
