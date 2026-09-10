@@ -940,10 +940,33 @@
         @keyframes phoneSyncPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
 
         .phone-home-header {
-            display: flex; align-items: center;
+            display: flex; align-items: center; justify-content: space-between;
             margin-bottom: 0.9rem;
         }
         .phone-home-header .logo { font-size: 0.72rem; }
+
+        /* Bottone "Modifica" — FIX (Claudio, 2026-09-10): prima l'unico
+           modo per entrare in modifica widget standando in home era la
+           tendina della status bar (CSBar), perché l'equivalente
+           #btnModificaWidgetHome viveva tra le iconcine 28x28 di
+           .phone-barra-stato-destra — affollata (suoni/densità/
+           impostazioni/profilo), la matita ci si perdeva in mezzo.
+           Spostato qui, nell'header della home, con testo oltre
+           all'icona: un bottone che non richiede di sapere che esiste,
+           si vede. Stesso #btnModificaWidgetHome di sempre (stesso id),
+           quindi toggleModificaWidgetHome() in ui/phone.ui.js non ha
+           bisogno di nessuna modifica per trovarlo. */
+        .btn-modifica-widget-home {
+            display: flex; align-items: center; gap: 0.35rem;
+            background: var(--card-bg); border: 1px solid var(--border-color);
+            color: var(--text-muted); border-radius: 999px;
+            padding: 0.4rem 0.8rem; font-size: 0.75rem; font-weight: 600;
+            cursor: pointer; white-space: nowrap;
+        }
+        .btn-modifica-widget-home i { font-size: 0.72rem; }
+        .btn-modifica-widget-home.attivo {
+            background: var(--primary); color: #fff; border-color: var(--primary);
+        }
 
         /* GRIGLIA A 6 COLONNE (Claudio, 2026-09-03) — prima erano 2.
            Con 2 colonne una cella era mezzo schermo: le icone non potevano
@@ -4092,9 +4115,6 @@
                         <button id="btnDensitaWidgetHome" class="nascosto-in-home" onclick="toggleDensitaWidgetHome()" title="Densità compatta/comoda">
                             <i class="fa-solid fa-table-cells-large"></i>
                         </button>
-                        <button id="btnModificaWidgetHome" class="nascosto-in-home" onclick="toggleModificaWidgetHome()" title="Personalizza i widget">
-                            <i class="fa-solid fa-pen"></i>
-                        </button>
                         <button id="btnImpostazioniBarra" onclick="apriDettaglioWidget('impostazioni', event)" title="Impostazioni">
                             <i class="fa-solid fa-gear"></i>
                         </button>
@@ -4146,6 +4166,9 @@
                                 <img src="favicon.ico" alt="Favicon">
                                 <span class="logo-text">CardSync Pro</span>
                             </div>
+                            <button id="btnModificaWidgetHome" class="btn-modifica-widget-home" onclick="toggleModificaWidgetHome()" title="Personalizza i widget">
+                                <i class="fa-solid fa-pen"></i><span>Modifica</span>
+                            </button>
                         </div>
                         <div id="phoneWidgetPagine"></div>
                     </div>
