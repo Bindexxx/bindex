@@ -840,10 +840,22 @@
             left: 0; right: 0;
             bottom: calc(0.5rem + env(safe-area-inset-bottom));
             display: flex;
+            align-items: center;
             justify-content: center;
-            gap: 0.4rem;
+            gap: 0.5rem;
             pointer-events: auto;
             z-index: 5;
+        }
+        /* Pillola visibile (Claudio: "evidenzia chiaramente in basso quante
+           pagine ci sono") — prima erano puntini nudi al 30% di opacità,
+           facili da scambiare per una decorazione invece che un controllo.
+           Uno sfondo riconoscibile li rende un elemento dell'interfaccia. */
+        .widget-puntini-pillola {
+            display: flex; align-items: center; gap: 0.4rem;
+            background: color-mix(in srgb, var(--card-bg) 85%, transparent);
+            border: 1px solid var(--border-color);
+            border-radius: 999px;
+            padding: 0.35rem 0.6rem;
         }
         .widget-puntino {
             width: 7px; height: 7px;
@@ -856,6 +868,17 @@
             background: var(--primary);
             transform: scale(1.35);
         }
+        /* Frecce ai lati — un modo di cambiare pagina che non richiede di
+           scoprire lo swipe orizzontale (comodo anche col mouse su
+           desktop, dove trascinare per scorrere non è sempre naturale). */
+        .widget-pagina-freccia {
+            width: 26px; height: 26px; border-radius: 50%;
+            background: var(--card-bg); border: 1px solid var(--border-color);
+            color: var(--text-muted); font-size: 0.68rem;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer;
+        }
+        .widget-pagina-freccia:disabled { opacity: 0.25; cursor: default; }
 
         /* IN MODIFICA IL TRASCINAMENTO DEVE VINCERE sullo scorrimento
            orizzontale: senza questa riga, trascinare un widget verso
@@ -1113,6 +1136,15 @@
             min-height: 0;
             overflow: hidden;
         }
+        /* FIX (Claudio, 2026-09-10, menu a comparsa "sposta"): overflow:
+           hidden qui sopra serve a tenere pulita l'icona in visuale
+           normale, ma clipperebbe il menu ⋮ (position:absolute, sporge
+           apposta oltre i bordi di una tessera così piccola) proprio sulle
+           tessere 2x2 dove serve di più — sono quasi sempre in modalità
+           icona (CELLE_MIN_PER_SFERA=3). Durante la modifica il
+           contenimento non serve comunque (l'icona statica non ha nulla
+           che debordi da solo), quindi si toglie solo lì. */
+        .in-modifica-widget .widget-tile-mini { overflow: visible; }
         /* SFERA FERMA a taglia minima. Il difetto dello screenshot del
            2026-09-03 non era la sfera in se' ma la sua MISURA: --ball-misura
            e' fissa a 90px, e in una cella da ~50px (37 in orizzontale) le
@@ -1225,7 +1257,7 @@
         .widget-edit-controls {
             position: absolute; top: 0.4rem; right: 0.4rem;
             display: flex; gap: 0.3rem;
-            z-index: 2;
+            z-index: 3;
         }
         .widget-edit-controls button {
             width: 22px; height: 22px; border-radius: 50%;
@@ -1235,6 +1267,37 @@
         }
         .widget-edit-controls button:disabled { opacity: 0.3; cursor: default; }
         .widget-edit-remove { color: var(--danger) !important; border-color: var(--danger) !important; }
+
+        /* Menu a comparsa "sposta" — PIANO B (Claudio, 2026-09-10): prima
+           su/giù/pagina prec/succ erano 4 bottoni SEMPRE visibili sulla
+           tessera, insieme a X e alla maniglia di resize — 5 elementi da
+           22px non ci stavano in una tessera piccola (lo standard 2x2 li
+           rende comuni) e si accavallavano con quelli della tessera
+           vicina. Il trascinamento è già il modo primario per riordinare
+           (vedi _onWidgetPointerDown in ui/phone.ui.js): questi 4 restano
+           disponibili dietro il bottone ⋮, per chi preferisce non
+           trascinare. Overflow visibile apposta: il menu può sporgere
+           oltre i bordi di una tessera piccola, è normale per un
+           dropdown. */
+        .widget-menu-sposta {
+            position: absolute; top: 2.1rem; right: 0.4rem;
+            display: none; flex-direction: column; gap: 0.2rem;
+            background: var(--card-bg); border: 1px solid var(--border-color);
+            border-radius: 10px; padding: 0.3rem;
+            box-shadow: var(--shadow-soft);
+            min-width: 148px;
+            z-index: 4;
+        }
+        .widget-menu-sposta.aperto { display: flex; }
+        .widget-menu-sposta button {
+            display: flex; align-items: center; gap: 0.5rem;
+            background: none; border: 0; border-radius: 6px;
+            color: var(--text-dark); font-size: 0.72rem; font-weight: 600;
+            padding: 0.4rem 0.5rem; text-align: left; cursor: pointer;
+        }
+        .widget-menu-sposta button:hover { background: var(--bg-color); }
+        .widget-menu-sposta button:disabled { opacity: 0.35; cursor: default; }
+        .widget-menu-sposta button i { width: 14px; color: var(--text-muted); }
 
         /* Maniglia di ridimensionamento — solo in modalità modifica, angolo
            in basso a destra, stile "grip" industriale coerente con la
