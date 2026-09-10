@@ -1354,7 +1354,25 @@ const MOTORE_MISSIONI = {
         const inGioco = CATALOGO_MISSIONI.filter(m =>
             m.finestra === 'una_tantum' || (pool[m.finestra] || []).some(p => p.id === m.id)
         );
-        const missioniSoddisfatte = inGioco.filter(m => this.valuta(m, dati));
+
+        // FIX (Claudio, 2026-09-10, screenshot Network: decine di POST 409
+        // su missioni_completate) — stesso principio del fix già fatto sopra
+        // per traguardi_riscossi: prima si ritentava l'insert per OGNI
+        // missione soddisfatta, incluse quelle già completate per il
+        // periodo corrente. Capita soprattutto con le una_tantum a metrica
+        // monotona (es. giorni_consecutivi, missioni_completate_totale):
+        // una volta soddisfatte restano soddisfatte per sempre, quindi
+        // senza questo filtro vengono ritentate a ogni apertura della
+        // pagina Missioni, per sempre. Un solo IN(...) sui periodo
+        // DAVVERO in gioco ora (al massimo 4 valori distinti), non una
+        // query per missione.
+        const periodiInGioco = [...new Set([oggi.periodo, settimana.periodo, mese.periodo, 'sempre'])];
+        const { data: righeGiaCompletate, error: errGiaCompletate } = await missioniCompletateIdPerPeriodi(userId, periodiInGioco);
+        if (errGiaCompletate) console.warn('[missioni] verifica missioni già completate:', errGiaCompletate.message);
+        const _giaCompletate = new Set((righeGiaCompletate || []).map(r => r.missione_id + '|' + r.periodo));
+
+        const missioniSoddisfatte = inGioco.filter(m => this.valuta(m, dati))
+            .filter(m => !_giaCompletate.has(m.id + '|' + this.periodoCorrente(m.finestra).periodo));
         // FIX (Claudio, 2026-09-10): prima si ritentava l'insert per OGNI
         // traguardo soddisfatto, inclusi quelli sbloccati mesi fa — 409
         // garantito e ignorato, ma pur sempre una richiesta di rete sprecata
