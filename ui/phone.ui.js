@@ -1288,6 +1288,38 @@ function _misuraPaginaWidget() {
     return { colonne, righe };
 }
 
+// TAGLIA EFFETTIVA DI RENDERING (Claudio, 2026-09-10 — fix "widget che
+// diventano non piu' visibili se ridimensionati oltre la misura dello
+// schermo"): la taglia salvata (w.size) resta l'INTENZIONE dell'utente,
+// esattamente come il campo 'pagina' per il traboccamento (vedi commento
+// sopra _distribuisciWidgetInPagine) — non viene mai riscritta qui. Quello
+// che si vede e' invece sempre clampato alla griglia VERA misurata in
+// QUESTO render.
+//
+// PRIMA: la classe CSS widget-col-N/widget-row-N (che decide lo
+// grid-column/grid-row span) veniva costruita da _leggiTaglia(w.size)
+// grezza, il cui unico tetto era COLONNE_MAX_WIDGET=36/RIGHE_MAX_WIDGET=24
+// — assoluto, scollegato dalle colonne VERE della griglia in quel momento
+// (6 fisse in verticale, elastiche in orizzontale — vedi CSS
+// .widget-griglia). Un widget con uno span maggiore delle colonne
+// disponibili non viene "clippato" da CSS Grid: viene spinto fuori
+// dall'area visibile. Capitava tipicamente ridimensionando su una griglia
+// larga (tante colonne) e poi riaprendo su una piu' stretta (rotazione,
+// resize della finestra desktop).
+//
+// ORA: ogni chiamante usa QUESTA funzione al posto di _leggiTaglia(w.size)
+// per tutte le decisioni visive della tessera (span CSS, soglia icona
+// statica, soglia incisione, corpo "grande") — mai solo per lo span,
+// altrimenti la tessera potrebbe apparire clampata in larghezza ma con un
+// corpo pensato per la taglia grande, sovrapponendosi comunque.
+function _tagliaEffettiva(w, misura) {
+    const t = _leggiTaglia(w.size);
+    return {
+        col: Math.max(1, Math.min(t.col, misura.colonne)),
+        row: Math.max(1, Math.min(t.row, misura.righe)),
+    };
+}
+
 // Distribuisce i widget nelle pagine rispettando la capienza.
 // Riproduce l'algoritmo "sparse" di CSS Grid (auto-flow row): un cursore
 // che non torna mai indietro, e ogni elemento nel primo posto libero a
@@ -1461,6 +1493,12 @@ function _aggiornaPuntiniPagine() {
 }
 
 let _layoutWidget = null; // [{id, visibile, size, pagina}], ordine = ordine di visualizzazione
+// userId risolto l'ultima volta che il layout e' stato caricato — cache
+// SOLO per evitare un authGetUserId() (async) ad ogni singolo salvataggio
+// (drag/resize possono chiamare _salvaLayoutWidget() molte volte al
+// secondo, e quella deve restare sincrona). Impostata SOLO da
+// _caricaLayoutWidget(), che gira sempre prima di qualunque salvataggio.
+let _layoutWidgetUserId = null;
 let _editModeWidget = false;
 let _densitaCompatta = false;
 let _pollingWidgetInterval = null;
@@ -1477,10 +1515,28 @@ function _nuovoInstanceId() {
     return 'w_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8);
 }
 
-// ── LAYOUT: caricamento/salvataggio per-dispositivo ──────────────────────
-function _caricaLayoutWidget() {
+// ── LAYOUT: caricamento/salvataggio per-utente E per-dispositivo ─────────
+// AGGIORNATO 2026-09-10 (Claudio): prima la chiave era unica per
+// dispositivo (localStorage 'cardsyncWidgetLayout'), quindi utenti diversi
+// sullo stesso PC/browser condividevano — e si sovrascrivevano — lo stesso
+// layout. Ora la chiave e' scoped per userId (vedi
+// data/preferences.repository.js): serve risolverlo con authGetUserId()
+// (async), quindi la funzione e' diventata async — entrambi i chiamanti
+// (riga ~2954 e initPhoneShell) sono gia' dentro funzioni async, nessun
+// altro punto la chiamava.
+async function _caricaLayoutWidget() {
+    const userId = await authGetUserId();
+    _layoutWidgetUserId = userId || null;
+    if (!_layoutWidgetUserId) {
+        // Nessun utente risolto (non dovrebbe succedere qui, la home a
+        // widget e' dietro login) — layout di default SENZA salvarlo: non
+        // c'e' una chiave utente su cui scriverlo.
+        _layoutWidget = ORDINE_WIDGET_DEFAULT.map(id => ({ id, instanceId: _nuovoInstanceId(), visibile: true, size: '3x2', mini: false, cartaId: null, pagina: 0, v: VERSIONE_LAYOUT_WIDGET }));
+        return;
+    }
+
     let salvato = null;
-    try { salvato = JSON.parse(prefWidgetLayoutGet() || 'null'); } catch (_) { salvato = null; }
+    try { salvato = JSON.parse(prefWidgetLayoutGet(_layoutWidgetUserId) || 'null'); } catch (_) { salvato = null; }
 
     if (!Array.isArray(salvato) || salvato.length === 0) {
         // '3x2' = il vecchio '1x1' nella griglia a 6 colonne: mezza
@@ -1539,7 +1595,12 @@ function _caricaLayoutWidget() {
 // seleziona carta Vetrina, resize, riordino drag) sono azioni reali
 // dell'utente, default true.
 function _salvaLayoutWidget(daAzioneUtente = true) {
-    prefWidgetLayoutSet(JSON.stringify(_layoutWidget));
+    // _layoutWidgetUserId e' impostato da _caricaLayoutWidget(), che gira
+    // sempre prima di qualunque azione utente possibile su questo layout —
+    // se manca (non dovrebbe succedere) non c'e' una chiave sicura su cui
+    // scrivere, meglio non salvare che scrivere sotto lo userId sbagliato.
+    if (!_layoutWidgetUserId) return;
+    prefWidgetLayoutSet(_layoutWidgetUserId, JSON.stringify(_layoutWidget));
     if (daAzioneUtente) _missioneAggancioPersonalizzaLayout();
 }
 
@@ -2951,13 +3012,20 @@ function _ballCorpoWidget(id, anteprima) {
 
 // ── RENDER GRIGLIA HOME ──────────────────────────────────────────────────
 async function renderWidgetHome() {
-    if (!_layoutWidget) _caricaLayoutWidget();
+    if (!_layoutWidget) await _caricaLayoutWidget();
 
     const cont = document.getElementById('phoneWidgetPagine');
     if (!cont) return;
 
     const visibili = _layoutWidget.filter(w => w.visibile);
     const primoRender = !_primoRenderWidgetFatto;
+
+    // Misurata QUI, prima di costruire le tessere, cosi' la stessa misura
+    // serve sia per clampare la taglia di ogni singola tessera (vedi
+    // _tagliaEffettiva) sia per l'impaginazione piu' sotto — un'unica
+    // fonte di verita' per "quanto spazio c'e' davvero in questo render",
+    // invece di due misurazioni separate che potrebbero disallinearsi.
+    const misura = _misuraPaginaWidget();
 
     // Raccolta locale, riversata in _ballAttenzioni a fine render: le
     // tessere si costruiscono in parallelo con Promise.all, scrivere
@@ -3035,7 +3103,7 @@ async function renderWidgetHome() {
         // si sovrapponevano l'una sull'altra e l'incisione del titolo
         // ancora leggibile. Ora la modalita' icona esclude la sfera in
         // partenza.
-        const _t = _leggiTaglia(w.size);
+        const _t = _tagliaEffettiva(w, misura);
         const _iconaStatica = w.mini || _t.col < CELLE_MIN_PER_SFERA || _t.row < 2;
 
         let visuale;
@@ -3141,7 +3209,9 @@ async function renderWidgetHome() {
     // che va lasciato in un blocco solo: spezzarlo per pagina moltiplica
     // le query). Qui si distribuiscono soltanto.
     // Impaginazione vera: chi non ci sta trabocca sulla pagina dopo.
-    const misura = _misuraPaginaWidget();
+    // 'misura' e' la stessa calcolata a inizio funzione (vedi sopra), non
+    // ricalcolata qui: stessa fonte di verita' usata per clampare le
+    // singole tessere.
     const distribuzione = _distribuisciWidgetInPagine(visibili, misura);
     _paginePresenti = distribuzione.length;
 
@@ -6217,6 +6287,22 @@ async function _condividiNativoWidget() {
 function _gestisciResizeCornice() {
     if (document.body.classList.contains('phone-detail-open')) {
         requestAnimationFrame(_posizionaContainerNelloSchermo);
+    } else if (_layoutWidget) {
+        // FIX (Claudio, 2026-09-10): senza questo ramo, un layout gia'
+        // disegnato con una griglia larga (tante colonne) restava con
+        // quelle classi CSS anche dopo una rotazione o un resize della
+        // finestra che riduce le colonne reali — il clamp di
+        // _tagliaEffettiva si applica solo DURANTE un render, quindi va
+        // fatto scattare di nuovo quando cambia la geometria.
+        // COSTO DA TENERE D'OCCHIO: renderWidgetHome() rifa' anche le
+        // preview di ogni widget (query/RPC), quindi ogni resize/
+        // rotazione ripete quelle chiamate (debounced a 100ms sopra, non
+        // ad ogni frame). Se in pratica risultasse troppo traffico
+        // durante un resize prolungato del browser desktop, va sostituito
+        // con un ricalcolo "leggero" che tocca solo le classi CSS delle
+        // tessere gia' in DOM senza rifare le query — non implementato
+        // ora per tenere il cambiamento contenuto.
+        renderWidgetHome();
     }
 }
 function _gestisciResizeCorniceDebounced() {
@@ -6487,7 +6573,7 @@ async function _avviaPresenzaLive() {
 async function initPhoneShell() {
     // _spostaHomeNellaPaginaPrincipale() rimossa con la home fissa.
 
-    _caricaLayoutWidget();
+    await _caricaLayoutWidget();
     await renderWidgetHome();
     // _aggiornaOrologioStatusBar()/relativo setInterval RIMOSSI da qui
     // (2026-09-01): la nuova status bar (CSBar) ha un proprio orologio
