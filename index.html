@@ -4111,14 +4111,11 @@
                 </div>
                 <div id="phonePushBanner"><i class="fa-solid fa-bell"></i><span id="phonePushBannerTesto"></span></div>
 
-                <!-- Overlay cutscene/apertura Bustina (2026-09-09). Vuoto:
-                     stesso pattern minimo del resto del sito, riempito UNA
-                     SOLA VOLTA da _bustinaCostruisciOverlay() in
-                     ui/phone.ui.js al primo utilizzo (idempotente — le
-                     riaperture successive riusano lo stesso markup, non lo
-                     ricreano). position:fixed inset:0 con z-index molto
-                     alto: copre tutto lo schermo, sopra #phoneShell. -->
-                <div id="bustinaCutsceneOverlay"></div>
+                <!-- Overlay cutscene/apertura Bustina: NON PIÙ QUI dal
+                     2026-09-10. Vive ora come figlio diretto di <body>,
+                     subito prima di </body> — vedi commento lì per il
+                     perché (bug: "schermo nero, il mirino DevTools
+                     seleziona .container invece dell'overlay"). -->
                 <!-- HOME FISSA ELIMINATA (Claudio, 2026-09-03).
                      Qui c'era #phoneHomePage, la "pagina classica" che
                      conteneva #home e che si raggiungeva con lo scatto
@@ -5729,5 +5726,33 @@
             initPhoneShell();
         };
     </script>
+
+    <!-- Overlay cutscene/apertura Bustina — SPOSTATO QUI il 2026-09-10.
+         Prima viveva dentro #phoneScreen (quindi dentro #phoneShell,
+         position:fixed + z-index:10 ESPLICITO — e uno z-index esplicito
+         su un elemento position:fixed crea un CONTESTO DI IMPILAMENTO
+         proprio). Per una regola CSS, un discendente non può MAI
+         emergere, col proprio z-index, sopra un fratello di un antenato
+         che ha uno stacking context suo — vale ANCHE per un discendente
+         position:fixed con z-index altissimo (999999 qui): la sua
+         posizione (top/left) sfugge al contenimento del genitore, ma il
+         suo ORDINE DI IMPILAMENTO resta comunque intrappolato dentro
+         quello locale di #phoneShell. Risultato: qualunque z-index gli
+         si desse, restava SEMPRE sotto .container (z-index:11, elemento
+         fratello di #phoneShell, non suo discendente) — bug confermato
+         col "mirino" di Chrome DevTools: cliccando sul rettangolo nero
+         veniva selezionato .container, non l'overlay, nonostante
+         l'overlay fosse aperto con dentro il contenuto giusto.
+         ESATTAMENTE lo stesso problema già risolto in passato per
+         #btnFisicoTelefono (vedi commento su apriDettaglioWidget in
+         ui/phone.ui.js, "FIX 2026-08-30... non c'è modo di tornare
+         indietro") — stessa soluzione: vive fuori da #phoneShell, come
+         figlio diretto di <body>, così il suo z-index compete
+         finalmente nello stesso contesto di .container e vince
+         davvero. Vuoto: riempito UNA SOLA VOLTA da
+         _bustinaCostruisciOverlay() in ui/phone.ui.js al primo utilizzo
+         (idempotente — le riaperture successive riusano lo stesso
+         markup, non lo ricreano). -->
+    <div id="bustinaCutsceneOverlay"></div>
 </body>
 </html>
