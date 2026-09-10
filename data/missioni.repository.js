@@ -154,6 +154,19 @@ async function missioniWishlistObiettiviRaggiunti(userId) {
 // carta_id IN [...] e tabella) — serve prima l'elenco degli id carta
 // dell'utente, poi il conteggio di carta_id distinti aggiornati nel
 // periodo. Due query invece di una, inevitabile con questo schema.
+//
+// BUG REALE (Claudio, screenshot DevTools 2026-09-10: due GET 400 Bad
+// Request su storico_prezzi): mancava qui il blocco a 500 id che invece
+// missioniPrezziScadutiTotale (poco sotto) già fa, con lo stesso commento
+// che lo spiega — "evita URL troppo lunghe con collezioni grandi". Con
+// tutta la collezione passata in un solo .in('carta_id', ids), su una
+// collezione abbastanza grande l'URL della richiesta supera il limite e
+// Supabase risponde 400. registrato_il è timestamp with time zone
+// (verificato via information_schema — non era quindi un problema di tipo
+// colonna, come inizialmente ipotizzato): il filtro .gte()/.lt() con
+// stringhe ISO era già corretto, il problema era solo la lunghezza
+// dell'URL. Stesso identico pattern di blocco riusato qui sotto, in
+// parallelo con Promise.all come nella funzione gemella.
 async function missioniPrezziAggiornatiPeriodo(userId, tabella, inizioISO, fineISO) {
     const { data: carte, error: errCarte } = await supabaseClient.from('carte').select('id')
         .eq('owner_id', userId).eq('stato', 'collezione');
@@ -161,11 +174,21 @@ async function missioniPrezziAggiornatiPeriodo(userId, tabella, inizioISO, fineI
     const ids = (carte || []).map(c => c.id);
     if (ids.length === 0) return { data: 0, error: null };
 
-    const { data, error } = await supabaseClient.from('storico_prezzi').select('carta_id')
-        .eq('tabella', tabella).in('carta_id', ids)
-        .gte('registrato_il', inizioISO).lt('registrato_il', fineISO);
-    if (error) return { data: 0, error };
-    return { data: new Set((data || []).map(r => r.carta_id)).size, error: null };
+    const DIMENSIONE_BLOCCO = 500;
+    const blocchi = [];
+    for (let i = 0; i < ids.length; i += DIMENSIONE_BLOCCO) blocchi.push(ids.slice(i, i + DIMENSIONE_BLOCCO));
+
+    const risultati = await Promise.all(blocchi.map(blocco =>
+        supabaseClient.from('storico_prezzi').select('carta_id')
+            .eq('tabella', tabella).in('carta_id', blocco)
+            .gte('registrato_il', inizioISO).lt('registrato_il', fineISO)
+    ));
+    const distinti = new Set();
+    for (const { data, error } of risultati) {
+        if (error) return { data: 0, error };
+        (data || []).forEach(r => distinti.add(r.carta_id));
+    }
+    return { data: distinti.size, error: null };
 }
 
 // Riusa lo stesso identico pattern di ui/home.ui.js:_ultimoControlloPerCarta()
