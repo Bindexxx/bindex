@@ -897,7 +897,12 @@ CATALOGO_TRAGUARDI.forEach(t => { t.descrizione = _descrizioneTraguardo(t); });
 //   binder_pubblicati_periodo  — count(binders) WHERE stato_pubblicazione='pubblico' AND created_at IN periodo
 //   prezzi_scaduti_totale      — carte.ultimo_controllo IS NULL OR < oggi-SOGLIA_GIORNI_PREZZO_SCADUTO giorni (vedi ui/prices.ui.js:apriModalePrezziScaduti). Solo collezione, non wishlist (stessa scelta di caricaUltimaSincronizzazioneHome).
 //   estensione_aperta_periodo  — RICHIEDE nuova scrittura sul canale chrome.runtime esistente
-//   layout_modificato_periodo  — confronto layout salvato prima/dopo, al momento del salvataggio
+//   layout_modificato_periodo  — MAI calcolata per davvero (vedi il commento
+//     sopra "layout_modificato_periodo: 0" in fondo a raccogliDati()):
+//     m94_personalizza/m95_il_tuo_telefono vengono assegnate da un aggancio
+//     diretto in ui/phone.ui.js, non passando da qui. Se in futuro servisse
+//     un vero tracciamento "layout prima/dopo per periodo" per qualcos'altro,
+//     va costruito da zero in quel momento, non riesumato da questa nota.
 //   missioni_completate_totale — count(missioni_completate) WHERE owner_id=X
 //   missioni_completate_periodo — count(missioni_completate) WHERE owner_id=X AND periodo=Y
 //   percentuale_missioni_giorno — (missioni_completate oggi / missioni assegnate oggi) * 100
@@ -1255,6 +1260,25 @@ const MOTORE_MISSIONI = {
             esplorazione_sociale_oggi: esplorazioneSocialeOggi,
             statistiche_distinte_periodo: statisticheDistintePeriodo,
             tutti_widget_informativi_periodo: totaleWidgetInformativi > 0 && widgetDistintiPeriodo >= totaleWidgetInformativi,
+            // FIX (Claudio, 2026-09-10): m94_personalizza/m95_il_tuo_telefono
+            // (metrica layout_modificato_periodo) non vengono MAI assegnate
+            // passando da qui — hanno un aggancio diretto e separato
+            // (_missioneAggancioPersonalizzaLayout() in ui/phone.ui.js,
+            // chiamata da _salvaLayoutWidget(daAzioneUtente=true)), che
+            // inserisce il completamento direttamente in missioni_completate,
+            // protetto dallo stesso UNIQUE anti-doppio-accredito di sempre.
+            // Nessuna funzione qui calcola mai davvero questa metrica (vedi
+            // nota sopra MOTORE_MISSIONI: "richiede ancora funzioni
+            // repository non scritte"), quindi valuta() la trovava sempre
+            // undefined e stampava un console.warn ad ogni giro — per m95
+            // (una_tantum, sempre "in gioco", vedi _valutaEAssegnaUnGiro)
+            // letteralmente ogni volta. Impostarla a 0 fisso non cambia
+            // NESSUN comportamento reale: valuta() userebbe comunque
+            // "0 >= 1" → false via questa strada, esattamente come con
+            // undefined — l'assegnazione vera continua identica tramite
+            // l'aggancio diretto. Zittisce solo un avviso fuorviante che
+            // segnalava un buco senza mai aver avuto effetti pratici.
+            layout_modificato_periodo: 0,
         };
     },
 
