@@ -5075,46 +5075,45 @@ async function renderPaginaSet() {
 }
 
 
-// FIX 2026-09-10 (bug: "diventa tutto nero, devo premere indietro per
-// vedere la pokéball") — causa reale: questa funzione faceva DUE chiamate
-// di rete (authGetUserId + bustinaStatoLeggi) PRIMA di aprire l'overlay.
-// Nell'attesa (anche solo qualche centinaio di ms) si vedeva lo sfondo
-// scuro vuoto di .container dietro — quello che sembrava "tutto nero".
-// Ora l'overlay si apre SUBITO, in modo sincrono, con la pokéball già
-// visibile che si agita (stato neutro di caricamento) — la rete riempie
-// SOLO il contenuto di uno schermo già aperto, mai il contrario.
+// RISTRUTTURATO 2026-09-10 (Claudio: "quella schermata nera non la voglio
+// vedere MAI, in nessun momento — click sul widget e basta, direttamente
+// alla pagina giusta"). Il tentativo precedente apriva l'overlay SUBITO
+// con una pokéball "di caricamento": quella pokéball non si vedeva (causa
+// non ancora trovata: niente errori JS con la console filtrata su
+// "bustina", l'overlay ha dimensioni reali — il problema era probabilmente
+// solo nella schermata di caricamento stessa) — ma indipendentemente dalla
+// causa, Claudio non vuole PROPRIO quello step, nemmeno se lo sistemassi.
+// Nuovo flusso: nessun overlay costruito né aperto finché i dati veri
+// (login + bustine_stato()) non sono pronti. Il click sul widget avvia
+// comunque SUBITO l'animazione del container (gestita da
+// apriDettaglioWidget, non toccata qui) — è quel tempo morto (Claudio:
+// "poco più di un secondo") a coprire la rete, non uno schermo dedicato.
+// Se la rete fosse più lenta dell'animazione, per un istante si vede
+// semplicemente lo sfondo neutro del sito (mai nero apposta) prima che
+// l'overlay appaia già con la schermata corretta — un solo salto, non due.
 async function renderPaginaBustina() {
     const container = document.getElementById('bustinaContenuto');
     if (container) container.innerHTML = '';
 
-    _bustinaCostruisciOverlay();
-    _bustinaCountdownFerma();
-    _bustinaRisultatoCorrente = null;
-    const overlay = document.getElementById('bustinaCutsceneOverlay');
-    overlay.classList.add('aperto');
-    _bustinaRicalcolaScale();
-    _bustinaMostraSchermata('bustinaLoaderScreen');
-    const wrapEl = document.getElementById('bustinaPokeballWrap');
-    wrapEl.classList.remove('pronto');
-    wrapEl.classList.add('scuote');
-    _bustinaOverlayPronto = false;
-    document.getElementById('bustinaPreloadText').innerText = '';
-
     const userId = await authGetUserId();
     if (!userId) {
-        wrapEl.classList.remove('scuote');
-        document.getElementById('bustinaPreloadText').innerText = 'Accedi per aprire le bustine.';
+        if (container) container.innerHTML = '<p style="text-align:center; color:var(--text-muted); font-size:0.85rem; padding:1rem 0;">Accedi per aprire le bustine.</p>';
         return;
     }
 
     try {
         const { data, error } = await bustinaStatoLeggi();
         if (error) throw error;
-        _bustinaMostraStatoOverlay(data);
+        _bustinaCostruisciOverlay();
+        _bustinaCountdownFerma();
+        _bustinaRisultatoCorrente = null;
+        const overlay = document.getElementById('bustinaCutsceneOverlay');
+        overlay.classList.add('aperto');
+        _bustinaRicalcolaScale();
+        _bustinaMostraStatoOverlay(data); // decide countdown vs pokéball pronta, MAI uno stato intermedio
     } catch (e) {
         console.error('renderPaginaBustina:', e);
-        wrapEl.classList.remove('scuote');
-        document.getElementById('bustinaPreloadText').innerText = 'Errore nel caricamento dello stato.';
+        if (container) container.innerHTML = '<p style="text-align:center; color:var(--danger); font-size:0.85rem; padding:1rem 0;">Errore nel caricamento dello stato.</p>';
     }
 }
 
