@@ -3936,6 +3936,17 @@
         }
         .bs-summary-table th { background: #e6e6e6; }
         .bs-summary-table th, .bs-summary-table td { padding: 3px; }
+        /* FIX 2026-09-10 (bug PERSISTENTE, seconda causa): non bastava il
+           color:#000 su .bs-summary-table — il sito ha una regola globale
+           "td { color: var(--text-dark); }" (riga ~2042) che si applica
+           DIRETTAMENTE a ogni <td>, e uno stile diretto sull'elemento
+           batte sempre un valore solo EREDITATO dal genitore (indipendente
+           dalla specificità: l'ereditarietà non compete affatto). In tema
+           scuro --text-dark è un colore chiaro — quasi bianco su sfondo
+           pergamena chiaro, invisibile. Qui il colore è specificato
+           DIRETTAMENTE su th/td (selettore combinato, specificità 0-1-1,
+           batte il bare "td" 0-0-1 della regola globale). */
+        .bs-summary-table td, .bs-summary-table th { color: #000 !important; }
     </style>
 </head>
 <body>
