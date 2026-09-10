@@ -5056,56 +5056,56 @@ async function renderPaginaSet() {
 }
 
 
-// ── PAGINA "BUSTINA" ─────────────────────────────────────────────────────
-// Storia: sbloccata il 2026-09-07 (prima pagina reale, solo stato+bottone),
-// esperienza cutscene/laser/swipe portata dal prototipo il 2026-09-09.
-// RISTRUTTURATO 2026-09-10 (Claudio: niente più pagina di stato con
-// bottone "Apri bustina" — il tap sul widget porta DIRETTAMENTE
-// nell'esperienza a schermo intero, in una delle due forme:
-//   - nessuna bustina disponibile → schermata countdown (mezzanotte
-//     Europe/Rome) + le stesse 4 statistiche di prima
-//   - almeno una disponibile     → pokéball pronta al tap; la RPC
-//     apri_bustina() parte SOLO al click sulla pokéball (opzione B,
-//     approvata da Claudio — diverso dalla decisione del 09/09 che la
-//     faceva partire subito), vedi _bustinaClickPokeball più sotto.
-// #bustinaContenuto (dentro la view-section #bustina, invariata: whitelist
-// apriDettaglioWidget, animazione "a pokéball" del container, tutto quello
-// che già c'era) resta SOLO come sfondo/fallback: la vera esperienza vive
-// nell'overlay #bustinaCutsceneOverlay che la ricopre subito.
+// FIX 2026-09-10 (bug: "diventa tutto nero, devo premere indietro per
+// vedere la pokéball") — causa reale: questa funzione faceva DUE chiamate
+// di rete (authGetUserId + bustinaStatoLeggi) PRIMA di aprire l'overlay.
+// Nell'attesa (anche solo qualche centinaio di ms) si vedeva lo sfondo
+// scuro vuoto di .container dietro — quello che sembrava "tutto nero".
+// Ora l'overlay si apre SUBITO, in modo sincrono, con la pokéball già
+// visibile che si agita (stato neutro di caricamento) — la rete riempie
+// SOLO il contenuto di uno schermo già aperto, mai il contrario.
 async function renderPaginaBustina() {
     const container = document.getElementById('bustinaContenuto');
-    if (!container) return;
+    if (container) container.innerHTML = '';
+
+    _bustinaCostruisciOverlay();
+    _bustinaCountdownFerma();
+    _bustinaRisultatoCorrente = null;
+    const overlay = document.getElementById('bustinaCutsceneOverlay');
+    overlay.classList.add('aperto');
+    _bustinaRicalcolaScale();
+    _bustinaMostraSchermata('bustinaLoaderScreen');
+    const wrapEl = document.getElementById('bustinaPokeballWrap');
+    wrapEl.classList.remove('pronto');
+    wrapEl.classList.add('scuote');
+    _bustinaOverlayPronto = false;
+    document.getElementById('bustinaPreloadText').innerText = '';
 
     const userId = await authGetUserId();
     if (!userId) {
-        container.innerHTML = '<p style="text-align:center; color:var(--text-muted); font-size:0.85rem; padding:1rem 0;">Accedi per aprire le bustine.</p>';
+        wrapEl.classList.remove('scuote');
+        document.getElementById('bustinaPreloadText').innerText = 'Accedi per aprire le bustine.';
         return;
     }
-
-    container.innerHTML = '<p class="pg-sotto" style="text-align:center; padding-top:1rem;">Caricamento…</p>';
 
     try {
         const { data, error } = await bustinaStatoLeggi();
         if (error) throw error;
-        container.innerHTML = '';
-        _bustinaApriOverlay(data);
+        _bustinaMostraStatoOverlay(data);
     } catch (e) {
         console.error('renderPaginaBustina:', e);
-        container.innerHTML = '<p style="text-align:center; color:var(--danger); font-size:0.85rem; padding:1rem 0;">Errore nel caricamento dello stato.</p>';
+        wrapEl.classList.remove('scuote');
+        document.getElementById('bustinaPreloadText').innerText = 'Errore nel caricamento dello stato.';
     }
 }
 
-// Costruisce (se serve) e apre l'overlay, mostrando la schermata giusta in
-// base allo stato reale appena letto — MAI dedotto/tenuto in cache da
-// prima: l'utente può aver aperto bustine da un altro dispositivo.
-function _bustinaApriOverlay(stato) {
-    _bustinaCostruisciOverlay();
-    _bustinaCountdownFerma(); // eventuale countdown di una apertura precedente
-    _bustinaRisultatoCorrente = null;
-
-    const overlay = document.getElementById('bustinaCutsceneOverlay');
-    overlay.classList.add('aperto');
-    _bustinaRicalcolaScale();
+// Aggiorna l'overlay GIÀ APERTO con lo stato reale (countdown o pokéball
+// pronta) — MAI dedotto/tenuto in cache da prima: l'utente può aver
+// aperto bustine da un altro dispositivo. Riusata anche dal countdown
+// quando scatta il rinnovo (_bustinaCountdownTick), invece di duplicare
+// la logica in due punti.
+function _bustinaMostraStatoOverlay(stato) {
+    _bustinaCountdownFerma(); // eventuale countdown di una lettura precedente
 
     const puoAprire = stato.giornaliera_disponibile || stato.saldo_guadagnate > 0;
     if (puoAprire) {
@@ -5372,7 +5372,7 @@ function _bustinaCountdownTick() {
     // per via di piccoli scarti di clock lato client, meglio verificare).
     if (ms <= 500) {
         _bustinaCountdownFerma();
-        bustinaStatoLeggi().then(({ data, error }) => { if (!error) _bustinaApriOverlay(data); });
+        bustinaStatoLeggi().then(({ data, error }) => { if (!error) _bustinaMostraStatoOverlay(data); });
     }
 }
 
@@ -5401,8 +5401,8 @@ function _bustinaCostruisciOverlay() {
                 <!-- Bustina/e disponibili: pokéball pronta al tap. Niente
                      RPC ancora — parte solo al click (vedi
                      _bustinaClickPokeball più sotto: ordine deciso da
-                     Claudio 2026-09-10, opzione B). _bustinaApriOverlay la
-                     mostra già in stato 'pronto' quando c'è qualcosa da
+                     Claudio 2026-09-10, opzione B). _bustinaMostraStatoOverlay
+                     la mostra già in stato 'pronto' quando c'è qualcosa da
                      aprire; la classe 'scuote' torna utile solo DOPO il
                      tap, mentre RPC+cutscene caricano davvero. -->
                 <div id="bustinaLoaderScreen" class="bs-screen attiva">
@@ -5609,7 +5609,7 @@ async function _bustinaClickPokeball() {
         // il messaggio.
         setTimeout(async () => {
             const { data, error } = await bustinaStatoLeggi();
-            if (!error) _bustinaApriOverlay(data);
+            if (!error) _bustinaMostraStatoOverlay(data);
         }, 1800);
         return;
     }
