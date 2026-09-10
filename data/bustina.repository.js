@@ -156,11 +156,19 @@ function bustinaSfxUrl(nomeFile) {
     return supabaseClient.storage.from('bustina-assets').getPublicUrl(`cutscene-data/sfx/${nomeFile}`);
 }
 
-// URL pubblico delle frasi di caricamento — stessa sottocartella dedicata
-// 'cutscene-data/', in una cartella 'quotes/' propria (decisione di
-// Claudio: tutto ciò che serve alla cutscene sta insieme).
+// URL pubblico delle frasi di caricamento — BUG CORRETTO 2026-09-10: qui
+// c'era 'bustina-assets', ma loading_quotes.json vive in un bucket
+// SEPARATO, 'bustina-quotes' (struttura decisa da Claudio il 09/09, punto
+// 4 del compilato di quella sessione — mai verificata dal vivo finché
+// Claudio non ha mostrato gli screenshot di Supabase Storage oggi).
+// Confermato: 'bustina-assets' contiene solo cutscene-data/{cutscene,
+// background,music,sprite,sfx,quotes/countdown_quotes.json} — NON
+// loading_quotes.json. Effetto del bug: due "Failed to load resource...
+// 400" in console ad ogni apertura (fetch nel bucket sbagliato), silenzioso
+// perché _bustinaFrase() ha già un fallback locale — mai bloccante, ma
+// mai andato a segno neanche una volta.
 function bustinaQuotesUrl() {
-    return supabaseClient.storage.from('bustina-assets').getPublicUrl('cutscene-data/quotes/loading_quotes.json');
+    return supabaseClient.storage.from('bustina-quotes').getPublicUrl('cutscene-data/quotes/loading_quotes.json');
 }
 
 // URL pubblico delle frasi per la schermata "nessuna bustina disponibile"
