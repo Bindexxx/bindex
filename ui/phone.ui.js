@@ -3551,7 +3551,16 @@ function _selezionaCartaVetrina(cardId) {
 
 function toggleModificaWidgetHome() {
     _editModeWidget = !_editModeWidget;
-    document.getElementById('btnModificaWidgetHome').classList.toggle('attivo', _editModeWidget);
+    const btn = document.getElementById('btnModificaWidgetHome');
+    if (btn) {
+        btn.classList.toggle('attivo', _editModeWidget);
+        // Testo esplicito ("Fatto" mentre sei dentro, non solo un colore
+        // diverso) — Claudio voleva un bottone che si capisce al volo,
+        // stessa logica del perché e' stato spostato fuori dalla barra
+        // affollata.
+        const label = btn.querySelector('span');
+        if (label) label.textContent = _editModeWidget ? 'Fatto' : 'Modifica';
+    }
     renderWidgetHome();
 }
 
@@ -6500,13 +6509,16 @@ function _vaiAllaPaginaHome() {
     _vaiAllaPaginaWidget(0);
 }
 
-// Suoni/densita'/matita: prima comparivano solo sulla pagina widget e
-// sparivano sulla home fissa. Senza piu' la home fissa sei SEMPRE sui
-// widget, quindi restano sempre visibili — e la classe che li nascondeva
-// va tolta una volta, altrimenti resterebbe appiccicata dall'ultimo giro
-// prima dell'aggiornamento.
+// Suoni/densita': prima comparivano solo sulla pagina widget e sparivano
+// sulla home fissa. Senza piu' la home fissa sei SEMPRE sui widget, quindi
+// restano sempre visibili — e la classe che li nascondeva va tolta una
+// volta, altrimenti resterebbe appiccicata dall'ultimo giro prima
+// dell'aggiornamento.
+// btnModificaWidgetHome NON e' piu' in questo elenco (2026-09-10): si e'
+// spostato nell'header della home (index.html) e non ha mai avuto la
+// classe 'nascosto-in-home' li' — non serve piu' nessuna pulizia per lui.
 function _aggiornaMatitaBarraGlobale() {
-    ['btnSuoniWidgetHome', 'btnDensitaWidgetHome', 'btnModificaWidgetHome'].forEach(id => {
+    ['btnSuoniWidgetHome', 'btnDensitaWidgetHome'].forEach(id => {
         const btn = document.getElementById(id);
         if (btn) btn.classList.remove('nascosto-in-home');
     });
@@ -6678,19 +6690,23 @@ async function initPhoneShell() {
                 apriDettaglioWidget(sezione, null);
             },
 
-            // Suoni/densità/matita (2026-09-01): spostati dalla vecchia
-            // barra (sempre nascosta ora) ai "quickActions" della tendina
-            // — Claudio ha confermato l'approccio. Cambia la scopribilità
+            // Suoni/densità (2026-09-01): spostati dalla vecchia barra
+            // (sempre nascosta ora) ai "quickActions" della tendina —
+            // Claudio ha confermato l'approccio. Cambia la scopribilità
             // (prima visibili solo sulla pagina widget, ora sempre
             // raggiungibili dalla tendina): nota, non un difetto silenzioso.
             // 'active' letto dallo stato REALE del progetto al momento
             // dell'avvio, cosi CSBar parte sincronizzato — poi le due
             // funzioni restano allineate perché ogni tap passa sempre da
             // qui (onToggle chiama SEMPRE la funzione reale del progetto).
+            // La voce 'modifica' (Personalizza widget) e' stata TOLTA da
+            // qui il 2026-09-10: ridondante col bottone #btnModificaWidgetHome
+            // ora fisso e visibile nell'header della home (index.html) —
+            // due strade per la stessa azione avrebbero richiesto tenerle
+            // sincronizzate (stato 'attivo'/testo) senza un vantaggio reale.
             quickActions: [
                 { id: 'suoni', label: 'Suoni', glyph: '\u266a', active: prefSuoniWidgetGet(), onToggle: () => toggleSuoniWidgetHome() },
                 { id: 'densita', label: 'Densità comoda', glyph: '\u25a6', active: _densitaCompatta, onToggle: () => toggleDensitaWidgetHome() },
-                { id: 'modifica', label: 'Personalizza widget', glyph: '\u270e', type: 'action', onToggle: () => toggleModificaWidgetHome() },
             ],
 
             onSettings: () => apriDettaglioWidget('impostazioni'),
