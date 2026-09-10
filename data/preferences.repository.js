@@ -58,8 +58,22 @@ function prefRiduciAnimazioniSet(ridotte) { localStorage.setItem(CHIAVE_RIDUCI_A
 // ordine + visibilità dei widget, per-dispositivo come le altre preferenze
 // qui sopra — NON sincronizzato tra dispositivi. Valore: JSON di
 // [{id, visibile}]. Vedi ui/phone.ui.js per lettura/scrittura.
-function prefWidgetLayoutGet() { return localStorage.getItem('cardsyncWidgetLayout'); }
-function prefWidgetLayoutSet(layoutJson) { localStorage.setItem('cardsyncWidgetLayout', layoutJson); }
+//
+// AGGIORNATO 2026-09-10 (Claudio): la chiave ora include lo userId — prima
+// era fissa ('cardsyncWidgetLayout'), quindi due utenti diversi sullo
+// stesso PC/browser si sovrascrivevano a vicenda il layout. Resta
+// localStorage puro (opzione A scelta da Claudio: non appesantire
+// Supabase) — quindi resta ANCHE per-dispositivo come prima, per natura
+// (ogni device ha il suo localStorage separato): un utente che accede da
+// PC e da cellulare ha due layout indipendenti, uno per device, ciascuno
+// legato a lui e non all'altro utente che magari usa lo stesso PC.
+// La vecchia chiave unica 'cardsyncWidgetLayout' resta orfana sul
+// localStorage di chi l'aveva già (non letta né cancellata qui): al primo
+// caricamento post-update ogni utente riparte dal layout di default su
+// ogni device, invece di ereditare un layout che non si sa a chi
+// appartenesse davvero — scelta deliberata, vedi ui/phone.ui.js.
+function prefWidgetLayoutGet(userId) { return localStorage.getItem('cardsyncWidgetLayout_' + userId); }
+function prefWidgetLayoutSet(userId, layoutJson) { localStorage.setItem('cardsyncWidgetLayout_' + userId, layoutJson); }
 
 // Suoni retro leggeri della home a widget (apertura/chiusura dettaglio,
 // notifiche push) — per-dispositivo come le altre, default attivi ma
