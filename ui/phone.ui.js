@@ -1139,6 +1139,27 @@ const RIGHE_MAX_WIDGET = 24;
 // Non abbassare questa soglia senza rendere la sfera elastica.
 const CELLE_MIN_PER_SFERA = 3;
 
+// STANDARD 2×2 IN ZONA ICONA (Claudio, 2026-09-10, dallo screenshot del
+// widget "Prezzi" ridotto a una striscia larga 1 cella ma alta parecchie
+// righe): la modalita' icona (vedi _iconaStatica sotto, stessa soglia)
+// nascondeva gia' il contenuto ricco, ma i due assi restavano liberi di
+// muoversi indipendenti — una cella poteva finire 1x6 o 6x1, un buco vuoto
+// enorme intorno a un'iconcina minuscola. Ora quando UN asse entra in zona
+// icona, ANCHE l'altro si ferma a un massimo di 2 celle: l'icona resta
+// sempre un quadratino compatto (2x2 o piu' piccolo), mai una striscia.
+// Standard fisso uguale per tutti i widget per ora — Claudio si e'
+// riservato di valutare eccezioni per singolo widget in futuro (stesso
+// pattern di 'tagliaDefault' nel catalogo, non ancora fatto).
+// Applicato in due punti SOLI: _onResizeHandlePointerMove (non si puo'
+// creare uno stato fuori standard trascinando) e la migrazione dentro
+// _caricaLayoutWidget() (corregge una volta sola, e salva, chi aveva gia'
+// uno stato fuori standard da prima di questa regola).
+function _correggiTagliaZonaIcona(col, row) {
+    const zonaIcona = col < CELLE_MIN_PER_SFERA || row < 2;
+    if (!zonaIcona) return { col, row };
+    return { col: Math.min(col, 2), row: Math.min(row, 2) };
+}
+
 // Versione del formato di _layoutWidget salvato in cardsyncWidgetLayout.
 // 1 (implicita, nessun campo 'v') = modello a 2 colonne.
 // 2 = modello a 6 colonne. Vedi _migraTagliaWidget().
@@ -1557,7 +1578,9 @@ async function _caricaLayoutWidget() {
             let size;
             if (w.v === VERSIONE_LAYOUT_WIDGET) {
                 const t = _leggiTaglia(w.size);
-                size = t.col + 'x' + t.row;
+                const corretta = _correggiTagliaZonaIcona(t.col, t.row);
+                if (corretta.col !== t.col || corretta.row !== t.row) migratoQualcosa = true; // fuori standard 2x2, corretto una tantum
+                size = corretta.col + 'x' + corretta.row;
             } else {
                 migratoQualcosa = true;
                 size = _migraTagliaWidget(w.size);
@@ -3651,8 +3674,11 @@ function _onResizeHandlePointerMove(e) {
     // reale, 1x1, che ORA e' davvero un'icona da ~55px e non piu' una
     // cella larga mezzo schermo.
     const vuoleMini = false;
-    const colSpan = Math.max(1, Math.min(maxColSpan, colSpanGrezzo));
-    const rowSpan = Math.max(1, Math.min(maxRowSpan, rowSpanGrezzo));
+    let colSpan = Math.max(1, Math.min(maxColSpan, colSpanGrezzo));
+    let rowSpan = Math.max(1, Math.min(maxRowSpan, rowSpanGrezzo));
+    // Standard 2x2 in zona icona (vedi _correggiTagliaZonaIcona sopra):
+    // impedisce di creare trascinando una striscia tipo 1x6.
+    ({ col: colSpan, row: rowSpan } = _correggiTagliaZonaIcona(colSpan, rowSpan));
     const nuovaTaglia = `${colSpan}x${rowSpan}`;
 
     if (w.size !== nuovaTaglia || w.mini !== vuoleMini) {
