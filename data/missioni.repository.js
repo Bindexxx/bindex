@@ -595,6 +595,20 @@ async function missioniCompletateIdRangeTemporale(userId, inizioISO, fineISO) {
         .eq('owner_id', userId).gte('completato_il', inizioISO).lt('completato_il', fineISO);
 }
 
+// Righe (missione_id, periodo) per un elenco di periodo specifici — usata
+// da MOTORE_MISSIONI._valutaEAssegnaUnGiro (ui/missioni.ui.js) per sapere
+// QUALI missioni tra quelle appena soddisfatte sono già state assegnate
+// per il loro periodo corrente, prima di ritentare l'insert (stesso
+// motivo/fix del 2026-09-10 già fatto per traguardi_riscossi, ma qui
+// serve una query in più perché questo dato non era già raccolto altrove
+// in raccogliDati()). Un solo IN(...) su periodo, non su missione_id: i
+// periodo davvero in gioco in un dato momento sono sempre al massimo 4
+// (oggi, questa settimana, questo mese, 'sempre' per le una_tantum).
+async function missioniCompletateIdPerPeriodi(userId, periodi) {
+    return supabaseClient.from('missioni_completate').select('missione_id, periodo')
+        .eq('owner_id', userId).in('periodo', periodi);
+}
+
 async function missioniTraguardiRiscossiIdTotale(userId) {
     return supabaseClient.from('traguardi_riscossi').select('traguardo_id').eq('owner_id', userId);
 }
