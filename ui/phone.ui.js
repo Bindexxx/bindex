@@ -3826,8 +3826,27 @@ let _chiusuraDettaglioTimeout = null;
 function _impostaOrigineAnimazione(container, evt) {
     const schermo = document.getElementById('phoneScreen');
     const rect = schermo ? schermo.getBoundingClientRect() : { left: 0, top: 0, width: window.innerWidth, height: window.innerHeight };
-    const x = evt && evt.clientX ? evt.clientX : rect.left + rect.width / 2;
-    const y = evt && evt.clientY ? evt.clientY : rect.top + rect.height / 2;
+    // FIX 2026-09-10 (bug: "schermata nera con una transizione che entra
+    // da destra verso sinistra", segnalato su bustina ma riguarda OGNI
+    // widget): --pokeball-x/-y alimentano clip-path: circle(... at
+    // var(--pokeball-x) var(--pokeball-y)) su .container — per specifica
+    // CSS quella posizione è relativa al reference box di .container
+    // STESSO (il suo angolo in alto a sinistra), MAI al viewport. Prima
+    // funzionava per coincidenza: .container, aperto a tutta la finestra
+    // (decisione 30/08, annullata oggi per "cornice pokedex"), partiva
+    // sempre da (0,0) nel viewport — le coordinate assolute del click
+    // (evt.clientX/Y) coincidevano già con quelle locali. Ora che
+    // .container è agganciato al rettangolo di #phoneScreen (quasi mai a
+    // 0,0 nel viewport), la stessa origine assoluta finiva calcolata
+    // rispetto al punto sbagliato: il cerchio nasceva ben fuori dal box
+    // visibile (a destra) e "spazzava" verso sinistra crescendo fino al
+    // 150% — esattamente l'effetto segnalato. Si sottrae qui
+    // rect.left/rect.top (lo STESSO rettangolo che
+    // _posizionaContainerNelloSchermo userà un istante dopo per il
+    // top/left di .container, vedi _rettangoloSchermoCornice) per
+    // riportare l'origine relativa al box giusto.
+    const x = (evt && evt.clientX ? evt.clientX : rect.left + rect.width / 2) - rect.left;
+    const y = (evt && evt.clientY ? evt.clientY : rect.top + rect.height / 2) - rect.top;
     container.style.setProperty('--pokeball-x', x + 'px');
     container.style.setProperty('--pokeball-y', y + 'px');
 }
