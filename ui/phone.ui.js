@@ -1442,6 +1442,33 @@ function _numeroPagineWidget() {
     return base + (_editModeWidget ? 1 : 0);
 }
 
+// NESSUNA PAGINA VUOTA IN MEZZO (Claudio, 2026-09-10: "fai esattamente
+// come android e cancella le pagine vuote"). Il campo 'pagina' resta la
+// scelta dell'utente (il traboccamento non lo tocca mai, vedi la nota
+// sopra _distribuisciWidgetInPagine) — ma se un'azione (sposta widget in
+// un'altra pagina, nascondi l'ultimo widget di una pagina) svuota una
+// pagina che sta PRIMA di altre pagine piene, quel buco va richiuso: le
+// pagine successive scalano indietro di uno, esattamente come un launcher
+// Android che elimina da solo una home page svuotata.
+// Richiamata a inizio di ogni renderWidgetHome() (non sparsa nei singoli
+// punti che possono svuotare una pagina): stessa filosofia "auto-
+// correggersi ad ogni render" già usata per _tagliaEffettiva — più
+// robusto che dover ricordarsi di chiamarla in ogni punto che tocca
+// 'pagina' o 'visibile'. Ritorna true se ha davvero cambiato qualcosa
+// (serve al chiamante per sapere se salvare).
+function _compattaPagineWidget() {
+    const visibili = (_layoutWidget || []).filter(w => w.visibile);
+    const usate = [...new Set(visibili.map(w => w.pagina || 0))].sort((a, b) => a - b);
+    const mappa = {};
+    usate.forEach((vecchia, nuova) => { mappa[vecchia] = nuova; });
+    let cambiato = false;
+    visibili.forEach(w => {
+        const nuova = mappa[w.pagina || 0];
+        if (nuova !== (w.pagina || 0)) { w.pagina = nuova; cambiato = true; }
+    });
+    return cambiato;
+}
+
 // Sposta un widget alla pagina precedente/successiva. Unico modo previsto
 // per cambiare pagina a un widget: il trascinamento fino al bordo dello
 // schermo per "passare di la'" e' molto piu' fragile su touch (va
@@ -1456,6 +1483,7 @@ function _spostaWidgetInPagina(instanceId, delta) {
     w.pagina = nuova;
     _salvaLayoutWidget();
     _paginaWidgetCorrente = nuova;
+    _menuSpostaWidgetApertoId = null; // il menu si chiude da solo dopo l'azione, come un vero menu contestuale
     renderWidgetHome();
 }
 
@@ -1478,6 +1506,7 @@ function _spostaWidgetNellaPagina(instanceId, direzione) {
     _layoutWidget[iA] = altro;
     _layoutWidget[iB] = w;
     _salvaLayoutWidget();
+    _menuSpostaWidgetApertoId = null; // il menu si chiude da solo dopo l'azione, come un vero menu contestuale
     renderWidgetHome();
 }
 
@@ -1507,10 +1536,21 @@ function _gestisciScrollPaginePagineWidget() {
     _aggiornaTastoFisico();
 }
 
+// Frecce ai lati dei puntini (Claudio, 2026-09-10) — stesso spostamento
+// relativo di _spostaWidgetInPagina ma per la NAVIGAZIONE (non sposta
+// nessun widget, sposta solo la visuale).
+function _vaiAllaPaginaWidgetRelativa(delta) {
+    _vaiAllaPaginaWidget(_paginaWidgetCorrente + delta);
+}
+
 function _aggiornaPuntiniPagine() {
     document.querySelectorAll('#phoneWidgetPuntini .widget-puntino').forEach((el, i) => {
         el.classList.toggle('attivo', i === _paginaWidgetCorrente);
     });
+    const frecce = document.querySelectorAll('#phoneWidgetPuntini .widget-pagina-freccia');
+    const nPuntini = document.querySelectorAll('#phoneWidgetPuntini .widget-puntino').length;
+    if (frecce[0]) frecce[0].disabled = _paginaWidgetCorrente === 0;
+    if (frecce[1]) frecce[1].disabled = _paginaWidgetCorrente === nPuntini - 1;
 }
 
 let _layoutWidget = null; // [{id, visibile, size, pagina}], ordine = ordine di visualizzazione
@@ -1521,6 +1561,10 @@ let _layoutWidget = null; // [{id, visibile, size, pagina}], ordine = ordine di 
 // _caricaLayoutWidget(), che gira sempre prima di qualunque salvataggio.
 let _layoutWidgetUserId = null;
 let _editModeWidget = false;
+// Menu a comparsa "Piano B" per sposta su/giù/pagina (vedi controlliEdit in
+// renderWidgetHome) — instanceId del widget il cui menu è aperto, o null.
+// Uno solo alla volta: aprirne un altro chiude automaticamente questo.
+let _menuSpostaWidgetApertoId = null;
 let _densitaCompatta = false;
 let _pollingWidgetInterval = null;
 let _pollingWidgetIntervalLento = null;
@@ -3040,6 +3084,11 @@ async function renderWidgetHome() {
     const cont = document.getElementById('phoneWidgetPagine');
     if (!cont) return;
 
+    // Richiude i buchi fra pagine PRIMA di qualunque altro calcolo (vedi
+    // _compattaPagineWidget) — deve girare prima che _misuraPaginaWidget/
+    // _distribuisciWidgetInPagine ragionino su quali pagine esistono.
+    if (_compattaPagineWidget()) _salvaLayoutWidget(false); // correzione automatica, non un'azione utente
+
     const visibili = _layoutWidget.filter(w => w.visibile);
     const primoRender = !_primoRenderWidgetFatto;
 
@@ -3069,13 +3118,27 @@ async function renderWidgetHome() {
         const classeCascata = primoRender ? 'widget-tile-entrata' : '';
         const stileRitardo = primoRender ? `style="animation-delay:${Math.min(indice * 45, 400)}ms"` : '';
 
+        // CONTROLLI DI MODIFICA — ridisegnati (Claudio, 2026-09-10): prima
+        // 5 bottoni fissi da 22px (su/giù/pagina prec/pagina succ/rimuovi)
+        // non ci stavano in una tessera piccola (lo standard 2x2 li rende
+        // comuni) e si accavallavano fra tessere vicine — vedi screenshot.
+        // Il trascinamento (vedi _onWidgetPointerDown) è già il modo
+        // primario e "semplice" per riordinare — su/giù/pagina prec/succ
+        // restano disponibili come PIANO B dentro un menu a comparsa (⋮),
+        // per chi preferisce non trascinare. Sulla tessera restano SEMPRE
+        // visibili solo 2 elementi (⋮ e X), che ci stanno anche su una
+        // 2x2, più la maniglia di resize.
+        const menuSpostaAperto = _menuSpostaWidgetApertoId === w.instanceId;
         const controlliEdit = _editModeWidget ? `
             <div class="widget-edit-controls" onclick="event.stopPropagation()">
-                <button type="button" onclick="_spostaWidgetNellaPagina('${w.instanceId}', -1)" title="Sposta su"><i class="fa-solid fa-arrow-up"></i></button>
-                <button type="button" onclick="_spostaWidgetNellaPagina('${w.instanceId}', 1)" title="Sposta giù"><i class="fa-solid fa-arrow-down"></i></button>
-                <button type="button" onclick="_spostaWidgetInPagina('${w.instanceId}', -1)" title="Pagina precedente" ${(w.pagina || 0) === 0 ? 'disabled' : ''}><i class="fa-solid fa-chevron-left"></i></button>
-                <button type="button" onclick="_spostaWidgetInPagina('${w.instanceId}', 1)" title="Pagina successiva"><i class="fa-solid fa-chevron-right"></i></button>
+                <button type="button" onclick="_toggleMenuSpostaWidget('${w.instanceId}', event)" title="Sposta"><i class="fa-solid fa-ellipsis-vertical"></i></button>
                 <button type="button" onclick="_nascondiWidget('${w.instanceId}')" title="Rimuovi dalla home" class="widget-edit-remove"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="widget-menu-sposta${menuSpostaAperto ? ' aperto' : ''}" id="menuSposta_${w.instanceId}" onclick="event.stopPropagation()">
+                <button type="button" onclick="_spostaWidgetNellaPagina('${w.instanceId}', -1)"><i class="fa-solid fa-arrow-up"></i> Sposta su</button>
+                <button type="button" onclick="_spostaWidgetNellaPagina('${w.instanceId}', 1)"><i class="fa-solid fa-arrow-down"></i> Sposta giù</button>
+                <button type="button" onclick="_spostaWidgetInPagina('${w.instanceId}', -1)" ${(w.pagina || 0) === 0 ? 'disabled' : ''}><i class="fa-solid fa-chevron-left"></i> Pagina precedente</button>
+                <button type="button" onclick="_spostaWidgetInPagina('${w.instanceId}', 1)"><i class="fa-solid fa-chevron-right"></i> Pagina successiva</button>
             </div>
             <div class="widget-resize-handle" data-widget-id="${w.instanceId}" title="Trascina per ridimensionare"><i class="fa-solid fa-up-right-and-down-left-from-center"></i></div>` : '';
 
@@ -3267,9 +3330,23 @@ async function renderWidgetHome() {
             </div>`);
     }
 
+    // NAVIGAZIONE FRA PAGINE PIU' CHIARA (Claudio, 2026-09-10: "non è
+    // chiaro come si fa"): prima erano solo puntini da 7px a bassissimo
+    // contrasto (30% di opacità), l'unico modo per capire che si poteva
+    // cambiare pagina era scoprirlo per caso scorrendo. Ora: puntini dentro
+    // una pillola visibile (si riconosce come controllo, non come
+    // decorazione) + due frecce ai lati per chi preferisce toccare invece
+    // di scorrere (utile anche su desktop, dove lo swipe orizzontale non è
+    // sempre comodo col mouse). Le frecce restano disabilitate a inizio/
+    // fine, stesso linguaggio già usato per "pagina precedente" nel menu
+    // sposta.
     const puntini = nPagine > 1
-        ? `<div id="phoneWidgetPuntini">${Array.from({ length: nPagine }, (_, i) =>
-            `<button type="button" class="widget-puntino${i === _paginaWidgetCorrente ? ' attivo' : ''}" onclick="_vaiAllaPaginaWidget(${i})" aria-label="Pagina ${i + 1}"></button>`).join('')}</div>`
+        ? `<div id="phoneWidgetPuntini">
+            <button type="button" class="widget-pagina-freccia" onclick="_vaiAllaPaginaWidgetRelativa(-1)" ${_paginaWidgetCorrente === 0 ? 'disabled' : ''} aria-label="Pagina precedente"><i class="fa-solid fa-chevron-left"></i></button>
+            <div class="widget-puntini-pillola">${Array.from({ length: nPagine }, (_, i) =>
+                `<button type="button" class="widget-puntino${i === _paginaWidgetCorrente ? ' attivo' : ''}" onclick="_vaiAllaPaginaWidget(${i})" aria-label="Pagina ${i + 1}"></button>`).join('')}</div>
+            <button type="button" class="widget-pagina-freccia" onclick="_vaiAllaPaginaWidgetRelativa(1)" ${_paginaWidgetCorrente === nPagine - 1 ? 'disabled' : ''} aria-label="Pagina successiva"><i class="fa-solid fa-chevron-right"></i></button>
+        </div>`
         : '';
 
     // Il ridimensionamento ridisegna a ogni movimento del dito: senza
@@ -3573,8 +3650,38 @@ let _dragState = null;
 let _resizeState = null;
 let _peekTimeout = null;
 let _riordinoInCorso = false;
+let _listenerChiusuraMenuSpostaAgganciato = false;
+
+// ── MENU A COMPARSA "SPOSTA" (Piano B, Claudio 2026-09-10) ──────────────
+// Apre/chiude il menu con su/giù/pagina prec/succ per UN widget alla
+// volta. Il trascinamento resta il modo primario di riordinare; questo
+// menu è il ripiego per chi non vuole/non può trascinare (es. spostamenti
+// precisi, o dispositivi dove il drag è scomodo).
+function _toggleMenuSpostaWidget(instanceId, e) {
+    if (e) e.stopPropagation();
+    _menuSpostaWidgetApertoId = _menuSpostaWidgetApertoId === instanceId ? null : instanceId;
+    _aggiornaMenuSpostaWidget();
+}
+function _chiudiMenuSpostaWidget() {
+    if (!_menuSpostaWidgetApertoId) return;
+    _menuSpostaWidgetApertoId = null;
+    _aggiornaMenuSpostaWidget();
+}
+function _aggiornaMenuSpostaWidget() {
+    document.querySelectorAll('.widget-menu-sposta').forEach(m => {
+        m.classList.toggle('aperto', m.id === 'menuSposta_' + _menuSpostaWidgetApertoId);
+    });
+}
 
 function _attivaDragEResize() {
+    // Chiude il menu "sposta" al click fuori — agganciato una volta sola
+    // (questa funzione viene richiamata ad ogni render): i click DENTRO
+    // .widget-edit-controls/.widget-menu-sposta non arrivano mai qui
+    // grazie all'onclick="event.stopPropagation()" già sul loro markup.
+    if (!_listenerChiusuraMenuSpostaAgganciato) {
+        document.addEventListener('click', _chiudiMenuSpostaWidget);
+        _listenerChiusuraMenuSpostaAgganciato = true;
+    }
     document.querySelectorAll('.widget-tile[data-widget-id]').forEach(tile => {
         tile.addEventListener('pointerdown', _onWidgetPointerDown);
     });
