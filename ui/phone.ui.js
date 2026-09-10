@@ -3641,6 +3641,21 @@ function _selezionaCartaVetrina(cardId) {
     renderWidgetHome();
 }
 
+// STRUMENTO DIAGNOSTICO (Claudio, 2026-09-10) — forza il PRIMO widget
+// visibile a '2x2' cosi' si vede dal vivo quanto rende grande lo standard
+// minimo di zona icona, senza doverci arrivare trascinando a mano.
+// Usa-e-getta: modifica per davvero il widget (non e' un'anteprima finta),
+// quindi resta lì finché non lo ridimensioni di nuovo — è lo scopo,
+// vederlo esattamente come sarebbe per un utente vero.
+function _testForzaTaglia2x2() {
+    const w = (_layoutWidget || []).find(x => x.visibile);
+    if (!w) return;
+    w.size = '2x2';
+    w.mini = false;
+    _salvaLayoutWidget(false); // diagnostico, non conta come personalizzazione vera per le missioni
+    renderWidgetHome();
+}
+
 function toggleModificaWidgetHome() {
     _editModeWidget = !_editModeWidget;
     const btn = document.getElementById('btnModificaWidgetHome');
@@ -6826,9 +6841,18 @@ async function initPhoneShell() {
             // ora fisso e visibile nell'header della home (index.html) —
             // due strade per la stessa azione avrebbero richiesto tenerle
             // sincronizzate (stato 'attivo'/testo) senza un vantaggio reale.
+            // Voce diagnostica 'test2x2' (Claudio, 2026-09-10, screenshot:
+            // "metti un tasto... così lo clicco e vedo quanto diventa
+            // grande"): forza il PRIMO widget visibile a 2x2 per giudicare
+            // a occhio la taglia minima standard, dal vivo, senza dover
+            // trascinare a mano fino in fondo. Strumento usa-e-getta, non
+            // pensato per restare per sempre — stesso spirito dei bottoni
+            // diagnostici della bustina rimossi in un'altra sessione: se
+            // non serve più basta togliere questa riga.
             quickActions: [
                 { id: 'suoni', label: 'Suoni', glyph: '\u266a', active: prefSuoniWidgetGet(), onToggle: () => toggleSuoniWidgetHome() },
                 { id: 'densita', label: 'Densità comoda', glyph: '\u25a6', active: _densitaCompatta, onToggle: () => toggleDensitaWidgetHome() },
+                { id: 'test2x2', label: '2x2', glyph: '\u25a2', type: 'action', onToggle: () => _testForzaTaglia2x2() },
             ],
 
             onSettings: () => apriDettaglioWidget('impostazioni'),
