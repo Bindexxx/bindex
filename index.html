@@ -16,6 +16,17 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     
     <style>
+        /* Numero countdown (.bs-countdown-timer, vedi CSS bustina più giù)
+           e .phone-lcd (display numerici) condividono questo font.
+           @import DEVE stare qui, come primissima regola dello
+           stylesheet — prima stava più giù (vicino a .phone-lcd) e il
+           browser lo ignorava del tutto ("@import rules must be at the
+           top", verificato nel pannello Issues di Chrome DevTools,
+           2026-09-10). Effetto del bug: solo estetico (fallback su
+           Courier New/monospace, già previsto in CSS) — non era la causa
+           dello schermo nero della bustina, verificato separatamente. */
+        @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
+
         /* TEMA BASE / VIOLA PASTELLO */
         :root {
             --bg-color: #f3eeff;
@@ -697,8 +708,12 @@
         /* Font LCD (Claudio: "sì, vale la pena") — solo per i display
            numerici/orologio, mai per il testo normale (resterebbe poco
            leggibile). Caricato da Google Fonts: dominio già ammesso nella
-           whitelist CSP standard di GitHub Pages/browser moderni. */
-        @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
+           whitelist CSP standard di GitHub Pages/browser moderni.
+           @import spostato in cima al file il 2026-09-10 (vedi inizio
+           <style>): stava qui, il browser lo ignorava del tutto perché
+           un @import non in prima posizione nello stylesheet è invalido
+           e viene scartato — riusato anche da .bs-countdown-timer della
+           bustina, stessa famiglia, nessun secondo @import necessario. */
         .phone-lcd { font-family: 'Share Tech Mono', 'Courier New', monospace; letter-spacing: 0.5px; }
 
         /* Sfondo (wallpaper) personalizzabile — placeholder oggi (gradiente
