@@ -29,12 +29,14 @@
 // sessione, non per dispositivo. Nessun localStorage, nessuna nuova
 // preferenza in data/preferences.repository.js.
 //
-// PERCHÉ phone.ui.js NON È STATO TOCCATO
-// Le due righe di CSBar.avvisa dentro renderPaginaMissioni restano dove
-// sono e NON producono doppioni: se il watcher ha già assegnato, quando
-// apri la pagina l'insert fallisce, nuoveMissioni torna vuoto e la
-// notifica non parte. È lo stesso vincolo del database a fare da arbitro
-// fra i due punti di aggancio.
+// AGGIORNATO — STEP 14 ristrutturazione file widget home, 2026-09-11
+// Il blocco avvisi+beep+saldo qui sotto NON è più duplicato: chiama
+// _missioniNotificaCompletamenti() (ui/missioni.ui.js), la stessa funzione
+// usata anche da renderPaginaMissioni() (ui/widget-missioni.ui.js). Il
+// discorso sul vincolo UNIQUE del database resta valido e invariato: se il
+// watcher ha già assegnato, l'insert fallisce quando apri la pagina
+// Missioni, nuoveMissioni torna vuoto e la funzione condivisa esce subito
+// senza fare nulla — nessun doppione, nessuna query in più.
 
 // ── PARAMETRI ────────────────────────────────────────────────────────────
 // Ogni quanto controllare. 180000 = 3 minuti (attesa media ~1,5 min).
@@ -94,27 +96,16 @@ async function _watcherMissioniGiro() {
 
         if (!nuoveMissioni.length && !nuoviTraguardi.length) return;
 
-        // Stessa identica forma di chiamata usata da renderPaginaMissioni:
-        // tipi già registrati in CSBar.init (notificationTypes), titoli
-        // reali dal catalogo, raggruppamento per tipo già gestito dalla
-        // barra. Nessun tipo nuovo da dichiarare.
-        nuoveMissioni.forEach(m => CSBar.avvisa('missione-completata', { text: m.titolo }));
-        nuoviTraguardi.forEach(t => CSBar.avvisa('traguardo-sbloccato', { text: t.titolo }));
-
-        // Beep "vinto" — 1200Hz, lo stesso di renderPaginaMissioni. Rispetta
-        // già da sé la preferenza suoni (prefSuoniWidgetGet dentro _beep).
-        if (typeof _beep === 'function') _beep(1200, 90);
-
-        // Saldo polvere nella status bar: riletto SOLO se è successo
-        // qualcosa, come fa renderPaginaMissioni. Le ricompense sono già
-        // state accreditate dentro valutaEAssegna, qui si aggiorna il
-        // numero mostrato.
-        if (typeof ricompenseSaldo === 'function' && typeof CSBar.setCurrency === 'function') {
-            try {
-                const { data: saldo, error } = await ricompenseSaldo(userId, 'polvere');
-                if (!error) CSBar.setCurrency({ value: saldo || 0 });
-            } catch (e) { console.error('[missioni-watcher] aggiornamento saldo polvere:', e); }
-        }
+        // CONSOLIDATO (STEP 14 ristrutturazione, 2026-09-11): prima questo
+        // blocco duplicava quasi identico ciò che fa renderPaginaMissioni()
+        // (avvisi CSBar + beep + rilettura saldo), MA con un metodo diverso
+        // e più vecchio per il saldo (ricompenseSaldo, somma lato client,
+        // tronca oltre ~1000 righe) invece di polvereSaldoLeggi() (RPC,
+        // corretto). Ora chiama la stessa funzione condivisa
+        // (_missioniNotificaCompletamenti, ui/missioni.ui.js) usata anche
+        // dal widget — stesso comportamento garantito nei due punti, e il
+        // saldo letto qui è ora quello giusto.
+        await _missioniNotificaCompletamenti(nuoveMissioni, nuoviTraguardi);
     } catch (e) {
         console.error('[missioni-watcher] giro di controllo fallito:', e);
     } finally {
