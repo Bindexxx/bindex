@@ -1351,7 +1351,7 @@
            ═══════════════════════════════════════════════════════════════
            Blocco ADDITIVO: tutto sotto ".ball-ui", classe messa su
            ogni .widget-griglia da renderWidgetHome() solo quando BALL_ATTIVA è
-           vera (ui/phone.ui.js, in cima). ROLLBACK: mettere BALL_ATTIVA a
+           vera (ui/widget-render-condiviso.ui.js, in cima). ROLLBACK: mettere BALL_ATTIVA a
            false — la classe non viene più applicata, queste regole non
            mordono più e torna in vigore da sé il CSS originale qui sopra,
            che non è stato toccato.
@@ -5760,6 +5760,16 @@
          layout/dettaglio/polling che phone.ui.js richiama. Vedi
          Roadmap_Ristrutturazione_Widget_Home_2026-09-11.md. -->
     <script src="ui/paginainiziale.ui.js"></script>
+    <!-- Motore visivo condiviso dei widget (STEP 1 ristrutturazione,
+         2026-09-11) — va SUBITO DOPO paginainiziale.ui.js e PRIMA di
+         phone.ui.js: disegno sfera/tessere, animazione cattura, semaforo,
+         componenti visivi riusati (_ballRiga, _ballPill, _ballCORPI...).
+         Vedi Roadmap_Ristrutturazione_Widget_Home_2026-09-11.md. -->
+    <script src="ui/widget-render-condiviso.ui.js"></script>
+    <!-- Funzioni condivise a pagina intera fra più widget (STEP 2, creato
+         vuoto insieme allo STEP 1 come da roadmap) — nasce quasi vuoto,
+         si popola durante l'estrazione dei prossimi widget. -->
+    <script src="ui/widget-funzioni-condivise.ui.js"></script>
     <script src="ui/phone.ui.js"></script>
     <!-- Notifica missioni/traguardi appena completati, senza dover aprire la
          pagina Missioni (Claudio 2026-09-03). Va DOPO phone.ui.js e
