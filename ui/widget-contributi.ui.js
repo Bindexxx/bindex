@@ -22,6 +22,16 @@
 // valore" (§7.2 della roadmap, STEP 19) — da confermare quando ci si
 // arriva.
 //
+// AGGIORNATO (Claudio, 2026-09-11): confermato dal vivo che il click
+// ricadeva su Visualizzazione (vedi sopra). Claudio ha chiesto un
+// placeholder esplicito nel frattempo, non una correzione definitiva:
+// aggiunta 'azione' che mostra un semplice alert "work in progress" —
+// FUNZIONALITÀ REALE ANCORA DA IMPLEMENTARE, questo è solo un segnaposto
+// temporaneo finché non si decide cosa deve aprire davvero (pagina
+// dedicata? modale con lo storico contributi? Claudio non ha ancora
+// deciso). Scelto alert() e non una pagina/modale nuova per restare a
+// una sola riga in un solo file, senza toccare index.html o il motore
+// home — il minimo indispensabile per il segnaposto richiesto.
 // _contributiConCache/_cacheContributi/TTL_CONTRIBUTI_MS: verificato che
 // sono usate SOLO dal preview() di questo widget (un solo chiamante) —
 // non qualificano come "funzione condivisa fra più widget", restano qui
@@ -46,6 +56,14 @@ CATALOGO_WIDGET.contributi = {
         // Due numeri affiancati piu' la barra della quota: sotto questa
         // altezza la barra finisce appiccicata ai numeri.
         tagliaDefault: '6x4',
+        // SEGNAPOSTO (Claudio, 2026-09-11): prima non c'era nessuna
+        // 'azione', il click ricadeva su Visualizzazione per un effetto
+        // collaterale di switchTab() (vedi header del file). In attesa di
+        // decidere la destinazione vera, un click qui mostra solo un
+        // avviso — NON è la funzionalità reale, da implementare più avanti.
+        azione: (dati, punto) => {
+            alert('Contributi al gruppo — work in progress. Questa sezione non è ancora stata implementata.');
+        },
         preview: async () => {
             const d = await _contributiConCache();
             // DATO ASSENTE != TRE ZERI. Qui la RPC non ha risposto: non si
