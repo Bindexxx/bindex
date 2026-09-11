@@ -46,23 +46,7 @@
         }
 
 
-        // ── ALLERTA PREZZO WISHLIST — stesso sistema letto/non letto ──────────────
-        // Una carta in wishlist "scatta" quando il prezzo attuale scende al
-        // di sotto (o è uguale) al prezzo obiettivo che hai impostato —
-        // stesso calcolo già usato per il badge "🎯 obiettivo!" nelle righe.
-        function _alertPrezzoVisti() {
-            return prefAlertPrezzoVistiGet();
-        }
-
-        function _segnaAlertPrezzoVisti(chiavi) {
-            const visti = _alertPrezzoVisti();
-            chiavi.forEach(c => visti.add(c));
-            prefAlertPrezzoVistiSet(visti);
-        }
-
-        function _cardeConAllertaPrezzo() {
-            return carteReali.filter(c => c.tabella === 'wishlist' && c.prezzoObiettivo != null && c.price > 0 && c.price <= c.prezzoObiettivo);
-        }
+        // [SEZIONI SPOSTATE in ui/widget-prezzi.ui.js — STEP 16 ristrutturazione file widget, 2026-09-11. Vedi Roadmap_Ristrutturazione_Widget_Home_2026-09-11.md]
 
 
         // ── ANTI-RIPETIZIONE DELLE NOTIFICHE (2026-09-01) ────────────────────────
@@ -97,17 +81,7 @@
             });
         }
 
-        function _contaAlertPrezzoNonVisti() {
-            const visti = _alertPrezzoVisti();
-            const conCard = _cardeConAllertaPrezzo();
-            const nonVisti = conCard.filter(c => !visti.has(String(c.id)));
-            // AGGIUNTO (2026-09-01): nonVistiCarte espone le carte vere, non
-            // solo il conteggio — serve alle notifiche di sistema per dire
-            // QUALE carta ha raggiunto il prezzo obiettivo. Additivo, non
-            // rompe i due punti di chiamata esistenti (che leggono solo
-            // count/chiavi).
-            return { count: nonVisti.length, chiavi: conCard.map(c => String(c.id)), nonVistiCarte: nonVisti };
-        }
+        // [SEZIONI SPOSTATE in ui/widget-prezzi.ui.js — STEP 16 ristrutturazione file widget, 2026-09-11. Vedi Roadmap_Ristrutturazione_Widget_Home_2026-09-11.md]
 
 
         // Controlla i match SENZA aprire nessuna tab — usata all'avvio per

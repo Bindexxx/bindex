@@ -274,33 +274,7 @@ Object.assign(CATALOGO_WIDGET, {
         },
     },
 // [SEZIONE SPOSTATA in ui/widget-inserimento.ui.js — STEP 11 ristrutturazione file widget, 2026-09-11. Vedi Roadmap_Ristrutturazione_Widget_Home_2026-09-11.md]
-    prezzi: {
-        titolo: 'Prezzi', icona: 'fa-chart-line',
-        // _elencoPrezziScaduti è popolato da caricaAvvisiHome() (già
-        // richiamata a intervalli da avviaPollingWidgetHome più sotto) —
-        // qui lo leggiamo soltanto. Forma confermata in home.ui.js:
-        // {name, code, ultimoTesto} — la prima riga come seconda riga del
-        // widget, non un dato nuovo.
-        preview: () => {
-            const lista = (typeof _elencoPrezziScaduti !== 'undefined' && _elencoPrezziScaduti) ? _elencoPrezziScaduti : [];
-            // Totale su cui calcolare la quota di aggiornati: le carte in
-            // collezione con un prezzo. Nessuna query nuova, solo carteReali.
-            const inCollezione = carteReali.filter(c => c.stato === 'collezione');
-            const conPrezzo = inCollezione.filter(c => c.price != null).length;
-            // Valore complessivo: prezzo per quantità, dati già in memoria.
-            const valore = inCollezione.reduce((tot, c) => tot + (Number(c.price) || 0) * (Number(c.qty) || 1), 0);
-            const dati = {
-                scaduti: lista.length,
-                totale: Math.max(conPrezzo, lista.length),
-                valore,
-                // 'ultimoTesto' è la forma confermata di _elencoPrezziScaduti
-                // (vedi apriModalePrezziScaduti in ui/prices.ui.js r.212).
-                lista: lista.slice(0, 3).map(v => ({ nome: v.name || '—', quando: v.ultimoTesto || '' }))
-            };
-            if (lista.length === 0) return { righe: ['Tutti aggiornati'], stato: 'ok', dati };
-            return { righe: [`${lista.length} da aggiornare`, lista[0].name || ''], stato: 'allerta', dati };
-        },
-    },
+// [SEZIONE SPOSTATA in ui/widget-prezzi.ui.js — STEP 16 ristrutturazione file widget, 2026-09-11. Vedi Roadmap_Ristrutturazione_Widget_Home_2026-09-11.md]
     // [VOCE 'binder' SPOSTATA in ui/widget-binder.ui.js — STEP 3 ristrutturazione file widget, 2026-09-11]
     sealed: {
         titolo: 'Sealed', icona: 'fa-box-archive',
@@ -604,25 +578,7 @@ Object.assign(CATALOGO_WIDGET, {
     },
 // [SEZIONE SPOSTATA in ui/widget-in-primo-piano.ui.js — STEP 10 ristrutturazione file widget, 2026-09-11. Vedi Roadmap_Ristrutturazione_Widget_Home_2026-09-11.md]
 // [SEZIONE SPOSTATA in ui/widget-ultime-aggiunte.ui.js — STEP 12 ristrutturazione file widget, 2026-09-11. Vedi Roadmap_Ristrutturazione_Widget_Home_2026-09-11.md]
-    prezzi_recenti: {
-        titolo: 'Prezzi aggiornati', icona: 'fa-clock-rotate-left',
-        tagliaDefault: '6x5', // cinque righe di elenco, senza miniature
-        // UNICO dei tre che costa una query (storico_prezzi, via
-        // _ultimiPrezziAggiornati in ui/home.ui.js, a blocchi da 500 id).
-        // renderWidgetHome gira anche dal polling: senza freno questa
-        // query partirebbe a ogni giro. Da qui la cache a tempo qui
-        // sotto — stessa lezione delle 47 query di valutaEAssegna.
-        preview: async () => {
-            const righeCache = await _prezziRecentiConCache();
-            if (!righeCache.length) return { righe: ['Nessun controllo ancora'], dati: { lista: [] } };
-            return {
-                righe: righeCache.slice(0, 3).map(r => `${r.nome} · ${r.quando}`),
-                badge: false, // sarebbe il giorno dell'ultimo controllo, non un conteggio
-                dati: { lista: righeCache },
-            };
-        },
-        tab: 'prezzi',
-    },
+// [SEZIONE SPOSTATA in ui/widget-prezzi.ui.js — STEP 16 ristrutturazione file widget, 2026-09-11. Vedi Roadmap_Ristrutturazione_Widget_Home_2026-09-11.md]
 // [SEZIONE SPOSTATA in ui/widget-contributi.ui.js — STEP 6 ristrutturazione file widget, 2026-09-11. Vedi Roadmap_Ristrutturazione_Widget_Home_2026-09-11.md]
 // [SEZIONE SPOSTATA in ui/widget-bustina.ui.js — STEP 4 ristrutturazione file widget, 2026-09-11. Vedi Roadmap_Ristrutturazione_Widget_Home_2026-09-11.md]
 // [SEZIONE SPOSTATA in ui/widget-polvere.ui.js — STEP 15 ristrutturazione file widget, 2026-09-11. Vedi Roadmap_Ristrutturazione_Widget_Home_2026-09-11.md]
@@ -660,41 +616,7 @@ async function _storicoValoreConCache() {
     }
 }
 
-const TTL_PREZZI_RECENTI_MS = 5 * 60 * 1000;
-let _cachePrezziRecenti = { quando: 0, righe: [] };
-
-async function _prezziRecentiConCache() {
-    if (Date.now() - _cachePrezziRecenti.quando < TTL_PREZZI_RECENTI_MS) return _cachePrezziRecenti.righe;
-    // Se la funzione non c'e' (ordine di caricamento, file non presente)
-    // il widget mostra "nessun controllo" invece di rompere il render.
-    if (typeof _ultimiPrezziAggiornati !== 'function' || typeof carteReali === 'undefined') return [];
-    try {
-        const collezione = carteReali.filter(c => c.stato === 'collezione');
-        const eventi = await _ultimiPrezziAggiornati(collezione.map(c => c.id), 5);
-        const righe = eventi
-            .map(ev => ({ ev, card: collezione.find(c => String(c.id) === String(ev.carta_id)) }))
-            .filter(x => x.card) // la carta potrebbe essere stata eliminata nel frattempo
-            .map(({ ev, card }) => ({
-                id: card.id,
-                nome: card.name || '—',
-                variante: card.variation || '',
-                quando: new Date(ev.registrato_il).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' }),
-                immagine: card.immagine,
-                rarita: card.rarita,
-            }));
-        // MAI mettere in cache un risultato vuoto. Il primo giro puo'
-        // capitare prima che carteReali sia popolato, o mentre la rete e'
-        // ancora giu': memorizzare quel vuoto significava mostrare "nessun
-        // controllo ancora" per cinque minuti su un widget che i dati ce li
-        // aveva. Difetto visto in uno screenshot di Claudio il 2026-09-03,
-        // dopo che lo stesso widget aveva funzionato poco prima.
-        if (righe.length) _cachePrezziRecenti = { quando: Date.now(), righe };
-        return righe;
-    } catch (e) {
-        console.error('[widget prezzi_recenti]', e);
-        return [];
-    }
-}
+// [SEZIONE SPOSTATA in ui/widget-prezzi.ui.js — STEP 16 ristrutturazione file widget, 2026-09-11. Vedi Roadmap_Ristrutturazione_Widget_Home_2026-09-11.md]
 
 // [SEZIONE SPOSTATA in ui/widget-contributi.ui.js — STEP 6 ristrutturazione file widget, 2026-09-11. Vedi Roadmap_Ristrutturazione_Widget_Home_2026-09-11.md]
 
