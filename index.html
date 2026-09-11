@@ -4962,7 +4962,7 @@
                  semplicemente Visualizzazione generica (tab:'visualizzazione');
                  ora pagina propria, stesso pattern di #valore/#wishlist/
                  #location. Contenuto riempito da renderPaginaDoppioni() in
-                 ui/phone.ui.js. -->
+                 ui/widget-doppioni.ui.js. -->
             <div id="doppioniContenuto"></div>
         </div>
 
@@ -4989,7 +4989,7 @@
                  segnaposto gacha del 27/08) — stesso pattern minimo di
                  #valore/#wishlist/#location/#doppioni/#sealed/#set: nessun
                  markup qui, tutto riempito da renderPaginaBustina() in
-                 ui/phone.ui.js. AGGIORNATO 2026-09-09: l'apertura ora passa
+                 ui/widget-bustina.ui.js. AGGIORNATO 2026-09-09: l'apertura ora passa
                  dall'esperienza completa (cutscene + taglio busta laser +
                  swipe carte + riepilogo), vedi #bustinaCutsceneOverlay più
                  sotto nel body — questa pagina resta solo stato/saldo e
@@ -5719,7 +5719,7 @@
     <!-- Contributi al gruppo (migration 37, 2026-09-03). Sola LETTURA: la
          scrittura la fa l'estensione dal service worker, non il sito.
          Espone contributiGruppoLeggi(), usata dal widget 'contributi' in
-         ui/phone.ui.js. Va qui, fra i repository e prima degli ui/*.js. -->
+         ui/widget-contributi.ui.js. Va qui, fra i repository e prima degli ui/*.js. -->
     <script src="data/contributi.repository.js"></script>
     <script src="state/app.state.js"></script>
     <script src="state/cards.state.js"></script>
@@ -5778,6 +5778,7 @@
     <script src="ui/widget-condividi.ui.js"></script>
     <script src="ui/widget-contributi.ui.js"></script>
     <script src="ui/widget-dafare.ui.js"></script>
+    <script src="ui/widget-doppioni.ui.js"></script>
     <script src="ui/phone.ui.js"></script>
     <!-- Notifica missioni/traguardi appena completati, senza dover aprire la
          pagina Missioni (Claudio 2026-09-03). Va DOPO phone.ui.js e
