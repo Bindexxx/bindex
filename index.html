@@ -3713,7 +3713,7 @@
            "facile" (sfondo/bordi/box dialoghi/box statistiche/bottoni) —
            NON la pokéball (rosso/bianco/nero, resta un'icona
            riconoscibile) e NON i colori di rarità delle carte (portano
-           significato, vedi RARITA_CSS_BUSTINA in phone.ui.js).
+           significato, vedi RARITA_CSS_BUSTINA in ui/widget-bustina.ui.js).
            ═══════════════════════════════════════════════════════════ */
         #bustinaCutsceneOverlay {
             /* Palette GameBoy chiara di default (light mode): plastica e
@@ -3786,7 +3786,7 @@
            vengono disegnate qui dentro come se questo fosse lo schermo
            intero, poi l'intero blocco viene ridotto/ingrandito in un colpo
            solo con transform:scale() calcolato in JS (_bustinaRicalcolaScale
-           in phone.ui.js) per riempire esattamente lo spazio disponibile
+           in ui/widget-bustina.ui.js) per riempire esattamente lo spazio disponibile
            nella cornice del telefono, a qualunque orientamento/dimensione
            — bande nere dove serve, MAI markup/coordinate ricalcolate per
            dimensione reale dello schermo. Necessario perché i movimenti
@@ -4147,8 +4147,10 @@
          (max 10, riordinabile, salvata per-dispositivo). Ogni widget apre
          a schermo intero, dentro il rettangolo schermo della cornice,
          esattamente la view-section che apriva il vecchio menu laterale —
-         vedi ui/paginainiziale.ui.js (motore griglia/apertura) e
-         ui/phone.ui.js (le singole pagine widget non ancora estratte).
+         vedi ui/paginainiziale.ui.js (motore griglia/apertura) e i singoli
+         file ui/widget-<nome>.ui.js (ogni pagina widget, uno per file —
+         ristrutturazione completata 2026-09-11, vedi
+         Roadmap_Ristrutturazione_Widget_Home_2026-09-11.md).
          #phoneFrameBox ha le proporzioni ESATTE
          dell'immagine (mai deformata/ritagliata), con un tetto massimo
          solo su desktop perché resti un mockup e non riempia il monitor
@@ -4944,7 +4946,7 @@
             <!-- Pagina di dettaglio "Wishlist" (2026-08-30) — prima apriva
                  semplicemente Binder (tab:'binder'); ora pagina propria,
                  stesso pattern di #valore. Contenuto riempito da
-                 renderPaginaWishlist() in ui/phone.ui.js. -->
+                 renderPaginaWishlist() in ui/widget-wishlist.ui.js. -->
             <div id="wishlistContenuto"></div>
         </div>
 
@@ -5747,7 +5749,7 @@
          a mano. -->
     <script src="data/sets.library.js"></script>
     <!-- Catalogo missioni/traguardi (Fase 1) + motore di valutazione. Va
-         PRIMA di phone.ui.js e ui/widget-missioni.ui.js, che leggono
+         PRIMA di ui/widget-missioni.ui.js, che legge
          CATALOGO_MISSIONI/CATALOGO_TRAGUARDI/MOTORE_MISSIONI (pagina/widget
          dedicati, STEP 14 ristrutturazione 2026-09-11 — qui c'è anche
          _missioniNotificaCompletamenti, condivisa con
@@ -5757,15 +5759,18 @@
     <script src="ui/missioni.ui.js"></script>
     <script src="statusbar.js"></script>
     <!-- Motore home a widget (STEP 0 ristrutturazione, 2026-09-11) — va
-         PRIMA di phone.ui.js: dichiara CATALOGO_WIDGET (registro vuoto,
-         popolato da phone.ui.js qui sotto per i widget non ancora
-         estratti) e tutte le funzioni di griglia/drag/resize/paginazione/
-         layout/dettaglio/polling che phone.ui.js richiama. Vedi
+         PRIMA di tutti i file ui/widget-<nome>.ui.js sotto: dichiara
+         CATALOGO_WIDGET (registro vuoto, popolato da ciascun widget nel
+         proprio file) e tutte le funzioni di griglia/drag/resize/
+         paginazione/layout/dettaglio/polling che ogni widget richiama.
+         AGGIORNATO 2026-09-11 (STEP 23, pulizia finale): ui/phone.ui.js
+         è stato cancellato — svuotato progressivamente dagli step 0-22,
+         non conteneva più codice funzionante, solo commenti storici. Vedi
          Roadmap_Ristrutturazione_Widget_Home_2026-09-11.md. -->
     <script src="ui/paginainiziale.ui.js"></script>
     <!-- Motore visivo condiviso dei widget (STEP 1 ristrutturazione,
-         2026-09-11) — va SUBITO DOPO paginainiziale.ui.js e PRIMA di
-         phone.ui.js: disegno sfera/tessere, animazione cattura, semaforo,
+         2026-09-11) — va SUBITO DOPO paginainiziale.ui.js e PRIMA di tutti
+         i widget: disegno sfera/tessere, animazione cattura, semaforo,
          componenti visivi riusati (_ballRiga, _ballPill, _ballCORPI...).
          Vedi Roadmap_Ristrutturazione_Widget_Home_2026-09-11.md. -->
     <script src="ui/widget-render-condiviso.ui.js"></script>
@@ -5773,9 +5778,11 @@
          vuoto insieme allo STEP 1 come da roadmap) — nasce quasi vuoto,
          si popola durante l'estrazione dei prossimi widget. -->
     <script src="ui/widget-funzioni-condivise.ui.js"></script>
-    <!-- Widget estratti da phone.ui.js, uno alla volta (STEP 3 in poi della
-         ristrutturazione) — ordine alfabetico sul titolo mostrato in home.
-         Vedi Roadmap_Ristrutturazione_Widget_Home_2026-09-11.md. -->
+    <!-- I 20 widget della home, uno per file, ordine alfabetico sul nome
+         file (ristrutturazione completata 2026-09-11 — STEP 3-22, vedi
+         Roadmap_Ristrutturazione_Widget_Home_2026-09-11.md). Ognuno
+         dichiara la propria CATALOGO_WIDGET.<id> = {...} e, se ha una
+         pagina propria, la funzione che la riempie. -->
     <script src="ui/widget-binder.ui.js"></script>
     <script src="ui/widget-bustina.ui.js"></script>
     <script src="ui/widget-condividi.ui.js"></script>
@@ -5795,12 +5802,13 @@
     <script src="ui/widget-valore-collezione.ui.js"></script>
     <script src="ui/widget-vetrina.ui.js"></script>
     <script src="ui/widget-visualizzazione.ui.js"></script>
-    <script src="ui/phone.ui.js"></script>
+    <script src="ui/widget-wishlist.ui.js"></script>
     <!-- Notifica missioni/traguardi appena completati, senza dover aprire la
-         pagina Missioni (Claudio 2026-09-03). Va DOPO phone.ui.js e
-         statusbar.js: usa _beep() (ora in ui/paginainiziale.ui.js, caricato
-         ancora prima) e CSBar (statusbar.js), e va dopo
-         ui/missioni.ui.js per MOTORE_MISSIONI. Tutte lette al momento della
+         pagina Missioni (Claudio 2026-09-03). Va DOPO ui/missioni.ui.js
+         (per MOTORE_MISSIONI e _missioniNotificaCompletamenti) e
+         statusbar.js (per CSBar) — vedi anche STEP 14 ristrutturazione,
+         2026-09-11: _beep() ora vive in ui/paginainiziale.ui.js, caricato
+         ancora prima. Tutte lette al momento della
          chiamata (primo giro 20s dopo il load), quindi l'ordine è di
          chiarezza più che di necessità — ma tenendolo per ultimo non c'è
          modo di sbagliare. Si avvia da solo con un proprio listener di
