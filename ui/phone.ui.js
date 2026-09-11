@@ -652,56 +652,7 @@ Object.assign(CATALOGO_WIDGET, {
             };
         },
     },
-    primo_piano: {
-        titolo: 'In primo piano', icona: 'fa-crown',
-        // Tre categorie da tre carte: sotto questa taglia le miniature non
-        // ci stanno e il widget non mostrerebbe cio' per cui esiste.
-        tagliaDefault: '6x8',
-        // Stesso identico calcolo di renderBinderInPrimoPianoHome()
-        // (ui/home.ui.js): tre categorie da 3 carte, solo collezione,
-        // escluse le sealed. Tutto da carteReali, gia' in memoria:
-        // ZERO query nuove, si puo' rivalutare a ogni giro di polling
-        // senza costo.
-        preview: () => {
-            const carteSingole = (typeof carteReali !== 'undefined' ? carteReali : [])
-                .filter(c => c.stato === 'collezione' && c.tipo !== 'sealed');
-            const perValore = carteSingole.slice().sort((a, b) => (b.price || 0) - (a.price || 0)).slice(0, 3);
-            const conVariazione = carteSingole.filter(c => c.variazioneNumerica != null);
-            const su = conVariazione.filter(c => c.variazioneNumerica > 0).sort((a, b) => b.variazioneNumerica - a.variazioneNumerica).slice(0, 3);
-            const giu = conVariazione.filter(c => c.variazioneNumerica < 0).sort((a, b) => a.variazioneNumerica - b.variazioneNumerica).slice(0, 3);
-            const top = perValore[0];
-            if (!top) return { righe: ['Nessuna carta ancora'], dati: { perValore: [], su: [], giu: [] } };
-            const righe = [`${top.name || '—'}`, `€ ${(Number(top.price) || 0).toFixed(2)}`];
-            if (su[0]) righe.push(`↑ ${su[0].name || '—'}`);
-            return {
-                righe,
-                // NIENTE 'immagine': con una foto la tessera perde la sfera
-                // e mostra icona piatta + miniatura (vedi il ramo BALL_ATTIVA
-                // in renderWidgetHome). Il risultato era che questo widget e
-                // "Ultime aggiunte" venivano resi in due modi diversi a
-                // seconda che la prima carta avesse o meno una foto — un
-                // dettaglio che non c'entra niente con il widget. La sfera
-                // resta sempre; la foto della carta si vede aprendola.
-                badge: false,
-                // 'immagine' e 'rarita' servono a _ballMiniCarta per
-                // disegnare le miniature nel corpo grande (vedi _ballCORPI).
-                // Senza, il widget ricadeva sul corpo generico a tre righe
-                // di testo — che e' il motivo per cui non somigliava per
-                // niente al blocco della home fissa.
-                dati: {
-                    perValore: perValore.map(c => ({ id: c.id, nome: c.name, prezzo: Number(c.price) || 0, immagine: c.immagine, rarita: c.rarita })),
-                    su: su.map(c => ({ id: c.id, nome: c.name, varia: c.variazioneNumerica, immagine: c.immagine, rarita: c.rarita })),
-                    giu: giu.map(c => ({ id: c.id, nome: c.name, varia: c.variazioneNumerica, immagine: c.immagine, rarita: c.rarita })),
-                },
-            };
-        },
-        // Stesso gesto della home fissa: la carta si apre nel flip-modal,
-        // non cambia tab.
-        azione: (dati) => {
-            const primo = dati && dati.perValore && dati.perValore[0];
-            if (primo && typeof apriFlipCardHome === 'function') apriFlipCardHome(primo.id);
-        },
-    },
+// [SEZIONE SPOSTATA in ui/widget-in-primo-piano.ui.js — STEP 10 ristrutturazione file widget, 2026-09-11. Vedi Roadmap_Ristrutturazione_Widget_Home_2026-09-11.md]
     carte_recenti: {
         titolo: 'Ultime aggiunte', icona: 'fa-clock',
         tagliaDefault: '6x6', // cinque righe di elenco più la fila di miniature
