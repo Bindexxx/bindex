@@ -412,38 +412,7 @@ Object.assign(CATALOGO_WIDGET, {
         // generale, unico punto disponibile all'epoca).
         azione: (dati, evt) => { apriDettaglioWidget('match', evt); },
     },
-    // Sbloccato (Claudio, 2026-08-27): extension.ui.js letto per intero in
-    // questa sessione. _chiediVersioneEstensione()/_chiediAiutaGruppoEstensione()
-    // già esistenti lì, stessa tolleranza timeout (1.2s, mai blocca il
-    // render della home) delle altre chiamate verso l'estensione — zero
-    // query nuove, stessa filosofia degli altri widget.
-    estensione: {
-        titolo: 'Estensione', icona: 'fa-link',
-        preview: async () => {
-            const versione = await _chiediVersioneEstensione();
-            if (!versione) return { righe: ['Non rilevata'], rilevata: false, dati: { rilevata: false } };
-            const aiutaGruppo = await _chiediAiutaGruppoEstensione();
-            return {
-                righe: [`v${versione}`, aiutaGruppo ? 'Aiuta il gruppo: attivo' : 'Aiuta il gruppo: no'],
-                stato: aiutaGruppo ? 'ok' : undefined,
-                rilevata: true,
-                dati: { rilevata: true, versione, aiutaGruppo: !!aiutaGruppo },
-            };
-        },
-        // Click: porta l'estensione in primo piano (stessa funzione già
-        // usata dal bottone "Apri l'app" in sidebar — vedi
-        // _mandaAperturaAppAEstensione in extension.ui.js). Se non
-        // rilevata, apre Impostazioni invece: lì ci sono le istruzioni
-        // d'installazione, non ha senso provare ad "aprire" qualcosa che
-        // non c'è.
-        azione: async (dati, evt) => {
-            if (dati && dati.rilevata) {
-                await _mandaAperturaAppAEstensione();
-            } else {
-                apriDettaglioWidget('impostazioni', evt);
-            }
-        },
-    },
+// [SEZIONE SPOSTATA in ui/widget-estensione.ui.js — STEP 9 ristrutturazione file widget, 2026-09-11. Vedi Roadmap_Ristrutturazione_Widget_Home_2026-09-11.md]
 
     // ═══════════════════════════════════════════════════════════════════
     // WIDGET NUOVI (27/08/2026) — ispirati ai tipi del mockup di Opus.
