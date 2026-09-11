@@ -350,30 +350,7 @@ Object.assign(CATALOGO_WIDGET, {
             return { righe: [`${lista.length} da aggiornare`, lista[0].name || ''], stato: 'allerta', dati };
         },
     },
-    // Multi-Binder (2026-08-25): 'scambio' e 'wishlist' come widget home
-    // separati sono stati rimossi — puntavano a switchTab('scambio'/
-    // 'wishlist'), view-section che non esistono più in index.html (solo 5
-    // restano: visualizzazione/inserimento/prezzi/binder/impostazioni).
-    // Erano già inattivi prima di questa sessione. Il loro contenuto vive
-    // ora dentro il widget "Binders" sotto, come binder dedicati.
-    binder: {
-        titolo: 'Binders', icona: 'fa-layer-group',
-        // Zero query nuove (stessa filosofia degli altri preview): conta le
-        // location distinte già presenti in carteReali + 2 fissi (Wishlist
-        // + il binder 'extra', che esistono sempre una volta garantiti) —
-        // è una STIMA del numero di binder, non il conteggio esatto letto
-        // da bindersQueryTutti() (quello lo fa apriWidgetBinders() appena
-        // aperto il widget, qui servirebbe una query in più solo per
-        // l'anteprima e non vale il costo).
-        preview: () => {
-            const perLocation = {};
-            carteReali.filter(c => c.tabella === 'carte' && c.stato === 'collezione' && c.location)
-                .forEach(c => { perLocation[c.location] = (perLocation[c.location] || 0) + 1; });
-            const locationDistinte = Object.keys(perLocation).length;
-            const voci = Object.entries(perLocation).sort((a, b) => b[1] - a[1]);
-            return { righe: [`${locationDistinte + 2} binder`], dati: { totale: locationDistinte + 2, voci } };
-        },
-    },
+    // [VOCE 'binder' SPOSTATA in ui/widget-binder.ui.js — STEP 3 ristrutturazione file widget, 2026-09-11]
     sealed: {
         titolo: 'Sealed', icona: 'fa-box-archive',
         preview: () => {
