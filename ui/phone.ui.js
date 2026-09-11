@@ -633,31 +633,7 @@ Object.assign(CATALOGO_WIDGET, {
         },
     },
 // [SEZIONE SPOSTATA in ui/widget-in-primo-piano.ui.js — STEP 10 ristrutturazione file widget, 2026-09-11. Vedi Roadmap_Ristrutturazione_Widget_Home_2026-09-11.md]
-    carte_recenti: {
-        titolo: 'Ultime aggiunte', icona: 'fa-clock',
-        tagliaDefault: '6x6', // cinque righe di elenco più la fila di miniature
-        // Da carteReali per createdAt, come caricaAttivitaRecentiHome().
-        // Nessuna query.
-        preview: () => {
-            const collezione = (typeof carteReali !== 'undefined' ? carteReali : [])
-                .filter(c => c.stato === 'collezione');
-            const ultime = collezione.slice()
-                .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
-                .slice(0, 5);
-            if (ultime.length === 0) return { righe: ['Nessuna carta ancora'], dati: { lista: [] } };
-            const quando = (c) => c.createdAt
-                ? new Date(c.createdAt).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' })
-                : '—';
-            return {
-                righe: ultime.slice(0, 3).map(c => `${c.name || '—'} · ${quando(c)}`),
-                // Vedi la nota in 'primo_piano': niente immagine, cosi' la
-                // sfera c'e' sempre. E niente numerino: sarebbe il giorno.
-                badge: false,
-                dati: { lista: ultime.map(c => ({ id: c.id, nome: c.name, quando: quando(c), immagine: c.immagine, rarita: c.rarita })) },
-            };
-        },
-        tab: 'visualizzazione',
-    },
+// [SEZIONE SPOSTATA in ui/widget-ultime-aggiunte.ui.js — STEP 12 ristrutturazione file widget, 2026-09-11. Vedi Roadmap_Ristrutturazione_Widget_Home_2026-09-11.md]
     prezzi_recenti: {
         titolo: 'Prezzi aggiornati', icona: 'fa-clock-rotate-left',
         tagliaDefault: '6x5', // cinque righe di elenco, senza miniature
