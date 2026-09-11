@@ -5711,6 +5711,7 @@
          repository (li riusa: trovaMatch, correzioniManualiConta,
          userSettingsGet) e PRIMA di ui/missioni.ui.js. -->
     <script src="data/missioni.repository.js"></script>
+    <script src="data/missioni-scrittura.repository.js"></script>
     <!-- Istantanea giornaliera del valore della collezione (migration 36,
          2026-09-03). Va fra i repository e PRIMA degli ui/*.js: espone
          storicoValoreRegistraOggi / storicoValoreUltimiGiorni /
@@ -5732,14 +5733,24 @@
     <script src="ui/prices.ui.js"></script>
     <script src="ui/entry.ui.js"></script>
     <script src="ui/cards.ui.js"></script>
+    <script src="ui/cards-modifica.ui.js"></script>
+    <script src="ui/cards-selezione.ui.js"></script>
+    <script src="ui/cards-filtro.ui.js"></script>
     <script src="ui/home.ui.js"></script>
+    <script src="ui/flip-card-detail.ui.js"></script>
     <script src="ui/account.ui.js"></script>
     <script src="ui/queue.ui.js"></script>
+    <script src="ui/queue-correzioni.ui.js"></script>
     <script src="ui/modals.ui.js"></script>
     <script src="ui/binder.ui.js"></script>
+    <script src="ui/binder-design.ui.js"></script>
+    <script src="ui/binder-sleeve.ui.js"></script>
     <script src="ui/extension.ui.js"></script>
     <script src="ui/photos.ui.js"></script>
     <script src="ui/navigation.ui.js"></script>
+    <script src="ui/navigation-ricerca.ui.js"></script>
+    <script src="ui/navigation-tema.ui.js"></script>
+    <script src="ui/navigation-condivisione.ui.js"></script>
     <!-- Dopo home.ui.js/navigation.ui.js: riusa switchTab/_contaCodaErrori/
          _elencoPrezziScaduti/caricaAvvisiHome già definite lì sopra. -->
     <!-- Libreria delle espansioni (generata da genera-libreria-set.html).
@@ -5756,6 +5767,7 @@
          ui/missioni-watcher.js). Non chiama supabaseClient direttamente: le
          funzioni che calcolano i valori delle metriche vivono in
          data/missioni.repository.js. -->
+    <script src="ui/missioni-catalogo.ui.js"></script>
     <script src="ui/missioni.ui.js"></script>
     <script src="statusbar.js"></script>
     <!-- Motore home a widget (STEP 0 ristrutturazione, 2026-09-11) — va
@@ -5769,12 +5781,19 @@
          Roadmap_Ristrutturazione_Widget_Home_2026-09-11.md. -->
     <script src="ui/paginainiziale.ui.js"></script>
     <script src="ui/paginainiziale-dettaglio.ui.js"></script>
+    <script src="ui/paginainiziale-cornice-statusbar.ui.js"></script>
+    <script src="ui/paginainiziale-paginazione.ui.js"></script>
+    <script src="ui/paginainiziale-drag-resize.ui.js"></script>
+    <script src="ui/paginainiziale-polling-avvio.ui.js"></script>
+    <script src="ui/paginainiziale-render.ui.js"></script>
     <!-- Motore visivo condiviso dei widget (STEP 1 ristrutturazione,
          2026-09-11) — va SUBITO DOPO paginainiziale.ui.js e PRIMA di tutti
          i widget: disegno sfera/tessere, animazione cattura, semaforo,
          componenti visivi riusati (_ballRiga, _ballPill, _ballCORPI...).
          Vedi Roadmap_Ristrutturazione_Widget_Home_2026-09-11.md. -->
     <script src="ui/widget-render-condiviso.ui.js"></script>
+    <script src="ui/widget-render-tessere-grandi.ui.js"></script>
+    <script src="ui/widget-render-corpi.ui.js"></script>
     <!-- Funzioni condivise a pagina intera fra più widget (STEP 2, creato
          vuoto insieme allo STEP 1 come da roadmap) — nasce quasi vuoto,
          si popola durante l'estrazione dei prossimi widget. -->
@@ -5785,6 +5804,7 @@
          dichiara la propria CATALOGO_WIDGET.<id> = {...} e, se ha una
          pagina propria, la funzione che la riempie. -->
     <script src="ui/widget-binder.ui.js"></script>
+    <script src="ui/widget-bustina-utils.ui.js"></script>
     <script src="ui/widget-bustina.ui.js"></script>
     <script src="ui/widget-condividi.ui.js"></script>
     <script src="ui/widget-contributi.ui.js"></script>
@@ -5800,6 +5820,7 @@
     <script src="ui/widget-prezzi.ui.js"></script>
     <script src="ui/widget-sealed.ui.js"></script>
     <script src="ui/widget-set.ui.js"></script>
+    <script src="ui/set-libreria-sigle.ui.js"></script>
     <script src="ui/widget-valore-collezione.ui.js"></script>
     <script src="ui/widget-vetrina.ui.js"></script>
     <script src="ui/widget-visualizzazione.ui.js"></script>
