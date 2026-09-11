@@ -5696,7 +5696,7 @@
     <script src="data/queue.repository.js"></script>
     <script src="data/binder.repository.js"></script>
     <!-- data/bustina.repository.js: usata da renderPaginaBustina()/motore
-         cutscene in ui/phone.ui.js (widget "Bustina"). I bottoni
+         cutscene in ui/widget-bustina.ui.js (widget "Bustina"). I bottoni
          diagnostici admin che stavano in #impostazioni sono stati tolti
          il 2026-09-10 (Claudio: la UI vera è ormai completa). -->
     <script src="data/bustina.repository.js"></script>
@@ -5774,6 +5774,7 @@
          ristrutturazione) — ordine alfabetico sul titolo mostrato in home.
          Vedi Roadmap_Ristrutturazione_Widget_Home_2026-09-11.md. -->
     <script src="ui/widget-binder.ui.js"></script>
+    <script src="ui/widget-bustina.ui.js"></script>
     <script src="ui/phone.ui.js"></script>
     <!-- Notifica missioni/traguardi appena completati, senza dover aprire la
          pagina Missioni (Claudio 2026-09-03). Va DOPO phone.ui.js e
@@ -5860,7 +5861,8 @@
          figlio diretto di <body>, così il suo z-index compete
          finalmente nello stesso contesto di .container e vince
          davvero. Vuoto: riempito UNA SOLA VOLTA da
-         _bustinaCostruisciOverlay() in ui/phone.ui.js al primo utilizzo
+         _bustinaCostruisciOverlay() in ui/widget-bustina.ui.js al primo
+         utilizzo
          (idempotente — le riaperture successive riusano lo stesso
          markup, non lo ricreano). -->
     <div id="bustinaCutsceneOverlay"></div>
