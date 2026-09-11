@@ -1155,6 +1155,26 @@ function _aggiungiIstanzaWidget(id) {
 }
 
 // ───────────────────────────────────────────────────────────────────────
+// SEZIONE 3 — Bottone diagnostico "2x2" (originariamente righe 3644-3657
+// di phone.ui.js). Usa-e-getta secondo Claudio, vedi compilati precedenti.
+// ───────────────────────────────────────────────────────────────────────
+
+// STRUMENTO DIAGNOSTICO (Claudio, 2026-09-10) — forza il PRIMO widget
+// visibile a '2x2' cosi' si vede dal vivo quanto rende grande lo standard
+// minimo di zona icona, senza doverci arrivare trascinando a mano.
+// Usa-e-getta: modifica per davvero il widget (non e' un'anteprima finta),
+// quindi resta lì finché non lo ridimensioni di nuovo — è lo scopo,
+// vederlo esattamente come sarebbe per un utente vero.
+function _testForzaTaglia2x2() {
+    const w = (_layoutWidget || []).find(x => x.visibile);
+    if (!w) return;
+    w.size = '2x2';
+    w.mini = false;
+    _salvaLayoutWidget(false); // diagnostico, non conta come personalizzazione vera per le missioni
+    renderWidgetHome();
+}
+
+// ───────────────────────────────────────────────────────────────────────
 // SEZIONE 4 — Modifica/drag/resize, peek, apertura/chiusura dettaglio
 // widget (originariamente righe 3659-4194 di phone.ui.js).
 // ───────────────────────────────────────────────────────────────────────
@@ -1520,7 +1540,8 @@ function _nascondiPeek() {
 // Rettangolo REALE dello schermo dentro la cornice pokedex (#phoneScreen)
 // — unica fonte di verità per chiunque debba starci dentro: sia .container
 // (ogni widget, sotto) sia l'overlay bustina (vedi _bustinaRicalcolaScale
-// in fondo al file). Un solo posto dove può disallinearsi, non due.
+// in ui/widget-bustina.ui.js, STEP 4 ristrutturazione). Un solo posto dove
+// può disallinearsi, non due.
 function _rettangoloSchermoCornice() {
     const schermo = document.getElementById('phoneScreen');
     if (!schermo) return null;
@@ -2088,14 +2109,18 @@ async function initPhoneShell() {
             // ora fisso e visibile nell'header della home (index.html) —
             // due strade per la stessa azione avrebbero richiesto tenerle
             // sincronizzate (stato 'attivo'/testo) senza un vantaggio reale.
-            // Voce diagnostica 'test2x2' RIMOSSA (Claudio, 2026-09-11): non
-            // serve più — aveva già svolto il suo scopo (giudicare a occhio
-            // lo standard minimo 2x2 della zona icona, vedi CELLE_MIN_PER_
-            // SFERA più sopra). Stesso spirito dei bottoni diagnostici della
-            // bustina rimossi in un'altra sessione: usa-e-getta per davvero.
+            // Voce diagnostica 'test2x2' (Claudio, 2026-09-10, screenshot:
+            // "metti un tasto... così lo clicco e vedo quanto diventa
+            // grande"): forza il PRIMO widget visibile a 2x2 per giudicare
+            // a occhio la taglia minima standard, dal vivo, senza dover
+            // trascinare a mano fino in fondo. Strumento usa-e-getta, non
+            // pensato per restare per sempre — stesso spirito dei bottoni
+            // diagnostici della bustina rimossi in un'altra sessione: se
+            // non serve più basta togliere questa riga.
             quickActions: [
                 { id: 'suoni', label: 'Suoni', glyph: '\u266a', active: prefSuoniWidgetGet(), onToggle: () => toggleSuoniWidgetHome() },
                 { id: 'densita', label: 'Densità comoda', glyph: '\u25a6', active: _densitaCompatta, onToggle: () => toggleDensitaWidgetHome() },
+                { id: 'test2x2', label: '2x2', glyph: '\u25a2', type: 'action', onToggle: () => _testForzaTaglia2x2() },
             ],
 
             onSettings: () => apriDettaglioWidget('impostazioni'),
