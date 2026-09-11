@@ -6,16 +6,21 @@
 // ui/phone.ui.js il 2026-09-11. NESSUNA riscrittura: solo spostamento di
 // codice, zero cambi di comportamento per l'utente finale.
 //
-// CATEGORIA C — PUNTO APERTO §7.1 della roadmap, CONFERMATO leggendo il
-// codice in questo step (non testato dal vivo): la voce di catalogo qui
-// sotto non ha né 'azione' né 'tab'. Il comportamento di default
-// (apriDettaglioWidget('contributi', evt) in ui/paginainiziale.ui.js)
-// cade nel ramo switchTab('contributi', null) — ma 'contributi' non è
-// una delle 5 tab fisse del sito (navigation.ui.js), quindi il click
-// sulla tessera PROBABILMENTE non apre nulla oggi. Comportamento
-// preesistente, non introdotto da questa ristrutturazione, NON corretto
-// qui senza autorizzazione esplicita — decide Claudio se lasciarlo solo-
-// anteprima o aprirlo su qualcosa (cambio di comportamento reale).
+// CATEGORIA C — PUNTO APERTO §7.1 della roadmap. VERIFICATO dal vivo da
+// Claudio (2026-09-11) E confermato leggendo navigation.ui.js per intero:
+// il click sulla tessera NON apre "nulla" (previsione iniziale sbagliata,
+// corretta qui) — apre la pagina VISUALIZZAZIONE. Causa reale: switchTab()
+// (ui/navigation.ui.js) attiva INCONDIZIONATAMENTE #visualizzazione ad
+// ogni chiamata (prima di qualunque controllo su tabId), e la sostituisce
+// con la tab giusta SOLO se tabId è una delle 5 note (visualizzazione/
+// inserimento/prezzi/impostazioni/binder/home). 'contributi' non è tra
+// queste, quindi quella riga non viene mai sovrascritta: Visualizzazione
+// resta visibile come fallback silenzioso. La voce di catalogo qui sotto
+// non ha né 'azione' né 'tab' — comportamento preesistente, non introdotto
+// da questa ristrutturazione, NON corretto qui senza autorizzazione
+// esplicita. Stessa causa vale probabilmente anche per "Variazione
+// valore" (§7.2 della roadmap, STEP 19) — da confermare quando ci si
+// arriva.
 //
 // _contributiConCache/_cacheContributi/TTL_CONTRIBUTI_MS: verificato che
 // sono usate SOLO dal preview() di questo widget (un solo chiamante) —
