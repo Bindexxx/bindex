@@ -5746,11 +5746,13 @@
          voci scritte a mano. -->
     <script src="data/sets.library.js"></script>
     <!-- Catalogo missioni/traguardi (Fase 1) + motore di valutazione. Va
-         PRIMA di phone.ui.js, che leggerà CATALOGO_MISSIONI/CATALOGO_TRAGUARDI
-         per costruire pagina/widget dedicati (non ancora scritti in questa
-         sessione). Non chiama supabaseClient: le funzioni che calcolano i
-         valori delle metriche vivono in un futuro data/missioni.repository.js,
-         non ancora creato. -->
+         PRIMA di phone.ui.js e ui/widget-missioni.ui.js, che leggono
+         CATALOGO_MISSIONI/CATALOGO_TRAGUARDI/MOTORE_MISSIONI (pagina/widget
+         dedicati, STEP 14 ristrutturazione 2026-09-11 — qui c'è anche
+         _missioniNotificaCompletamenti, condivisa con
+         ui/missioni-watcher.js). Non chiama supabaseClient direttamente: le
+         funzioni che calcolano i valori delle metriche vivono in
+         data/missioni.repository.js. -->
     <script src="ui/missioni.ui.js"></script>
     <script src="statusbar.js"></script>
     <!-- Motore home a widget (STEP 0 ristrutturazione, 2026-09-11) — va
@@ -5785,6 +5787,7 @@
     <script src="ui/widget-location.ui.js"></script>
     <script src="ui/widget-ultime-aggiunte.ui.js"></script>
     <script src="ui/widget-match.ui.js"></script>
+    <script src="ui/widget-missioni.ui.js"></script>
     <script src="ui/phone.ui.js"></script>
     <!-- Notifica missioni/traguardi appena completati, senza dover aprire la
          pagina Missioni (Claudio 2026-09-03). Va DOPO phone.ui.js e
