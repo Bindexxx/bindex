@@ -1411,3 +1411,45 @@ const MOTORE_MISSIONI = {
         return { dati, missioniOggiPool, missioniSettimanaPool, missioniMesePool, nuoveMissioni, nuoviTraguardi };
     },
 };
+
+// ── NOTIFICA COMPLETAMENTI (avvisi + beep + saldo) ────────────────────────
+// STEP 14 ristrutturazione file widget home, 2026-09-11 (vedi
+// Roadmap_Ristrutturazione_Widget_Home_2026-09-11.md). Consolida in
+// un'unica funzione ciò che prima era duplicato quasi identico in due
+// punti: renderPaginaMissioni() (oggi ui/widget-missioni.ui.js) e
+// _watcherMissioniGiro() (ui/missioni-watcher.js). I due punti chiamavano
+// due metodi DIVERSI per rileggere il saldo polvere — un disallineamento
+// reale trovato leggendo il codice, non solo una differenza di stile:
+// renderPaginaMissioni usava già polvereSaldoLeggi() (RPC polvere_saldo,
+// SELECT SUM lato Postgres, aggiornata 2026-09-07), il watcher era rimasto
+// al vecchio ricompenseSaldo(userId,'polvere') (somma lato client, tronca
+// oltre ~1000 righe senza segnalarlo). Consolidando qui, il watcher eredita
+// automaticamente il metodo corretto.
+//
+// UNA sola query di lettura quando c'è davvero qualcosa di nuovo — corpo
+// di polvere_saldo() verificato su Supabase da Claudio prima di scrivere
+// questa funzione (SELECT COALESCE(SUM(quantita),0) FROM
+// inventario_ricompense WHERE owner_id=auth.uid() AND tipo='polvere';
+// SECURITY DEFINER, nessuna scrittura). Nessun limite aggiuntivo oltre
+// alla guardia "solo se è cambiato qualcosa", già presente in entrambi i
+// chiamanti originali e qui preservata identica — Claudio ha chiesto
+// esplicitamente di non aggiungerne altri.
+async function _missioniNotificaCompletamenti(nuoveMissioni, nuoviTraguardi) {
+    if (!(nuoveMissioni && nuoveMissioni.length) && !(nuoviTraguardi && nuoviTraguardi.length)) return;
+
+    if (typeof CSBar !== 'undefined') {
+        (nuoveMissioni || []).forEach(m => CSBar.avvisa('missione-completata', { text: m.titolo }));
+        (nuoviTraguardi || []).forEach(t => CSBar.avvisa('traguardo-sbloccato', { text: t.titolo }));
+    }
+
+    // Beep "vinto" — 1200Hz, stesso in entrambi i chiamanti originali.
+    // Rispetta già da sé la preferenza suoni (prefSuoniWidgetGet dentro _beep).
+    if (typeof _beep === 'function') _beep(1200, 90);
+
+    if (typeof CSBar !== 'undefined' && typeof CSBar.setCurrency === 'function' && typeof polvereSaldoLeggi === 'function') {
+        try {
+            const { data: saldo, error } = await polvereSaldoLeggi();
+            if (!error) CSBar.setCurrency({ value: saldo || 0 });
+        } catch (e) { console.error('[missioni] aggiornamento saldo polvere:', e); }
+    }
+}
