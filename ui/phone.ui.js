@@ -625,10 +625,7 @@ Object.assign(CATALOGO_WIDGET, {
     },
 // [SEZIONE SPOSTATA in ui/widget-contributi.ui.js — STEP 6 ristrutturazione file widget, 2026-09-11. Vedi Roadmap_Ristrutturazione_Widget_Home_2026-09-11.md]
 // [SEZIONE SPOSTATA in ui/widget-bustina.ui.js — STEP 4 ristrutturazione file widget, 2026-09-11. Vedi Roadmap_Ristrutturazione_Widget_Home_2026-09-11.md]
-    polvere: {
-        titolo: 'Polvere', icona: 'fa-wand-sparkles', bloccato: true,
-        preview: () => ({ righe: ['In arrivo'], dati: { placeholder: true, testo: 'La valuta guadagnata coi doppioni' } }),
-    },
+// [SEZIONE SPOSTATA in ui/widget-polvere.ui.js — STEP 15 ristrutturazione file widget, 2026-09-11. Vedi Roadmap_Ristrutturazione_Widget_Home_2026-09-11.md]
 // [SEZIONE SPOSTATA in ui/widget-missioni.ui.js — STEP 14 ristrutturazione file widget, 2026-09-11. Vedi Roadmap_Ristrutturazione_Widget_Home_2026-09-11.md]
 });
 
