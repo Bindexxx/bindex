@@ -4507,19 +4507,43 @@
                 <table id="tabellaInserimento">
                     <thead>
                         <tr>
-                            <th style="width: 24%;">NOME / CODICE</th>
-                            <th style="width: 11%;">LINGUA</th>
-                            <th style="width: 11%;">COND.</th>
+                            <th style="width: 22%;">NOME / CODICE</th>
+                            <th style="width: 10%;">LINGUA</th>
+                            <th style="width: 10%;">COND.</th>
                             <th style="width: 6%; text-align: center;">REV</th>
                             <th style="width: 6%; text-align: center;">1st</th>
-                            <th style="width: 16%; text-align: center;">Q.TÀ</th>
-                            <th style="width: 14%;" class="colonna-location">LOCATION</th>
-                            <th style="width: 12%;">NOTE</th>
+                            <th style="width: 6%; text-align: center;" title="Ancora sigillata nella bustina originale">SIG</th>
+                            <th style="width: 15%; text-align: center;">Q.TÀ</th>
+                            <th style="width: 13%;" class="colonna-location">LOCATION</th>
+                            <th style="width: 8%;">NOTE</th>
                             <th style="width: 4%;"></th>
                         </tr>
                     </thead>
                     <tbody id="entryTableBody"></tbody>
                 </table>
+
+                <!-- FASE 1 (2026-09-12): tabella dedicata ai prodotti sealed
+                     (Booster Box, ETB, UPC...) — campi diversi dalle carte,
+                     niente REV/1st/CONDIZIONE (non si applicano a un
+                     prodotto sigillato), niente ricerca automatica su
+                     Cardmarket: inserimento diretto in prodotti_sealed,
+                     prezzo facoltativo/manuale. Nascosta di default,
+                     mostrata da impostaTipoInserimento('sealed'). -->
+                <table id="tabellaInserimentoSealed" style="display:none;">
+                    <thead>
+                        <tr>
+                            <th style="width: 26%;">NOME</th>
+                            <th style="width: 14%;">LINGUA</th>
+                            <th style="width: 18%;">INTEGRITÀ</th>
+                            <th style="width: 12%; text-align: center;">Q.TÀ</th>
+                            <th style="width: 14%;">PREZZO (facolt.)</th>
+                            <th style="width: 12%;">NOTE</th>
+                            <th style="width: 4%;"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="entryTableBodySealed"></tbody>
+                </table>
+
                 <div style="margin-top: 1.2rem; display: flex; justify-content: space-between; align-items: center;">
                     <span class="autosave-status" id="autosaveLabel">
                         <i class="fa-solid fa-floppy-disk"></i> Salva automatico attivo
@@ -5656,6 +5680,10 @@
                 <input type="text" id="editLocation" list="datalistEditLocation">
                 <datalist id="datalistEditLocation"></datalist>
             </div>
+            <div class="auth-field" id="campoEditSigillata" style="display:flex; align-items:center; gap:0.5rem;">
+                <input type="checkbox" id="editSigillata" style="width:auto;">
+                <label for="editSigillata" style="margin:0;" title="Ancora nella bustina originale, mai staccata">📦 Ancora sigillata nella bustina originale</label>
+            </div>
             <div class="auth-field" id="campoEditObiettivo">
                 <label>Prezzo obiettivo (€) <span style="font-weight:600; color:var(--text-muted);">— opzionale</span></label>
                 <input type="number" id="editObiettivo" step="0.01" min="0" placeholder="Es. 25.00">
@@ -5667,6 +5695,86 @@
 
             <button class="btn-main" id="btnSalvaModificaCarta" style="width: 100%; justify-content:center; margin-top: 0.4rem;" onclick="salvaModificaCarta()">
                 <i class="fa-solid fa-check"></i> Salva Modifiche
+            </button>
+        </div>
+    </div>
+
+    <!-- FASE 1 (2026-09-12): modale Modifica per i prodotti sealed — campi
+         diversi dal modale carte (niente condizione/reverse/1st, invece
+         integrità packaging + tre prezzi + data acquisizione). -->
+    <div id="editSealedModal" class="modal-overlay">
+        <div class="modal-content" style="max-width: 380px; text-align: left;" onclick="event.stopPropagation()">
+            <button class="close-modal-btn" onclick="chiudiModificaSealed()"><i class="fa-solid fa-xmark"></i></button>
+            <h3 style="font-weight: 800; margin-bottom: 1rem; text-align:center;"><i class="fa-solid fa-box-archive" style="color: var(--primary);"></i> Modifica Prodotto Sealed</h3>
+
+            <div class="auth-field">
+                <label>Nome</label>
+                <input type="text" id="editSealedNome">
+            </div>
+            <div class="edit-card-row" style="display:flex; gap:0.6rem;">
+                <div class="auth-field" style="flex:1;">
+                    <label>Codice/catalogo <span style="font-weight:600; color:var(--text-muted);">— opzionale</span></label>
+                    <input type="text" id="editSealedCodice">
+                </div>
+                <div class="auth-field" style="flex:1;">
+                    <label>Set/espansione <span style="font-weight:600; color:var(--text-muted);">— opzionale</span></label>
+                    <input type="text" id="editSealedSet">
+                </div>
+            </div>
+            <div class="edit-card-row" style="display:flex; gap:0.6rem;">
+                <div class="auth-field" style="flex:1;">
+                    <label>Lingua</label>
+                    <select id="editSealedLingua">
+                        <option value="IT">IT</option>
+                        <option value="EN">EN</option>
+                        <option value="KOR">KOR</option>
+                        <option value="JP">JP</option>
+                    </select>
+                </div>
+                <div class="auth-field" style="flex:1;">
+                    <label>Quantità</label>
+                    <input type="number" id="editSealedQty" min="1">
+                </div>
+            </div>
+            <div class="auth-field">
+                <label>Integrità confezione</label>
+                <select id="editSealedIntegrita"></select>
+            </div>
+            <div class="auth-field">
+                <label>Location</label>
+                <input type="text" id="editSealedLocation" list="datalistEditSealedLocation">
+                <datalist id="datalistEditSealedLocation"></datalist>
+            </div>
+            <div class="edit-card-row" style="display:flex; gap:0.6rem;">
+                <div class="auth-field" style="flex:1;">
+                    <label>Prezzo richiesto (€) <span style="font-weight:600; color:var(--text-muted);">— opzionale</span></label>
+                    <input type="number" id="editSealedPrezzo" step="0.01" min="0">
+                </div>
+                <div class="auth-field" style="flex:1;">
+                    <label>Prezzo Cardmarket (€) <span style="font-weight:600; color:var(--text-muted);">— opzionale</span></label>
+                    <input type="number" id="editSealedPrezzoCardmarket" step="0.01" min="0">
+                </div>
+            </div>
+            <div class="edit-card-row" style="display:flex; gap:0.6rem;">
+                <div class="auth-field" style="flex:1;">
+                    <label>Prezzo d'acquisto (€) <span style="font-weight:600; color:var(--text-muted);">— opzionale</span></label>
+                    <input type="number" id="editSealedPrezzoAcquisto" step="0.01" min="0">
+                </div>
+                <div class="auth-field" style="flex:1;">
+                    <label>Data acquisizione <span style="font-weight:600; color:var(--text-muted);">— opzionale</span></label>
+                    <input type="date" id="editSealedDataAcquisizione">
+                </div>
+            </div>
+            <div class="auth-field">
+                <label>Note</label>
+                <input type="text" id="editSealedNote">
+            </div>
+
+            <button class="btn-main" id="btnSalvaModificaSealed" style="width: 100%; justify-content:center; margin-top: 0.4rem;" onclick="salvaModificaSealed()">
+                <i class="fa-solid fa-check"></i> Salva Modifiche
+            </button>
+            <button class="btn-secondary" style="width: 100%; justify-content:center; margin-top: 0.5rem; color:var(--danger); background-color:var(--danger-bg);" onclick="eliminaSealedDaModale()">
+                <i class="fa-solid fa-trash"></i> Elimina
             </button>
         </div>
     </div>
@@ -5868,6 +5976,10 @@
             if (!restoreEntryDraft()) {
                 initEntryTable();
             }
+            // FASE 1: tabella prodotti sealed — niente bozza salvata per ora
+            // (semplificazione dichiarata, la tabella carte la ha da tempo,
+            // qui si riparte sempre vuota).
+            initEntryTableSealed();
 
             // Estensione + login: un unico punto d'ingresso — mostra il
             // pannello a schermo intero se manca qualcosa, altrimenti
