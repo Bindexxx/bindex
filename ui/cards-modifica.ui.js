@@ -89,6 +89,15 @@
             inputLocation.disabled = isWishlist;
             inputLocation.placeholder = isWishlist ? 'Non applicabile alla wishlist' : '';
 
+            // FASE 1 (2026-09-12): sigillata_originale esiste solo su
+            // 'carte', non su 'wishlist' (non possiedi ancora l'oggetto) —
+            // stesso trattamento di Location sopra: nascosta del tutto,
+            // non solo disabilitata (a differenza di Location, qui non c'è
+            // nessun valore sensato da mostrare disabilitato).
+            const campoSigillata = document.getElementById('campoEditSigillata');
+            campoSigillata.style.display = isWishlist ? 'none' : 'flex';
+            document.getElementById('editSigillata').checked = !isWishlist && !!card.sigillataOriginale;
+
             // Prezzo obiettivo — opposto di Location: ha senso SOLO in
             // Wishlist (quanto sei disposto a spendere per una carta che
             // non hai ancora), non sulle carte già in collezione. Il campo
@@ -134,6 +143,7 @@
             // La colonna 'location' esiste solo su 'carte', non su 'wishlist'.
             if (!isWishlist) {
                 aggiornamento.location = document.getElementById('editLocation').value.trim() || null;
+                aggiornamento.sigillata_originale = document.getElementById('editSigillata').checked;
             } else {
                 // Speculare: 'prezzo_obiettivo' esiste solo su 'wishlist'.
                 // Campo facoltativo — vuoto significa "nessun obiettivo
