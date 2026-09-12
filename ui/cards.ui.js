@@ -92,6 +92,7 @@
                 qty: r.qty || 1,
                 lang: r.lingua || 'IT',
                 cond: r.condizione || 'NM',
+                sigillataOriginale: !!r.sigillata_originale,
                 price: r.prezzo != null ? Number(r.prezzo) : 0,
                 variation: _mappaVariazione(r),
                 // A10 (Dashboard/Home) — stesso diff già calcolato dentro
@@ -299,7 +300,7 @@
                 tr.innerHTML = `
                     <td><input type="checkbox" class="riga-checkbox" data-id="${idAttr}" data-tabella="${card.tabella}" onclick="event.stopPropagation(); aggiornaSelezioneMultipla();"></td>
                     <td data-label="Q.tà" class="cella-editabile" title="Clicca per modificare" onclick="event.stopPropagation(); modificaCampoInline('${idAttr}', '${card.tabella}', 'qty', ${card.qty}, 'Quantità', 'intero')"><strong>${card.qty}</strong></td>
-                    <td data-label="Nome" class="cella-editabile" title="${card.name.replace(/"/g, '&quot;')} — clicca per modificare" onclick="event.stopPropagation(); modificaCampoInline('${idAttr}', '${card.tabella}', 'nome', '${nomeAttr}', 'Nome')" style="max-width:170px; overflow:hidden; text-overflow:ellipsis;">${thumb}<strong>${escapeHtml(card.name)}</strong>${obiettivoRaggiunto ? ` <span class="badge" style="background-color:var(--success-bg); color:var(--success);" title="Prezzo sceso al di sotto del tuo obiettivo (${card.prezzoObiettivo.toFixed(2)} €)">🎯 obiettivo!</span>` : ''}</td>
+                    <td data-label="Nome" class="cella-editabile" title="${card.name.replace(/"/g, '&quot;')} — clicca per modificare" onclick="event.stopPropagation(); modificaCampoInline('${idAttr}', '${card.tabella}', 'nome', '${nomeAttr}', 'Nome')" style="max-width:170px; overflow:hidden; text-overflow:ellipsis;">${thumb}<strong>${escapeHtml(card.name)}</strong>${obiettivoRaggiunto ? ` <span class="badge" style="background-color:var(--success-bg); color:var(--success);" title="Prezzo sceso al di sotto del tuo obiettivo (${card.prezzoObiettivo.toFixed(2)} €)">🎯 obiettivo!</span>` : ''}${card.sigillataOriginale ? ` <span class="badge" style="background-color:var(--primary-light); color:var(--primary);" title="Ancora sigillata nella bustina originale">📦 sigillata</span>` : ''}</td>
                     <td data-label="Codice" class="cella-editabile" title="Clicca per modificare" onclick="event.stopPropagation(); modificaCampoInline('${idAttr}', '${card.tabella}', 'codice', '${codeAttr}', 'Codice')"><code>${escapeHtml(card.code)}</code></td>
                     <td data-label="Location"><span class="badge badge-location" title="${(card.location || '').replace(/"/g, '&quot;')} — clicca per modificare" onclick="event.stopPropagation(); modificaLocationInline(event, '${idAttr}', '${card.tabella}', '${locAttr}')">${escapeHtml(card.location || '—')}</span></td>
                     <td data-label="Lingua"><span class="badge ${langClass} cella-editabile" title="Clicca per modificare" onclick="event.stopPropagation(); modificaLinguaInline(event, '${idAttr}', '${card.tabella}', '${card.lang}')">${escapeHtml(card.lang)}</span></td>
@@ -383,6 +384,7 @@
                         <span class="riga-compatta-meta-testo">${escapeHtml(metaTesto)}</span>
                         <span class="pill-location">${escapeHtml(card.location || '—')}</span>
                         ${obiettivoRaggiunto ? `<span class="pill-location" style="background-color:var(--success-bg); color:var(--success);">🎯 obiettivo</span>` : ''}
+                        ${card.sigillataOriginale ? `<span class="pill-location" style="background-color:var(--primary-light); color:var(--primary);">📦 sigillata</span>` : ''}
                     </div>
                     <div class="riga-compatta-azioni" id="menuCompatto-${idAttr}" style="display:none;">
                         <button onclick="event.stopPropagation(); apriModificaCarta('${idAttr}')"><i class="fa-solid fa-pen"></i> Modifica</button>

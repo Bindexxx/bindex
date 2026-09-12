@@ -260,6 +260,13 @@
         // subito dopo un login riuscito, sia cliccando "Continua come...".
         async function _avviaSitoDopoAccesso() {
             await caricaCarteReali();
+            // FASE 1 (2026-09-12): prodotti sealed, array parallelo — non
+            // blocca l'avvio se fallisce (stesso spirito già in uso qui
+            // sotto per binder/preferenze), il widget mostrerà "nessun
+            // prodotto" finché non si riprova.
+            if (typeof caricaProdottiSealedReali === 'function') {
+                await caricaProdottiSealedReali();
+            }
             await _avviaRealtimeCarte();
 
             const prefUtente = await caricaPreferenzeUtente();
