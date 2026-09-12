@@ -4,6 +4,10 @@
 // iniziali del codice originale.
 
         let carteReali = [];
+        // FASE 1 (2026-09-12): array parallelo per i prodotti sealed
+        // (tabella prodotti_sealed, dominio separato da carte). Popolato da
+        // caricaProdottiSealedReali() in ui/widget-sealed.ui.js.
+        let prodottiSealedReali = [];
         let _sortColonna = null;
         let _sortAsc = true;
         let _cartaInModifica = null;
