@@ -41,7 +41,6 @@ async function caricaProdottiSealedReali() {
         qty: r.qty || 1,
         lingua: r.lingua || 'IT',
         integrita: r.integrita_packaging || 'sigillato_integro',
-        location: r.location || '',
         price: r.prezzo != null ? Number(r.prezzo) : 0,
         prezzoCardmarket: r.prezzo_cardmarket != null ? Number(r.prezzo_cardmarket) : null,
         prezzoAcquisto: r.prezzo_acquisto != null ? Number(r.prezzo_acquisto) : null,
@@ -198,7 +197,6 @@ async function apriModificaSealed(id) {
     document.getElementById('editSealedSet').value = prodotto.setEspansione || '';
     document.getElementById('editSealedLingua').value = prodotto.lingua;
     document.getElementById('editSealedQty').value = prodotto.qty;
-    document.getElementById('editSealedLocation').value = prodotto.location || '';
     document.getElementById('editSealedPrezzo').value = prodotto.price || '';
     document.getElementById('editSealedPrezzoCardmarket').value = prodotto.prezzoCardmarket != null ? prodotto.prezzoCardmarket : '';
     document.getElementById('editSealedPrezzoAcquisto').value = prodotto.prezzoAcquisto != null ? prodotto.prezzoAcquisto : '';
@@ -213,15 +211,20 @@ async function apriModificaSealed(id) {
         `<option value="${o.value}" ${prodotto.integrita === o.value ? 'selected' : ''}>${o.label}</option>`
     ).join('');
 
-    // Location del dominio 'sealed', stesso pattern di apriModificaCarta.
-    const userId = await authGetUserId();
-    const datalist = document.getElementById('datalistEditSealedLocation');
-    if (userId) {
-        const { data } = await locationsList(userId, 'sealed');
-        datalist.innerHTML = (data || []).map(r => `<option value="${r.nome}"></option>`).join('');
-    }
-
     document.getElementById('editSealedModal').style.display = 'flex';
+
+    // Fase 3, Step 3 (2026-09-12): etichetta iniziale del bottone "Offri in
+    // Scambio" — _quantitaOfferteScambioSealed è precaricata da
+    // apriPaginaScaffali() in ui/scaffali.ui.js (potrebbe non esserlo se
+    // l'utente non ha mai aperto la pagina Scaffali in questa sessione,
+    // da qui il controllo di esistenza prima di leggerla).
+    const btnScambio = document.getElementById('btnOffriScambioSealed');
+    if (btnScambio) {
+        const quantita = (typeof _quantitaOfferteScambioSealed !== 'undefined') ? (_quantitaOfferteScambioSealed[String(id)] ?? 0) : 0;
+        btnScambio.innerHTML = quantita > 0
+            ? `<i class="fa-solid fa-right-left"></i> In Scambio: ${quantita}`
+            : `<i class="fa-solid fa-right-left"></i> Offri in Scambio`;
+    }
 }
 
 
@@ -247,7 +250,6 @@ async function salvaModificaSealed() {
         lingua: document.getElementById('editSealedLingua').value,
         qty: Math.max(1, parseInt(document.getElementById('editSealedQty').value, 10) || 1),
         integrita_packaging: document.getElementById('editSealedIntegrita').value,
-        location: document.getElementById('editSealedLocation').value.trim() || null,
         prezzo: num('editSealedPrezzo'),
         prezzo_cardmarket: num('editSealedPrezzoCardmarket'),
         prezzo_acquisto: num('editSealedPrezzoAcquisto'),

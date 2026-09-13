@@ -55,15 +55,29 @@
                 }
             }
 
+            // Fase 3, Step 2 (2026-09-12): stesso identico schema per il
+            // binder Scambio — serve sia a _idsInScambio/_quantitaOfferteScambio
+            // sotto (tab privata "Scambio") sia a _linkPubblicoCondivisione()
+            // in ui/navigation-condivisione.ui.js (link/QR pubblico).
+            if (!_binderScambioId) {
+                const { data: binderScambio, error: errBinderScambio } = await binderScambioGarantisci(userId);
+                if (errBinderScambio) {
+                    console.error('Errore nel garantire il binder Scambio:', errBinderScambio.message);
+                } else if (binderScambio) {
+                    _binderScambioId = binderScambio.id;
+                }
+            }
+
             // Collezione e wishlist ora vivono in DUE TABELLE separate (non
             // più stato='wishlist' dentro 'carte') — le leggiamo insieme e le
             // uniamo in un solo array per riusare la stessa tabella/filtri sul
             // sito. 'tabella' su ogni riga ricorda da dove viene, così
             // modifica/eliminazione sanno su quale tabella agire dopo.
-            const [{ data: dataCarte, error: errCarte }, { data: dataWishlist, error: errWishlist }, { data: dataBinder, error: errBinder }] = await Promise.all([
+            const [{ data: dataCarte, error: errCarte }, { data: dataWishlist, error: errWishlist }, { data: dataBinder, error: errBinder }, { data: dataScambio, error: errScambio }] = await Promise.all([
                 _selectTuttePagine(cardsQueryCollezione(userId)),
                 _selectTuttePagine(wishlistQueryOrdinata(userId)),
                 _binderExtraId ? _selectTuttePagine(binderCarteQuery(userId, _binderExtraId)) : Promise.resolve({ data: [], error: null }),
+                _binderScambioId ? _selectTuttePagine(binderCarteQueryConQuantita(userId, _binderScambioId)) : Promise.resolve({ data: [], error: null }),
             ]);
 
             if (errCarte || errWishlist) {
@@ -79,6 +93,17 @@
                 _idsNelBinder = new Set();
             } else {
                 _idsNelBinder = new Set((dataBinder || []).map(r => String(r.carta_id)));
+            }
+
+            // Fase 3, Step 2: stesso trattamento non bloccante per lo Scambio.
+            if (errScambio) {
+                console.error('Errore caricamento binder Scambio:', errScambio.message);
+                _idsInScambio = new Set();
+                _quantitaOfferteScambio = {};
+            } else {
+                _idsInScambio = new Set((dataScambio || []).map(r => String(r.carta_id)));
+                _quantitaOfferteScambio = {};
+                (dataScambio || []).forEach(r => { _quantitaOfferteScambio[String(r.carta_id)] = r.quantita_offerta; });
             }
 
             const righeCarte = (dataCarte || []).map(r => ({
@@ -320,6 +345,7 @@
                                 <button onclick="apriModificaCarta('${idAttr}')"><i class="fa-solid fa-pen"></i> Modifica</button>
                                 ${card.tabella === 'wishlist' ? `<button onclick="segnaOttenuta('${card.id}')" style="color:var(--success);"><i class="fa-solid fa-check"></i> Ottenuta</button>` : ''}
                                 ${card.tabella === 'carte' && card.stato === 'collezione' ? `<button class="btn-binder-toggle" data-id="${idAttr}" onclick="event.stopPropagation(); toggleBinderMembership('${idAttr}')"><i class="fa-solid fa-layer-group"></i> ${_idsNelBinder.has(String(card.id)) ? 'Rimuovi dal Binder' : 'Aggiungi al Binder'}</button>` : ''}
+                                ${card.tabella === 'carte' && card.stato === 'collezione' ? `<button class="btn-scambio-toggle" data-id="${idAttr}" onclick="event.stopPropagation(); apriModaleQuantitaScambio('${idAttr}')"><i class="fa-solid fa-right-left"></i> ${_idsInScambio.has(String(card.id)) ? `In Scambio: ${_quantitaOfferteScambio[String(card.id)] ?? 0}` : 'Offri in Scambio'}</button>` : ''}
                                 <button onclick="apriGraficoPrezzo('${idAttr}', '${card.tabella}', '${card.name.replace(/'/g, "\\'")}')"><i class="fa-solid fa-chart-line"></i> Andamento prezzo</button>
                                 <button onclick="apriFotoDettaglio('${idAttr}', '${card.tabella}', '${card.name.replace(/'/g, "\\'")}')"><i class="fa-solid fa-camera"></i> Foto dettaglio</button>
                                 <button onclick="eliminaCarta('${card.id}')" style="color:var(--danger);"><i class="fa-solid fa-trash"></i> Elimina</button>
@@ -390,6 +416,7 @@
                         <button onclick="event.stopPropagation(); apriModificaCarta('${idAttr}')"><i class="fa-solid fa-pen"></i> Modifica</button>
                         ${card.tabella === 'wishlist' ? `<button onclick="segnaOttenuta('${card.id}')"><i class="fa-solid fa-check"></i> Ottenuta</button>` : ''}
                         ${card.tabella === 'carte' && card.stato === 'collezione' ? `<button class="btn-binder-toggle" data-id="${idAttr}" onclick="event.stopPropagation(); toggleBinderMembership('${idAttr}')"><i class="fa-solid fa-layer-group"></i> ${_idsNelBinder.has(String(card.id)) ? 'Rimuovi dal Binder' : 'Aggiungi al Binder'}</button>` : ''}
+                        ${card.tabella === 'carte' && card.stato === 'collezione' ? `<button class="btn-scambio-toggle" data-id="${idAttr}" onclick="event.stopPropagation(); apriModaleQuantitaScambio('${idAttr}')"><i class="fa-solid fa-right-left"></i> ${_idsInScambio.has(String(card.id)) ? `In Scambio: ${_quantitaOfferteScambio[String(card.id)] ?? 0}` : 'Offri in Scambio'}</button>` : ''}
                         <button onclick="apriGraficoPrezzo('${idAttr}', '${card.tabella}', '${nomeAttr}')"><i class="fa-solid fa-chart-line"></i> Andamento</button>
                         <button onclick="apriFotoDettaglio('${idAttr}', '${card.tabella}', '${nomeAttr}')"><i class="fa-solid fa-camera"></i> Foto</button>
                         <button onclick="eliminaCarta('${card.id}')" style="color:var(--danger);"><i class="fa-solid fa-trash"></i> Elimina</button>
