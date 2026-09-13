@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>CardSync Pro — Scaffale</title>
+
+    <link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Fase 1.3, Step 5c (2026-09-12) — mirror di binder-pubblico.html, ma
+         SENZA: copertina banner (Scaffali non ha copertina, solo tema CSS
+         — vedi index.html), flip-card/sleeve (nessun card-back per un
+         prodotto sealed), libro sfogliabile (Claudio, Step 5a: "il
+         flipbook non serve"), selezione/riepilogo (Scambio, fuori scope).
+         Vetrina di sola lettura: griglia + ricerca + immagine ingrandita
+         semplice. Stessi 4 temi/dark-mode del resto del sito, copiati
+         invariati (pagina standalone, non carica lo <style> di index.html). -->
+    <style>
+        :root {
+            --bg-color: #f3eeff;
+            --card-bg: #ffffff;
+            --primary: #7c4dff;
+            --primary-light: #ede7ff;
+            --primary-dark: #5e35b1;
+            --text-dark: #2a2438;
+            --text-muted: #756a8a;
+            --border-color: #e2d9f3;
+            --success: #2e7d32;
+            --success-bg: #e8f5e9;
+            --shadow-soft: 0 4px 20px rgba(124, 77, 255, 0.08);
+        }
+        body.theme-verde {
+            --bg-color: #eef7f2; --primary: #2e7d32; --primary-light: #e0f2e1;
+            --primary-dark: #1b5e20; --text-dark: #1b2e22; --text-muted: #647d6a;
+            --border-color: #cee2d4; --shadow-soft: 0 4px 20px rgba(46, 125, 50, 0.08);
+        }
+        body.theme-pokemon {
+            --bg-color: #edf4fc; --primary: #2a75d3; --primary-light: #dbeafe;
+            --primary-dark: #18529d; --text-dark: #1a2738; --text-muted: #5e728c;
+            --border-color: #cbdcf2; --shadow-soft: 0 4px 20px rgba(42, 117, 211, 0.08);
+        }
+        body.dark-mode {
+            --bg-color: #121018; --card-bg: #1c1826; --text-dark: #f1edfa;
+            --text-muted: #9f95b5; --border-color: #2f2840;
+            --primary-light: rgba(124, 77, 255, 0.2); --shadow-soft: 0 4px 20px rgba(0, 0, 0, 0.3);
+        }
+        body.dark-mode.theme-verde {
+            --bg-color: #0d1712; --card-bg: #14241b; --text-dark: #e8f5ed;
+            --text-muted: #83a38c; --border-color: #1f382a; --primary-light: rgba(46, 125, 50, 0.2);
+        }
+        body.dark-mode.theme-pokemon {
+            --bg-color: #0f1621; --card-bg: #172130; --text-dark: #eaf2fd;
+            --text-muted: #829ab8; --border-color: #23344a; --primary-light: rgba(42, 117, 211, 0.2);
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Space Grotesk', sans-serif; }
+        body { background-color: var(--bg-color); color: var(--text-dark); min-height: 100vh; min-height: 100dvh; padding-bottom: 2rem; }
+
+        header {
+            background-color: var(--card-bg); border-bottom: 1px solid var(--border-color);
+            padding: 1rem 1.2rem; box-shadow: var(--shadow-soft); position: sticky; top: 0; z-index: 50;
+        }
+        .logo {
+            display: flex; align-items: center; gap: 0.6rem;
+            font-family: 'Press Start 2P', monospace; font-weight: 400; font-size: 0.85rem;
+            color: var(--primary); letter-spacing: -0.5px;
+        }
+        @media (max-width: 420px) { .logo { font-size: 0.7rem; } }
+        .logo img { width: 24px; height: 24px; object-fit: contain; }
+        header p { font-size: 0.8rem; color: var(--text-muted); margin-top: 0.3rem; font-weight: 600; }
+        .stat-riepilogo { font-size: 0.78rem; font-weight: 700; color: var(--primary); margin-top: 0.4rem; }
+
+        .container { max-width: 720px; margin: 1.2rem auto; padding: 0 1rem; }
+
+        .search-box {
+            display: flex; align-items: center; background-color: var(--card-bg);
+            border: 1px solid var(--border-color); border-radius: 12px;
+            padding: 0.7rem 1rem; margin-bottom: 1rem; box-shadow: var(--shadow-soft);
+        }
+        .search-box input {
+            border: none; background: transparent; outline: none; padding-left: 0.6rem;
+            width: 100%; font-size: 0.9rem; font-weight: 600; color: var(--text-dark);
+        }
+
+        .stato-vuoto, .stato-caricamento, .stato-errore {
+            text-align: center; padding: 3rem 1rem; color: var(--text-muted); font-weight: 600;
+        }
+        .stato-errore { color: #d32f2f; }
+
+        /* Griglia prodotti — stile ispirato a .binder-contenitore-tile del
+           sito privato (stessa idea visiva), ma indipendente: questa pagina
+           non carica il CSS di index.html. */
+        .prodotti-grid {
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 1rem;
+        }
+        .prodotto-tile {
+            cursor: pointer; display: flex; flex-direction: column; align-items: center;
+            gap: 0.35rem; padding: 0.5rem; border-radius: 12px; background: var(--card-bg);
+            border: 1px solid var(--border-color); transition: background-color 0.15s ease;
+        }
+        .prodotto-tile:hover { background-color: var(--primary-light); }
+        .prodotto-cover {
+            width: 100%; aspect-ratio: 1 / 1; border-radius: 10px; background: var(--border-color);
+            display: flex; align-items: center; justify-content: center; overflow: hidden;
+        }
+        .prodotto-cover img { width: 100%; height: 100%; object-fit: cover; }
+        .prodotto-cover i { font-size: 1.6rem; color: var(--text-muted); }
+        .prodotto-nome {
+            font-size: 0.8rem; font-weight: 700; color: var(--text-dark); text-align: center;
+            overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%;
+        }
+        .prodotto-qty { font-size: 0.7rem; color: var(--text-muted); }
+
+        .close-modal-btn {
+            position: absolute; top: 0.6rem; right: 0.6rem; background: none; border: none;
+            font-size: 1.2rem; color: var(--text-muted); cursor: pointer; z-index: 20;
+        }
+        #immagineIngranditaImg { width: 100%; border-radius: 12px; margin-bottom: 0.8rem; }
+
+        /* ═══ Fase 3, Step 4 (2026-09-12) — selezione/quantità/barra-totale
+           per tipo='scambio', mirror di binder-pubblico.html. Vetrina di
+           sola lettura (griglia .prodotti-grid sopra) invariata per tutti
+           gli altri tipi. ═══ */
+        .card-row {
+            background-color: var(--card-bg); border: 1px solid var(--border-color);
+            border-radius: 14px; padding: 0.9rem 1rem; margin-bottom: 0.7rem;
+            display: flex; align-items: center; gap: 0.8rem; box-shadow: var(--shadow-soft);
+        }
+        .card-row.selected { border-color: var(--primary); background-color: var(--primary-light); }
+        .card-checkbox { width: 22px; height: 22px; accent-color: var(--primary); cursor: pointer; flex-shrink: 0; }
+        .card-thumb {
+            width: 32px; height: 44px; object-fit: cover; border-radius: 4px;
+            flex-shrink: 0; cursor: pointer; box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+        }
+        .card-info { flex: 1; min-width: 0; }
+        .card-name { font-weight: 700; font-size: 0.92rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .card-meta { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: 0.3rem; }
+        .badge {
+            display: inline-block; padding: 0.2rem 0.5rem; border-radius: 7px;
+            font-size: 0.68rem; font-weight: 700; background-color: var(--bg-color);
+            color: var(--text-muted); border: 1px solid var(--border-color);
+        }
+        .card-price {
+            font-family: 'JetBrains Mono', monospace; font-weight: 800; font-size: 0.95rem;
+            color: var(--text-dark); white-space: nowrap; text-align: right; min-width: 62px;
+        }
+        .card-price small { display: block; font-size: 0.65rem; font-weight: 600; color: var(--text-muted); }
+        .qty-control { display: flex; align-items: center; gap: 0.3rem; flex-shrink: 0; }
+        .qty-btn {
+            background-color: var(--primary-light); color: var(--primary); border: none;
+            width: 28px; height: 28px; border-radius: 8px; font-weight: 800; font-size: 1rem; cursor: pointer;
+        }
+        .qty-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+        .qty-value { width: 24px; text-align: center; font-weight: 700; font-size: 0.85rem; }
+
+        body.scaffale-pubblico-selezionabile { padding-bottom: calc(90px + env(safe-area-inset-bottom)); }
+        .barra-totale {
+            position: fixed; bottom: 0; left: 0; right: 0;
+            background-color: var(--card-bg); border-top: 1px solid var(--border-color);
+            box-shadow: 0 -4px 20px rgba(0,0,0,0.08);
+            padding: 0.9rem 1.2rem;
+            padding-bottom: calc(0.9rem + env(safe-area-inset-bottom));
+            padding-left: calc(1.2rem + env(safe-area-inset-left));
+            padding-right: calc(1.2rem + env(safe-area-inset-right));
+            display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+            z-index: 60;
+        }
+        .barra-totale-info { line-height: 1.3; }
+        .barra-totale-count { font-size: 0.72rem; color: var(--text-muted); font-weight: 700; }
+        .barra-totale-value { font-size: 1.25rem; font-weight: 800; color: var(--primary); }
+        .btn-copia {
+            background-color: var(--primary); color: white; border: none;
+            padding: 0.7rem 1.1rem; border-radius: 10px; font-weight: 700; font-size: 0.82rem;
+            cursor: pointer; display: flex; align-items: center; gap: 0.5rem; white-space: nowrap;
+        }
+        .btn-copia:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        /* ── Login minimo + bottone Richiedi — Fase 4, Step 4 (2026-09-13) */
+        .btn-richiedi {
+            background-color: var(--success); color: white; border: none;
+            padding: 0.7rem 1.1rem; border-radius: 10px; font-weight: 700; font-size: 0.82rem;
+            cursor: pointer; display: flex; align-items: center; gap: 0.5rem; white-space: nowrap;
+        }
+        .btn-richiedi:disabled { opacity: 0.5; cursor: not-allowed; }
+        .login-field {
+            width: 100%; padding: 0.65rem 0.8rem; border-radius: 10px; border: 1px solid var(--border-color);
+            background: var(--bg-color); color: var(--text-dark); font-size: 0.9rem; margin-bottom: 0.7rem;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="logo">
+            <img src="favicon.ico" alt="Favicon">
+            <span id="titoloScaffale">CardSync Pro — Scaffale</span>
+        </div>
+        <p>Vetrina pubblica — sola lettura.</p>
+        <p class="stat-riepilogo" id="statRiepilogo"></p>
+    </header>
+
+    <!-- MODALE IMMAGINE INGRANDITA — semplice, nessun flip (Scaffali non
+         ha un equivalente del card-back di una carta). -->
+    <div id="immagineModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:200; align-items:center; justify-content:center;" onclick="chiudiImmagineIngrandita()">
+        <div style="max-width:320px; width:90%; background:var(--card-bg); border-radius:16px; padding:1rem; position:relative;" onclick="event.stopPropagation()">
+            <button class="close-modal-btn" onclick="chiudiImmagineIngrandita()"><i class="fa-solid fa-xmark"></i></button>
+            <img id="immagineIngranditaImg" src="" alt="">
+            <div id="immagineIngranditaDettagli"></div>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="search-box">
+            <i class="fa-solid fa-magnifying-glass" style="color: var(--text-muted);"></i>
+            <input type="text" id="searchInput" placeholder="Cerca prodotto o codice..." oninput="renderLista()">
+        </div>
+
+        <div id="listaContainer">
+            <div class="stato-caricamento"><i class="fa-solid fa-spinner fa-spin"></i> Caricamento scaffale...</div>
+        </div>
+    </div>
+
+    <!-- Fase 3, Step 4 (2026-09-12): barra totale, mostrata via JS
+         (caricaCatalogo() in ui/scaffali-pubblico.ui.js) solo per
+         tipo='scambio' — mirror di binder-pubblico.html. -->
+    <div class="barra-totale" id="barraTotale" style="display:none;">
+        <div class="barra-totale-info">
+            <div class="barra-totale-count" id="conteggioSelezionate">0 carte selezionate</div>
+            <div class="barra-totale-value" id="totaleSelezionate">0,00 €</div>
+        </div>
+        <button class="btn-copia" id="btnCopiaRiepilogo" onclick="copiaRiepilogo()" disabled>
+            <i class="fa-solid fa-copy"></i> Copia riepilogo
+        </button>
+        <button class="btn-richiedi" id="btnRichiediScambio" onclick="avviaRichiestaScambio(_scaffaleInfo && _scaffaleInfo.owner_id)" disabled>
+            <i class="fa-solid fa-paper-plane"></i> Richiedi
+        </button>
+    </div>
+
+    <!-- Login minimo — Fase 4, Step 4 (2026-09-13). Funzioni in
+         utils/shared-public.js (condivise con binder-pubblico.html). -->
+    <div id="loginPubblicoModal" class="modal-overlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:300; align-items:center; justify-content:center;" onclick="chiudiLoginPubblico()">
+        <div style="max-width:320px; width:90%; background:var(--card-bg); border-radius:16px; padding:1.3rem; position:relative;" onclick="event.stopPropagation()">
+            <button class="close-modal-btn" onclick="chiudiLoginPubblico()"><i class="fa-solid fa-xmark"></i></button>
+            <h3 style="font-weight:800; margin-bottom:0.3rem;"><i class="fa-solid fa-right-to-bracket" style="color:var(--primary);"></i> Accedi per richiedere</h3>
+            <p style="font-size:0.78rem; color:var(--text-muted); margin-bottom:1rem;">Solo gli utenti CardSync Pro possono inviare richieste.</p>
+            <input type="text" id="loginPubblicoUtente" class="login-field" placeholder="Nome utente" autocomplete="username">
+            <input type="password" id="loginPubblicoPassword" class="login-field" placeholder="Password" autocomplete="current-password">
+            <p id="loginPubblicoErrore" style="display:none; color:#d32f2f; font-size:0.78rem; margin-bottom:0.7rem;"></p>
+            <button class="btn-richiedi" id="loginPubblicoSubmit" style="width:100%; justify-content:center;" onclick="tentaLoginPubblico()">Accedi</button>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="config/supabase.js"></script>
+    <script src="data/scaffali-pubblico.repository.js"></script>
+    <script src="utils/shared-public.js"></script>
+    <script src="ui/scaffali-pubblico.ui.js"></script>
+    <script>
+        // Client "leggero" — stesse opzioni di binder-pubblico.html/
+        // scambio.html/wishlist.html/sealed.html: pagina pubblica anonima,
+        // nessuna sessione da persistere.
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+            auth: { persistSession: false, autoRefreshToken: false }
+        });
+        applicaTemaCondiviso();
+        caricaCatalogo();
+    </script>
+</body>
+</html>

@@ -3175,6 +3175,77 @@
         }
         .binder-contenitore-conteggio { font-size: 0.7rem; color: var(--text-muted); }
 
+        /* ── Righe stile "card-row" — Fase 4, Step 3 (2026-09-13) ──────────
+           Riusate dalla pagina Richieste (ui/richieste-scambio.ui.js), CSS
+           minimale ispirato alle stesse classi già usate nelle pagine
+           pubbliche (binder-pubblico.html/scaffali-pubblico.html) — qui
+           semplificato (niente checkbox/quantità, solo badge stato+azioni). */
+        .card-row {
+            background-color: var(--card-bg); border: 1px solid var(--border-color);
+            border-radius: 14px; padding: 0.9rem 1rem; margin-bottom: 0.7rem;
+            display: flex; align-items: center; gap: 0.8rem;
+        }
+        .card-thumb {
+            width: 32px; height: 44px; object-fit: cover; border-radius: 4px;
+            flex-shrink: 0; box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+        }
+        .card-info { flex: 1; min-width: 0; }
+        .card-name { font-weight: 700; font-size: 0.9rem; }
+        .card-meta { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: 0.3rem; }
+        .badge {
+            display: inline-block; padding: 0.2rem 0.5rem; border-radius: 7px;
+            font-size: 0.68rem; font-weight: 700; background-color: var(--bg-color);
+            color: var(--text-muted); border: 1px solid var(--border-color);
+        }
+
+        /* ── Tema Scaffali — Fase 1.3, Step 5b (2026-09-12) ────────────────
+           Claudio: "la copertina non serve, serve il titolo ma ci saranno
+           dei temi premium droppabili tramite missioni e bustine" — quel
+           sistema (catalogo temi, sblocco via reward, applicazione per-
+           scaffale) è lavoro a sé, FUORI da questa sessione. Qui creo solo
+           la base: un tema "Standard" che fa da fallback e da superficie di
+           aggancio per i temi premium futuri — un tema premium si limiterà
+           a ridefinire queste stesse variabili CSS (magari su un selettore
+           tipo .scaffale-tema-<nome> invece di .scaffale-tema-standard),
+           MAI a riscrivere la struttura/i selettori sotto.
+           Scope: SOLO dentro #scaffali (griglia + dettaglio) — non tocca
+           .binder-contenitore-* per i Binder veri, che restano invariati.
+           Le variabili puntano di proposito a quelle del tema/dark-mode
+           già scelto dall'utente (--primary/--card-bg/ecc, definite più in
+           alto in questo stesso file) invece di colori fissi: il tema
+           "Standard" si adatta sempre al resto del sito senza bisogno di
+           duplicare la logica dark-mode qui. */
+        #scaffali.scaffale-tema-standard,
+        #scaffali .scaffale-tema-standard {
+            --scaffale-tema-tile-bg: var(--card-bg);
+            --scaffale-tema-accent: var(--primary);
+            --scaffale-tema-accent-light: var(--primary-light);
+            --scaffale-tema-pattern: none; /* un tema premium può valorizzarla con un gradient/immagine */
+        }
+        #scaffali .binder-contenitore-tile {
+            background: var(--scaffale-tema-tile-bg, var(--card-bg));
+            border: 1px solid var(--border-color);
+        }
+        #scaffali .binder-contenitore-tile:hover {
+            background-color: var(--scaffale-tema-accent-light, var(--bg-color));
+            border-color: var(--scaffale-tema-accent, var(--primary));
+        }
+        #scaffali .binder-contenitore-cover {
+            background: var(--scaffale-tema-pattern, none), var(--scaffale-tema-accent-light, var(--border-color));
+            background-size: cover;
+        }
+        #scaffali .binder-contenitore-cover i { color: var(--scaffale-tema-accent, var(--text-muted)); }
+        /* "Serve il titolo" (Claudio): senza copertina fotografica, il nome
+           dello scaffale è l'unico elemento identificativo della tessera —
+           lo enfatizzo (più grande, colore accento) invece di lasciarlo
+           uguale a quello dei Binder, dove la copertina fa già il lavoro
+           visivo principale. */
+        #scaffali .binder-contenitore-nome {
+            font-size: 0.88rem;
+            font-weight: 800;
+            color: var(--scaffale-tema-accent, var(--text-dark));
+        }
+
         /* Toggle modalità immagini/elenco — preferenza per-utente, vedi
            impostaModalitaBinder() in ui/binder.ui.js */
         .binder-modalita-toggle { display: flex; gap: 0.4rem; margin: 0.8rem 0; }
@@ -4604,6 +4675,42 @@
                     <i class="fa-solid fa-paper-plane"></i> Avvia Controllo Prezzi Wishlist
                 </button>
             </div>
+
+            <!-- Fase 1.2 (2026-09-12): stesso schema del pannello carte sopra
+                 (ambito), ma per prodotti_sealed. Fase 1.3 (stesso giorno):
+                 filtro per Scaffale invece che location (Scaffali sostituisce
+                 location per i sealed, sql/41/42). Ordine dedicato
+                 tipo='controlla_prezzi_sealed' — vedi ui/prices.ui.js. -->
+            <div class="card-panel" style="max-width:500px; margin:1rem auto; text-align:center; padding: 2rem;">
+                <div style="margin-bottom: 0.5rem; font-weight: 800; font-size: 1.1rem;">
+                    <i class="fa-solid fa-box" style="color: var(--primary);"></i> Controllo Prezzi Sealed
+                </div>
+                <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1.2rem;" id="prezziSealedSubtext">Aggiorna le quotazioni dei prodotti sealed sincronizzando la tua estensione.</p>
+
+                <div style="text-align:left; margin-bottom: 1.2rem;">
+                    <div style="font-size: 0.78rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.5rem; display:flex; justify-content:space-between; align-items:center;">
+                        <span>SCAFFALI DA CONTROLLARE</span>
+                        <button type="button" onclick="toggleTutteScaffaliSealed()" style="background:none; border:none; color:var(--primary); font-weight:700; font-size:0.75rem; cursor:pointer;" id="btnToggleTutteScaffaliSealed">Seleziona tutti</button>
+                    </div>
+                    <div id="listaScaffaliCheckboxSealed" style="display:flex; flex-direction:column; gap:0.4rem; max-height:220px; overflow-y:auto; border:1px solid var(--border-color); border-radius:10px; padding:0.7rem; background:var(--bg-color);">
+                        <p style="font-size:0.78rem; color:var(--text-muted); margin:0;">Caricamento scaffali...</p>
+                    </div>
+                    <p style="font-size: 0.72rem; color: var(--text-muted); margin-top: 0.4rem;">Nessuno spuntato = controlla tutti gli scaffali (comportamento di default).</p>
+                </div>
+
+                <div style="text-align:left; margin-bottom: 1.2rem;">
+                    <div style="font-size: 0.78rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.5rem;">PRODOTTI DI CHI CONTROLLARE</div>
+                    <div style="display:flex; gap:0.6rem;">
+                        <button type="button" class="theme-btn active" id="btnAmbitoSoloMieSealed" style="flex:1;" onclick="_impostaAmbitoControlloPrezziSealed('soloMie')">Solo i miei</button>
+                        <button type="button" class="theme-btn" id="btnAmbitoGruppoSealed" style="flex:1;" onclick="_impostaAmbitoControlloPrezziSealed('gruppo')">Tutto il gruppo</button>
+                    </div>
+                    <p style="font-size: 0.72rem; color: var(--text-muted); margin-top: 0.4rem;">"Tutto il gruppo" aiuta a controllare anche i prodotti sealed degli altri.</p>
+                </div>
+
+                <button class="btn-main" id="btnControllaPrezziSealed" style="width: 100%; justify-content: center;" onclick="triggerExtensionPriceCheckSealed()">
+                    <i class="fa-solid fa-paper-plane"></i> Avvia Controllo Prezzi Sealed
+                </button>
+            </div>
         </div>
 
         <!-- SEZIONE 4: IMPOSTAZIONI -->
@@ -5022,6 +5129,115 @@
                  bottone "Apri bustina", la vecchia _bustinaMostraRisultato()
                  (elenco statico) è stata sostituita interamente. -->
             <div id="bustinaContenuto"></div>
+        </div>
+
+        <!-- Fase 1.3, Step 5a (2026-09-12): pagina "Scaffali" — organizza i
+             prodotti sealed (sostituisce location per quel dominio, sql/42).
+             Markup statico (non un unico div riempito da innerHTML) perché
+             serve interattività su più livelli (griglia → dettaglio →
+             modale), stesso schema di #binder sopra ma senza copertina/
+             sleeve/pubblicazione-avanzata (Step 5b/5c, non ancora fatti).
+             Riusa le classi CSS .binders-contenitori-grid/.binder-
+             contenitore-* (puro stile, zero dipendenza di comportamento da
+             binder.ui.js) — vedi ui/scaffali.ui.js. -->
+        <div id="scaffali" class="view-section scaffale-tema-standard">
+            <div class="settings-card" style="max-width: 900px;">
+                <h3 style="margin-bottom: 0.3rem; color: var(--text-dark); display: flex; align-items: center; gap: 0.6rem; font-size: 1.15rem; font-weight: 800;">
+                    <i class="fa-solid fa-box-archive" style="color: var(--primary);"></i> Scaffali
+                </h3>
+                <p style="font-size: 0.78rem; color: var(--text-muted); margin-bottom: 1.2rem;">
+                    Organizza i tuoi prodotti sealed in scaffali — un prodotto può stare in più scaffali insieme.
+                </p>
+
+                <button type="button" class="btn-main" style="margin-bottom: 1rem;" onclick="creaNuovoScaffale()">
+                    <i class="fa-solid fa-plus"></i> Nuovo scaffale
+                </button>
+
+                <!-- Griglia degli scaffali -->
+                <div id="scaffaliContenitoriGrid" class="binders-contenitori-grid"></div>
+
+                <!-- Dettaglio dello scaffale aperto -->
+                <div id="scaffaleDettaglioWrap" style="display:none;">
+                    <div style="display:flex; align-items:center; gap:0.6rem; margin-bottom:1rem; flex-wrap:wrap;">
+                        <button type="button" class="btn-secondary" style="padding:0.5rem 0.8rem; font-size:0.8rem;" onclick="tornaAllaGrigliaScaffali()">
+                            <i class="fa-solid fa-arrow-left"></i> Scaffali
+                        </button>
+                        <h4 id="scaffaleDettaglioTitolo" style="margin:0; font-size:1rem; font-weight:800; color:var(--text-dark); flex:1;"></h4>
+                        <button type="button" class="btn-secondary" style="padding:0.5rem 0.7rem; font-size:0.78rem;" onclick="proponiRinominaScaffaleAttivo()" title="La rinomina richiede approvazione admin">
+                            <i class="fa-solid fa-pen"></i>
+                        </button>
+                        <button type="button" class="btn-secondary" id="btnEliminaScaffaleAttivo" style="padding:0.5rem 0.7rem; font-size:0.78rem; color:var(--danger);" onclick="eliminaScaffaleAttivo()">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </div>
+
+                    <!-- Pubblicazione: aggiornamento diretto, nessuna
+                         moderazione (solo il NOME è moderato — coerente con
+                         come funziona oggi per i Binder, sql/41).
+                         Fase 3, Step 3 (2026-09-12): riga nascosta per
+                         tipo='scambio' (sempre pubblico, forzato in
+                         scaffaleScambioGarantisci — non ha senso mostrarla
+                         come scelta libera). -->
+                    <div id="scaffalePubblicazioneRiga" style="margin-bottom: 1rem; display:flex; align-items:center; gap:0.6rem;">
+                        <label style="display:inline-flex; align-items:center; gap:0.5rem; cursor:pointer; font-size:0.82rem; font-weight:700;">
+                            <input type="checkbox" id="scaffalePubblicazioneCheckbox" onchange="impostaPubblicazioneScaffaleAttivo(this.checked)">
+                            Rendi pubblico (link condivisibile)
+                        </label>
+                    </div>
+
+                    <!-- Condivisione — Fase 1.3, Step 5c (2026-09-12). Riusa
+                         lo stesso modale QR globale dei Binder (#qrModal,
+                         openQrModal/copyShareLink in
+                         ui/navigation-condivisione.ui.js), esteso con un
+                         ramo dedicato 'scaffali' — nessun modale nuovo. -->
+                    <div id="scaffaleCondivisioneWrap" style="display:none; align-items:center; gap:0.5rem; margin-bottom:1rem; flex-wrap:wrap;">
+                        <button type="button" class="btn-main" style="padding:0.5rem 0.9rem; font-size:0.8rem;" onclick="openQrModal()">
+                            <i class="fa-solid fa-qrcode"></i> QR / Link
+                        </button>
+                    </div>
+
+                    <!-- Fase 3, Step 3 (2026-09-12): per lo Scaffale Scambio
+                         si offre un prodotto dalla sua modifica sealed
+                         (bottone "Offri in Scambio"), non da qui — bottone
+                         nascosto, nota mostrata al suo posto. -->
+                    <button type="button" class="btn-secondary" id="btnApriModaleAssegnaProdotti" style="margin-bottom: 1rem;" onclick="apriModaleAssegnaProdotti()">
+                        <i class="fa-solid fa-boxes-stacked"></i> Aggiungi prodotti
+                    </button>
+                    <p id="scaffaleScambioNota" style="display:none; font-size: 0.78rem; color: var(--text-muted); margin-bottom: 1rem;">
+                        Per offrire un prodotto in Scambio, apri la sua scheda di modifica dalla pagina Sealed e usa "Offri in Scambio".
+                    </p>
+
+                    <!-- Griglia statica dei prodotti assegnati — click per
+                         rimuovere (Claudio: niente flipbook, "faremo una
+                         visualizzazione a scaffali vera e propria" in un
+                         pezzo futuro a sé). -->
+                    <div id="scaffaleContenutoGrid" class="binders-contenitori-grid"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Fase 4, Step 3 (2026-09-13): pagina "Richieste" — gestione
+             richieste di scambio ricevute/inviate. Riusa le classi CSS
+             .card-row/.card-thumb/.card-info/.card-name/.card-meta/.badge
+             (definite per la vetrina pubblica selezionabile, ora anche qui
+             — stesso identico stile visivo, nessuna dipendenza di
+             comportamento). Vedi ui/richieste-scambio.ui.js. -->
+        <div id="richieste" class="view-section">
+            <div class="settings-card" style="max-width: 900px;">
+                <h3 style="margin-bottom: 0.3rem; color: var(--text-dark); display: flex; align-items: center; gap: 0.6rem; font-size: 1.15rem; font-weight: 800;">
+                    <i class="fa-solid fa-handshake" style="color: var(--primary);"></i> Richieste
+                </h3>
+                <p style="font-size: 0.78rem; color: var(--text-muted); margin-bottom: 1.2rem;">
+                    Richieste di scambio ricevute e inviate.
+                </p>
+
+                <div style="display:flex; gap:0.6rem; margin-bottom: 1.2rem;">
+                    <button type="button" class="theme-btn active" id="btnRichiesteRicevute" style="flex:1;" onclick="cambiaVistaRichieste('ricevute')">Ricevute</button>
+                    <button type="button" class="theme-btn" id="btnRichiesteInviate" style="flex:1;" onclick="cambiaVistaRichieste('inviate')">Inviate</button>
+                </div>
+
+                <div id="richiesteContenuto"></div>
+            </div>
         </div>
 
         <div id="impostazioni" class="view-section">
@@ -5632,6 +5848,64 @@
         </div>
     </div>
 
+    <!-- MODALE "Aggiungi prodotti" — Fase 1.3, Step 5a (2026-09-12).
+         Checkbox su tutti i prodotti sealed dell'utente, chiudiModale...
+         ri-renderizza la griglia dello scaffale aperto per riflettere
+         eventuali cambi fatti qui dentro. -->
+    <div id="scaffaleAssegnaProdottiModal" class="modal-overlay" onclick="chiudiModaleAssegnaProdotti()">
+        <div class="modal-content" style="max-width: 440px;" onclick="event.stopPropagation()">
+            <button class="close-modal-btn" onclick="chiudiModaleAssegnaProdotti()"><i class="fa-solid fa-xmark"></i></button>
+            <h3 style="font-weight: 800; margin-bottom: 0.3rem;"><i class="fa-solid fa-boxes-stacked" style="color: var(--primary);"></i> Aggiungi prodotti</h3>
+            <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 1rem;">Spunta i prodotti da includere in questo scaffale — un prodotto può stare in più scaffali insieme.</p>
+            <div id="scaffaleAssegnaProdottiLista" style="max-height: 340px; overflow-y: auto;"></div>
+        </div>
+    </div>
+
+    <!-- MODALE QUANTITÀ OFFERTA — Binder Scambio, Fase 3 Step 2 (2026-09-12).
+         A differenza del binder 'extra' (toggle sì/no), qui serve un NUMERO —
+         vedi apriModaleQuantitaScambio/confermaQuantitaScambio in
+         ui/binder.ui.js. -->
+    <div id="scambioQuantitaModal" class="modal-overlay" onclick="chiudiModaleQuantitaScambio()">
+        <div class="modal-content" style="max-width: 380px;" onclick="event.stopPropagation()">
+            <button class="close-modal-btn" onclick="chiudiModaleQuantitaScambio()"><i class="fa-solid fa-xmark"></i></button>
+            <h3 style="font-weight: 800; margin-bottom: 0.2rem;"><i class="fa-solid fa-right-left" style="color: var(--primary);"></i> Offri in Scambio</h3>
+            <p id="scambioQuantitaTitolo" style="font-size: 0.85rem; font-weight: 700; margin-bottom: 0.2rem;"></p>
+            <p id="scambioQuantitaMax" style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 1rem;"></p>
+            <label style="font-size: 0.78rem; font-weight: 700; color: var(--text-muted); display:block; margin-bottom: 0.4rem;">Quantità offerta</label>
+            <input type="number" id="scambioQuantitaInput" min="0" step="1" style="width:100%; padding:0.6rem 0.8rem; border-radius:10px; border:1px solid var(--border-color); background:var(--bg-color); color:var(--text-dark); font-size:1rem; font-weight:700; margin-bottom:1.2rem;">
+            <div style="display:flex; flex-direction:column; gap:0.5rem;">
+                <button type="button" class="btn-main" style="width:100%; justify-content:center;" onclick="confermaQuantitaScambio()">
+                    <i class="fa-solid fa-check"></i> Salva
+                </button>
+                <button type="button" class="btn-secondary" id="btnRimuoviScambio" style="width:100%; justify-content:center; color:var(--danger);" onclick="rimuoviDaScambio()">
+                    <i class="fa-solid fa-trash"></i> Rimuovi dallo Scambio
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Fase 3, Step 3 (2026-09-12): gemella della modale sopra, per i
+         prodotti sealed (Scaffale Scambio invece di Binder Scambio) — vedi
+         apriModaleQuantitaScambioSealed in ui/scaffali.ui.js. -->
+    <div id="scambioSealedQuantitaModal" class="modal-overlay" onclick="chiudiModaleQuantitaScambioSealed()">
+        <div class="modal-content" style="max-width: 380px;" onclick="event.stopPropagation()">
+            <button class="close-modal-btn" onclick="chiudiModaleQuantitaScambioSealed()"><i class="fa-solid fa-xmark"></i></button>
+            <h3 style="font-weight: 800; margin-bottom: 0.2rem;"><i class="fa-solid fa-right-left" style="color: var(--primary);"></i> Offri in Scambio</h3>
+            <p id="scambioSealedQuantitaTitolo" style="font-size: 0.85rem; font-weight: 700; margin-bottom: 0.2rem;"></p>
+            <p id="scambioSealedQuantitaMax" style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 1rem;"></p>
+            <label style="font-size: 0.78rem; font-weight: 700; color: var(--text-muted); display:block; margin-bottom: 0.4rem;">Quantità offerta</label>
+            <input type="number" id="scambioSealedQuantitaInput" min="0" step="1" style="width:100%; padding:0.6rem 0.8rem; border-radius:10px; border:1px solid var(--border-color); background:var(--bg-color); color:var(--text-dark); font-size:1rem; font-weight:700; margin-bottom:1.2rem;">
+            <div style="display:flex; flex-direction:column; gap:0.5rem;">
+                <button type="button" class="btn-main" style="width:100%; justify-content:center;" onclick="confermaQuantitaScambioSealed()">
+                    <i class="fa-solid fa-check"></i> Salva
+                </button>
+                <button type="button" class="btn-secondary" id="btnRimuoviScambioSealed" style="width:100%; justify-content:center; color:var(--danger);" onclick="rimuoviDaScambioSealed()">
+                    <i class="fa-solid fa-trash"></i> Rimuovi dallo Scambio
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- MODALE MODIFICA CARTA -->
     <div id="editCardModal" class="modal-overlay">
         <div class="modal-content" style="max-width: 380px; text-align: left;" onclick="event.stopPropagation()">
@@ -5740,11 +6014,6 @@
                 <label>Integrità confezione</label>
                 <select id="editSealedIntegrita"></select>
             </div>
-            <div class="auth-field">
-                <label>Location</label>
-                <input type="text" id="editSealedLocation" list="datalistEditSealedLocation">
-                <datalist id="datalistEditSealedLocation"></datalist>
-            </div>
             <div class="edit-card-row" style="display:flex; gap:0.6rem;">
                 <div class="auth-field" style="flex:1;">
                     <label>Prezzo richiesto (€) <span style="font-weight:600; color:var(--text-muted);">— opzionale</span></label>
@@ -5772,6 +6041,13 @@
 
             <button class="btn-main" id="btnSalvaModificaSealed" style="width: 100%; justify-content:center; margin-top: 0.4rem;" onclick="salvaModificaSealed()">
                 <i class="fa-solid fa-check"></i> Salva Modifiche
+            </button>
+            <!-- Fase 3, Step 3 (2026-09-12): apre la stessa modale quantità
+                 dello Scaffale Scambio (ui/scaffali.ui.js) — apriScambioSealedDaModifica()
+                 legge _sealedInModifica.id al momento del click, dato che
+                 questo bottone è markup statico (non rigenerato per prodotto). -->
+            <button class="btn-secondary" id="btnOffriScambioSealed" style="width: 100%; justify-content:center; margin-top: 0.5rem;" onclick="apriScambioSealedDaModifica()">
+                <i class="fa-solid fa-right-left"></i> Offri in Scambio
             </button>
             <button class="btn-secondary" style="width: 100%; justify-content:center; margin-top: 0.5rem; color:var(--danger); background-color:var(--danger-bg);" onclick="eliminaSealedDaModale()">
                 <i class="fa-solid fa-trash"></i> Elimina
@@ -5805,6 +6081,16 @@
     <script src="data/cards.repository.js"></script>
     <script src="data/queue.repository.js"></script>
     <script src="data/binder.repository.js"></script>
+    <!-- data/scaffali.repository.js: Fase 1.3 (2026-09-12), sostituisce
+         location per l'organizzazione dei prodotti sealed. File minimo per
+         ora (solo scaffaliList), usato da ui/prices.ui.js per il filtro del
+         pannello Controllo Prezzi Sealed — la UI di gestione completa arriva
+         in un secondo momento. Caricato dopo binder.repository.js per
+         vicinanza concettuale (stesso modello ispiratore), nessuna
+         dipendenza di ordine reale tra i due (dichiarazioni pure). -->
+    <script src="data/scaffali.repository.js"></script>
+    <!-- data/richieste-scambio.repository.js: Fase 4, Step 3 (2026-09-13). -->
+    <script src="data/richieste-scambio.repository.js"></script>
     <!-- data/bustina.repository.js: usata da renderPaginaBustina()/motore
          cutscene in ui/widget-bustina.ui.js (widget "Bustina"). I bottoni
          diagnostici admin che stavano in #impostazioni sono stati tolti
@@ -5853,6 +6139,14 @@
     <script src="ui/binder.ui.js"></script>
     <script src="ui/binder-design.ui.js"></script>
     <script src="ui/binder-sleeve.ui.js"></script>
+    <!-- ui/scaffali.ui.js: Fase 1.3, Step 5a (2026-09-12). Dipende da
+         data/scaffali.repository.js, data/sealed.repository.js (già
+         caricati sopra) e data/moderation.repository.js
+         (creaRichiestaPendente, per la rinomina). -->
+    <script src="ui/scaffali.ui.js"></script>
+    <!-- ui/richieste-scambio.ui.js: Fase 4, Step 3 (2026-09-13). Dipende da
+         data/richieste-scambio.repository.js. -->
+    <script src="ui/richieste-scambio.ui.js"></script>
     <script src="ui/extension.ui.js"></script>
     <script src="ui/photos.ui.js"></script>
     <script src="ui/navigation.ui.js"></script>
@@ -5926,6 +6220,8 @@
     <script src="ui/widget-missioni.ui.js"></script>
     <script src="ui/widget-polvere.ui.js"></script>
     <script src="ui/widget-prezzi.ui.js"></script>
+    <script src="ui/widget-richieste.ui.js"></script>
+    <script src="ui/widget-scaffali.ui.js"></script>
     <script src="ui/widget-sealed.ui.js"></script>
     <script src="ui/widget-set.ui.js"></script>
     <script src="ui/set-libreria-sigle.ui.js"></script>

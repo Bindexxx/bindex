@@ -287,6 +287,20 @@
         }
         .btn-copia:disabled { opacity: 0.5; cursor: not-allowed; }
 
+        /* ── Login minimo + bottone Richiedi — Fase 4, Step 4 (2026-09-13),
+           identico a scaffali-pubblico.html (stesse funzioni condivise in
+           utils/shared-public.js). */
+        .btn-richiedi {
+            background-color: var(--success); color: white; border: none;
+            padding: 0.7rem 1.1rem; border-radius: 10px; font-weight: 700; font-size: 0.82rem;
+            cursor: pointer; display: flex; align-items: center; gap: 0.5rem; white-space: nowrap;
+        }
+        .btn-richiedi:disabled { opacity: 0.5; cursor: not-allowed; }
+        .login-field {
+            width: 100%; padding: 0.65rem 0.8rem; border-radius: 10px; border: 1px solid var(--border-color);
+            background: var(--bg-color); color: var(--text-dark); font-size: 0.9rem; margin-bottom: 0.7rem;
+        }
+
         /* Toggle Elenco/Sfoglia */
         .binder-modalita-toggle { display: flex; gap: 0.4rem; margin-bottom: 1rem; }
         .binder-modalita-btn {
@@ -630,6 +644,23 @@
         <button class="btn-copia" id="btnCopiaRiepilogo" onclick="copiaRiepilogo()" disabled>
             <i class="fa-solid fa-copy"></i> Copia riepilogo
         </button>
+        <button class="btn-richiedi" id="btnRichiediScambio" onclick="avviaRichiestaScambio(_ownerUserId)" disabled style="display:none;">
+            <i class="fa-solid fa-paper-plane"></i> Richiedi
+        </button>
+    </div>
+
+    <!-- Login minimo — Fase 4, Step 4 (2026-09-13). Funzioni in
+         utils/shared-public.js (condivise con scaffali-pubblico.html). -->
+    <div id="loginPubblicoModal" class="modal-overlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:300; align-items:center; justify-content:center;" onclick="chiudiLoginPubblico()">
+        <div style="max-width:320px; width:90%; background:var(--card-bg); border-radius:16px; padding:1.3rem; position:relative;" onclick="event.stopPropagation()">
+            <button class="close-modal-btn" onclick="chiudiLoginPubblico()"><i class="fa-solid fa-xmark"></i></button>
+            <h3 style="font-weight:800; margin-bottom:0.3rem;"><i class="fa-solid fa-right-to-bracket" style="color:var(--primary);"></i> Accedi per richiedere</h3>
+            <p style="font-size:0.78rem; color:var(--text-muted); margin-bottom:1rem;">Solo gli utenti CardSync Pro possono inviare richieste.</p>
+            <input type="text" id="loginPubblicoUtente" class="login-field" placeholder="Nome utente" autocomplete="username">
+            <input type="password" id="loginPubblicoPassword" class="login-field" placeholder="Password" autocomplete="current-password">
+            <p id="loginPubblicoErrore" style="display:none; color:#d32f2f; font-size:0.78rem; margin-bottom:0.7rem;"></p>
+            <button class="btn-richiedi" id="loginPubblicoSubmit" style="width:100%; justify-content:center;" onclick="tentaLoginPubblico()">Accedi</button>
+        </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
