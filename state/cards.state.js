@@ -17,6 +17,13 @@
         let _ambitoControlloPrezzi = 'soloMie';
         let _pollOrdineInterval = null;
         let _pollOrdineWishlistInterval = null;
+        // Fase 1.2 (2026-09-12): stato del pannello Controllo Prezzi Sealed,
+        // separato da quello carte sopra. Fase 1.3 (stesso giorno):
+        // _locationSealedCaricate → _scaffaliSealedCaricati, Scaffali ha
+        // sostituito location come organizzatore dei sealed.
+        let _scaffaliSealedCaricati = false;
+        let _ambitoControlloPrezziSealed = 'soloMie';
+        let _pollOrdineSealedInterval = null;
         const SOGLIA_GIORNI_PREZZO_SCADUTO = 7;
         const SOGLIA_MINUTI_CLAIM_PREZZI = 10;
         let _elencoPrezziScaduti = [];

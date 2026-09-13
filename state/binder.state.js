@@ -8,6 +8,14 @@
 // stesso file — non riordinare.
 
         let _idsNelBinder = new Set();
+        // Fase 3, Step 2 (2026-09-12): appartenenza al binder Scambio —
+        // sostituisce il vecchio filtro location==='SCAMBIO' (ritirato,
+        // sql/45b), usato dalla tab privata "Scambio" (ui/cards-filtro.ui.js).
+        let _idsInScambio = new Set();
+        // Fase 3, Step 2 (2026-09-12): mappa cartaId -> quantita_offerta per
+        // il binder Scambio — a differenza di _idsNelBinder (solo sì/no,
+        // basta per il binder 'extra'), qui serve anche IL NUMERO.
+        let _quantitaOfferteScambio = {};
         const BINDER_LAYOUTS = {
             '2x2': { cols: 2, rows: 2 },
             '3x3': { cols: 3, rows: 3 },
@@ -63,3 +71,8 @@
         // calcolato una volta, riusato da entrambi — evita due binder
         // 'extra' creati per una race condition tra i due caricamenti.
         let _binderExtraId = null;
+
+        // Gemella per il binder Scambio (Fase 3, Step 2, 2026-09-12) —
+        // stesso motivo, stesso pattern get-or-create in caricaCarteReali()
+        // e apriWidgetBinders().
+        let _binderScambioId = null;
