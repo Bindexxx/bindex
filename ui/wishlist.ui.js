@@ -215,3 +215,168 @@ function copiaRiepilogo() {
         alert(testo); // fallback se il clipboard non è disponibile (es. http non sicuro)
     });
 }
+
+
+// ═══════════════════════════════════════════════════════════════════════
+// FASE 6, STEP 4 (2026-09-13) — TAB SEALED DELLA WISHLIST PUBBLICA
+// ═══════════════════════════════════════════════════════════════════════
+// Selezione/totale/riepilogo TENUTI SEPARATI da quelli carte (carte/
+// selezioni, definiti in utils/shared-public.js) — non un'astrazione
+// condivisa: wishlist_sealed non ha un campo 'prezzo' (solo
+// prezzo_obiettivo, vedi nota in sql/53), quindi il riepilogo qui non ha
+// un totale in euro, solo un elenco. Un'unica barra-totale in fondo alla
+// pagina viene RIUSATA per entrambe le tab, aggiornata dalla funzione
+// giusta a seconda della tab attiva (_wishlistPubTabAttiva).
+// ───────────────────────────────────────────────────────────────────────
+
+let _wishlistPubTabAttiva = 'carte';
+let carteSealed = [];
+let selezioniSealed = {};
+let _wishlistSealedCaricata = false;
+
+function _wishlistPubTab(tab) {
+    _wishlistPubTabAttiva = tab;
+    document.querySelectorAll('.binder-modalita-toggle .binder-modalita-btn[data-wtab]').forEach(el => {
+        el.classList.toggle('active', el.dataset.wtab === tab);
+    });
+    document.getElementById('wishlistTabCarteWrap').style.display = tab === 'carte' ? '' : 'none';
+    document.getElementById('wishlistTabSealedWrap').style.display = tab === 'sealed' ? '' : 'none';
+    if (tab === 'sealed') {
+        if (!_wishlistSealedCaricata) { caricaCatalogoSealed(); _wishlistSealedCaricata = true; }
+        else aggiornaTotaleSealed();
+    } else {
+        aggiornaTotale();
+    }
+}
+
+// Dispatcher del bottone "Copia riepilogo" — unico bottone, due possibili
+// azioni a seconda della tab attiva (stesso pattern del bottone stesso,
+// che ora punta qui invece che direttamente a copiaRiepilogo()).
+function copiaRiepilogoAttivo() {
+    if (_wishlistPubTabAttiva === 'sealed') copiaRiepilogoSealed();
+    else copiaRiepilogo();
+}
+
+async function caricaCatalogoSealed() {
+    const container = document.getElementById('listaContainerSealed');
+    if (!_ownerUserId) return;
+
+    const { data, error } = await wishlistSealedLeggiCondivisa(_ownerUserId);
+    if (error) {
+        container.innerHTML = `<div class="stato-errore"><i class="fa-solid fa-triangle-exclamation"></i> Errore nel caricamento: ${error.message}</div>`;
+        return;
+    }
+
+    carteSealed = (data || []).map(r => ({
+        id: r.id,
+        name: r.nome || '',
+        code: r.codice || '',
+        setEspansione: r.set_espansione || '',
+        lang: r.lingua || 'Qualsiasi lingua',
+        integrita: r.integrita_minima || 'sigillato_integro',
+        qtyDisponibile: r.qty || 1,
+        prezzoObiettivo: r.prezzo_obiettivo != null ? Number(r.prezzo_obiettivo) : null,
+        notes: r.note || '',
+        immagine: r.immagine || null,
+    }));
+
+    if (carteSealed.length === 0) {
+        container.innerHTML = '<div class="stato-vuoto"><i class="fa-solid fa-box-open"></i><br>Nessun prodotto sealed in wishlist al momento.</div>';
+        aggiornaTotaleSealed();
+        return;
+    }
+
+    renderListaSealed();
+    aggiornaTotaleSealed();
+}
+
+function renderListaSealed() {
+    const container = document.getElementById('listaContainerSealed');
+    const searchVal = (document.getElementById('searchInputSealed').value || '').toLowerCase();
+
+    const filtrati = carteSealed.filter(p =>
+        p.name.toLowerCase().includes(searchVal) || p.code.toLowerCase().includes(searchVal)
+    );
+
+    if (filtrati.length === 0) {
+        container.innerHTML = '<div class="stato-vuoto"><i class="fa-solid fa-magnifying-glass"></i><br>Nessun prodotto corrisponde alla ricerca.</div>';
+        return;
+    }
+
+    container.innerHTML = filtrati.map(p => {
+        const selezionata = selezioniSealed[p.id] > 0;
+        const qtyAttuale = selezioniSealed[p.id] || 0;
+        const immagineSrc = _urlImmagineVisualizzabile(p.immagine);
+        return `
+            <div class="card-row ${selezionata ? 'selected' : ''}" id="row-sealed-${p.id}">
+                <input type="checkbox" class="card-checkbox" ${selezionata ? 'checked' : ''}
+                       onchange="toggleSelezioneSealed('${p.id}', this.checked)">
+                ${immagineSrc ? `<img src="${immagineSrc}" alt="" class="card-thumb" onerror="this.style.display='none';">` : ''}
+                <div class="card-info">
+                    <div class="card-name">${escapeHtml(p.name)}${p.code ? ` <span style="color:var(--text-muted); font-weight:600;">(${escapeHtml(p.code)})</span>` : ''}</div>
+                    <div class="card-meta">
+                        <span class="badge">${escapeHtml(p.lang)}</span>
+                        ${p.prezzoObiettivo != null ? `<span class="badge">🎯 max ${formattaEuro(p.prezzoObiettivo)}</span>` : ''}
+                        ${p.notes ? `<span class="badge">✨ ${escapeHtml(p.notes)}</span>` : ''}
+                    </div>
+                </div>
+                <div class="qty-control">
+                    <button class="qty-btn" onclick="modificaQtySealed('${p.id}', -1)" ${qtyAttuale <= 0 ? 'disabled' : ''}>-</button>
+                    <span class="qty-value">${qtyAttuale}</span>
+                    <button class="qty-btn" onclick="modificaQtySealed('${p.id}', 1)" ${qtyAttuale >= p.qtyDisponibile ? 'disabled' : ''}>+</button>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function toggleSelezioneSealed(id, checked) {
+    selezioniSealed[id] = checked ? 1 : 0;
+    renderListaSealed();
+    aggiornaTotaleSealed();
+}
+
+function modificaQtySealed(id, delta) {
+    const prodotto = carteSealed.find(p => String(p.id) === String(id));
+    if (!prodotto) return;
+    const attuale = selezioniSealed[id] || 0;
+    const nuovo = Math.max(0, Math.min(prodotto.qtyDisponibile, attuale + delta));
+    selezioniSealed[id] = nuovo;
+    renderListaSealed();
+    aggiornaTotaleSealed();
+}
+
+// Niente prezzo/totale in euro (wishlist_sealed non ce l'ha, vedi header
+// del file) — solo un conteggio elementi, stesso bottone/barra della tab
+// Carte ma testo adattato.
+function aggiornaTotaleSealed() {
+    let numProdotti = 0;
+    carteSealed.forEach(p => { numProdotti += selezioniSealed[p.id] || 0; });
+    document.getElementById('conteggioSelezionate').textContent =
+        `${numProdotti} prodott${numProdotti === 1 ? 'o selezionato' : 'i selezionati'}`;
+    document.getElementById('totaleSelezionate').textContent = '';
+    document.getElementById('btnCopiaRiepilogo').disabled = numProdotti === 0;
+}
+
+function copiaRiepilogoSealed() {
+    const righe = [];
+    carteSealed.forEach(p => {
+        const q = selezioniSealed[p.id] || 0;
+        if (q > 0) righe.push(`${q}x ${p.name}${p.code ? ' (' + p.code + ')' : ''}`);
+    });
+    if (righe.length === 0) return;
+
+    const intestazione = _nomeProprietarioWishlist
+        ? `Prodotti sealed che potrei procurare a ${_nomeProprietarioWishlist}:`
+        : `Prodotti sealed dalla wishlist che potrei procurargli/le:`;
+    const testo = `${intestazione}\n\n${righe.join('\n')}`;
+
+    navigator.clipboard.writeText(testo).then(() => {
+        const btn = document.getElementById('btnCopiaRiepilogo');
+        const originale = btn.innerHTML;
+        btn.innerHTML = '<i class="fa-solid fa-check"></i> Copiato!';
+        setTimeout(() => { btn.innerHTML = originale; }, 1800);
+    }).catch(() => {
+        alert(testo);
+    });
+}

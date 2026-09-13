@@ -140,7 +140,14 @@
                 code: r.codice || '',
                 location: r.location || '', // FIX: prima era sempre vuota per errore — la wishlist ha una location vera dalla migrazione wishlist_location.sql
                 qty: r.qty || 1,
-                lang: r.lingua || 'IT',
+                // Fase 6, Step 2 (2026-09-13): NIENTE fallback '|| IT' qui
+                // (a differenza di righeCarte sopra) — '' è la sentinella
+                // "qualsiasi lingua" per le preferenze wishlist (sql/52),
+                // un fallback la cancellerebbe ad ogni ricaricamento.
+                lang: r.lingua || '',
+                // condizione: dal Fase 6 significa "minima accettata", non
+                // più un valore esatto — stesso campo, semantica cambiata
+                // solo in fase di lettura/match (sql/52), zero DDL.
                 cond: r.condizione || 'NM',
                 price: r.prezzo != null ? Number(r.prezzo) : 0,
                 variation: _mappaVariazione(r),
@@ -328,7 +335,7 @@
                     <td data-label="Nome" class="cella-editabile" title="${card.name.replace(/"/g, '&quot;')} — clicca per modificare" onclick="event.stopPropagation(); modificaCampoInline('${idAttr}', '${card.tabella}', 'nome', '${nomeAttr}', 'Nome')" style="max-width:170px; overflow:hidden; text-overflow:ellipsis;">${thumb}<strong>${escapeHtml(card.name)}</strong>${obiettivoRaggiunto ? ` <span class="badge" style="background-color:var(--success-bg); color:var(--success);" title="Prezzo sceso al di sotto del tuo obiettivo (${card.prezzoObiettivo.toFixed(2)} €)">🎯 obiettivo!</span>` : ''}${card.sigillataOriginale ? ` <span class="badge" style="background-color:var(--primary-light); color:var(--primary);" title="Ancora sigillata nella bustina originale">📦 sigillata</span>` : ''}</td>
                     <td data-label="Codice" class="cella-editabile" title="Clicca per modificare" onclick="event.stopPropagation(); modificaCampoInline('${idAttr}', '${card.tabella}', 'codice', '${codeAttr}', 'Codice')"><code>${escapeHtml(card.code)}</code></td>
                     <td data-label="Location"><span class="badge badge-location" title="${(card.location || '').replace(/"/g, '&quot;')} — clicca per modificare" onclick="event.stopPropagation(); modificaLocationInline(event, '${idAttr}', '${card.tabella}', '${locAttr}')">${escapeHtml(card.location || '—')}</span></td>
-                    <td data-label="Lingua"><span class="badge ${langClass} cella-editabile" title="Clicca per modificare" onclick="event.stopPropagation(); modificaLinguaInline(event, '${idAttr}', '${card.tabella}', '${card.lang}')">${escapeHtml(card.lang)}</span></td>
+                    <td data-label="Lingua"><span class="badge ${langClass} cella-editabile" title="Clicca per modificare" onclick="event.stopPropagation(); modificaLinguaInline(event, '${idAttr}', '${card.tabella}', '${card.lang}')">${card.lang ? escapeHtml(card.lang) : 'Qualsiasi'}</span></td>
                     <td data-label="Cond."><span class="badge ${condClass} cella-editabile" title="Clicca per modificare" onclick="event.stopPropagation(); modificaCondizioneInline(event, '${idAttr}', '${card.tabella}', '${card.cond}')">${escapeHtml(card.cond)}</span></td>
                     <td data-label="Prezzo" id="prezzoCella-${idAttr}" class="price cella-editabile" title="Clicca per modificare" onclick="event.stopPropagation(); modificaCampoInline('${idAttr}', '${card.tabella}', 'prezzo', ${card.price}, 'Prezzo (€)', 'numero')">${card.price.toFixed(2)} €</td>
                     <td data-label="Var." class="${varClass}">${escapeHtml(card.variation)}</td>

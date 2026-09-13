@@ -74,8 +74,28 @@
 
             document.getElementById('editNome').value = card.name;
             document.getElementById('editCodice').value = card.code;
-            document.getElementById('editLingua').value = card.lang;
-            document.getElementById('editCondizione').value = card.cond;
+
+            // Fase 6, Step 2 (2026-09-13): elenco COMPLETO ricostruito qui
+            // invece delle sole 4/3 opzioni statiche nell'HTML (limite
+            // preesistente: una carta con lingua 'DE' o condizione 'LP'
+            // apriva il modale senza nessuna opzione selezionata — bug
+            // silenzioso mai segnalato, corretto di riflesso mentre si
+            // aggiungeva "Qualsiasi lingua"). Stessi elenchi delle tendine
+            // inline sopra (modificaLinguaInline/modificaCondizioneInline).
+            const isWishlist = card.tabella === 'wishlist';
+            const LINGUE = ['IT', 'EN', 'DE', 'FR', 'ES', 'PT', 'JP', 'KOR', 'CHN', 'CHN-T', 'IND', 'THAI', 'RU'];
+            const selLingua = document.getElementById('editLingua');
+            selLingua.innerHTML = (isWishlist ? '<option value="">Qualsiasi lingua</option>' : '') +
+                LINGUE.map(l => `<option value="${l}">${l}</option>`).join('');
+            selLingua.value = card.lang || '';
+
+            const CONDIZIONI = ['MT', 'NM', 'EX', 'GD', 'LP', 'PL', 'PO'];
+            const selCondizione = document.getElementById('editCondizione');
+            selCondizione.innerHTML = CONDIZIONI.map(c => `<option value="${c}">${c}</option>`).join('');
+            selCondizione.value = card.cond;
+            // Etichetta dinamica: su wishlist il campo condizione significa
+            // "minima accettata" (sql/52), non un valore esatto posseduto.
+            document.getElementById('labelEditCondizione').textContent = isWishlist ? 'Condizione minima accettata' : 'Condizione';
             document.getElementById('editQty').value = card.qty;
             document.getElementById('editPrezzo').value = card.price || '';
             document.getElementById('editNote').value = card.notes;
@@ -84,7 +104,6 @@
             // — il campo viene disabilitato invece di rimosso, così il resto
             // del modale (layout, id dei campi) resta identico per entrambe.
             const inputLocation = document.getElementById('editLocation');
-            const isWishlist = card.tabella === 'wishlist';
             inputLocation.value = isWishlist ? '' : card.location;
             inputLocation.disabled = isWishlist;
             inputLocation.placeholder = isWishlist ? 'Non applicabile alla wishlist' : '';
@@ -259,15 +278,21 @@
             // Stesso elenco di LINGUA_MAP_SHARED nell'estensione — prima ne
             // mostravo solo 4 (IT/EN/KOR/JP), non erano "quelle del database"
             // ma un sottoinsieme scritto a mano incompleto.
-            _apriSelectInline(span, id, tabella, 'lingua', valoreAttuale,
-                ['IT', 'EN', 'DE', 'FR', 'ES', 'PT', 'JP', 'KOR', 'CHN', 'CHN-T', 'IND', 'THAI', 'RU']);
+            const opzioni = ['IT', 'EN', 'DE', 'FR', 'ES', 'PT', 'JP', 'KOR', 'CHN', 'CHN-T', 'IND', 'THAI', 'RU'];
+            // Fase 6, Step 2 (2026-09-13): "Qualsiasi lingua" ha senso SOLO
+            // in Wishlist (preferenza di ricerca, non un dato posseduto).
+            if (tabella === 'wishlist') opzioni.unshift('');
+            _apriSelectInline(span, id, tabella, 'lingua', valoreAttuale, opzioni);
         }
 
 
         function modificaCondizioneInline(event, id, tabella, valoreAttuale) {
             const span = event.target.closest('span');
             // Scala completa Cardmarket (7 livelli), non solo i 3 usati nella
-            // tabella rapida di Inserimento.
+            // tabella rapida di Inserimento. Fase 6 (2026-09-13): su
+            // wishlist questo valore significa "condizione MINIMA accettata"
+            // (semantica cambiata solo lato lettura/match, sql/52) — stessa
+            // scala, nessuna opzione in più da aggiungere qui.
             _apriSelectInline(span, id, tabella, 'condizione', valoreAttuale,
                 ['MT', 'NM', 'EX', 'GD', 'LP', 'PL', 'PO']);
         }
@@ -279,7 +304,10 @@
             opzioni.forEach(opt => {
                 const o = document.createElement('option');
                 o.value = opt;
-                o.textContent = opt;
+                // Fase 6, Step 2 (2026-09-13): '' è la sentinella "qualsiasi
+                // lingua" per la wishlist — mai mostrare una option vuota
+                // senza testo, illeggibile in un menu a tendina.
+                o.textContent = opt === '' ? 'Qualsiasi' : opt;
                 if (opt === valoreAttuale) o.selected = true;
                 select.appendChild(o);
             });

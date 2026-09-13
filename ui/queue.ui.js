@@ -51,7 +51,14 @@
         // salviamo su localStorage quali abbiamo già visto, così il
         // pallino sul menu sparisce dopo aver aperto la tab, e ricompare
         // solo per corrispondenze DAVVERO nuove.
+        // Fase 6, Step 3 (2026-09-13): chiave stabile anche per i match
+        // sealed (sql/52) — id diversi ma stesso concetto. 'm.categoria'
+        // distingue le due forme (aggiunta al merge in caricaMatch, non
+        // restituita dalla RPC).
         function _chiaveMatch(m, tipo) {
+            if (m.categoria === 'sealed') {
+                return tipo === 'scambio' ? `s_${m.mio_prodotto_id}_${m.altra_wishlist_sealed_id}` : `s_${m.mia_wishlist_sealed_id}_${m.altro_prodotto_id}`;
+            }
             return tipo === 'scambio' ? `${m.mia_carta_id}_${m.altra_wishlist_id}` : `${m.mia_wishlist_id}_${m.altra_carta_id}`;
         }
 
@@ -217,14 +224,36 @@
 
             container.innerHTML = '<div class="card-panel" style="padding:1rem; text-align:center; color:var(--text-muted); font-size:0.85rem;"><i class="fa-solid fa-spinner fa-spin"></i> Cerco corrispondenze...</div>';
 
-            const funzione = tabId === 'scambio' ? 'trova_match_scambio_wishlist' : 'trova_match_wishlist_scambio';
-            const { data, error } = await trovaMatch(funzione, userId);
+            // Fase 6, Step 3 (2026-09-13): carte E sealed insieme, stesso
+            // pannello — le due coppie di RPC (sql/52) restituiscono le
+            // STESSE colonne di visualizzazione (mio_nome/mio_prezzo/
+            // altro_email/ecc.), cambiano solo i nomi delle colonne id
+            // (mia_carta_id vs mio_prodotto_id, ecc.) — gestiti da
+            // _chiaveMatch/_idOggettoMatch via m.categoria.
+            const funzioneCarte = tabId === 'scambio' ? 'trova_match_scambio_wishlist' : 'trova_match_wishlist_scambio';
+            const funzioneSealed = tabId === 'scambio' ? 'trova_match_scambio_wishlist_sealed' : 'trova_match_wishlist_scambio_sealed';
+            const [{ data: dataCarte, error: errCarte }, { data: dataSealed, error: errSealed }] = await Promise.all([
+                trovaMatch(funzioneCarte, userId),
+                trovaMatch(funzioneSealed, userId),
+            ]);
 
-            if (error) {
-                container.innerHTML = `<div class="card-panel" style="padding:1rem; color:var(--danger); font-size:0.85rem;">Errore nella ricerca match: ${error.message}</div>`;
+            if (errCarte && errSealed) {
+                container.innerHTML = `<div class="card-panel" style="padding:1rem; color:var(--danger); font-size:0.85rem;">Errore nella ricerca match: ${errCarte.message}</div>`;
                 return;
             }
-            if (!data || data.length === 0) {
+            // Un errore su un solo lato (es. sealed) non blocca l'altro —
+            // meglio mostrare i match carte che avere un pannello vuoto per
+            // un problema isolato. Segnalato in console, non con un alert
+            // invadente per un dato secondario.
+            if (errCarte) console.error('Errore match carte:', errCarte.message);
+            if (errSealed) console.error('Errore match sealed:', errSealed.message);
+
+            const data = [
+                ...(dataCarte || []).map(m => ({ ...m, categoria: 'carta' })),
+                ...(dataSealed || []).map(m => ({ ...m, categoria: 'sealed' })),
+            ];
+
+            if (data.length === 0) {
                 container.innerHTML = '';
                 if (tabId === 'wishlist') _segnaAlertPrezzoVisti(_contaAlertPrezzoNonVisti().chiavi);
                 _aggiornaPallinoMenu(tabId, 0);
@@ -240,13 +269,31 @@
             _aggiornaPallinoMenu(tabId, 0);
 
             const righe = data.map(m => {
+                const persona = escapeHtml((m.altra_email || '').split('@')[0]);
+                // Fase 6, Step 3: bottone "Richiedi" SOLO quando l'oggetto è
+                // di qualcun altro (tab 'wishlist' — la mia wishlist ha
+                // trovato una carta/prodotto altrui in Scambio). Sulla tab
+                // 'scambio' l'oggetto è MIO: nulla da richiedere, è l'altra
+                // persona che eventualmente richiederà a me.
+                let bottone = '';
+                if (tabId === 'wishlist') {
+                    const oggettoId = m.categoria === 'sealed' ? m.altro_prodotto_id : m.altra_carta_id;
+                    const tipoRichiesta = m.categoria === 'sealed' ? 'sealed' : 'carta';
+                    const nomeAttr = String(m.mio_nome || '').replace(/'/g, "\\'");
+                    const personaAttr = persona.replace(/'/g, "\\'");
+                    bottone = `<button class="btn-secondary" style="padding:0.35rem 0.7rem; font-size:0.78rem; white-space:nowrap;"
+                        onclick="apriRichiediMatch('${m.altro_owner_id}', '${oggettoId}', '${tipoRichiesta}', '${nomeAttr}', '${personaAttr}')">
+                        <i class="fa-solid fa-paper-plane"></i> Richiedi</button>`;
+                }
+
                 if (tabId === 'scambio') {
-                    return `<div style="display:flex; justify-content:space-between; align-items:center; padding:0.6rem 0; border-bottom:1px solid var(--border-color);">
-                        <span style="font-size:0.85rem;"><strong>${escapeHtml(m.mio_nome)}</strong> (tuo, ${Number(m.mio_prezzo || 0).toFixed(2)} €) — cercato da <strong>${escapeHtml((m.altra_email || '').split('@')[0])}</strong>${m.altro_prezzo_obiettivo != null ? ` (fino a ${Number(m.altro_prezzo_obiettivo).toFixed(2)} €)` : ''}</span>
+                    return `<div style="display:flex; justify-content:space-between; align-items:center; padding:0.6rem 0; border-bottom:1px solid var(--border-color); gap:0.5rem;">
+                        <span style="font-size:0.85rem;"><strong>${escapeHtml(m.mio_nome)}</strong> (tuo${m.categoria === 'sealed' ? ' sealed' : ''}, ${Number(m.mio_prezzo || 0).toFixed(2)} €) — cercato da <strong>${persona}</strong>${m.altro_prezzo_obiettivo != null ? ` (fino a ${Number(m.altro_prezzo_obiettivo).toFixed(2)} €)` : ''}</span>
                     </div>`;
                 }
-                return `<div style="display:flex; justify-content:space-between; align-items:center; padding:0.6rem 0; border-bottom:1px solid var(--border-color);">
-                    <span style="font-size:0.85rem;"><strong>${escapeHtml(m.mio_nome)}</strong> (in wishlist${m.mio_prezzo_obiettivo != null ? `, fino a ${Number(m.mio_prezzo_obiettivo).toFixed(2)} €` : ''}) — in scambio da <strong>${escapeHtml((m.altra_email || '').split('@')[0])}</strong> a ${Number(m.altro_prezzo || 0).toFixed(2)} €</span>
+                return `<div style="display:flex; justify-content:space-between; align-items:center; padding:0.6rem 0; border-bottom:1px solid var(--border-color); gap:0.5rem;">
+                    <span style="font-size:0.85rem;"><strong>${escapeHtml(m.mio_nome)}</strong> (in wishlist${m.categoria === 'sealed' ? ' sealed' : ''}${m.mio_prezzo_obiettivo != null ? `, fino a ${Number(m.mio_prezzo_obiettivo).toFixed(2)} €` : ''}) — in scambio da <strong>${persona}</strong> a ${Number(m.altro_prezzo || 0).toFixed(2)} €</span>
+                    ${bottone}
                 </div>`;
             }).join('');
 
@@ -258,4 +305,48 @@
                     ${righe}
                 </div>
             `;
+        }
+
+
+        // ═══════════════════════════════════════════════════════════════════
+        // FASE 6, STEP 3 (2026-09-13) — "RICHIEDI" PRECOMPILATO DAL MATCH
+        // ═══════════════════════════════════════════════════════════════════
+        // Su richiesta esplicita di Claudio: NIENTE invio automatico dal
+        // match — apre un modale precompilato (proprietario/oggetto già
+        // impostati dal match, quantità di default 1 modificabile), l'invio
+        // vero parte solo dopo conferma manuale. Riusa invia_richiesta_
+        // scambio (Fase 4) via inviaRichiestaScambio() — nessuna RPC nuova.
+        let _matchRichiestaPendente = null;
+
+        function apriRichiediMatch(ownerId, oggettoId, tipo, nomeOggetto, nomeAltro) {
+            _matchRichiestaPendente = { ownerId, oggettoId, tipo };
+            document.getElementById('richiediMatchTesto').textContent =
+                `Richiedere "${nomeOggetto}" a ${nomeAltro}?`;
+            document.getElementById('richiediMatchQty').value = 1;
+            document.getElementById('richiediMatchModal').style.display = 'flex';
+        }
+
+        function chiudiRichiediMatch() {
+            document.getElementById('richiediMatchModal').style.display = 'none';
+            _matchRichiestaPendente = null;
+        }
+
+        async function confermaRichiediMatch() {
+            if (!_matchRichiestaPendente) return;
+            const { ownerId, oggettoId, tipo } = _matchRichiestaPendente;
+            const qty = Math.max(1, parseInt(document.getElementById('richiediMatchQty').value, 10) || 1);
+
+            const btn = document.getElementById('btnConfermaRichiediMatch');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Invio...';
+
+            const { error } = await inviaRichiestaScambio(ownerId, [{ tipo, oggetto_id: oggettoId, quantita: qty }]);
+
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Invia richiesta';
+
+            if (error) { alert('❌ ' + error.message); return; }
+
+            chiudiRichiediMatch();
+            alert('✅ Richiesta inviata! La trovi nella pagina Richieste, tab Inviate.');
         }
