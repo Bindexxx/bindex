@@ -104,45 +104,70 @@ async function renderPaginaWishlist() {
 
     _wishlistFiltroAttivo = 'tutte';
     _wishlistRicercaTesto = '';
+    _wishlistTabAttiva = 'carte';
+    _wishlistSealedCaricato = false; // Fase 6, Step 2: ricarica sempre ad ogni apertura pagina
     const { totale, conObiettivo, raggiunte } = _wishlistClassificaEOrdina();
 
-    if (totale === 0) {
-        container.innerHTML = `
-            <div class="page-header">
-                <span class="page-title">Wishlist</span>
-            </div>
-            <p style="text-align:center; color:var(--text-muted); font-size:0.85rem; padding:2rem 0;">La tua wishlist è vuota.</p>
-        `;
-        return;
-    }
-
+    // Fase 6, Step 2 (2026-09-13): tab Carte/Sealed — il messaggio "wishlist
+    // vuota" ora vive DENTRO la tab Carte (prima usciva subito dalla
+    // funzione, il che avrebbe nascosto la tab Sealed anche quando questa
+    // avesse contenuto).
     container.innerHTML = `
         <div class="page-header">
             <span class="page-title">Wishlist</span>
             <span class="page-azione attiva" onclick="_vaiAlBinderWishlist(event)">Vai alla Wishlist</span>
         </div>
         <div class="pg-pagina">
-            <div class="pg-intro">
-                <div class="pg-grande">${totale}</div>
-                <div class="pg-sotto">${conObiettivo} con obiettivo di prezzo · ${raggiunte} già raggiunte</div>
+            <div class="pg-filtri" style="margin-bottom:0.6rem;">
+                <span class="pg-filtro attivo" data-tab="carte" onclick="_wishlistImpostaTab('carte')">Carte</span>
+                <span class="pg-filtro" data-tab="sealed" onclick="_wishlistImpostaTab('sealed')">Sealed</span>
             </div>
-            <div class="pg-stat">
-                <div><b>${totale}</b><span>Desiderate</span></div>
-                <div><b>${conObiettivo}</b><span>Con obiettivo</span></div>
-                <div><b>${raggiunte}</b><span>Raggiunte</span></div>
+            <div id="wishlistTabCarte">
+                ${totale === 0 ? `<p style="text-align:center; color:var(--text-muted); font-size:0.85rem; padding:2rem 0;">La tua wishlist di carte è vuota.</p>` : `
+                <div class="pg-intro">
+                    <div class="pg-grande">${totale}</div>
+                    <div class="pg-sotto">${conObiettivo} con obiettivo di prezzo · ${raggiunte} già raggiunte</div>
+                </div>
+                <div class="pg-stat">
+                    <div><b>${totale}</b><span>Desiderate</span></div>
+                    <div><b>${conObiettivo}</b><span>Con obiettivo</span></div>
+                    <div><b>${raggiunte}</b><span>Raggiunte</span></div>
+                </div>
+                <input type="text" class="pg-cerca" placeholder="Cerca nella wishlist..." oninput="_wishlistCercaInput(this.value)">
+                <div class="pg-filtri">
+                    <span class="pg-filtro attivo" data-filtro="tutte" onclick="_wishlistImpostaFiltro('tutte')">Tutte</span>
+                    <span class="pg-filtro" data-filtro="raggiunte" onclick="_wishlistImpostaFiltro('raggiunte')">Raggiunte</span>
+                    <span class="pg-filtro" data-filtro="in_corso" onclick="_wishlistImpostaFiltro('in_corso')">In corso</span>
+                    <span class="pg-filtro" data-filtro="senza_obiettivo" onclick="_wishlistImpostaFiltro('senza_obiettivo')">Senza obiettivo</span>
+                </div>
+                <div class="pg-elenco" id="wishlistElenco"></div>
+                `}
             </div>
-            <input type="text" class="pg-cerca" placeholder="Cerca nella wishlist..." oninput="_wishlistCercaInput(this.value)">
-            <div class="pg-filtri">
-                <span class="pg-filtro attivo" data-filtro="tutte" onclick="_wishlistImpostaFiltro('tutte')">Tutte</span>
-                <span class="pg-filtro" data-filtro="raggiunte" onclick="_wishlistImpostaFiltro('raggiunte')">Raggiunte</span>
-                <span class="pg-filtro" data-filtro="in_corso" onclick="_wishlistImpostaFiltro('in_corso')">In corso</span>
-                <span class="pg-filtro" data-filtro="senza_obiettivo" onclick="_wishlistImpostaFiltro('senza_obiettivo')">Senza obiettivo</span>
+            <div id="wishlistTabSealed" style="display:none;">
+                <input type="text" class="pg-cerca" placeholder="Cerca tra i prodotti sealed desiderati..." oninput="_wishlistSealedCercaInput(this.value)">
+                <div class="pg-elenco" id="wishlistSealedElenco"></div>
             </div>
-            <div class="pg-elenco" id="wishlistElenco"></div>
         </div>
     `;
-    _wishlistRenderElenco();
+    if (totale > 0) _wishlistRenderElenco();
 }
+
+// ── TAB CARTE/SEALED (Fase 6, Step 2) ────────────────────────────────────
+let _wishlistTabAttiva = 'carte';
+
+function _wishlistImpostaTab(tab) {
+    _wishlistTabAttiva = tab;
+    document.querySelectorAll('#wishlistContenuto .pg-filtri span[data-tab]').forEach(el => {
+        el.classList.toggle('attivo', el.dataset.tab === tab);
+    });
+    const tabCarte = document.getElementById('wishlistTabCarte');
+    const tabSealed = document.getElementById('wishlistTabSealed');
+    if (tabCarte) tabCarte.style.display = tab === 'carte' ? '' : 'none';
+    if (tabSealed) tabSealed.style.display = tab === 'sealed' ? '' : 'none';
+    if (tab === 'sealed') _wishlistSealedApri();
+}
+
+
 
 function _wishlistImpostaFiltro(filtro) {
     _wishlistFiltroAttivo = filtro;
@@ -215,4 +240,183 @@ async function _vaiAlBinderWishlist(evt) {
     // Se non trovato (caso limite — binderWishlistGarantisci() dovrebbe
     // impedirlo sempre, vedi _garantisciTuttiIBinder in ui/binder.ui.js):
     // resta sulla griglia dei contenitori invece di rompere la pagina.
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════
+// FASE 6, STEP 2 (2026-09-13) — TAB SEALED DELLA WISHLIST
+// ═══════════════════════════════════════════════════════════════════════
+// wishlist_sealed (sql/52) è un dominio a sé, NON fusa dentro carteReali
+// (che tratta solo carte/wishlist carte, vedi ui/cards.ui.js) — stesso
+// principio già applicato a prodottiSealedReali in ui/widget-sealed.ui.js:
+// array in-memory parallelo, caricato con una query dedicata, editor
+// dedicato (i campi sono diversi: integrità invece di condizione, niente
+// posizione/prezzo attuale perché non è ancora posseduto).
+// ───────────────────────────────────────────────────────────────────────
+
+let wishlistSealedReali = [];
+let _wishlistSealedRicercaTesto = '';
+let _wishlistSealedCaricato = false;
+
+async function _wishlistSealedApri() {
+    if (!_wishlistSealedCaricato) {
+        await caricaWishlistSealedReali();
+        _wishlistSealedCaricato = true;
+    }
+    _wishlistSealedRenderElenco();
+}
+
+async function caricaWishlistSealedReali() {
+    const userId = await authGetUserId();
+    if (!userId) return;
+
+    const { data, error } = await wishlistSealedListMie(userId);
+    if (error) {
+        console.error('Errore caricamento wishlist sealed:', error.message);
+        return;
+    }
+
+    wishlistSealedReali = (data || []).map(r => ({
+        id: r.id,
+        name: r.nome || '',
+        codice: r.codice || '',
+        setEspansione: r.set_espansione || '',
+        qty: r.qty || 1,
+        lingua: r.lingua || '', // '' = Qualsiasi, stessa convenzione della wishlist carte
+        integrita: r.integrita_minima || 'sigillato_integro',
+        prezzoObiettivo: r.prezzo_obiettivo != null ? Number(r.prezzo_obiettivo) : null,
+        note: r.note || '',
+        immagine: r.immagine || null,
+    }));
+}
+
+function _wishlistSealedCercaInput(valore) {
+    _wishlistSealedRicercaTesto = (valore || '').toLowerCase();
+    _wishlistSealedRenderElenco();
+}
+
+function _wishlistSealedRenderElenco() {
+    const elenco = document.getElementById('wishlistSealedElenco');
+    if (!elenco) return;
+
+    const eur = (v) => v != null ? '€ ' + Number(v).toLocaleString('it-IT', { maximumFractionDigits: 0 }) : '—';
+
+    let righe = wishlistSealedReali;
+    if (_wishlistSealedRicercaTesto) righe = righe.filter(r => r.name.toLowerCase().includes(_wishlistSealedRicercaTesto));
+
+    if (righe.length === 0) {
+        elenco.innerHTML = `<p style="text-align:center; color:var(--text-muted); font-size:0.82rem; padding:1.2rem 0;">${wishlistSealedReali.length === 0 ? 'Nessun prodotto sealed nella wishlist.' : 'Nessun prodotto corrisponde alla ricerca.'}</p>`;
+        return;
+    }
+
+    elenco.innerHTML = righe.map(r => {
+        const immagineSrc = r.immagine ? (_urlImmagineVisualizzabile(r.immagine, 96) || '') : '';
+        const fig = immagineSrc
+            ? `<img class="pg-fig" src="${immagineSrc}" alt="" onerror="this.style.display='none';">`
+            : '<div class="pg-fig"></div>';
+        return `
+            <div class="pg-riga" data-tocca onclick="apriModificaWishlistSealed('${r.id}')">
+                ${fig}
+                <div class="pg-testo"><b>${escapeHtml(r.name)}</b><span>×${r.qty} · ${r.lingua ? escapeHtml(r.lingua) : 'Qualsiasi lingua'}</span></div>
+                <div class="pg-destra"><b>${eur(r.prezzoObiettivo)}</b>obiettivo</div>
+            </div>`;
+    }).join('');
+}
+
+
+// ── MODIFICA / ELIMINAZIONE WISHLIST SEALED ──────────────────────────────
+let _wishlistSealedInModifica = null;
+
+async function apriModificaWishlistSealed(id) {
+    const prodotto = wishlistSealedReali.find(p => String(p.id) === String(id));
+    if (!prodotto) return;
+    _wishlistSealedInModifica = prodotto;
+
+    document.getElementById('editWsNome').value = prodotto.name;
+    document.getElementById('editWsCodice').value = prodotto.codice || '';
+    document.getElementById('editWsSet').value = prodotto.setEspansione || '';
+    document.getElementById('editWsQty').value = prodotto.qty;
+    document.getElementById('editWsPrezzoObiettivo').value = prodotto.prezzoObiettivo != null ? prodotto.prezzoObiettivo : '';
+    document.getElementById('editWsNote').value = prodotto.note || '';
+
+    // Lingua: stesso elenco completo delle carte + "Qualsiasi" in testa —
+    // ha senso solo qui (preferenza di ricerca per il match, non un dato
+    // posseduto). Ricostruita in JS, non statica nell'HTML — stesso motivo
+    // del fix su #editLingua in ui/cards-modifica.ui.js.
+    const selLingua = document.getElementById('editWsLingua');
+    const LINGUE = ['IT', 'EN', 'DE', 'FR', 'ES', 'PT', 'JP', 'KOR', 'CHN', 'CHN-T', 'IND', 'THAI', 'RU'];
+    selLingua.innerHTML = '<option value="">Qualsiasi lingua</option>' +
+        LINGUE.map(l => `<option value="${l}">${l}</option>`).join('');
+    selLingua.value = prodotto.lingua || '';
+
+    // Integrità minima: STESSA fonte unica di ui/entry.ui.js
+    // (INTEGRITA_PACKAGING_OPZIONI, dichiarata lì, caricata prima di
+    // questo file — vedi ordine in index.html).
+    const selIntegrita = document.getElementById('editWsIntegrita');
+    selIntegrita.innerHTML = INTEGRITA_PACKAGING_OPZIONI.map(o =>
+        `<option value="${o.value}" ${prodotto.integrita === o.value ? 'selected' : ''}>${o.label}</option>`
+    ).join('');
+
+    document.getElementById('editWishlistSealedModal').style.display = 'flex';
+}
+
+
+function chiudiModificaWishlistSealed() {
+    document.getElementById('editWishlistSealedModal').style.display = 'none';
+    _wishlistSealedInModifica = null;
+}
+
+
+async function salvaModificaWishlistSealed() {
+    if (!_wishlistSealedInModifica) return;
+    const id = _wishlistSealedInModifica.id;
+
+    const num = (elId) => {
+        const v = document.getElementById(elId).value;
+        return v !== '' ? parseFloat(v) : null;
+    };
+
+    const aggiornamento = {
+        nome: document.getElementById('editWsNome').value.trim(),
+        codice: document.getElementById('editWsCodice').value.trim() || null,
+        set_espansione: document.getElementById('editWsSet').value.trim() || null,
+        lingua: document.getElementById('editWsLingua').value || null, // '' → null = Qualsiasi (sql/52)
+        qty: Math.max(1, parseInt(document.getElementById('editWsQty').value, 10) || 1),
+        integrita_minima: document.getElementById('editWsIntegrita').value,
+        prezzo_obiettivo: num('editWsPrezzoObiettivo'),
+        note: document.getElementById('editWsNote').value.trim() || null,
+    };
+
+    const btn = document.getElementById('btnSalvaModificaWishlistSealed');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Salvataggio...';
+
+    const { error } = await wishlistSealedUpdate(id, aggiornamento);
+
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fa-solid fa-check"></i> Salva Modifiche';
+
+    if (error) {
+        alert('❌ Errore nel salvare: ' + error.message);
+        return;
+    }
+
+    chiudiModificaWishlistSealed();
+    await caricaWishlistSealedReali();
+    _wishlistSealedRenderElenco();
+}
+
+
+async function eliminaWishlistSealedDaModale() {
+    if (!_wishlistSealedInModifica) return;
+    const id = _wishlistSealedInModifica.id;
+    chiudiModificaWishlistSealed();
+    if (!confirm('Eliminare definitivamente questo prodotto dalla Wishlist?\n\nQuesta azione non si può annullare.')) return;
+    const { error } = await wishlistSealedDelete(id);
+    if (error) {
+        alert('❌ Errore nell\'eliminazione: ' + error.message);
+        return;
+    }
+    await caricaWishlistSealedReali();
+    _wishlistSealedRenderElenco();
 }

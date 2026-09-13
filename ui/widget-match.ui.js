@@ -76,14 +76,20 @@ async function renderPaginaMatch() {
     const userId = await authGetUserId();
     if (!userId) { container.innerHTML = ''; return; }
 
-    const [{ data: dataScambio, error: errS }, { data: dataWishlist, error: errW }] = await Promise.all([
+    const [{ data: dataScambio, error: errS }, { data: dataWishlist, error: errW }, { data: dataScambioSealed, error: errSs }, { data: dataWishlistSealed, error: errWs }] = await Promise.all([
         trovaMatch('trova_match_scambio_wishlist', userId),
         trovaMatch('trova_match_wishlist_scambio', userId),
+        trovaMatch('trova_match_scambio_wishlist_sealed', userId),
+        trovaMatch('trova_match_wishlist_scambio_sealed', userId),
     ]);
     if (errS || errW) {
         container.innerHTML = `<p style="text-align:center; color:var(--danger); font-size:0.85rem; padding:1rem 0;">Errore nella ricerca match: ${((errS || errW).message)}</p>`;
         return;
     }
+    // Fase 6, Step 3 (2026-09-13): sealed (sql/52) è "a corredo" — un
+    // errore lì non deve svuotare la pagina se le carte hanno funzionato.
+    if (errSs) console.error('Errore match scambio sealed:', errSs.message);
+    if (errWs) console.error('Errore match wishlist sealed:', errWs.message);
 
     // Stessa chiave di _chiaveMatch (queue.ui.js) — non duplicata qui come
     // funzione a sé per non rischiare che le due si scollino nel tempo,
@@ -95,6 +101,7 @@ async function renderPaginaMatch() {
         ownerAltro: m.altro_owner_id,
         binderAltro: m.altro_binder_id || null, // presente solo dopo la migration 29
         testo: `<strong>${escapeHtml(m.mio_nome)}</strong> (tuo, in Scambio, ${Number(m.mio_prezzo || 0).toFixed(2)} €) — lo cerca${m.altro_prezzo_obiettivo != null ? ` fino a ${Number(m.altro_prezzo_obiettivo).toFixed(2)} €` : ''}`,
+        richiedibile: false, // l'oggetto è mio — nulla da richiedere qui
     }));
     const righeWishlist = (dataWishlist || []).map(m => ({
         chiave: `${m.mia_wishlist_id}_${m.altra_carta_id}`,
@@ -102,6 +109,32 @@ async function renderPaginaMatch() {
         ownerAltro: m.altro_owner_id,
         binderAltro: m.altro_binder_id || null,
         testo: `<strong>${escapeHtml(m.mio_nome)}</strong> (tua, in Wishlist${m.mio_prezzo_obiettivo != null ? `, fino a ${Number(m.mio_prezzo_obiettivo).toFixed(2)} €` : ''}) — ce l'ha in Scambio a ${Number(m.altro_prezzo || 0).toFixed(2)} €`,
+        richiedibile: true,
+        oggettoId: m.altra_carta_id,
+        tipoRichiesta: 'carta',
+        nomeOggetto: m.mio_nome || '',
+    }));
+    // Fase 6, Step 3: stesse due forme, lato Sealed (id diversi, stesse
+    // colonne di visualizzazione — sql/52 le ha disegnate a specchio
+    // apposta per questo).
+    const righeScambioSealed = (dataScambioSealed || []).map(m => ({
+        chiave: `s_${m.mio_prodotto_id}_${m.altra_wishlist_sealed_id}`,
+        persona: (m.altra_email || '').split('@')[0] || 'Utente',
+        ownerAltro: m.altro_owner_id,
+        binderAltro: null, // gli Scaffali Scambio non hanno ancora un link diretto da qui
+        testo: `<strong>${escapeHtml(m.mio_nome)}</strong> (tuo sealed, in Scambio, ${Number(m.mio_prezzo || 0).toFixed(2)} €) — lo cerca${m.altro_prezzo_obiettivo != null ? ` fino a ${Number(m.altro_prezzo_obiettivo).toFixed(2)} €` : ''}`,
+        richiedibile: false,
+    }));
+    const righeWishlistSealed = (dataWishlistSealed || []).map(m => ({
+        chiave: `s_${m.mia_wishlist_sealed_id}_${m.altro_prodotto_id}`,
+        persona: (m.altra_email || '').split('@')[0] || 'Utente',
+        ownerAltro: m.altro_owner_id,
+        binderAltro: null,
+        testo: `<strong>${escapeHtml(m.mio_nome)}</strong> (tua sealed, in Wishlist${m.mio_prezzo_obiettivo != null ? `, fino a ${Number(m.mio_prezzo_obiettivo).toFixed(2)} €` : ''}) — ce l'ha in Scambio a ${Number(m.altro_prezzo || 0).toFixed(2)} €`,
+        richiedibile: true,
+        oggettoId: m.altro_prodotto_id,
+        tipoRichiesta: 'sealed',
+        nomeOggetto: m.mio_nome || '',
     }));
 
     // Collegato a preferenze_utente.match_nascosti (migration 30,
@@ -109,7 +142,7 @@ async function renderPaginaMatch() {
     // 2026-08-28, risposta 2: non riusa prefMatchVistiGet, che è
     // localStorage e quindi per-dispositivo).
     const nascosti = await _matchNascostiSet(userId);
-    const tutte = [...righeScambio, ...righeWishlist].filter(r => !nascosti.has(r.chiave));
+    const tutte = [...righeScambio, ...righeWishlist, ...righeScambioSealed, ...righeWishlistSealed].filter(r => !nascosti.has(r.chiave));
 
     if (tutte.length === 0) {
         container.innerHTML = '<p style="text-align:center; color:var(--text-muted); font-size:0.9rem; padding:2rem 0;">Nessuna corrispondenza al momento.</p>';
@@ -127,6 +160,7 @@ async function renderPaginaMatch() {
                     <div class="pg-riga" style="flex-wrap:wrap; gap:0.5rem;">
                         <span style="flex:1; min-width:200px; font-size:0.82rem;">${r.testo}</span>
                         <div style="display:flex; gap:0.4rem; flex-shrink:0;">
+                            ${r.richiedibile ? `<button type="button" class="btn-secondary" style="font-size:0.72rem; padding:0.35rem 0.55rem;" onclick="event.stopPropagation(); apriRichiediMatch('${r.ownerAltro}', '${r.oggettoId}', '${r.tipoRichiesta}', '${String(r.nomeOggetto).replace(/'/g, "\\'")}', '${escapeHtml(persona).replace(/'/g, "\\'")}')" title="Richiedi"><i class="fa-solid fa-paper-plane"></i></button>` : ''}
                             <button type="button" class="btn-secondary" style="font-size:0.72rem; padding:0.35rem 0.55rem;" onclick="event.stopPropagation(); _apriBinderAltruiMatch('${r.ownerAltro}', '${r.binderAltro || ''}')" title="Vai al binder"><i class="fa-solid fa-layer-group"></i></button>
                             <button type="button" class="btn-secondary" style="font-size:0.72rem; padding:0.35rem 0.55rem;" onclick="event.stopPropagation(); _contattaPersonaMatch('${r.ownerAltro}')" title="Contatta"><i class="fa-solid fa-comment"></i></button>
                             <button type="button" class="btn-secondary" style="font-size:0.72rem; padding:0.35rem 0.55rem;" onclick="event.stopPropagation(); _nascondiMatch('${r.chiave}', event)" title="Nascondi"><i class="fa-solid fa-eye-slash"></i></button>
