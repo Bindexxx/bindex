@@ -632,37 +632,59 @@
     </div>
 
     <div class="container">
-        <div class="binder-modalita-toggle">
-            <button type="button" class="binder-modalita-btn" data-modalita="elenco" onclick="impostaModalitaBinderPubblico('elenco')"><i class="fa-solid fa-list"></i> Elenco</button>
-            <button type="button" class="binder-modalita-btn" data-modalita="libro" onclick="impostaModalitaBinderPubblico('libro')"><i class="fa-solid fa-book-open"></i> Sfoglia</button>
+        <!-- FASE 6, STEP 4 (2026-09-13): tab Carte/Sealed — link unico
+             Wishlist come richiesto dalla roadmap. Il libro sfogliabile
+             (Elenco/Sfoglia) resta SOLO per le carte (la Wishlist Sealed
+             non ha un binder/layout proprio, stesso trattamento già dato
+             agli Scaffali in Fase 1.3/3). -->
+        <div class="binder-modalita-toggle" style="margin-bottom:0.6rem;">
+            <button type="button" class="binder-modalita-btn active" data-wtab="carte" onclick="_wishlistPubTab('carte')"><i class="fa-solid fa-layer-group"></i> Carte</button>
+            <button type="button" class="binder-modalita-btn" data-wtab="sealed" onclick="_wishlistPubTab('sealed')"><i class="fa-solid fa-box-archive"></i> Sealed</button>
         </div>
 
-        <div class="search-box" id="searchBoxWrap">
-            <i class="fa-solid fa-magnifying-glass" style="color: var(--text-muted);"></i>
-            <input type="text" id="searchInput" placeholder="Cerca carta o codice..." oninput="renderLista()">
-        </div>
+        <div id="wishlistTabCarteWrap">
+            <div class="binder-modalita-toggle">
+                <button type="button" class="binder-modalita-btn" data-modalita="elenco" onclick="impostaModalitaBinderPubblico('elenco')"><i class="fa-solid fa-list"></i> Elenco</button>
+                <button type="button" class="binder-modalita-btn" data-modalita="libro" onclick="impostaModalitaBinderPubblico('libro')"><i class="fa-solid fa-book-open"></i> Sfoglia</button>
+            </div>
 
-        <div id="listaContainer">
-            <div class="stato-caricamento"><i class="fa-solid fa-spinner fa-spin"></i> Caricamento carte disponibili...</div>
-        </div>
+            <div class="search-box" id="searchBoxWrap">
+                <i class="fa-solid fa-magnifying-glass" style="color: var(--text-muted);"></i>
+                <input type="text" id="searchInput" placeholder="Cerca carta o codice..." oninput="renderLista()">
+            </div>
 
-        <!-- Libro sfogliabile — motore condiviso ui/binder-flipbook.ui.js
-             (estratto da binder-pubblico.ui.js il 26/08/2026). -->
-        <div id="binderLibroWrap" class="libro-wrap" style="display:none;">
-            <div class="libro-scena" id="binderLibroScena">
-                <div class="libro-lato libro-lato-sx" id="binderLibroSx"></div>
-                <div class="libro-lato libro-lato-dx" id="binderLibroDx"></div>
-                <div class="libro-foglio" id="binderLibroFoglio">
-                    <div class="libro-faccia libro-faccia-fronte" id="binderLibroFronte"></div>
-                    <div class="libro-faccia libro-faccia-retro" id="binderLibroRetro"></div>
+            <div id="listaContainer">
+                <div class="stato-caricamento"><i class="fa-solid fa-spinner fa-spin"></i> Caricamento carte disponibili...</div>
+            </div>
+
+            <!-- Libro sfogliabile — motore condiviso ui/binder-flipbook.ui.js
+                 (estratto da binder-pubblico.ui.js il 26/08/2026). -->
+            <div id="binderLibroWrap" class="libro-wrap" style="display:none;">
+                <div class="libro-scena" id="binderLibroScena">
+                    <div class="libro-lato libro-lato-sx" id="binderLibroSx"></div>
+                    <div class="libro-lato libro-lato-dx" id="binderLibroDx"></div>
+                    <div class="libro-foglio" id="binderLibroFoglio">
+                        <div class="libro-faccia libro-faccia-fronte" id="binderLibroFronte"></div>
+                        <div class="libro-faccia libro-faccia-retro" id="binderLibroRetro"></div>
+                    </div>
                 </div>
+            </div>
+
+            <div class="binder-pagination" id="binderPagination" style="display:none;">
+                <button type="button" class="binder-page-btn" id="binderPrevBtn" onclick="binderPaginaIndietro()" aria-label="Pagina precedente"><i class="fa-solid fa-chevron-left"></i></button>
+                <span id="binderPaginaLabel">Pagina 1 di 1</span>
+                <button type="button" class="binder-page-btn" id="binderNextBtn" onclick="binderPaginaAvanti()" aria-label="Pagina successiva"><i class="fa-solid fa-chevron-right"></i></button>
             </div>
         </div>
 
-        <div class="binder-pagination" id="binderPagination" style="display:none;">
-            <button type="button" class="binder-page-btn" id="binderPrevBtn" onclick="binderPaginaIndietro()" aria-label="Pagina precedente"><i class="fa-solid fa-chevron-left"></i></button>
-            <span id="binderPaginaLabel">Pagina 1 di 1</span>
-            <button type="button" class="binder-page-btn" id="binderNextBtn" onclick="binderPaginaAvanti()" aria-label="Pagina successiva"><i class="fa-solid fa-chevron-right"></i></button>
+        <div id="wishlistTabSealedWrap" style="display:none;">
+            <div class="search-box">
+                <i class="fa-solid fa-magnifying-glass" style="color: var(--text-muted);"></i>
+                <input type="text" id="searchInputSealed" placeholder="Cerca prodotto o codice..." oninput="renderListaSealed()">
+            </div>
+            <div id="listaContainerSealed">
+                <div class="stato-caricamento"><i class="fa-solid fa-spinner fa-spin"></i> Caricamento prodotti sealed desiderati...</div>
+            </div>
         </div>
     </div>
 
@@ -671,7 +693,7 @@
             <div class="barra-totale-count" id="conteggioSelezionate">0 carte selezionate</div>
             <div class="barra-totale-value" id="totaleSelezionate">0,00 €</div>
         </div>
-        <button class="btn-copia" id="btnCopiaRiepilogo" onclick="copiaRiepilogo()" disabled>
+        <button class="btn-copia" id="btnCopiaRiepilogo" onclick="copiaRiepilogoAttivo()" disabled>
             <i class="fa-solid fa-copy"></i> Copia riepilogo
         </button>
     </div>
