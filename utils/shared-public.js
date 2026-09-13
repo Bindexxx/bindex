@@ -114,6 +114,12 @@ function aggiornaTotale() {
         `${numCarte} cart${numCarte === 1 ? 'a selezionata' : 'e selezionate'}`;
     document.getElementById('totaleSelezionate').textContent = formattaEuro(totale);
     document.getElementById('btnCopiaRiepilogo').disabled = numCarte === 0;
+    // Fase 4, Step 4 (2026-09-13): bottone "Richiedi" — presente solo su
+    // binder-pubblico.html/scaffali-pubblico.html (tipo='scambio'), assente
+    // su wishlist.html/sealed.html/scambio.html — guardia esplicita perché
+    // questa funzione è condivisa da tutte.
+    const btnRichiedi = document.getElementById('btnRichiediScambio');
+    if (btnRichiedi) btnRichiedi.disabled = numCarte === 0;
 }
 
 // Applica lo stesso tema scelto dal proprietario sul proprio dispositivo —
@@ -129,3 +135,102 @@ function applicaTemaCondiviso() {
     if (tema === 'verde' || tema === 'pokemon') document.body.classList.add('theme-' + tema);
     if (params.get('scuro') === '1') document.body.classList.add('dark-mode');
 }
+
+
+// ── Richiesta di scambio — Fase 4, Step 4 (2026-09-13) ───────────────────
+// Condivisa tra binder-pubblico.ui.js (tipo 'carta') e
+// scaffali-pubblico.ui.js (tipo 'sealed') — la pagina imposta
+// _tipoOggettoRichiesta prima di usare queste funzioni. Login minimo
+// necessario: queste pagine sono ANONIME di default (nessuna sessione,
+// vedi `persistSession: false` in ciascun HTML), ma invia_richiesta_scambio
+// richiede auth.uid() non nullo — stesso schema di login di ui/auth.ui.js
+// (username → username@cardsyncpro.local dietro le quinte), riscritto qui
+// perché data/auth.repository.js non è caricato in queste pagine e non
+// vale la pena aggiungerlo solo per una chiamata.
+let _tipoOggettoRichiesta = 'carta';
+let _proprietarioIdRichiestaPendente = null;
+
+async function _sessionePubblicoAttiva() {
+    const { data } = await supabaseClient.auth.getSession();
+    return data?.session?.user || null;
+}
+
+function apriLoginPubblico() {
+    const modal = document.getElementById('loginPubblicoModal');
+    if (!modal) return;
+    document.getElementById('loginPubblicoErrore').style.display = 'none';
+    modal.style.display = 'flex';
+}
+
+function chiudiLoginPubblico() {
+    const modal = document.getElementById('loginPubblicoModal');
+    if (modal) modal.style.display = 'none';
+}
+
+async function tentaLoginPubblico() {
+    const inputUtente = document.getElementById('loginPubblicoUtente').value.trim();
+    const password = document.getElementById('loginPubblicoPassword').value;
+    const errEl = document.getElementById('loginPubblicoErrore');
+    const btn = document.getElementById('loginPubblicoSubmit');
+    if (!inputUtente || !password) {
+        errEl.textContent = 'Inserisci nome utente e password.';
+        errEl.style.display = 'block';
+        return;
+    }
+    const email = inputUtente.includes('@') ? inputUtente : `${inputUtente.toLowerCase()}@cardsyncpro.local`;
+    btn.disabled = true;
+    btn.textContent = 'Accesso in corso…';
+
+    const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+
+    btn.disabled = false;
+    btn.textContent = 'Accedi';
+    if (error) {
+        errEl.textContent = '❌ ' + (error.message === 'Invalid login credentials' ? 'Nome utente o password errati.' : error.message);
+        errEl.style.display = 'block';
+        return;
+    }
+    chiudiLoginPubblico();
+    await _richiediScambioDopoLogin();
+}
+
+// Punto di ingresso chiamato dal bottone "Richiedi" di entrambe le pagine —
+// se non c'è sessione attiva apre il login e riprende da sola dopo,
+// altrimenti procede subito.
+async function avviaRichiestaScambio(proprietarioId) {
+    _proprietarioIdRichiestaPendente = proprietarioId;
+    const utente = await _sessionePubblicoAttiva();
+    if (!utente) { apriLoginPubblico(); return; }
+    await _richiediScambioDopoLogin();
+}
+
+async function _richiediScambioDopoLogin() {
+    const proprietarioId = _proprietarioIdRichiestaPendente;
+    if (!proprietarioId) return;
+
+    // `carte`/`selezioni` sono le stesse variabili globali già usate da
+    // toggleSelezione/modificaQty/aggiornaTotale sopra — qualunque sia il
+    // dominio reale (carte o prodotti sealed), il nome resta quello per
+    // riuso diretto di queste funzioni condivise.
+    const righe = [];
+    carte.forEach(p => {
+        const q = selezioni[p.id] || 0;
+        if (q > 0) righe.push({ tipo: _tipoOggettoRichiesta, oggetto_id: p.id, quantita: q });
+    });
+    if (righe.length === 0) { alert('Seleziona almeno un elemento prima di richiedere.'); return; }
+
+    const btn = document.getElementById('btnRichiediScambio');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Invio...'; }
+
+    const { error } = await supabaseClient.rpc('invia_richiesta_scambio', { p_proprietario_id: proprietarioId, p_righe: righe });
+
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Richiedi'; }
+
+    if (error) { alert('❌ ' + error.message); return; }
+
+    alert('✅ Richiesta inviata! Il proprietario la vedrà nella sua pagina Richieste su CardSync Pro.');
+    selezioni = {};
+    if (typeof renderLista === 'function') renderLista();
+    if (typeof aggiornaTotale === 'function') aggiornaTotale();
+}
+
