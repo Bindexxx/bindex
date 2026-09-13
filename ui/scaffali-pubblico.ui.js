@@ -71,10 +71,14 @@ async function caricaCatalogo() {
         return;
     }
 
-    // qty qui è quantita_offerta per tipo='scambio' (la RPC sql/46 lo
-    // riusa nello stesso slot), qty posseduta per gli altri tipi — vedi
+    // qty qui è quantita_offerta per tipo='scambio' (la RPC sql/51 lo
+    // riusa nello stesso slot — corregge sql/46, mai andato live, vedi
+    // header del file sql), qty posseduta per gli altri tipi — vedi
     // qtyDisponibile sotto, stesso nome campo di binder-pubblico.ui.js
     // (contratto richiesto da modificaQty in utils/shared-public.js).
+    // FASE 5 (2026-09-13): qtyDisponibile è ora il NETTO reale (offerto −
+    // già riservato da richieste accettate); riservato tenuto a parte per
+    // il badge — stessa logica di ui/binder-pubblico.ui.js.
     carte = (data || []).map(r => ({
         id: r.id,
         name: r.nome || '',
@@ -82,7 +86,8 @@ async function caricaCatalogo() {
         setEspansione: r.set_espansione || '',
         lang: r.lingua || 'IT',
         integrita: r.integrita_packaging || '',
-        qtyDisponibile: r.qty || 1,
+        qtyDisponibile: Math.max(0, (r.qty || 1) - (r.riservato || 0)),
+        riservato: r.riservato || 0,
         price: r.prezzo != null ? Number(r.prezzo) : 0,
         notes: r.note || '',
         immagine: r.immagine || null,
@@ -124,25 +129,32 @@ function renderLista() {
         // ui/binder-pubblico.ui.js quando _binderPubblicoESelezionabile().
         container.innerHTML = filtrati.map(p => {
             const immagineSrc = _urlImmagineVisualizzabile(p.immagine);
-            const selezionata = selezioni[p.id] > 0;
-            const qtyAttuale = selezioni[p.id] || 0;
+            // FASE 5 (2026-09-13): stessa logica "riservato ma visibile,
+            // non selezionabile" di ui/binder-pubblico.ui.js — vedi i
+            // commenti lì per il dettaglio.
+            const bloccata = p.qtyDisponibile <= 0;
+            const selezionata = !bloccata && selezioni[p.id] > 0;
+            const qtyAttuale = bloccata ? 0 : (selezioni[p.id] || 0);
             return `
-                <div class="card-row ${selezionata ? 'selected' : ''}" id="row-${p.id}">
-                    <input type="checkbox" class="card-checkbox" ${selezionata ? 'checked' : ''}
+                <div class="card-row ${selezionata ? 'selected' : ''} ${bloccata ? 'riservato' : ''}" id="row-${p.id}">
+                    <input type="checkbox" class="card-checkbox" ${selezionata ? 'checked' : ''} ${bloccata ? 'disabled' : ''}
                            onchange="toggleSelezione('${p.id}', this.checked)">
                     ${immagineSrc ? `<img src="${immagineSrc}" alt="" class="card-thumb" onclick="event.stopPropagation(); apriImmagineIngrandita('${p.id}')" onerror="this.style.display='none';">` : ''}
                     <div class="card-info">
                         <div class="card-name">${escapeHtml(p.name)}${p.code ? ` <span style="color:var(--text-muted); font-weight:600;">(${escapeHtml(p.code)})</span>` : ''}</div>
                         <div class="card-meta">
                             <span class="badge">${escapeHtml(p.lang)}</span>
-                            <span class="badge">Offerte: ${p.qtyDisponibile}</span>
+                            ${bloccata
+                                ? `<span class="badge badge-riservato">🔒 Riservato</span>`
+                                : `<span class="badge">Offerte: ${p.qtyDisponibile}</span>`}
+                            ${!bloccata && p.riservato > 0 ? `<span class="badge badge-riservato">🔒 ${p.riservato} riservat${p.riservato === 1 ? 'a' : 'e'}</span>` : ''}
                             ${p.notes ? `<span class="badge">✨ ${escapeHtml(p.notes)}</span>` : ''}
                         </div>
                     </div>
                     <div class="qty-control">
-                        <button class="qty-btn" onclick="modificaQty('${p.id}', -1)" ${qtyAttuale <= 0 ? 'disabled' : ''}>-</button>
+                        <button class="qty-btn" onclick="modificaQty('${p.id}', -1)" ${qtyAttuale <= 0 || bloccata ? 'disabled' : ''}>-</button>
                         <span class="qty-value">${qtyAttuale}</span>
-                        <button class="qty-btn" onclick="modificaQty('${p.id}', 1)" ${qtyAttuale >= p.qtyDisponibile ? 'disabled' : ''}>+</button>
+                        <button class="qty-btn" onclick="modificaQty('${p.id}', 1)" ${qtyAttuale >= p.qtyDisponibile || bloccata ? 'disabled' : ''}>+</button>
                     </div>
                     <div class="card-price">${formattaEuro(p.price)}<small>cad.</small></div>
                 </div>

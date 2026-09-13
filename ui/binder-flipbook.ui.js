@@ -378,14 +378,20 @@ function _libroHtmlPagina(indicePagina) {
         const immagineSrc = _urlImmagineVisualizzabile(card.immagine, 300);
         // Compatibilità di forma: binder-pubblico usa card.qty,
         // scambio/wishlist usano card.qtyDisponibile — stesso significato.
+        // FASE 5 (2026-09-13): card.qty/qtyDisponibile per lo Scambio è già
+        // il NETTO (offerto − riservato, vedi ui/binder-pubblico.ui.js) —
+        // qtyMax=0 qui significa "tutto riservato altrove", stessa logica
+        // "visibile ma non selezionabile" della vista Elenco.
         const qtyMax = (card.qty !== undefined ? card.qty : card.qtyDisponibile) || 1;
-        const selezionata = _libroSelezionabile && (selezioni[card.id] || 0) > 0;
+        const bloccata = _libroSelezionabile && qtyMax <= 0;
+        const selezionata = _libroSelezionabile && !bloccata && (selezioni[card.id] || 0) > 0;
         tasche += `
-            <div class="binder-slot binder-slot-filled${selezionata ? ' binder-slot-selected' : ''}" onclick="_libroClickCarta('${idAttr}')" title="${nomeAttr}">
+            <div class="binder-slot binder-slot-filled${selezionata ? ' binder-slot-selected' : ''}${bloccata ? ' binder-slot-riservato' : ''}" onclick="_libroClickCarta('${idAttr}')" title="${nomeAttr}">
                 <div class="binder-slot-fallback"><i class="fa-solid fa-image"></i><span>${nomeAttr}</span></div>
                 ${immagineSrc ? `<img src="${immagineSrc}" alt="${nomeAttr}" loading="lazy" draggable="false" onerror="this.remove();">` : ''}
                 ${qtyMax > 1 && !_libroSelezionabile ? `<span class="binder-slot-qty-badge">×${qtyMax}</span>` : ''}
-                ${_libroSelezionabile ? _libroHtmlSelezione(card, qtyMax) : ''}
+                ${bloccata ? `<span class="binder-slot-qty-badge binder-slot-riservato-badge">🔒</span>` : ''}
+                ${_libroSelezionabile ? _libroHtmlSelezione(card, qtyMax, bloccata) : ''}
             </div>`;
     }
 
@@ -400,17 +406,23 @@ function _libroHtmlPagina(indicePagina) {
 // stesso identico stato condiviso con la modalità Elenco: selezionare una
 // carta nel libro e poi passare a Elenco (o viceversa) mostra la stessa
 // selezione, nessuno stato duplicato.
-function _libroHtmlSelezione(card, qtyMax) {
+function _libroHtmlSelezione(card, qtyMax, bloccata) {
     const idAttr = String(card.id).replace(/'/g, "\\'");
-    const qtyAttuale = selezioni[card.id] || 0;
+    // FASE 5 (2026-09-13): stesso principio "riservato ma non selezionabile"
+    // della vista Elenco — checkbox disabilitata esplicitamente quando
+    // bloccata, non ci si affida solo al bottone "+" già a 0 (toggleSelezione
+    // in utils/shared-public.js scrive sempre selezioni[id]=1 su una
+    // checkbox spuntata, a prescindere dal massimo — disabilitarla è
+    // l'unica difesa reale).
+    const qtyAttuale = bloccata ? 0 : (selezioni[card.id] || 0);
     return `
         <div class="binder-slot-selezione" onclick="event.stopPropagation();">
-            <input type="checkbox" class="card-checkbox" ${qtyAttuale > 0 ? 'checked' : ''}
+            <input type="checkbox" class="card-checkbox" ${qtyAttuale > 0 ? 'checked' : ''} ${bloccata ? 'disabled' : ''}
                    onchange="toggleSelezione('${idAttr}', this.checked)">
             <div class="qty-control qty-control-mini">
-                <button type="button" class="qty-btn" onclick="modificaQty('${idAttr}', -1)" ${qtyAttuale <= 0 ? 'disabled' : ''}>-</button>
+                <button type="button" class="qty-btn" onclick="modificaQty('${idAttr}', -1)" ${qtyAttuale <= 0 || bloccata ? 'disabled' : ''}>-</button>
                 <span class="qty-value">${qtyAttuale}</span>
-                <button type="button" class="qty-btn" onclick="modificaQty('${idAttr}', 1)" ${qtyAttuale >= qtyMax ? 'disabled' : ''}>+</button>
+                <button type="button" class="qty-btn" onclick="modificaQty('${idAttr}', 1)" ${qtyAttuale >= qtyMax || bloccata ? 'disabled' : ''}>+</button>
             </div>
         </div>`;
 }

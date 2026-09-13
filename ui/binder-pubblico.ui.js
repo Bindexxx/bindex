@@ -118,7 +118,13 @@ async function caricaCatalogo() {
         // fallback (a differenza di binder-flipbook.ui.js, che già
         // gestisce entrambi i nomi) — con 'qty' il bottone "+" avrebbe
         // silenziosamente prodotto NaN quando la selezione è attiva.
-        qtyDisponibile: r.qty || 1,
+        // FASE 5 (2026-09-13): r.qty resta il totale OFFERTO (invariato),
+        // qtyDisponibile ora è il NETTO reale (offerto − già riservato da
+        // richieste accettate, sql/51) — governa anche il libro sfogliabile
+        // via ui/binder-flipbook.ui.js (stesso campo, un solo punto di
+        // verità). riservato tenuto a parte solo per il badge informativo.
+        qtyDisponibile: Math.max(0, (r.qty || 1) - (r.riservato || 0)),
+        riservato: r.riservato || 0,
         // FASE 2 CONSOLIDAMENTO: prezzo_obiettivo ora restituito da
         // leggi_binder_pubblico per qualunque tipo (null per location/
         // extra, valorizzato per wishlist) — vedi
@@ -166,11 +172,20 @@ function renderLista() {
     container.innerHTML = filtrate.map(c => {
         const immagineSrc = _urlImmagineVisualizzabile(c.immagine);
         if (selezionabile) {
-            const selezionata = selezioni[c.id] > 0;
-            const qtyAttuale = selezioni[c.id] || 0;
+            // FASE 5 (2026-09-13): "Riservato ma non selezionabile" — una
+            // riga con disponibile=0 (tutto l'offerto già accettato altrove)
+            // resta VISIBILE ma bloccata (checkbox disabilitata), come
+            // richiesto dalla roadmap. Il parziale (offerto=5, riservato=2)
+            // resta selezionabile ma limitato a c.qtyDisponibile (già netto)
+            // e mostra un badge informativo in più. Wishlist non ha mai
+            // riservato > 0 (sempre 0 da sql/51), bloccata resta sempre
+            // false lì — nessuna regressione.
+            const bloccata = c.qtyDisponibile <= 0;
+            const selezionata = !bloccata && selezioni[c.id] > 0;
+            const qtyAttuale = bloccata ? 0 : (selezioni[c.id] || 0);
             return `
-                <div class="card-row ${selezionata ? 'selected' : ''}" id="row-${c.id}">
-                    <input type="checkbox" class="card-checkbox" ${selezionata ? 'checked' : ''}
+                <div class="card-row ${selezionata ? 'selected' : ''} ${bloccata ? 'riservato' : ''}" id="row-${c.id}">
+                    <input type="checkbox" class="card-checkbox" ${selezionata ? 'checked' : ''} ${bloccata ? 'disabled' : ''}
                            onchange="toggleSelezione('${c.id}', this.checked)">
                     ${immagineSrc ? `<img src="${immagineSrc}" alt="" class="card-thumb" onclick="event.stopPropagation(); apriFlipCard('${c.id}')" onerror="this.style.display='none';">` : ''}
                     <div class="card-info">
@@ -178,15 +193,18 @@ function renderLista() {
                         <div class="card-meta">
                             <span class="badge">${escapeHtml(c.lang)}</span>
                             <span class="badge">${escapeHtml(c.cond)}</span>
-                            <span class="badge">${eWishlist ? 'Vuole' : 'Disp.'} ${c.qtyDisponibile}</span>
+                            ${bloccata
+                                ? `<span class="badge badge-riservato">🔒 Riservato</span>`
+                                : `<span class="badge">${eWishlist ? 'Vuole' : 'Disp.'} ${c.qtyDisponibile}</span>`}
+                            ${!eWishlist && !bloccata && c.riservato > 0 ? `<span class="badge badge-riservato">🔒 ${c.riservato} riservat${c.riservato === 1 ? 'a' : 'e'}</span>` : ''}
                             ${eWishlist && c.prezzoObiettivo != null ? `<span class="badge">🎯 max ${formattaEuro(c.prezzoObiettivo)}</span>` : ''}
                             ${c.notes ? `<span class="badge">✨ ${escapeHtml(c.notes)}</span>` : ''}
                         </div>
                     </div>
                     <div class="qty-control">
-                        <button class="qty-btn" onclick="modificaQty('${c.id}', -1)" ${qtyAttuale <= 0 ? 'disabled' : ''}>-</button>
+                        <button class="qty-btn" onclick="modificaQty('${c.id}', -1)" ${qtyAttuale <= 0 || bloccata ? 'disabled' : ''}>-</button>
                         <span class="qty-value">${qtyAttuale}</span>
-                        <button class="qty-btn" onclick="modificaQty('${c.id}', 1)" ${qtyAttuale >= c.qtyDisponibile ? 'disabled' : ''}>+</button>
+                        <button class="qty-btn" onclick="modificaQty('${c.id}', 1)" ${qtyAttuale >= c.qtyDisponibile || bloccata ? 'disabled' : ''}>+</button>
                     </div>
                     <div class="card-price">${formattaEuro(c.price)}<small>cad.</small></div>
                 </div>
