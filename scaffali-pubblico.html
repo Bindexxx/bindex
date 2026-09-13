@@ -130,6 +130,11 @@
         }
         .card-row.selected { border-color: var(--primary); background-color: var(--primary-light); }
         .card-checkbox { width: 22px; height: 22px; accent-color: var(--primary); cursor: pointer; flex-shrink: 0; }
+        /* FASE 5 (2026-09-13): "Riservato ma non selezionabile" — mirror di
+           binder-pubblico.html */
+        .card-row.riservato { opacity: 0.6; }
+        .card-checkbox:disabled { cursor: not-allowed; }
+        .badge-riservato { background-color: rgba(220, 53, 69, 0.12); color: #c0392b; border-color: rgba(220, 53, 69, 0.35); }
         .card-thumb {
             width: 32px; height: 44px; object-fit: cover; border-radius: 4px;
             flex-shrink: 0; cursor: pointer; box-shadow: 0 1px 4px rgba(0,0,0,0.15);
