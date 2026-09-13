@@ -1,38 +1,38 @@
 -- ============================================================================
 -- CardSync Pro — 40: Fase 1.2 (parte estensione) — nuovo tipo ordine
--- 'controlla_prezzi_sealed'
+-- 'controlla_prezzi_sealed' + CHECK reale su ordini.tipo
 --
--- ordini.tipo ha un CHECK che ammette solo un elenco fisso di valori
--- (sql/12_schema_tabelle_base.sql, riga ~232). Il sito deve poter creare
--- ordini di controllo prezzi per i prodotti sealed, stesso schema di
--- 'controlla_prezzi' (carte) e 'controlla_prezzi_wishlist' — serve quindi
--- un quarto valore ammesso.
+-- SCOPERTA (verificato dal vivo, Regola d'Oro #3 — non dedotto dal file):
+-- sql/12_schema_tabelle_base.sql (riga ~232) descrive un CHECK su
+-- ordini.tipo che ammetterebbe solo 'aggiungi_carta','aggiungi_wishlist',
+-- 'controlla_prezzi','controlla_prezzi_wishlist' — ma sul DB REALE questo
+-- CHECK non esiste affatto. pg_constraint su public.ordini mostra solo
+-- ordini_pkey (PK) e due FOREIGN KEY (creato_da, preso_in_carico_da),
+-- nessun CHECK. Stessa classe di incongruenza file-storico-vs-DB-reale già
+-- documentata nell'audit di Fase 0 (es. trova_match_scambio_wishlist in
+-- sql/13 stale rispetto a sql/29).
 --
--- Verificato prima di scrivere (Regola d'Oro #3): il constraint esistente è
---   tipo text not null check (tipo = any (array[
---     'aggiungi_carta','aggiungi_wishlist',
---     'controlla_prezzi','controlla_prezzi_wishlist'
---   ]))
--- Nome del constraint da confermare via pg_constraint prima di eseguire
--- (vedi query di verifica sotto) — DROP CONSTRAINT richiede il nome esatto.
+-- CONSEGUENZA: un ordine con tipo='controlla_prezzi_sealed' viene già
+-- accettato oggi SENZA questa migration (nessun CHECK lo blocca). Eseguita
+-- comunque su richiesta esplicita di Claudio, per sicurezza futura — non
+-- per sbloccare nulla che sia bloccato ora.
+--
+-- SECONDA INCONGRUENZA trovata mentre si scriveva questo CHECK: sql/12 usa
+-- 'aggiungi_carta' (singolare), ma background.js (estensione) controlla
+-- 'aggiungi_carte' (plurale) — due grafie diverse per lo stesso tipo.
+-- Verificato: NESSUN punto del sito crea oggi ordini con questo tipo (grep
+-- su ordiniInsert — solo controlla_prezzi/controlla_prezzi_wishlist/
+-- controlla_prezzi_sealed vengono creati), quindi nessun flusso attivo si
+-- romperebbe scegliendo la grafia sbagliata — ma per non escludere per
+-- errore un futuro utilizzo, il CHECK sotto ammette ENTRAMBE le grafie
+-- invece di sceglierne una a caso. Da chiarire con Claudio quale sia quella
+-- "giusta" se/quando questo tipo ordine verrà davvero usato.
 -- ============================================================================
-
--- ── VERIFICA PRE-ESECUZIONE (esegui prima, per avere il nome esatto) ──────
--- select conname, pg_get_constraintdef(oid)
--- from pg_constraint
--- where conrelid = 'public.ordini'::regclass
---   and pg_get_constraintdef(oid) like '%controlla_prezzi%';
-
--- ── ESECUZIONE ──────────────────────────────────────────────────────────
--- NOTA: il nome del constraint sotto (ordini_tipo_check) è quello di
--- default che Postgres assegna a un CHECK inline dichiarato senza nome
--- esplicito in CREATE TABLE — va confermato con la query sopra prima di
--- eseguire questo blocco, ed eventualmente corretto.
-ALTER TABLE public.ordini DROP CONSTRAINT IF EXISTS ordini_tipo_check;
 
 ALTER TABLE public.ordini ADD CONSTRAINT ordini_tipo_check
   CHECK (tipo = ANY (ARRAY[
     'aggiungi_carta'::text,
+    'aggiungi_carte'::text,
     'aggiungi_wishlist'::text,
     'controlla_prezzi'::text,
     'controlla_prezzi_wishlist'::text,
