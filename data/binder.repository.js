@@ -103,6 +103,37 @@ async function binderExtraGarantisci(userId, nomeDefault) {
         .single();
 }
 
+// Fase 3, Step 2 (2026-09-12) — mirror di binderWishlistGarantisci: un solo
+// binder Scambio per utente, nome fisso "Scambio", MAI rinominabile (stesso
+// trattamento di Wishlist, non 'extra' — vedi commento su
+// binderExtraRinomina sotto: elenco esplicito dei tipi rinominabili, va
+// tenuto invariato apposta).
+async function binderScambioGarantisci(userId) {
+    const { data: esistente, error: errSelect } = await supabaseClient
+        .from('binders').select('*').eq('owner_id', userId).eq('tipo', 'scambio').maybeSingle();
+    if (errSelect) return { data: null, error: errSelect };
+    if (esistente) return { data: esistente, error: null };
+
+    return supabaseClient
+        .from('binders')
+        .insert({ owner_id: userId, tipo: 'scambio', nome: 'Scambio' })
+        .select()
+        .single();
+}
+
+// Imposta/aggiorna la quantità offerta per una carta nel binder Scambio —
+// upsert sulla stessa UNIQUE(owner_id,binder_id,carta_id) di sql/44, quindi
+// un solo giro copre sia "prima volta che la offro" sia "cambio quantità"
+// (a differenza di binderCarteInsert/binderCarteDeleteOne sotto, pensate
+// per il toggle sì/no del binder 'extra'). Quantità 0 non elimina la riga
+// da sola — il chiamante (ui/binder.ui.js) decide se cancellarla del tutto
+// quando l'utente azzera, per coerenza con "offerta a 0 = non ancora messa
+// in vendita" già usato lato RPC pubblica (sql/45b).
+async function binderCarteImpostaQuantitaScambio(userId, binderId, cartaId, quantita) {
+    return supabaseClient.from('binder_carte')
+        .upsert({ owner_id: userId, binder_id: binderId, carta_id: cartaId, quantita_offerta: quantita }, { onConflict: 'owner_id,binder_id,carta_id' });
+}
+
 // Rinomina — solo i binder tipo 'extra' sono rinominabili (per gli altri
 // tipi il trigger DB non blocca il nome, ma la UI non deve mai offrire
 // questa azione su location/wishlist: sarebbe fuorviante, il nome di un
@@ -169,6 +200,13 @@ async function binderAggiornaLayout(userId, binderId, layout) {
 // nuovo sistema — { owner_id, carta_id, binder_id }.
 function binderCarteQuery(userId, binderId) {
     return supabaseClient.from('binder_carte').select('carta_id').eq('owner_id', userId).eq('binder_id', binderId);
+}
+
+// Gemella di binderCarteQuery, ma con quantita_offerta — serve al binder
+// Scambio (Fase 3, Step 2), dove non basta sapere SE una carta c'è, serve
+// anche QUANTA ne è offerta.
+function binderCarteQueryConQuantita(userId, binderId) {
+    return supabaseClient.from('binder_carte').select('carta_id, quantita_offerta').eq('owner_id', userId).eq('binder_id', binderId);
 }
 
 async function binderCarteInsert(righe) {
