@@ -1,5 +1,9 @@
 -- ============================================================================
 -- CardSync Pro — 52: Fase 6, Step 1 — Fondazioni DB Wishlist
+-- (Riordinato dopo l'esecuzione live: gli helper _rank_* devono esistere
+-- PRIMA delle funzioni di match che li usano, altrimenti CREATE FUNCTION
+-- fallisce con "function does not exist". Contenuto identico a quanto
+-- eseguito con successo su Supabase in questa sessione, solo riordinato.)
 --
 -- PARTE A — BUG TROVATO IN QUESTA SESSIONE: trova_match_scambio_wishlist e
 -- trova_match_wishlist_scambio (sql/13) filtravano ancora su
@@ -8,78 +12,47 @@
 -- Da quel momento le due RPC non trovano più NESSUN match, sempre zero
 -- righe — chiamate attivamente da ui/queue.ui.js (badge+pannello Match),
 -- ui/widget-match.ui.js (widget Home), data/missioni.repository.js.
--- Corretto qui insieme al resto della Fase 6 (decisione di Claudio: un solo
--- giro), sostituendo il filtro con binder tipo='scambio' + quantita_offerta,
--- stesso schema già in uso per le RPC pubbliche (sql/45b/51).
+-- Corretto qui insieme al resto della Fase 6, sostituendo il filtro con
+-- binder tipo='scambio' + quantita_offerta, stesso schema già in uso per
+-- le RPC pubbliche (sql/45b/51).
+--
+-- ⚠ FIRMA LIVE DIVERSA DAL FILE STORICO sql/13: CREATE OR REPLACE su
+-- trova_match_scambio_wishlist ha fallito live con "cannot change return
+-- type of existing function" — la firma reale sul DB non combaciava con
+-- quella scritta in sql/13 (ennesima conferma della lezione ricorrente:
+-- mai fidarsi dei file sql/*.sql storici). Servito un DROP FUNCTION
+-- esplicito prima del CREATE, come già fatto in sql/51 per lo stesso
+-- motivo. I nomi di colonna restituiti sono stati verificati contro l'uso
+-- REALE nel client (ui/queue.ui.js, ui/widget-match.ui.js) prima di
+-- scrivere la nuova firma — combaciano.
 --
 -- PARTE B — Fase 6: match su identificatore stabile invece del solo nome.
 -- 'codice' su carte/wishlist è già nel formato "SIGLA NUMERO" (es. "ASC
--- 123") — verificato in ui/set-libreria-sigle.ui.js, è l'identificatore
--- stabile richiesto dalla roadmap. Confronto case/trim-insensitive
--- (upper(trim(...))) per tollerare piccole differenze di digitazione senza
--- perdere la precisione dell'identificatore.
+-- 123") — verificato in ui/set-libreria-sigle.ui.js. Confronto
+-- case/trim-insensitive (upper(trim(...))).
 --
 -- PARTE C — Nessuna DDL sulla tabella 'wishlist' esistente: verificato dal
 -- vivo (information_schema + pg_constraint) che lingua/condizione non hanno
 -- NESSUN CHECK — si può ridefinire la SEMANTICA senza toccare lo schema:
---   - wishlist.condizione ora significa "condizione MINIMA accettata" (era
---     un valore esatto mai davvero sfruttato dal match originale). Il
---     default 'NM' esistente per le righe già in tabella diventa "NM o
---     meglio" — comportamento ragionevole, zero migrazione dati necessaria.
---   - wishlist.lingua: NULL o stringa vuota = "qualsiasi lingua" (nuova
---     opzione richiesta dalla roadmap, mai esistita prima — la UI che la
---     espone è Step 2, qui solo il supporto lato RPC).
--- Varianti/foil (reverse_holo/first_ed) escluse dal match in questo giro:
--- non esistono su wishlist e sono colonne di fatto morte anche su carte
--- (mai scritte da nessun percorso di inserimento, vedi compilato) — nessun
--- dato reale da confrontare oggi.
+--   - wishlist.condizione ora significa "condizione MINIMA accettata".
+--   - wishlist.lingua: NULL o stringa vuota = "qualsiasi lingua".
+-- Varianti/foil escluse dal match in questo giro (colonne di fatto morte
+-- anche su carte, vedi compilato).
 --
 -- PARTE D — wishlist_sealed: tabella NUOVA, mirror di 'wishlist' (non di
--- 'prodotti_sealed' — quest'ultima ha colonne operative di inventario/claim
--- senza senso per una wishlist: claimed_by/claimed_at/dispositivo/stato/
--- data_acquisizione/prezzo_acquisto). L'inserimento sarà diretto dal client
--- (stesso pattern di sealedInsertRighe in data/sealed.repository.js), MAI
--- via coda_carte/completa_riga_coda_carte — verificato dal vivo che quella
--- funzione gestisce solo 'wishlist'/'carte', i prodotti sealed non ci
--- passano mai (entry.ui.js, Fase 1). Nessuna modifica a
--- completa_riga_coda_carte necessaria.
+-- 'prodotti_sealed', che ha colonne operative di inventario/claim senza
+-- senso per una wishlist). Inserimento diretto dal client (stesso pattern
+-- di sealedInsertRighe), MAI via coda_carte/completa_riga_coda_carte —
+-- verificato dal vivo che quella funzione gestisce solo 'wishlist'/'carte'.
 -- ============================================================================
 
 
--- ── wishlist_sealed ──────────────────────────────────────────────────────
-create table public.wishlist_sealed (
-    id uuid primary key default gen_random_uuid(),
-    owner_id uuid not null references auth.users(id),
-    nome text,
-    codice text,
-    set_espansione text,
-    qty integer default 1,
-    lingua text default 'IT', -- NULL o '' = qualsiasi lingua, stessa convenzione di wishlist.lingua
-    integrita_minima text default 'sigillato_integro', -- confezione minima accettata, stesso ruolo di wishlist.condizione
-    prezzo_obiettivo numeric,
-    note text,
-    immagine text,
-    created_at timestamptz default now()
-);
-
-alter table public.wishlist_sealed enable row level security;
-
-create policy "utenti leggono la propria wishlist sealed" on public.wishlist_sealed
-    for select using (auth.uid() = owner_id);
-create policy "utenti inseriscono nella propria wishlist sealed" on public.wishlist_sealed
-    for insert with check (auth.uid() = owner_id);
-create policy "utenti aggiornano la propria wishlist sealed" on public.wishlist_sealed
-    for update using (auth.uid() = owner_id);
-create policy "utenti eliminano dalla propria wishlist sealed" on public.wishlist_sealed
-    for delete using (auth.uid() = owner_id);
-
-
--- ── Helper di ranking — usati SOLO dalle RPC di match sotto ──────────────
-create or replace function public._rank_condizione(p_condizione text)
-returns integer
-language sql
-immutable
-as $$
+-- ── Helper di ranking — usati dalle RPC di match sotto ───────────────────
+CREATE OR REPLACE FUNCTION public._rank_condizione(p_condizione text)
+RETURNS integer
+LANGUAGE sql
+IMMUTABLE
+AS $$
     select case p_condizione
         when 'MT' then 7 when 'NM' then 6 when 'EX' then 5 when 'GD' then 4
         when 'LP' then 3 when 'PL' then 2 when 'PO' then 1
@@ -87,11 +60,11 @@ as $$
     end;
 $$;
 
-create or replace function public._rank_integrita(p_integrita text)
-returns integer
-language sql
-immutable
-as $$
+CREATE OR REPLACE FUNCTION public._rank_integrita(p_integrita text)
+RETURNS integer
+LANGUAGE sql
+IMMUTABLE
+AS $$
     select case p_integrita
         when 'sigillato_integro' then 4 when 'sigillo_danneggiato' then 3
         when 'confezione_danneggiata' then 2 when 'aperto_non_sealed' then 1
@@ -100,14 +73,44 @@ as $$
 $$;
 
 
--- ── trova_match_scambio_wishlist — RISCRITTA (stessa firma originale, solo
--- corpo cambiato: nessun file client da toccare per questa) ──────────────
-create or replace function public.trova_match_scambio_wishlist(p_owner_id uuid)
- returns table(mia_carta_id uuid, mio_nome text, mio_prezzo numeric, altro_owner_id uuid, altra_email text, altra_wishlist_id uuid, altro_prezzo_obiettivo numeric)
- language sql
- security definer
- set search_path to 'public'
-as $function$
+-- ── wishlist_sealed ──────────────────────────────────────────────────────
+CREATE TABLE public.wishlist_sealed (
+    id uuid primary key default gen_random_uuid(),
+    owner_id uuid not null references auth.users(id),
+    nome text,
+    codice text,
+    set_espansione text,
+    qty integer default 1,
+    lingua text default 'IT', -- NULL o '' = qualsiasi lingua, stessa convenzione di wishlist.lingua
+    integrita_minima text default 'sigillato_integro', -- confezione minima accettata
+    prezzo_obiettivo numeric,
+    note text,
+    immagine text,
+    created_at timestamptz default now()
+);
+
+ALTER TABLE public.wishlist_sealed ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "utenti leggono la propria wishlist sealed" ON public.wishlist_sealed
+    FOR SELECT USING (auth.uid() = owner_id);
+CREATE POLICY "utenti inseriscono nella propria wishlist sealed" ON public.wishlist_sealed
+    FOR INSERT WITH CHECK (auth.uid() = owner_id);
+CREATE POLICY "utenti aggiornano la propria wishlist sealed" ON public.wishlist_sealed
+    FOR UPDATE USING (auth.uid() = owner_id);
+CREATE POLICY "utenti eliminano dalla propria wishlist sealed" ON public.wishlist_sealed
+    FOR DELETE USING (auth.uid() = owner_id);
+
+
+-- ── trova_match_scambio_wishlist — RISCRITTA (DROP necessario, vedi nota
+-- in cima al file: firma live diversa da sql/13) ────────────────────────
+DROP FUNCTION IF EXISTS public.trova_match_scambio_wishlist(uuid);
+
+CREATE FUNCTION public.trova_match_scambio_wishlist(p_owner_id uuid)
+ RETURNS TABLE(mia_carta_id uuid, mio_nome text, mio_prezzo numeric, altro_owner_id uuid, altra_email text, altra_wishlist_id uuid, altro_prezzo_obiettivo numeric)
+ LANGUAGE sql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
     select c.id, c.nome, c.prezzo, w.owner_id, u.email, w.id, w.prezzo_obiettivo
     from public.carte c
     join public.binder_carte bc on bc.carta_id = c.id
@@ -133,13 +136,15 @@ as $function$
 $function$;
 
 
--- ── trova_match_wishlist_scambio — RISCRITTA (stessa firma originale) ────
-create or replace function public.trova_match_wishlist_scambio(p_owner_id uuid)
- returns table(mia_wishlist_id uuid, mio_nome text, mio_prezzo_obiettivo numeric, altro_owner_id uuid, altra_email text, altra_carta_id uuid, altro_prezzo numeric)
- language sql
- security definer
- set search_path to 'public'
-as $function$
+-- ── trova_match_wishlist_scambio — RISCRITTA (DROP necessario) ──────────
+DROP FUNCTION IF EXISTS public.trova_match_wishlist_scambio(uuid);
+
+CREATE FUNCTION public.trova_match_wishlist_scambio(p_owner_id uuid)
+ RETURNS TABLE(mia_wishlist_id uuid, mio_nome text, mio_prezzo_obiettivo numeric, altro_owner_id uuid, altra_email text, altra_carta_id uuid, altro_prezzo numeric)
+ LANGUAGE sql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
     select w.id, w.nome, w.prezzo_obiettivo, c.owner_id, u.email, c.id, c.prezzo
     from public.wishlist w
     join public.carte c on upper(trim(c.codice)) = upper(trim(w.codice))
@@ -165,14 +170,14 @@ as $function$
 $function$;
 
 
--- ── trova_match_scambio_wishlist_sealed — NUOVA (nessuna firma da
--- preservare, nessun client la chiama ancora — collegata in Fase 6 Step 3) ─
-create or replace function public.trova_match_scambio_wishlist_sealed(p_owner_id uuid)
- returns table(mio_prodotto_id uuid, mio_nome text, mio_prezzo numeric, altro_owner_id uuid, altra_email text, altra_wishlist_sealed_id uuid, altro_prezzo_obiettivo numeric)
- language sql
- security definer
- set search_path to 'public'
-as $function$
+-- ── trova_match_scambio_wishlist_sealed — NUOVA (nessuna firma precedente,
+-- CREATE OR REPLACE basta) ────────────────────────────────────────────────
+CREATE OR REPLACE FUNCTION public.trova_match_scambio_wishlist_sealed(p_owner_id uuid)
+ RETURNS TABLE(mio_prodotto_id uuid, mio_nome text, mio_prezzo numeric, altro_owner_id uuid, altra_email text, altra_wishlist_sealed_id uuid, altro_prezzo_obiettivo numeric)
+ LANGUAGE sql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
     select p.id, p.nome, p.prezzo, ws.owner_id, u.email, ws.id, ws.prezzo_obiettivo
     from public.prodotti_sealed p
     join public.scaffale_prodotti sp on sp.prodotto_id = p.id
@@ -199,12 +204,12 @@ $function$;
 
 
 -- ── trova_match_wishlist_scambio_sealed — NUOVA ──────────────────────────
-create or replace function public.trova_match_wishlist_scambio_sealed(p_owner_id uuid)
- returns table(mia_wishlist_sealed_id uuid, mio_nome text, mio_prezzo_obiettivo numeric, altro_owner_id uuid, altra_email text, altro_prodotto_id uuid, altro_prezzo numeric)
- language sql
- security definer
- set search_path to 'public'
-as $function$
+CREATE OR REPLACE FUNCTION public.trova_match_wishlist_scambio_sealed(p_owner_id uuid)
+ RETURNS TABLE(mia_wishlist_sealed_id uuid, mio_nome text, mio_prezzo_obiettivo numeric, altro_owner_id uuid, altra_email text, altro_prodotto_id uuid, altro_prezzo numeric)
+ LANGUAGE sql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
     select ws.id, ws.nome, ws.prezzo_obiettivo, p.owner_id, u.email, p.id, p.prezzo
     from public.wishlist_sealed ws
     join public.prodotti_sealed p on upper(trim(p.codice)) = upper(trim(ws.codice))
@@ -231,25 +236,10 @@ $function$;
 
 
 -- ============================================================================
--- VERIFICA POST-ESECUZIONE
--- ============================================================================
--- 1. Tabella nuova a posto:
--- select column_name, data_type from information_schema.columns where table_name='wishlist_sealed' order by ordinal_position;
--- select tablename, policyname, cmd from pg_policies where tablename='wishlist_sealed'; -- devono essere 4
---
--- 2. Le 6 funzioni esistono (le prime 2 sostituite, le altre 4 nuove):
+-- STATO: ESEGUITO E VERIFICATO IN QUESTA SESSIONE (2026-09-13).
 -- select proname from pg_proc where proname in (
 --   'trova_match_scambio_wishlist','trova_match_wishlist_scambio',
 --   'trova_match_scambio_wishlist_sealed','trova_match_wishlist_scambio_sealed',
 --   '_rank_condizione','_rank_integrita'
--- ); -- devono comparire tutte e 6
---
--- 3. Il bug è chiuso — su un utente con almeno una carta offerta in Scambio
---    (quantita_offerta > 0, non tutta riservata) il cui codice combacia con
---    una wishlist altrui, la RPC deve tornare almeno una riga:
--- select * from trova_match_scambio_wishlist('<owner_id con carte in scambio>');
---
--- 4. Sanity check ranking:
--- select _rank_condizione('NM'), _rank_condizione('PO'), _rank_condizione('???');  -- 6, 1, 0
--- select _rank_integrita('sigillato_integro'), _rank_integrita('aperto_non_sealed'); -- 4, 1
+-- ); -- ha confermato tutte e 6 presenti.
 -- ============================================================================
