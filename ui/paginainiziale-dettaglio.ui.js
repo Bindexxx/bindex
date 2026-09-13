@@ -67,7 +67,7 @@ async function apriDettaglioWidget(tabId, evt) {
     clearTimeout(_chiusuraDettaglioTimeout); // annulla un'eventuale chiusura ancora in corso (riapertura rapida)
 
     const container = document.querySelector('.container');
-    if (tabId === 'dafare' || tabId === 'match' || tabId === 'condividi' || tabId === 'missioni' || tabId === 'valore' || tabId === 'wishlist' || tabId === 'location' || tabId === 'doppioni' || tabId === 'sealed' || tabId === 'set' || tabId === 'bustina') {
+    if (tabId === 'dafare' || tabId === 'match' || tabId === 'condividi' || tabId === 'missioni' || tabId === 'valore' || tabId === 'wishlist' || tabId === 'location' || tabId === 'doppioni' || tabId === 'sealed' || tabId === 'set' || tabId === 'bustina' || tabId === 'scaffali' || tabId === 'richieste') {
         // MAI switchTab() qui: quella funzione ha una whitelist fissa di 5
         // tab (navigation.ui.js r.199) ed è segnata nella memoria di
         // progetto come "deve restare stabile e intoccata" — un bug reale
@@ -76,6 +76,8 @@ async function apriDettaglioWidget(tabId, evt) {
         // view-section, mostra la mia), concordato con Claudio 2026-08-28
         // (dafare) e riusato identico per 'match', 'condividi', 'missioni'
         // e ora 'valore' (2026-08-30, pagina dedicata Valore collezione).
+        // 'scaffali' aggiunto in Fase 1.3 Step 5a (2026-09-12), stesso
+        // schema esatto — widget Home dedicato, pagina propria.
         document.querySelectorAll('.view-section').forEach(sec => sec.classList.remove('active'));
         document.getElementById(tabId)?.classList.add('active');
         if (tabId === 'dafare') renderPaginaDaFare();
@@ -89,6 +91,8 @@ async function apriDettaglioWidget(tabId, evt) {
         if (tabId === 'sealed') renderPaginaSealed();
         if (tabId === 'set') renderPaginaSet();
         if (tabId === 'bustina') renderPaginaBustina();
+        if (tabId === 'scaffali') apriPaginaScaffali();
+        if (tabId === 'richieste') apriPaginaRichieste();
     } else {
         switchTab(tabId, null);
     }

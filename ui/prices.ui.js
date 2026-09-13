@@ -328,3 +328,138 @@
             document.getElementById('graficoModal').style.display = 'none';
             if (_graficoPrezzoChart) { _graficoPrezzoChart.destroy(); _graficoPrezzoChart = null; }
         }
+
+
+        // ── CONTROLLO PREZZI SEALED — Fase 1.2 (2026-09-12), stesso schema
+        // del pannello carte sopra (location + ambito), ordine dedicato
+        // tipo='controlla_prezzi_sealed'. Scaffali sostituisce location per i
+        // sealed (Fase 1.3, sql/41/42 — stesso giorno) — filtro per
+        // scaffale_id (uuid) invece che per nome location. Variabili di
+        // stato (_scaffaliSealedCaricati/_ambitoControlloPrezziSealed/
+        // _pollOrdineSealedInterval) dichiarate in state/cards.state.js,
+        // stessa convenzione delle equivalenti carte.
+
+        async function caricaListaScaffaliCheckboxSealed() {
+            const userId = await authGetUserId();
+            const wrap = document.getElementById('listaScaffaliCheckboxSealed');
+            if (!userId) { wrap.innerHTML = '<p style="font-size:0.78rem; color:var(--text-muted); margin:0;">Accedi per vedere i tuoi scaffali.</p>'; return; }
+
+            const { data, error } = await scaffaliList(userId);
+            if (error) {
+                wrap.innerHTML = `<p style="font-size:0.78rem; color:var(--danger); margin:0;">Errore: ${error.message}</p>`;
+                return;
+            }
+            const scaffali = data || [];
+            if (scaffali.length === 0) {
+                wrap.innerHTML = '<p style="font-size:0.78rem; color:var(--text-muted); margin:0;">Nessuno scaffale creato ancora.</p>';
+                return;
+            }
+            wrap.innerHTML = '';
+            scaffali.forEach(s => {
+                const label = document.createElement('label');
+                label.style.cssText = 'display:flex; align-items:center; gap:0.5rem; font-size:0.85rem; font-weight:600; cursor:pointer;';
+                const cb = document.createElement('input');
+                cb.type = 'checkbox';
+                cb.value = s.id;
+                cb.className = 'checkboxScaffalePrezziSealed';
+                label.appendChild(cb);
+                label.appendChild(document.createTextNode(s.nome || (s.tipo === 'vetrina' ? 'Vetrina' : '(senza nome)')));
+                wrap.appendChild(label);
+            });
+            _scaffaliSealedCaricati = true;
+        }
+
+
+        function toggleTutteScaffaliSealed() {
+            const checkboxes = document.querySelectorAll('.checkboxScaffalePrezziSealed');
+            const tutteSpuntate = [...checkboxes].every(cb => cb.checked);
+            checkboxes.forEach(cb => { cb.checked = !tutteSpuntate; });
+            document.getElementById('btnToggleTutteScaffaliSealed').textContent = tutteSpuntate ? 'Seleziona tutti' : 'Deseleziona tutti';
+        }
+
+
+        function _scaffaliSelezionatiSealed() {
+            return [...document.querySelectorAll('.checkboxScaffalePrezziSealed:checked')].map(cb => cb.value);
+        }
+
+
+        function _impostaAmbitoControlloPrezziSealed(ambito) {
+            _ambitoControlloPrezziSealed = ambito;
+            document.getElementById('btnAmbitoSoloMieSealed').classList.toggle('active', ambito === 'soloMie');
+            document.getElementById('btnAmbitoGruppoSealed').classList.toggle('active', ambito === 'gruppo');
+        }
+
+
+        async function triggerExtensionPriceCheckSealed() {
+            const userId = await authGetUserId();
+            if (!userId) {
+                await assicuraLoginSupabase();
+                return;
+            }
+
+            const btn = document.getElementById('btnControllaPrezziSealed');
+            const sub = document.getElementById('prezziSealedSubtext');
+            const testoDefault = '<i class="fa-solid fa-paper-plane"></i> Avvia Controllo Prezzi Sealed';
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Creazione ordine...';
+
+            const scaffali = _scaffaliSelezionatiSealed();
+
+            const { data: ordine, error } = await ordiniInsert({ tipo: 'controlla_prezzi_sealed', creato_da: userId, parametri: { scaffali, aiutaGruppo: _ambitoControlloPrezziSealed === 'gruppo' } });
+
+            if (error) {
+                sub.textContent = '❌ Errore: ' + error.message;
+                _resetBottonePrezzi(btn, sub, testoDefault);
+                return;
+            }
+
+            btn.innerHTML = '<i class="fa-solid fa-hourglass-half"></i> In attesa che un dispositivo lo prenda in carico...';
+            sub.textContent = 'L\'ordine è stato creato — un dispositivo con l\'estensione aperta lo eseguirà a breve.';
+
+            // Stesso hook missione #90 degli altri due trigger sopra.
+            (async () => {
+                try {
+                    await missioniEstensioneFunzioneUsataRegistra(userId);
+                } catch (e) { console.error('[missioni] registrazione uso estensione:', e); }
+            })();
+
+            // Poll dedicato (non _pollOrdine, che ha il testo di default
+            // fisso su "carte") — stesso schema di
+            // triggerExtensionPriceCheckWishlist() sopra.
+            if (_pollOrdineSealedInterval) clearInterval(_pollOrdineSealedInterval);
+            const INTERVALLO_MS = 3000;
+            const MAX_TENTATIVI = 200; // ~10 minuti
+            let tentativi = 0;
+
+            _pollOrdineSealedInterval = setInterval(async () => {
+                tentativi++;
+                const { data, error: errPoll } = await ordiniLeggiStato(ordine.id);
+
+                if (errPoll) {
+                    clearInterval(_pollOrdineSealedInterval);
+                    _resetBottonePrezzi(btn, sub, testoDefault);
+                    sub.textContent = '❌ Errore nel controllo dello stato: ' + errPoll.message;
+                    return;
+                }
+
+                if (data.stato === 'in_corso') {
+                    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Controllo prezzi sealed in corso...';
+                    sub.textContent = 'Un dispositivo sta controllando le quotazioni dei prodotti sealed su Cardmarket adesso.';
+                } else if (data.stato === 'completato') {
+                    clearInterval(_pollOrdineSealedInterval);
+                    const r = data.risultato || {};
+                    _resetBottonePrezzi(btn, sub, testoDefault);
+                    sub.innerHTML = `✅ Fatto! <span style="color:var(--success)">▲ ${r.salite ?? 0}</span> · <span style="color:var(--danger)">▼ ${r.scese ?? 0}</span> · ➖ ${r.invariate ?? 0} invariati`;
+                } else if (data.stato === 'errore') {
+                    clearInterval(_pollOrdineSealedInterval);
+                    _resetBottonePrezzi(btn, sub, testoDefault);
+                    sub.textContent = '❌ ' + (data.errore_msg || 'Errore sconosciuto durante il controllo prezzi sealed.');
+                }
+
+                if (tentativi >= MAX_TENTATIVI) {
+                    clearInterval(_pollOrdineSealedInterval);
+                    _resetBottonePrezzi(btn, sub, testoDefault);
+                    sub.textContent = '⏱️ Nessun dispositivo ha ancora eseguito l\'ordine. Controlla che qualcuno del gruppo abbia l\'estensione aperta e sia online.';
+                }
+            }, INTERVALLO_MS);
+        }

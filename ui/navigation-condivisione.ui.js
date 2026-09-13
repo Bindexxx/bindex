@@ -46,22 +46,55 @@
             return null;
         }
 
+        // Gemella per Scaffali — Fase 1.3, Step 5c (2026-09-12). Più
+        // semplice della sorella Binder: un solo tipo di pagina pubblica
+        // (scaffali-pubblico.html), nessun caso 'wishlist'/parametro ?nome=
+        // da gestire (Scaffali non ha un tipo wishlist-equivalente).
+        // apriPaginaScaffali() imposta currentMode = 'scaffali' esplicitamente
+        // (non passa da switchTab(), che ha la whitelist fissa di 5 tab).
+        function _paginaPubblicaScaffaleAttivo() {
+            const scaffale = (typeof _scaffaliElenco !== 'undefined' && Array.isArray(_scaffaliElenco))
+                ? _scaffaliElenco.find(s => String(s.id) === String(_scaffaleAttivo))
+                : null;
+            if (!scaffale) return null;
+            if (scaffale.stato_pubblicazione === 'pubblico') return { pagina: 'scaffali-pubblico.html', scaffaleId: scaffale.id };
+            return null;
+        }
+
         async function _linkPubblicoCondivisione() {
             const sessione = await authGetSession();
             const userId = sessione?.user?.id;
             if (!userId) return null;
-            let pagina, binderIdExtra, tipoBinderExtra;
+            let pagina, binderIdExtra, tipoBinderExtra, scaffaleIdExtra;
             if (currentMode === 'binder') {
                 const target = _paginaPubblicaBinderAttivo();
                 if (!target) return null; // binder senza pagina pubblica dedicata, vedi sopra
                 pagina = target.pagina;
                 binderIdExtra = target.binderId;
                 tipoBinderExtra = target.tipo;
+            } else if (currentMode === 'scaffali') {
+                const target = _paginaPubblicaScaffaleAttivo();
+                if (!target) return null; // scaffale non pubblico, vedi sopra
+                pagina = target.pagina;
+                scaffaleIdExtra = target.scaffaleId;
+            } else if (currentMode === 'scambio') {
+                // Fase 3, Step 2 (2026-09-12): scambio.html RITIRATO — confluisce
+                // su binder-pubblico.html come 'binder'/'scaffali' sopra.
+                // _binderScambioId è popolato da caricaCarteReali() in
+                // ui/cards.ui.js (get-or-create, sempre pronto quando si è
+                // loggati). Il binder Scambio è SEMPRE pubblico (trigger DB),
+                // quindi qui non serve nemmeno verificare stato_pubblicazione
+                // come fanno gli altri due rami.
+                if (!_binderScambioId) return null;
+                pagina = 'binder-pubblico.html';
+                binderIdExtra = _binderScambioId;
+                tipoBinderExtra = 'scambio';
             } else {
-                pagina = currentMode === 'wishlist' ? 'wishlist.html' : (currentMode === 'sealed' ? 'sealed.html' : 'scambio.html');
+                pagina = currentMode === 'wishlist' ? 'wishlist.html' : 'sealed.html';
             }
             const url = new URL(pagina + '?u=' + encodeURIComponent(userId), window.location.href);
             if (binderIdExtra) url.searchParams.set('binder', binderIdExtra);
+            if (scaffaleIdExtra) url.searchParams.set('scaffale', scaffaleIdExtra);
             // Chi apre il link vede lo stesso tema che hai scelto tu sul tuo
             // dispositivo — non c'è login per chi riceve il link, quindi
             // niente localStorage da leggere: il tema viaggia nell'URL.

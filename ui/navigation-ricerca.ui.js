@@ -31,10 +31,13 @@
 
         // Determina l'etichetta e il colore in base a dove vive la carta —
         // priorità: wishlist, poi sealed, poi scambio, altrimenti collezione.
+        // Fase 3, Step 2 (2026-09-12): card.location==='SCAMBIO' ritirato
+        // (sql/45b) — appartenenza al binder Scambio via _idsInScambio,
+        // stesso insieme usato dalla tab privata (ui/cards-filtro.ui.js).
         function _etichettaSezione(card) {
             if (card.tabella === 'wishlist') return { testo: 'Wishlist', bg: 'var(--bg-success)', colore: 'var(--success)' };
             if (card.tipo === 'sealed') return { testo: 'Sealed', bg: 'var(--primary-light)', colore: 'var(--primary)' };
-            if (card.location === 'SCAMBIO') return { testo: 'Scambio', bg: 'var(--bg-accent, var(--primary-light))', colore: 'var(--primary)' };
+            if (typeof _idsInScambio !== 'undefined' && _idsInScambio.has(String(card.id))) return { testo: 'Scambio', bg: 'var(--bg-accent, var(--primary-light))', colore: 'var(--primary)' };
             return { testo: 'Collezione', bg: 'var(--bg-color)', colore: 'var(--text-muted)' };
         }
 

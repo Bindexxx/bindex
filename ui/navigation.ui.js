@@ -97,8 +97,13 @@
             const locFilter = document.getElementById('filterLocation');
 
             if (tabId === 'scambio') {
+                // Fase 3, Step 2 (2026-09-12): il filtro location non è più
+                // pertinente a Scambio (location='SCAMBIO' ritirata,
+                // sql/45b — l'appartenenza ora è al binder Scambio, vedi
+                // ui/cards-filtro.ui.js). Nascosto invece che forzato/
+                // disabilitato su un valore che non esiste più.
                 qrBtn.style.display = 'inline-flex';
-                locFilter.value = 'SCAMBIO';
+                locFilter.value = '';
                 locFilter.disabled = true;
                 document.getElementById('statLabelCount').innerText = 'In Scambio';
             } else if (tabId === 'wishlist') {
@@ -132,6 +137,10 @@
                 document.querySelectorAll('.view-section').forEach(sec => sec.classList.remove('active'));
                 document.getElementById(tabId).classList.add('active');
                 if (tabId === 'prezzi' && !_locationCaricate) caricaListaLocationCheckbox();
+                // Fase 1.2/1.3 (2026-09-12): stesso aggancio, per il pannello
+                // sealed dentro la stessa sezione 'prezzi' — Scaffali, non
+                // location (sql/41/42).
+                if (tabId === 'prezzi' && !_scaffaliSealedCaricati) caricaListaScaffaliCheckboxSealed();
                 if (tabId === 'inserimento' && !_locationComuneCaricata) caricaSelectLocationComune();
                 if (tabId === 'inserimento') caricaCarteConProblemi();
                 // Multi-Binder (2026-08-25): questa riga chiamava renderBinder(),

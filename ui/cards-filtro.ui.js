@@ -42,18 +42,23 @@
             let locVal = document.getElementById('filterLocation').value;
             const langVal = document.getElementById('filterLang').value;
 
-            if (currentMode === 'scambio') locVal = 'SCAMBIO';
-
             const filtered = carteReali.filter(card => {
                 const matchesSearch = card.name.toLowerCase().includes(searchVal) || card.code.toLowerCase().includes(searchVal);
                 const matchesLang = langVal === "" || card.lang === langVal;
                 if (!matchesSearch || !matchesLang) return false;
 
                 // Wishlist, Scambio e Sealed filtrano su cose DIVERSE: la
-                // wishlist è uno stato a parte nel database, "SCAMBIO" è solo
-                // una location come le altre dentro la collezione, "sealed"
-                // è il campo 'tipo' (stessa tabella, non una location).
+                // wishlist è uno stato a parte nel database, "sealed" è il
+                // campo 'tipo' (stessa tabella, non una location). Scambio
+                // (Fase 3, Step 2, 2026-09-12): NON più location='SCAMBIO'
+                // (location fittizia ritirata, sql/45b) — appartenenza al
+                // binder Scambio via _idsInScambio (popolato in
+                // caricaCarteReali(), stesso schema di _idsNelBinder per il
+                // binder 'extra').
                 if (currentMode === 'wishlist') return card.stato === 'wishlist';
+                if (currentMode === 'scambio') {
+                    return card.stato === 'collezione' && typeof _idsInScambio !== 'undefined' && _idsInScambio.has(String(card.id));
+                }
                 if (currentMode === 'sealed') {
                     if (card.stato !== 'collezione' || card.tipo !== 'sealed') return false;
                     return locVal === "" || card.location === locVal;

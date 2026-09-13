@@ -66,6 +66,7 @@ async function _garantisciTuttiIBinder(userId) {
         binderLocationMaterializzaBatch(userId, nomiLocation),
         binderWishlistGarantisci(userId),
         binderExtraGarantisci(userId, 'Il mio binder'),
+        binderScambioGarantisci(userId), // Fase 3, Step 2 (2026-09-12)
     ]);
     risultati.forEach(({ error }) => { if (error) console.error('_garantisciTuttiIBinder:', error.message); });
 }
@@ -113,6 +114,7 @@ async function renderGrigliaBinders() {
 function _iconaFallbackBinder(tipo) {
     if (tipo === 'wishlist') return 'fa-heart';
     if (tipo === 'extra') return 'fa-star';
+    if (tipo === 'scambio') return 'fa-right-left'; // Fase 3, Step 2 (2026-09-12)
     return 'fa-box-open'; // location
 }
 
@@ -208,7 +210,11 @@ function _aggiornaControlliRinominaPubblicazioneCondivisione(binder) {
     // trg_binders_blocca_rinomina_diretta in 26_binder_nome_blocco_diretto.sql.
     if (rinominaWrap) rinominaWrap.style.display = 'none';
 
-    const eGiaPubblicoFisso = binder.tipo === 'wishlist' || (binder.tipo === 'location' && binder.location_valore === 'SCAMBIO');
+    // Fase 3, Step 2 (2026-09-12): 'location'+SCAMBIO non esiste più (sql/45b
+    // l'ha migrato a tipo='scambio') — condizione aggiornata di conseguenza.
+    // Il ramo location='SCAMBIO' resta per pura difesa, nel caso sfuggisse
+    // qualcosa (stesso spirito del trigger DB, vedi sql/45b).
+    const eGiaPubblicoFisso = binder.tipo === 'wishlist' || binder.tipo === 'scambio' || (binder.tipo === 'location' && binder.location_valore === 'SCAMBIO');
     const pubblicazioneWrap = document.getElementById('binderPubblicazioneWrap');
     if (pubblicazioneWrap) {
         pubblicazioneWrap.style.display = eGiaPubblicoFisso ? 'none' : 'flex';
@@ -280,12 +286,21 @@ async function _caricaCarteBinderAttivo(binder) {
         return;
     }
 
-    const { data: righe, error } = await binderCarteQuery(userId, binder.id);
-    if (error) { console.error('_caricaCarteBinderAttivo (extra):', error.message); _carteBinderAttivoCache = []; return; }
+    // Fase 3, Step 2 (2026-09-12): il binder Scambio usa la stessa
+    // binder_carte di 'extra', ma serve anche quantita_offerta — query
+    // gemella con quella colonna in più, stesso motivo di
+    // binderCarteQueryConQuantita in data/binder.repository.js.
+    const usaQuantita = binder.tipo === 'scambio';
+    const { data: righe, error } = usaQuantita
+        ? await binderCarteQueryConQuantita(userId, binder.id)
+        : await binderCarteQuery(userId, binder.id);
+    if (error) { console.error('_caricaCarteBinderAttivo:', error.message); _carteBinderAttivoCache = []; return; }
+    const mappaQuantita = {};
+    if (usaQuantita) (righe || []).forEach(r => { mappaQuantita[String(r.carta_id)] = r.quantita_offerta; });
     const idsNelBinder = new Set((righe || []).map(r => String(r.carta_id)));
     _carteBinderAttivoCache = carteReali
         .filter(c => c.tabella === 'carte' && c.stato === 'collezione' && idsNelBinder.has(String(c.id)))
-        .map(c => ({ id: c.id, name: c.name || c.nome, immagine: c.immagine, qty: c.qty, createdAt: c.createdAt }));
+        .map(c => ({ id: c.id, name: c.name || c.nome, immagine: c.immagine, qty: c.qty, createdAt: c.createdAt, quantitaOfferta: usaQuantita ? mappaQuantita[String(c.id)] : undefined }));
 }
 
 function renderBinderContenuto() {
@@ -336,7 +351,8 @@ async function impostaModalitaBinder(modalita) {
 // che vivono già altrove nel sito), quindi resta nascosto per quei due tipi.
 function renderBinderGrigliaImmagini() {
     const binder = _bindersElenco.find(b => String(b.id) === String(_binderAttivo));
-    const permettiRimozione = binder && binder.tipo === 'extra';
+    const permettiRimozione = binder && (binder.tipo === 'extra' || binder.tipo === 'scambio');
+    const eScambio = binder && binder.tipo === 'scambio';
 
     const griglia = document.getElementById('binderGrid');
     const contenitoreElenco = document.getElementById('binderElencoBody');
@@ -373,11 +389,13 @@ function renderBinderGrigliaImmagini() {
             const nomeAttr = escapeHtml(card.name || '').replace(/"/g, '&quot;'); // SICUREZZA 2026-09-01: escapeHtml PRIMA, vedi nota sotto
             const immagineSrc = _urlImmagineVisualizzabile(card.immagine, 300);
             html += `
-                <div class="binder-slot binder-slot-filled" onclick="apriImmagineIngrandita('${idAttr}')" title="${nomeAttr}">
-                    ${permettiRimozione ? `<button type="button" class="binder-slot-remove-btn" title="Rimuovi dal Binder" aria-label="Rimuovi dal Binder" onclick="event.stopPropagation(); rimuoviDalBinderExtra('${idAttr}')"><i class="fa-solid fa-xmark"></i></button>` : ''}
+                <div class="binder-slot binder-slot-filled" onclick="${eScambio ? `apriModaleQuantitaScambio('${idAttr}')` : `apriImmagineIngrandita('${idAttr}')`}" title="${nomeAttr}">
+                    ${permettiRimozione ? `<button type="button" class="binder-slot-remove-btn" title="${eScambio ? 'Modifica quantità offerta' : 'Rimuovi dal Binder'}" aria-label="${eScambio ? 'Modifica quantità offerta' : 'Rimuovi dal Binder'}" onclick="event.stopPropagation(); ${eScambio ? `rimuoviDaScambioGriglia('${idAttr}')` : `rimuoviDalBinderExtra('${idAttr}')`}"><i class="fa-solid ${eScambio ? 'fa-pen' : 'fa-xmark'}"></i></button>` : ''}
                     <div class="binder-slot-fallback"><i class="fa-solid fa-image"></i><span>${nomeAttr}</span></div>
                     ${immagineSrc ? `<img src="${immagineSrc}" alt="${nomeAttr}" loading="lazy" onerror="this.remove();">` : ''}
-                    ${card.qty > 1 ? `<span class="binder-slot-qty-badge" title="Hai ${card.qty} copie di questa carta — occupano un solo slot">×${card.qty}</span>` : ''}
+                    ${eScambio
+                        ? `<span class="binder-slot-qty-badge" title="Quantità offerta in Scambio">Offerte: ${card.quantitaOfferta ?? 0}</span>`
+                        : (card.qty > 1 ? `<span class="binder-slot-qty-badge" title="Hai ${card.qty} copie di questa carta — occupano un solo slot">×${card.qty}</span>` : '')}
                 </div>`;
         } else {
             html += `<div class="binder-slot binder-slot-empty"><i class="fa-solid fa-layer-group"></i></div>`;
@@ -461,6 +479,106 @@ function _aggiornaBottoniBinderToggle(id) {
 // extra (bottone ✕ su ogni slot, vedi renderBinderGrigliaImmagini).
 async function rimuoviDalBinderExtra(cartaId) {
     await toggleBinderMembership(cartaId);
+}
+
+// ── Modale quantità offerta — binder Scambio (Fase 3, Step 2, 2026-09-12) ──
+// A differenza del binder 'extra' (toggleBinderMembership, sì/no), qui
+// serve un NUMERO — da qui il modale dedicato invece di un semplice toggle.
+// Un solo modale, richiamabile sia dal bottone "Offri in Scambio" in
+// Visualizzazione (ui/cards.ui.js) sia dalla griglia del binder Scambio
+// aperto (renderBinderGrigliaImmagini sotto).
+let _scambioModaleCartaId = null;
+
+function apriModaleQuantitaScambio(cartaId) {
+    const card = carteReali.find(c => String(c.id) === String(cartaId));
+    if (!card) return;
+    _scambioModaleCartaId = cartaId;
+
+    document.getElementById('scambioQuantitaTitolo').textContent = card.name || card.nome || '';
+    const attuale = _quantitaOfferteScambio[String(cartaId)] ?? 0;
+    const input = document.getElementById('scambioQuantitaInput');
+    input.value = attuale;
+    input.max = card.qty || 1;
+    document.getElementById('scambioQuantitaMax').textContent = `Ne possiedi ${card.qty || 1}.`;
+    document.getElementById('btnRimuoviScambio').style.display = attuale > 0 ? '' : 'none';
+
+    document.getElementById('scambioQuantitaModal').style.display = 'flex';
+}
+
+function chiudiModaleQuantitaScambio() {
+    document.getElementById('scambioQuantitaModal').style.display = 'none';
+    _scambioModaleCartaId = null;
+}
+
+async function confermaQuantitaScambio() {
+    if (!_scambioModaleCartaId) return;
+    const cartaId = _scambioModaleCartaId;
+    const input = document.getElementById('scambioQuantitaInput');
+    const quantita = Math.max(0, parseInt(input.value) || 0);
+
+    await _applicaQuantitaScambio(cartaId, quantita);
+    chiudiModaleQuantitaScambio();
+}
+
+async function rimuoviDaScambio() {
+    if (!_scambioModaleCartaId) return;
+    await _applicaQuantitaScambio(_scambioModaleCartaId, 0);
+    chiudiModaleQuantitaScambio();
+}
+
+// Un solo punto per scrivere la quantità, riusato da conferma/rimuovi sopra
+// e da rimuoviDaScambioGriglia sotto (griglia del binder Scambio aperto).
+// Quantità 0: elimina la riga invece di scrivere 0 — coerente con "offerta
+// a 0 = non ancora messa in vendita" già usato lato RPC pubblica (sql/45b),
+// e con lo stesso schema di toggleBinderMembership per l'extra (che elimina
+// del tutto, non lascia una riga "spenta").
+async function _applicaQuantitaScambio(cartaId, quantita) {
+    const userId = await authGetUserId();
+    if (!userId || !_binderScambioId) return;
+
+    if (quantita <= 0) {
+        const { error } = await binderCarteDeleteOne(userId, _binderScambioId, cartaId);
+        if (error) { alert('❌ Errore nel rimuovere la carta dallo Scambio: ' + error.message); return; }
+        _idsInScambio.delete(String(cartaId));
+        delete _quantitaOfferteScambio[String(cartaId)];
+    } else {
+        const { error } = await binderCarteImpostaQuantitaScambio(userId, _binderScambioId, cartaId, quantita);
+        if (error) { alert('❌ Errore nell\'aggiornare la quantità offerta: ' + error.message); return; }
+        _idsInScambio.add(String(cartaId));
+        _quantitaOfferteScambio[String(cartaId)] = quantita;
+    }
+
+    _aggiornaBottoniScambioToggle(cartaId);
+
+    // Stesso motivo di toggleBinderMembership: se il binder Scambio è
+    // aperto proprio ora nel widget Binders, la cache locale è disallineata.
+    const binderAperto = _bindersElenco.find(b => String(b.id) === String(_binderAttivo));
+    if (binderAperto && binderAperto.tipo === 'scambio') {
+        await _caricaCarteBinderAttivo(binderAperto);
+        renderBinderContenuto();
+    }
+}
+
+function _aggiornaBottoniScambioToggle(id) {
+    const idAttr = String(id);
+    const inScambio = _idsInScambio.has(idAttr);
+    const quantita = _quantitaOfferteScambio[idAttr] ?? 0;
+
+    document.querySelectorAll(`.btn-scambio-toggle[data-id="${idAttr}"]`).forEach((btn) => {
+        btn.innerHTML = inScambio
+            ? `<i class="fa-solid fa-right-left"></i> In Scambio: ${quantita}`
+            : `<i class="fa-solid fa-right-left"></i> Offri in Scambio`;
+        btn.classList.remove('binder-toggle-flash');
+        void btn.offsetWidth;
+        btn.classList.add('binder-toggle-flash');
+        setTimeout(() => btn.classList.remove('binder-toggle-flash'), 600);
+    });
+}
+
+// Click su uno slot della griglia del binder Scambio aperto — riapre lo
+// stesso modale, precompilato (vedi renderBinderGrigliaImmagini sotto).
+function rimuoviDaScambioGriglia(cartaId) {
+    apriModaleQuantitaScambio(cartaId);
 }
 
 

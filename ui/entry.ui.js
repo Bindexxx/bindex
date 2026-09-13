@@ -139,10 +139,20 @@
             // la collezione — la tendina resta comunque visibile e
             // modificabile (in caso servisse in futuro), ma parte già
             // impostata su un valore fisso, senza dover scegliere nulla.
-            document.getElementById('pannelloLocationComune').style.display = 'flex';
-            const selectLoc = document.getElementById('selectLocationComune');
-            if (_destinazioneInserimento === 'wishlist') _impostaLocationComuneFissa(selectLoc, 'WISHLIST');
-            else selectLoc.value = '';
+            // Fase 1.3 (sql/42, 2026-09-12): i prodotti sealed non hanno più
+            // location — sostituita da Scaffali, assegnabile DOPO
+            // l'inserimento dalla pagina Scaffali (stesso schema di Binder
+            // per le carte: si sceglie dopo, non durante l'inserimento
+            // massivo). Pannello nascosto del tutto per questo tipo.
+            const pannelloLoc = document.getElementById('pannelloLocationComune');
+            if (_tipoInserimento === 'sealed') {
+                pannelloLoc.style.display = 'none';
+            } else {
+                pannelloLoc.style.display = 'flex';
+                const selectLoc = document.getElementById('selectLocationComune');
+                if (_destinazioneInserimento === 'wishlist') _impostaLocationComuneFissa(selectLoc, 'WISHLIST');
+                else selectLoc.value = '';
+            }
 
             const btn = document.getElementById('btnSalvaCarte');
             if (_destinazioneInserimento === 'wishlist') btn.innerHTML = '<i class="fa-solid fa-bookmark"></i> Salva in Wishlist';
@@ -376,7 +386,6 @@
                         <option value="1025" ${locVal === '1025' ? 'selected' : ''}>1025</option>
                         <option value="TOPLOADER" ${locVal === 'TOPLOADER' ? 'selected' : ''}>TOPLOADER</option>
                         <option value="BINDER" ${locVal === 'BINDER' ? 'selected' : ''}>BINDER</option>
-                        <option value="SCAMBIO" ${locVal === 'SCAMBIO' ? 'selected' : ''}>SCAMBIO</option>
                         <option value="WISHLIST" ${locVal === 'WISHLIST' ? 'selected' : ''}>WISHLIST</option>
                     </select>
                 </td>
@@ -555,7 +564,11 @@
         }
 
 
-        function _rigaEntrySealedToRigaDb(row, userId, locationComune) {
+        // Fase 1.3 (sql/42, 2026-09-12): niente più location — sostituita da
+        // Scaffali. Rimossa dai parametri e dal payload: un INSERT con
+        // questo campo fallirebbe con "colonna inesistente" (la colonna
+        // non c'è più su prodotti_sealed).
+        function _rigaEntrySealedToRigaDb(row, userId) {
             const nome = (row.name || '').trim();
             if (!nome) return null;
             const qty = Math.max(1, parseInt(row.qty, 10) || 1);
@@ -568,7 +581,6 @@
                 qty,
                 prezzo: (prezzo != null && !isNaN(prezzo)) ? prezzo : null,
                 note: (row.notes || '').trim() || null,
-                location: (locationComune && locationComune !== '?') ? locationComune : null,
             };
         }
 
@@ -600,14 +612,13 @@
                 return;
             }
 
-            const locationComune = document.getElementById('selectLocationComune')?.value.trim() || '';
             const btn = document.getElementById('btnSalvaCarte');
             const originalHtml = btn.innerHTML;
             btn.disabled = true;
             btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Salvataggio...';
 
             const righeDb = righeValide
-                .map(r => _rigaEntrySealedToRigaDb(r, userId, locationComune))
+                .map(r => _rigaEntrySealedToRigaDb(r, userId))
                 .filter(Boolean);
 
             const { error } = await sealedInsertRighe(righeDb);

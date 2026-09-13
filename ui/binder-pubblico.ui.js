@@ -22,12 +22,15 @@
 // copertina, toggle Elenco/Sfoglia, motore libro).
 
 // Vero per i tipi di binder che supportano selezione/riepilogo — Scambio
-// (Fase 1) e Wishlist (Fase 2, 26/08/2026: leggi_binder_pubblico estesa,
-// vedi 27_leggi_binder_pubblico_wishlist.sql).
+// (Fase 1, poi Fase 3 Step 2 2026-09-12: tipo='scambio' al posto di
+// location='SCAMBIO', scambio.html ritirato) e Wishlist (Fase 2,
+// 26/08/2026: leggi_binder_pubblico estesa, vedi
+// 27_leggi_binder_pubblico_wishlist.sql).
 function _binderPubblicoESelezionabile() {
     if (!_binderInfo) return false;
     if (_binderInfo.tipo === 'wishlist') return true;
-    return _binderInfo.tipo === 'location' && _binderInfo.location_valore === 'SCAMBIO';
+    if (_binderInfo.tipo === 'scambio') return true;
+    return _binderInfo.tipo === 'location' && _binderInfo.location_valore === 'SCAMBIO'; // difesa storica, non dovrebbe più capitare (sql/45b)
 }
 
 // Stesse posizioni di default dell'editor privato (state/binder.state.js:
@@ -84,6 +87,15 @@ async function caricaCatalogo() {
     if (sottotitolo) sottotitolo.textContent = selezionabile
         ? 'Seleziona le carte che ti interessano — il totale si aggiorna da solo.'
         : 'Vetrina pubblica — sola lettura.';
+
+    // Fase 4, Step 4 (2026-09-13): "Richiedi" ha senso SOLO per lo Scambio
+    // vero (crea una richiesta transazionale, sql/48) — non per la
+    // Wishlist, che è selezionabile per lo stesso "copia riepilogo" ma non
+    // ha un binder proprietario da cui prelevare nulla. Bottone nascosto
+    // per tipo='wishlist', anche se la barra totale resta visibile.
+    _tipoOggettoRichiesta = 'carta';
+    const btnRichiedi = document.getElementById('btnRichiediScambio');
+    if (btnRichiedi) btnRichiedi.style.display = (_binderInfo.tipo === 'scambio') ? '' : 'none';
 
     _caricaCopertinaBinder(binderId); // non bloccante, si aggiorna da sola quando pronta
 
