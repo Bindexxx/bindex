@@ -71,3 +71,15 @@ async function userSettingsUpsertDaFareRisolti(userId, mappaRisolti) {
         aggiornato_il: new Date().toISOString(),
     });
 }
+
+// Fase 9 (2026-09-13, migration 60). Stesso pattern di
+// userSettingsUpsertMatchNascosti sopra — TEXT con array JSON, max 16
+// elementi (un 4×4 pieno) applicato lato UI (ui/widget-achievement.ui.js),
+// non qui.
+async function userSettingsUpsertAchievementVetrina(userId, ids) {
+    return supabaseClient.from('preferenze_utente').upsert({
+        owner_id: userId,
+        achievement_vetrina: JSON.stringify(ids || []),
+        aggiornato_il: new Date().toISOString(),
+    });
+}
