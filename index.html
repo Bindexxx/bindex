@@ -3011,6 +3011,20 @@
 
         .setting-row:last-child { border-bottom: none; }
 
+        /* FASE 10, STEP 2 (2026-09-13): pillole di stato per Impostazioni
+           > Connessioni. Colori fissi (non da variabile tema) — uno stato
+           di errore deve restare riconoscibile anche con temi/dark mode
+           diversi, stesso principio già usato per .badge-riservato. */
+        .badge-connessione {
+            display: inline-flex; align-items: center; gap: 0.35rem;
+            padding: 0.3rem 0.6rem; border-radius: 999px; font-size: 0.78rem; font-weight: 700;
+            background: rgba(128,128,128,0.15); color: var(--text-muted);
+        }
+        .badge-connessione::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+        .badge-connessione.ok { background: rgba(46,158,91,0.15); color: #2e9e5b; }
+        .badge-connessione.errore { background: rgba(220,53,69,0.15); color: #dc3545; }
+        .badge-connessione.boh { background: rgba(255,193,7,0.18); color: #b8860b; }
+
         .switch {
             position: relative; display: inline-block; width: 48px; height: 26px;
         }
@@ -3457,6 +3471,20 @@
             box-shadow: none;
             color: var(--border-color);
             font-size: 1.4rem;
+        }
+
+        /* FASE 9 (2026-09-13): Achievement non sbloccato — "mascherato per
+           sorpresa", stesso ingombro di .binder-slot-filled ma sfondo scuro
+           uniforme + lucchetto, nessun hover-lift (niente da cliccare). */
+        .binder-slot-locked {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--bg-secondary, rgba(0,0,0,0.06));
+            border: 1px solid var(--border-color);
+            color: var(--text-muted);
+            font-size: 1.3rem;
+            cursor: default;
         }
 
         /* ═══════════════════════════════════════════════════════════════
@@ -5084,6 +5112,15 @@
             <div id="variazioneContenuto"></div>
         </div>
 
+        <div id="achievement" class="view-section">
+            <!-- FASE 9 (2026-09-13): pagina Achievement — riusa .binder-grid/
+                 .binder-slot già definiti sopra per i Binder carte (vedi CSS
+                 vicino a .binder-slot-locked in fondo al file). Contenuto
+                 riempito da renderPaginaAchievement() in
+                 ui/widget-achievement.ui.js. -->
+            <div id="achievementContenuto"></div>
+        </div>
+
         <div id="wishlist" class="view-section">
             <!-- Pagina di dettaglio "Wishlist" (2026-08-30) — prima apriva
                  semplicemente Binder (tab:'binder'); ora pagina propria,
@@ -5252,96 +5289,262 @@
         </div>
 
         <div id="impostazioni" class="view-section">
-            <div class="settings-card">
-                <h3 style="margin-bottom: 1rem; color: var(--text-dark); display: flex; align-items: center; gap: 0.6rem; font-size: 1.15rem; font-weight: 800;">
-                    <i class="fa-solid fa-sliders" style="color: var(--primary);"></i> Impostazioni
-                </h3>
 
-                <!-- TOGGLE DARK MODE -->
-                <div class="setting-row">
-                    <div>
-                        <h4 style="font-size: 0.9rem; font-weight: 700;">Modalità Scura</h4>
-                        <p style="font-size: 0.75rem; color: var(--text-muted);">Attiva tema scuro</p>
+            <!-- ═══════════════════════════════════════════════════════════
+                 FASE 10 (2026-09-13): split strutturale — prima era
+                 un'unica card lunghissima, ora un HUB (menu di categorie)
+                 + una pagina propria per modulo, tutte dentro la STESSA
+                 view-section #impostazioni (mai toccare switchTab: ha una
+                 whitelist fissa di 5 tab, segnata come "stabile e
+                 intoccata" nella memoria di progetto — la navigazione tra
+                 hub/sotto-pagine è un router minimo a sé,
+                 _impostazioniApri()/_impostazioniTornaHub() in
+                 ui/impostazioni.ui.js). Contenuto di ogni sotto-pagina
+                 SOLO spostato, non riscritto: stessi id, stesse funzioni
+                 onclick/onchange di prima. Rimossi in questo giro (roadmap
+                 Fase 10): gli shortcut diagnostici "Densità comoda" e
+                 "2×2" dalla tendina CSBar (vedi
+                 ui/paginainiziale-polling-avvio.ui.js) — i layout Binder
+                 reali (2×2/3×3/3×4/4×4) NON sono stati toccati, erano
+                 tutt'altra cosa.
+                 ═══════════════════════════════════════════════════════ -->
+
+            <div id="impostazioniHub">
+                <div class="settings-card">
+                    <h3 style="margin-bottom: 1rem; color: var(--text-dark); display: flex; align-items: center; gap: 0.6rem; font-size: 1.15rem; font-weight: 800;">
+                        <i class="fa-solid fa-sliders" style="color: var(--primary);"></i> Impostazioni
+                    </h3>
+                    <div class="setting-row" onclick="_impostazioniApri('suoni')" style="cursor:pointer;">
+                        <div><h4 style="font-size: 0.9rem; font-weight: 700;"><i class="fa-solid fa-volume-high" style="color:var(--primary); width:1.2rem;"></i> Suoni</h4></div>
+                        <i class="fa-solid fa-chevron-right" style="color: var(--text-muted); font-size: 0.85rem;"></i>
                     </div>
-                    <label class="switch">
-                        <input type="checkbox" id="darkModeToggle" onchange="toggleDarkMode(this.checked)">
-                        <span class="slider"></span>
-                    </label>
+                    <div class="setting-row" onclick="_impostazioniApri('tema')" style="cursor:pointer;">
+                        <div><h4 style="font-size: 0.9rem; font-weight: 700;"><i class="fa-solid fa-palette" style="color:var(--primary); width:1.2rem;"></i> Tema</h4></div>
+                        <i class="fa-solid fa-chevron-right" style="color: var(--text-muted); font-size: 0.85rem;"></i>
+                    </div>
+                    <div class="setting-row" onclick="_impostazioniApri('accessibilita')" style="cursor:pointer;">
+                        <div><h4 style="font-size: 0.9rem; font-weight: 700;"><i class="fa-solid fa-universal-access" style="color:var(--primary); width:1.2rem;"></i> Accessibilità</h4></div>
+                        <i class="fa-solid fa-chevron-right" style="color: var(--text-muted); font-size: 0.85rem;"></i>
+                    </div>
+                    <div class="setting-row" onclick="_impostazioniApri('notifiche')" style="cursor:pointer;">
+                        <div><h4 style="font-size: 0.9rem; font-weight: 700;"><i class="fa-solid fa-envelope" style="color:var(--primary); width:1.2rem;"></i> Notifiche</h4></div>
+                        <i class="fa-solid fa-chevron-right" style="color: var(--text-muted); font-size: 0.85rem;"></i>
+                    </div>
+                    <div class="setting-row" onclick="_impostazioniApri('connessioni')" style="cursor:pointer;">
+                        <div><h4 style="font-size: 0.9rem; font-weight: 700;"><i class="fa-solid fa-tower-broadcast" style="color:var(--primary); width:1.2rem;"></i> Connessioni</h4></div>
+                        <i class="fa-solid fa-chevron-right" style="color: var(--text-muted); font-size: 0.85rem;"></i>
+                    </div>
+                    <div class="setting-row" onclick="_impostazioniApri('account')" style="cursor:pointer;">
+                        <div><h4 style="font-size: 0.9rem; font-weight: 700;"><i class="fa-solid fa-key" style="color:var(--primary); width:1.2rem;"></i> Account</h4></div>
+                        <i class="fa-solid fa-chevron-right" style="color: var(--text-muted); font-size: 0.85rem;"></i>
+                    </div>
+                    <div class="setting-row" onclick="_impostazioniApri('dati')" style="cursor:pointer;">
+                        <div><h4 style="font-size: 0.9rem; font-weight: 700;"><i class="fa-solid fa-shield-halved" style="color:var(--primary); width:1.2rem;"></i> Dati e Privacy</h4></div>
+                        <i class="fa-solid fa-chevron-right" style="color: var(--text-muted); font-size: 0.85rem;"></i>
+                    </div>
+                    <div class="setting-row" onclick="_impostazioniApri('generali')" style="cursor:pointer;">
+                        <div><h4 style="font-size: 0.9rem; font-weight: 700;"><i class="fa-solid fa-gear" style="color:var(--primary); width:1.2rem;"></i> Generali</h4></div>
+                        <i class="fa-solid fa-chevron-right" style="color: var(--text-muted); font-size: 0.85rem;"></i>
+                    </div>
+                    <div class="setting-row" onclick="_impostazioniApri('bug')" style="cursor:pointer;">
+                        <div><h4 style="font-size: 0.9rem; font-weight: 700;"><i class="fa-solid fa-bug" style="color:var(--primary); width:1.2rem;"></i> Segnala un bug</h4></div>
+                        <i class="fa-solid fa-chevron-right" style="color: var(--text-muted); font-size: 0.85rem;"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── SUONI ──────────────────────────────────────────────── -->
+            <div id="impostazioniPagina-suoni" style="display:none;">
+                <div class="setting-row" onclick="_impostazioniTornaHub()" style="cursor:pointer; max-width:600px; margin:0 auto 0.6rem; padding:0;">
+                    <div style="display:flex; align-items:center; gap:0.5rem; font-weight:700; font-size:0.9rem;"><i class="fa-solid fa-chevron-left"></i> Impostazioni</div>
+                </div>
+                <div class="settings-card">
+                    <h3 style="margin-bottom: 1rem; color: var(--text-dark); display: flex; align-items: center; gap: 0.6rem; font-size: 1.15rem; font-weight: 800;">
+                        <i class="fa-solid fa-volume-high" style="color: var(--primary);"></i> Suoni
+                    </h3>
+                    <div class="setting-row">
+                        <div>
+                            <h4 style="font-size: 0.9rem; font-weight: 700;">Suoni dell'app</h4>
+                            <p style="font-size: 0.75rem; color: var(--text-muted);">Beep di apertura widget e notifiche sonore (solo su questo dispositivo)</p>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" id="suoniAppToggle" onchange="toggleSuoniWidgetHome()">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── TEMA ───────────────────────────────────────────────── -->
+            <div id="impostazioniPagina-tema" style="display:none;">
+                <div class="setting-row" onclick="_impostazioniTornaHub()" style="cursor:pointer; max-width:600px; margin:0 auto 0.6rem; padding:0;">
+                    <div style="display:flex; align-items:center; gap:0.5rem; font-weight:700; font-size:0.9rem;"><i class="fa-solid fa-chevron-left"></i> Impostazioni</div>
+                </div>
+                <div class="settings-card">
+                    <h3 style="margin-bottom: 1rem; color: var(--text-dark); display: flex; align-items: center; gap: 0.6rem; font-size: 1.15rem; font-weight: 800;">
+                        <i class="fa-solid fa-palette" style="color: var(--primary);"></i> Tema
+                    </h3>
+                    <div class="setting-row">
+                        <div>
+                            <h4 style="font-size: 0.9rem; font-weight: 700;">Modalità Scura</h4>
+                            <p style="font-size: 0.75rem; color: var(--text-muted);">Attiva tema scuro</p>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" id="darkModeToggle" onchange="toggleDarkMode(this.checked)">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                    <div class="setting-row" style="flex-direction: column; align-items: flex-start; gap: 0.6rem;">
+                        <div>
+                            <h4 style="font-size: 0.9rem; font-weight: 700;">Palette Colori</h4>
+                            <p style="font-size: 0.75rem; color: var(--text-muted);">Personalizza i toni pastello dell'interfaccia</p>
+                        </div>
+                        <div class="theme-options-grid">
+                            <button type="button" class="theme-btn active" id="themeBtn-viola" onclick="setSiteTheme('viola')">
+                                <span class="theme-color-preview" style="background-color: #7c4dff;"></span> Viola Soft
+                            </button>
+                            <button type="button" class="theme-btn" id="themeBtn-verde" onclick="setSiteTheme('verde')">
+                                <span class="theme-color-preview" style="background-color: #2e7d32;"></span> Verde Salvia
+                            </button>
+                            <button type="button" class="theme-btn" id="themeBtn-pokemon" onclick="setSiteTheme('pokemon')">
+                                <span class="theme-color-preview" style="background: linear-gradient(135deg, #2a75d3 50%, #ffcb05 50%);"></span> Pokémon
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── ACCESSIBILITÀ ──────────────────────────────────────── -->
+            <div id="impostazioniPagina-accessibilita" style="display:none;">
+                <div class="setting-row" onclick="_impostazioniTornaHub()" style="cursor:pointer; max-width:600px; margin:0 auto 0.6rem; padding:0;">
+                    <div style="display:flex; align-items:center; gap:0.5rem; font-weight:700; font-size:0.9rem;"><i class="fa-solid fa-chevron-left"></i> Impostazioni</div>
+                </div>
+                <div class="settings-card">
+                    <h3 style="margin-bottom: 1rem; color: var(--text-dark); display: flex; align-items: center; gap: 0.6rem; font-size: 1.15rem; font-weight: 800;">
+                        <i class="fa-solid fa-universal-access" style="color: var(--primary);"></i> Accessibilità
+                    </h3>
+                    <div class="setting-row">
+                        <div>
+                            <h4 style="font-size: 0.9rem; font-weight: 700;">Riduci Animazioni</h4>
+                            <p style="font-size: 0.75rem; color: var(--text-muted);">Disattiva il flash colorato sul prezzo quando lo modifichi (solo su questo dispositivo)</p>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" id="riduciAnimazioniToggle" onchange="toggleRiduciAnimazioni(this.checked)">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                    <div class="setting-row">
+                        <div>
+                            <h4 style="font-size: 0.9rem; font-weight: 700;">Animazioni dei widget</h4>
+                            <p style="font-size: 0.75rem; color: var(--text-muted);">Movimento delle Poké Ball: cattura all'apertura e richiami quando c'è qualcosa da fare (solo su questo dispositivo)</p>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" id="chkAnimWidget" onchange="toggleAnimWidget(this.checked)">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                    <div class="setting-row" id="rigaAnimCattura">
+                        <div>
+                            <h4 style="font-size: 0.9rem; font-weight: 700;">Animazione di cattura</h4>
+                            <p style="font-size: 0.75rem; color: var(--text-muted);">La sequenza completa quando apri un widget (dura circa 2 secondi e mezzo). Spegnendola i widget si aprono subito, ma le Poké Ball continuano a segnalarti cosa richiede attenzione</p>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" id="chkAnimCattura" onchange="toggleAnimCattura(this.checked)">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                    <div class="setting-row">
+                        <div>
+                            <h4 style="font-size: 0.9rem; font-weight: 700;">Scritte sulle Poké Ball</h4>
+                            <p style="font-size: 0.75rem; color: var(--text-muted);">Il nome inciso sulla parte bianca dei widget piccoli. Spento, restano le sfere nude</p>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" id="chkScritteBall" onchange="toggleScritteBall(this.checked)">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                    <div class="setting-row">
+                        <div>
+                            <h4 style="font-size: 0.9rem; font-weight: 700;">Numeri sui widget</h4>
+                            <p style="font-size: 0.75rem; color: var(--text-muted);">Il pallino col conteggio in alto a destra. Sui widget piccoli ripete un dato già inciso sulla sfera</p>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" id="chkBadgeWidget" onchange="toggleBadgeWidget(this.checked)">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── NOTIFICHE ──────────────────────────────────────────── -->
+            <div id="impostazioniPagina-notifiche" style="display:none;">
+                <div class="setting-row" onclick="_impostazioniTornaHub()" style="cursor:pointer; max-width:600px; margin:0 auto 0.6rem; padding:0;">
+                    <div style="display:flex; align-items:center; gap:0.5rem; font-weight:700; font-size:0.9rem;"><i class="fa-solid fa-chevron-left"></i> Impostazioni</div>
+                </div>
+                <div class="settings-card">
+                    <h3 style="margin-bottom: 0.3rem; color: var(--text-dark); display: flex; align-items: center; gap: 0.6rem; font-size: 1.15rem; font-weight: 800;">
+                        <i class="fa-solid fa-envelope" style="color: var(--primary);"></i> Notifiche via Email
+                    </h3>
+                    <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 1rem;">Le notifiche non sono ancora attive — questa è la lista d'attesa: appena saranno pronte, partiranno da qui.</p>
+
+                    <label style="display:block; font-size: 0.72rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.3rem;">LA TUA EMAIL</label>
+                    <input type="email" id="notificheEmailInput" placeholder="nome@esempio.it" style="margin-bottom: 1rem;">
+
+                    <div style="display:flex; flex-direction:column; gap:0.7rem; margin-bottom: 1rem;">
+                        <label style="display:flex; align-items:center; gap:0.6rem; font-size:0.85rem; cursor:pointer;">
+                            <input type="checkbox" id="notificaChangelogCheck" style="width:auto;"> Novità e changelog dell'app
+                        </label>
+                        <label style="display:flex; align-items:center; gap:0.6rem; font-size:0.85rem; cursor:pointer; flex-wrap:wrap;">
+                            <input type="checkbox" id="notificaPrezziCheck" style="width:auto;"> Variazioni di prezzo superiori a
+                            <input type="number" id="notificaPrezziSoglia" value="5" min="0" step="0.5" style="width:70px; padding:0.3rem 0.5rem;"> €
+                        </label>
+                        <label style="display:flex; align-items:center; gap:0.6rem; font-size:0.85rem; cursor:pointer;">
+                            <input type="checkbox" id="notificaWishlistCheck" style="width:auto;"> Aggiornamenti sulla wishlist (prezzo sotto obiettivo, match trovati)
+                        </label>
+                    </div>
+
+                    <button class="btn-main" onclick="salvaPreferenzeNotifiche()"><i class="fa-solid fa-floppy-disk"></i> Salva preferenze</button>
+                </div>
+            </div>
+
+            <!-- ── CONNESSIONI ────────────────────────────────────────── -->
+            <div id="impostazioniPagina-connessioni" style="display:none;">
+                <div class="setting-row" onclick="_impostazioniTornaHub()" style="cursor:pointer; max-width:600px; margin:0 auto 0.6rem; padding:0;">
+                    <div style="display:flex; align-items:center; gap:0.5rem; font-weight:700; font-size:0.9rem;"><i class="fa-solid fa-chevron-left"></i> Impostazioni</div>
+                </div>
+                <div class="settings-card">
+                    <h3 style="margin-bottom: 0.3rem; color: var(--text-dark); display: flex; align-items: center; gap: 0.6rem; font-size: 1.15rem; font-weight: 800;">
+                        <i class="fa-solid fa-tower-broadcast" style="color: var(--primary);"></i> Connessioni
+                    </h3>
+                    <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 1rem;">Stato dei servizi da cui dipende CardSync Pro — utile per capire se un problema è "solo qui" o riguarda tutti.</p>
+
+                    <div class="setting-row">
+                        <div><h4 style="font-size: 0.9rem; font-weight: 700;">Supabase</h4><p style="font-size: 0.75rem; color: var(--text-muted);">Database e autenticazione</p></div>
+                        <span id="statoConnSupabase" class="badge-connessione">Verifica...</span>
+                    </div>
+                    <div class="setting-row">
+                        <div><h4 style="font-size: 0.9rem; font-weight: 700;">Estensione Chrome</h4><p style="font-size: 0.75rem; color: var(--text-muted);">Solo su questo dispositivo</p></div>
+                        <span id="statoConnEstensione" class="badge-connessione">Verifica...</span>
+                    </div>
+                    <div class="setting-row">
+                        <div><h4 style="font-size: 0.9rem; font-weight: 700;">Presenza in tempo reale</h4><p style="font-size: 0.75rem; color: var(--text-muted);">Canale "chi è online adesso"</p></div>
+                        <span id="statoConnPresenza" class="badge-connessione">Verifica...</span>
+                    </div>
+                    <div class="setting-row">
+                        <div><h4 style="font-size: 0.9rem; font-weight: 700;">Worker del gruppo</h4><p style="font-size: 0.75rem; color: var(--text-muted);">Dispositivi che stanno elaborando prezzi in questo momento</p></div>
+                        <span id="statoConnWorker" class="badge-connessione">Verifica...</span>
+                    </div>
+
+                    <button class="btn-secondary" style="margin-top:0.8rem;" onclick="_connessioniRicontrolla()"><i class="fa-solid fa-rotate"></i> Ricontrolla</button>
                 </div>
 
-                <!-- TOGGLE RIDUCI ANIMAZIONI (A14) — per-dispositivo, come
-                     "Aiuta il gruppo": ogni PC/telefono ha la propria
-                     preferenza. Disattiva solo il breve flash colorato sul
-                     prezzo quando sale/scende per una modifica diretta. -->
-                <div class="setting-row">
-                    <div>
-                        <h4 style="font-size: 0.9rem; font-weight: 700;">Riduci Animazioni</h4>
-                        <p style="font-size: 0.75rem; color: var(--text-muted);">Disattiva il flash colorato sul prezzo quando lo modifichi (solo su questo dispositivo)</p>
-                    </div>
-                    <label class="switch">
-                        <input type="checkbox" id="riduciAnimazioniToggle" onchange="toggleRiduciAnimazioni(this.checked)">
-                        <span class="slider"></span>
-                    </label>
-                </div>
-
-                <!-- ═══ GRAFICA WIDGET POKÉ BALL (27/08/2026) ═══
-                     Quattro preferenze PER-DISPOSITIVO (localStorage, vedi
-                     data/preferences.repository.js). Volutamente separate da
-                     "Riduci Animazioni" qui sopra, che riguarda solo il flash
-                     sul prezzo: chi non vuole il flash non è detto voglia
-                     anche i widget immobili. -->
-                <div class="setting-row">
-                    <div>
-                        <h4 style="font-size: 0.9rem; font-weight: 700;">Animazioni dei widget</h4>
-                        <p style="font-size: 0.75rem; color: var(--text-muted);">Movimento delle Poké Ball: cattura all'apertura e richiami quando c'è qualcosa da fare (solo su questo dispositivo)</p>
-                    </div>
-                    <label class="switch">
-                        <input type="checkbox" id="chkAnimWidget" onchange="toggleAnimWidget(this.checked)">
-                        <span class="slider"></span>
-                    </label>
-                </div>
-
-                <div class="setting-row" id="rigaAnimCattura">
-                    <div>
-                        <h4 style="font-size: 0.9rem; font-weight: 700;">Animazione di cattura</h4>
-                        <p style="font-size: 0.75rem; color: var(--text-muted);">La sequenza completa quando apri un widget (dura circa 2 secondi e mezzo). Spegnendola i widget si aprono subito, ma le Poké Ball continuano a segnalarti cosa richiede attenzione</p>
-                    </div>
-                    <label class="switch">
-                        <input type="checkbox" id="chkAnimCattura" onchange="toggleAnimCattura(this.checked)">
-                        <span class="slider"></span>
-                    </label>
-                </div>
-
-                <div class="setting-row">
-                    <div>
-                        <h4 style="font-size: 0.9rem; font-weight: 700;">Scritte sulle Poké Ball</h4>
-                        <p style="font-size: 0.75rem; color: var(--text-muted);">Il nome inciso sulla parte bianca dei widget piccoli. Spento, restano le sfere nude</p>
-                    </div>
-                    <label class="switch">
-                        <input type="checkbox" id="chkScritteBall" onchange="toggleScritteBall(this.checked)">
-                        <span class="slider"></span>
-                    </label>
-                </div>
-
-                <div class="setting-row">
-                    <div>
-                        <h4 style="font-size: 0.9rem; font-weight: 700;">Numeri sui widget</h4>
-                        <p style="font-size: 0.75rem; color: var(--text-muted);">Il pallino col conteggio in alto a destra. Sui widget piccoli ripete un dato già inciso sulla sfera</p>
-                    </div>
-                    <label class="switch">
-                        <input type="checkbox" id="chkBadgeWidget" onchange="toggleBadgeWidget(this.checked)">
-                        <span class="slider"></span>
-                    </label>
-                </div>
-
-                <!-- GRUPPO ESTENSIONE — visibile solo se l'estensione risponde
-                     (stessa condizione che prima nascondeva questi controlli
-                     nella sidebar, vedi _aggiornaControlliApriApp in
-                     ui/extension.ui.js). Entrambe preferenze PER-DISPOSITIVO,
-                     salvate nell'estensione (chrome.storage.local), non
-                     nell'account Supabase — due dispositivi con lo stesso
-                     login possono avere valori diversi, di proposito. -->
-                <div id="impostazioniEstensioneGroup" style="display:none;">
+                <!-- Preferenze estensione — SPOSTATE qui da "Generali" perché
+                     riguardano proprio il comportamento del dispositivo verso
+                     l'estensione/il worker del gruppo, stesso tema di questa
+                     pagina. Gruppo visibile solo se l'estensione risponde,
+                     comportamento invariato (vedi _aggiornaControlliApriApp
+                     in ui/extension.ui.js). -->
+                <div id="impostazioniEstensioneGroup" class="settings-card" style="display:none;">
                     <div class="setting-row">
                         <div>
                             <h4 style="font-size: 0.9rem; font-weight: 700;">Apri sempre l'app all'apertura</h4>
@@ -5352,7 +5555,6 @@
                             <span class="slider"></span>
                         </label>
                     </div>
-
                     <div class="setting-row">
                         <div>
                             <h4 style="font-size: 0.9rem; font-weight: 700;">Aiuta il gruppo da questo dispositivo</h4>
@@ -5364,132 +5566,108 @@
                         </label>
                     </div>
                 </div>
+            </div>
 
-                <!-- TEMA DEL SITO -->
-                <div class="setting-row" style="flex-direction: column; align-items: flex-start; gap: 0.6rem;">
-                    <div>
-                        <h4 style="font-size: 0.9rem; font-weight: 700;">Palette Colori</h4>
-                        <p style="font-size: 0.75rem; color: var(--text-muted);">Personalizza i toni pastello dell'interfaccia</p>
+            <!-- ── ACCOUNT ────────────────────────────────────────────── -->
+            <div id="impostazioniPagina-account" style="display:none;">
+                <div class="setting-row" onclick="_impostazioniTornaHub()" style="cursor:pointer; max-width:600px; margin:0 auto 0.6rem; padding:0;">
+                    <div style="display:flex; align-items:center; gap:0.5rem; font-weight:700; font-size:0.9rem;"><i class="fa-solid fa-chevron-left"></i> Impostazioni</div>
+                </div>
+                <div class="settings-card">
+                    <h3 style="margin-bottom: 0.3rem; color: var(--text-dark); display: flex; align-items: center; gap: 0.6rem; font-size: 1.15rem; font-weight: 800;">
+                        <i class="fa-solid fa-key" style="color: var(--primary);"></i> Account
+                    </h3>
+                    <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 1rem;">Il nome utente è assegnato dall'amministratore — da qui puoi solo cambiare la password.</p>
+                    <label style="display:block; font-size: 0.72rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.3rem;">NUOVA PASSWORD</label>
+                    <input type="password" id="nuovaPasswordInput" placeholder="Almeno 6 caratteri" style="margin-bottom: 1rem;">
+                    <button class="btn-main" onclick="cambiaPassword()"><i class="fa-solid fa-key"></i> Cambia Password</button>
+
+                    <!-- TEMPORANEO (26/08/2026): duplica il logout già presente
+                         nel menu Profilo (#profiloMenu), non raggiungibile/
+                         visibile nella visualizzazione attuale — vedi commento
+                         su logoutDaImpostazioni() in ui/auth.ui.js. DA
+                         RIMUOVERE quando quel problema sarà risolto. -->
+                    <button class="btn-secondary" style="margin-top:0.8rem;" onclick="logoutDaImpostazioni()"><i class="fa-solid fa-right-from-bracket"></i> Esci</button>
+                </div>
+            </div>
+
+            <!-- ── DATI E PRIVACY ─────────────────────────────────────── -->
+            <div id="impostazioniPagina-dati" style="display:none;">
+                <div class="setting-row" onclick="_impostazioniTornaHub()" style="cursor:pointer; max-width:600px; margin:0 auto 0.6rem; padding:0;">
+                    <div style="display:flex; align-items:center; gap:0.5rem; font-weight:700; font-size:0.9rem;"><i class="fa-solid fa-chevron-left"></i> Impostazioni</div>
+                </div>
+                <div class="settings-card">
+                    <h3 style="margin-bottom: 0.3rem; color: var(--text-dark); display: flex; align-items: center; gap: 0.6rem; font-size: 1.15rem; font-weight: 800;">
+                        <i class="fa-solid fa-eye-slash" style="color: var(--primary);"></i> Privacy — Match automatico
+                    </h3>
+                    <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 1rem;">Il resto del gruppo non vedrà le tue carte in questa/e sezione/i quando cerca corrispondenze — restano visibili solo a te, in tutto il resto del sito.</p>
+                    <div style="display:flex; flex-direction:column; gap:0.7rem;">
+                        <label style="display:flex; align-items:center; gap:0.6rem; font-size:0.85rem; cursor:pointer;">
+                            <input type="checkbox" id="nascondiScambioCheck" style="width:auto;" onchange="salvaPreferenzePrivacy()"> Nascondi i miei Scambi dal match automatico
+                        </label>
+                        <label style="display:flex; align-items:center; gap:0.6rem; font-size:0.85rem; cursor:pointer;">
+                            <input type="checkbox" id="nascondiWishlistCheck" style="width:auto;" onchange="salvaPreferenzePrivacy()"> Nascondi la mia Wishlist dal match automatico
+                        </label>
                     </div>
-                    <div class="theme-options-grid">
-                        <button type="button" class="theme-btn active" id="themeBtn-viola" onclick="setSiteTheme('viola')">
-                            <span class="theme-color-preview" style="background-color: #7c4dff;"></span> Viola Soft
-                        </button>
-                        <button type="button" class="theme-btn" id="themeBtn-verde" onclick="setSiteTheme('verde')">
-                            <span class="theme-color-preview" style="background-color: #2e7d32;"></span> Verde Salvia
-                        </button>
-                        <button type="button" class="theme-btn" id="themeBtn-pokemon" onclick="setSiteTheme('pokemon')">
-                            <span class="theme-color-preview" style="background: linear-gradient(135deg, #2a75d3 50%, #ffcb05 50%);"></span> Pokémon
-                        </button>
+                </div>
+
+                <div class="settings-card">
+                    <h3 style="margin-bottom: 0.3rem; color: var(--text-dark); display: flex; align-items: center; gap: 0.6rem; font-size: 1.15rem; font-weight: 800;">
+                        <i class="fa-solid fa-file-export" style="color: var(--primary);"></i> Esporta i tuoi dati
+                    </h3>
+                    <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 1rem;">Collezione, sealed e wishlist, tutto insieme.</p>
+                    <div style="display:flex; gap:0.6rem; flex-wrap:wrap;">
+                        <button class="btn-secondary" onclick="esportaDati('csv')"><i class="fa-solid fa-file-csv"></i> Esporta CSV</button>
+                        <button class="btn-secondary" onclick="esportaDati('json')"><i class="fa-solid fa-file-code"></i> Esporta JSON</button>
                     </div>
                 </div>
+            </div>
 
-                <!-- CHANGELOG (EASTER EGG) -->
-                <div class="setting-row" onclick="handleChangelogClick()" style="cursor: pointer; user-select: none;">
-                    <div>
-                        <h4 style="font-size: 0.9rem; font-weight: 700;">changeLog</h4>
-                        <p style="font-size: 0.75rem; color: var(--text-muted);">Consulta la cronologia degli aggiornamenti dell'applicazione</p>
+            <!-- ── GENERALI ───────────────────────────────────────────── -->
+            <div id="impostazioniPagina-generali" style="display:none;">
+                <div class="setting-row" onclick="_impostazioniTornaHub()" style="cursor:pointer; max-width:600px; margin:0 auto 0.6rem; padding:0;">
+                    <div style="display:flex; align-items:center; gap:0.5rem; font-weight:700; font-size:0.9rem;"><i class="fa-solid fa-chevron-left"></i> Impostazioni</div>
+                </div>
+                <div class="settings-card">
+                    <h3 style="margin-bottom: 1rem; color: var(--text-dark); display: flex; align-items: center; gap: 0.6rem; font-size: 1.15rem; font-weight: 800;">
+                        <i class="fa-solid fa-gear" style="color: var(--primary);"></i> Generali
+                    </h3>
+                    <div class="setting-row">
+                        <div>
+                            <h4 style="font-size: 0.9rem; font-weight: 700;">Sezione all'apertura</h4>
+                            <p style="font-size: 0.75rem; color: var(--text-muted);">Da quale scheda vuoi partire ogni volta che apri il sito</p>
+                        </div>
+                        <select class="filter-select" id="tabPredefinitaSelect" onchange="salvaTabPredefinita(this.value)">
+                            <option value="visualizzazione">Visualizzazione</option>
+                            <option value="wishlist">Wishlist</option>
+                            <option value="scambio">Scambio</option>
+                            <option value="sealed">Sealed</option>
+                            <option value="binder">Binder</option>
+                        </select>
                     </div>
-                    <i class="fa-solid fa-chevron-right" style="color: var(--text-muted); font-size: 0.85rem;"></i>
-                </div>
-
-                <!-- TAB PREDEFINITA -->
-                <div class="setting-row">
-                    <div>
-                        <h4 style="font-size: 0.9rem; font-weight: 700;">Sezione all'apertura</h4>
-                        <p style="font-size: 0.75rem; color: var(--text-muted);">Da quale scheda vuoi partire ogni volta che apri il sito</p>
+                    <!-- CHANGELOG (EASTER EGG) -->
+                    <div class="setting-row" onclick="handleChangelogClick()" style="cursor: pointer; user-select: none;">
+                        <div>
+                            <h4 style="font-size: 0.9rem; font-weight: 700;">changeLog</h4>
+                            <p style="font-size: 0.75rem; color: var(--text-muted);">Consulta la cronologia degli aggiornamenti dell'applicazione</p>
+                        </div>
+                        <i class="fa-solid fa-chevron-right" style="color: var(--text-muted); font-size: 0.85rem;"></i>
                     </div>
-                    <select class="filter-select" id="tabPredefinitaSelect" onchange="salvaTabPredefinita(this.value)">
-                        <option value="visualizzazione">Visualizzazione</option>
-                        <option value="wishlist">Wishlist</option>
-                        <option value="scambio">Scambio</option>
-                        <option value="sealed">Sealed</option>
-                        <option value="binder">Binder</option>
-                    </select>
-                </div>
-
-            </div>
-
-            <!-- NOTIFICHE EMAIL -->
-            <div class="settings-card">
-                <h3 style="margin-bottom: 0.3rem; color: var(--text-dark); display: flex; align-items: center; gap: 0.6rem; font-size: 1.15rem; font-weight: 800;">
-                    <i class="fa-solid fa-envelope" style="color: var(--primary);"></i> Notifiche via Email
-                </h3>
-                <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 1rem;">Le notifiche non sono ancora attive — questa è la lista d'attesa: appena saranno pronte, partiranno da qui.</p>
-
-                <label style="display:block; font-size: 0.72rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.3rem;">LA TUA EMAIL</label>
-                <input type="email" id="notificheEmailInput" placeholder="nome@esempio.it" style="margin-bottom: 1rem;">
-
-                <div style="display:flex; flex-direction:column; gap:0.7rem; margin-bottom: 1rem;">
-                    <label style="display:flex; align-items:center; gap:0.6rem; font-size:0.85rem; cursor:pointer;">
-                        <input type="checkbox" id="notificaChangelogCheck" style="width:auto;"> Novità e changelog dell'app
-                    </label>
-                    <label style="display:flex; align-items:center; gap:0.6rem; font-size:0.85rem; cursor:pointer; flex-wrap:wrap;">
-                        <input type="checkbox" id="notificaPrezziCheck" style="width:auto;"> Variazioni di prezzo superiori a
-                        <input type="number" id="notificaPrezziSoglia" value="5" min="0" step="0.5" style="width:70px; padding:0.3rem 0.5rem;"> €
-                    </label>
-                    <label style="display:flex; align-items:center; gap:0.6rem; font-size:0.85rem; cursor:pointer;">
-                        <input type="checkbox" id="notificaWishlistCheck" style="width:auto;"> Aggiornamenti sulla wishlist (prezzo sotto obiettivo, match trovati)
-                    </label>
-                </div>
-
-                <button class="btn-main" onclick="salvaPreferenzeNotifiche()"><i class="fa-solid fa-floppy-disk"></i> Salva preferenze</button>
-            </div>
-
-            <!-- PRIVACY MATCH -->
-            <div class="settings-card">
-                <h3 style="margin-bottom: 0.3rem; color: var(--text-dark); display: flex; align-items: center; gap: 0.6rem; font-size: 1.15rem; font-weight: 800;">
-                    <i class="fa-solid fa-eye-slash" style="color: var(--primary);"></i> Privacy — Match automatico
-                </h3>
-                <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 1rem;">Il resto del gruppo non vedrà le tue carte in questa/e sezione/i quando cerca corrispondenze — restano visibili solo a te, in tutto il resto del sito.</p>
-
-                <div style="display:flex; flex-direction:column; gap:0.7rem;">
-                    <label style="display:flex; align-items:center; gap:0.6rem; font-size:0.85rem; cursor:pointer;">
-                        <input type="checkbox" id="nascondiScambioCheck" style="width:auto;" onchange="salvaPreferenzePrivacy()"> Nascondi i miei Scambi dal match automatico
-                    </label>
-                    <label style="display:flex; align-items:center; gap:0.6rem; font-size:0.85rem; cursor:pointer;">
-                        <input type="checkbox" id="nascondiWishlistCheck" style="width:auto;" onchange="salvaPreferenzePrivacy()"> Nascondi la mia Wishlist dal match automatico
-                    </label>
                 </div>
             </div>
 
-            <!-- ESPORTAZIONE DATI -->
-            <div class="settings-card">
-                <h3 style="margin-bottom: 0.3rem; color: var(--text-dark); display: flex; align-items: center; gap: 0.6rem; font-size: 1.15rem; font-weight: 800;">
-                    <i class="fa-solid fa-file-export" style="color: var(--primary);"></i> Esporta i tuoi dati
-                </h3>
-                <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 1rem;">Collezione, sealed e wishlist, tutto insieme.</p>
-                <div style="display:flex; gap:0.6rem; flex-wrap:wrap;">
-                    <button class="btn-secondary" onclick="esportaDati('csv')"><i class="fa-solid fa-file-csv"></i> Esporta CSV</button>
-                    <button class="btn-secondary" onclick="esportaDati('json')"><i class="fa-solid fa-file-code"></i> Esporta JSON</button>
+            <!-- ── SEGNALA UN BUG ─────────────────────────────────────── -->
+            <div id="impostazioniPagina-bug" style="display:none;">
+                <div class="setting-row" onclick="_impostazioniTornaHub()" style="cursor:pointer; max-width:600px; margin:0 auto 0.6rem; padding:0;">
+                    <div style="display:flex; align-items:center; gap:0.5rem; font-weight:700; font-size:0.9rem;"><i class="fa-solid fa-chevron-left"></i> Impostazioni</div>
                 </div>
-            </div>
-
-            <!-- ACCOUNT -->
-            <div class="settings-card">
-                <h3 style="margin-bottom: 0.3rem; color: var(--text-dark); display: flex; align-items: center; gap: 0.6rem; font-size: 1.15rem; font-weight: 800;">
-                    <i class="fa-solid fa-key" style="color: var(--primary);"></i> Account
-                </h3>
-                <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 1rem;">Il nome utente è assegnato dall'amministratore — da qui puoi solo cambiare la password.</p>
-                <label style="display:block; font-size: 0.72rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.3rem;">NUOVA PASSWORD</label>
-                <input type="password" id="nuovaPasswordInput" placeholder="Almeno 6 caratteri" style="margin-bottom: 1rem;">
-                <button class="btn-main" onclick="cambiaPassword()"><i class="fa-solid fa-key"></i> Cambia Password</button>
-
-                <!-- TEMPORANEO (26/08/2026): duplica il logout già presente
-                     nel menu Profilo (#profiloMenu), non raggiungibile/
-                     visibile nella visualizzazione attuale — vedi commento
-                     su logoutDaImpostazioni() in ui/auth.ui.js. DA
-                     RIMUOVERE quando quel problema sarà risolto. -->
-                <button class="btn-secondary" style="margin-top:0.8rem;" onclick="logoutDaImpostazioni()"><i class="fa-solid fa-right-from-bracket"></i> Esci</button>
-            </div>
-
-            <!-- CONTATTI E BUG REPORT -->
-            <div class="settings-card">
-                <h3 style="margin-bottom: 0.3rem; color: var(--text-dark); display: flex; align-items: center; gap: 0.6rem; font-size: 1.15rem; font-weight: 800;">
-                    <i class="fa-solid fa-bug" style="color: var(--primary);"></i> Hai trovato un Caterpie?
-                </h3>
-                <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 1rem;">Se qualcosa non funziona come dovrebbe, probabilmente hai incontrato un Caterpie selvatico (cioè un bug). Catturalo segnalandolo:</p>
-                <button class="btn-secondary" onclick="segnalaCaterpie()"><i class="fa-solid fa-bug"></i> Segnala un Caterpie</button>
+                <div class="settings-card">
+                    <h3 style="margin-bottom: 0.3rem; color: var(--text-dark); display: flex; align-items: center; gap: 0.6rem; font-size: 1.15rem; font-weight: 800;">
+                        <i class="fa-solid fa-bug" style="color: var(--primary);"></i> Hai trovato un Caterpie?
+                    </h3>
+                    <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 1rem;">Se qualcosa non funziona come dovrebbe, probabilmente hai incontrato un Caterpie selvatico (cioè un bug). Catturalo segnalandolo:</p>
+                    <button class="btn-secondary" onclick="segnalaCaterpie()"><i class="fa-solid fa-bug"></i> Segnala un Caterpie</button>
+                </div>
             </div>
 
         </div>
@@ -6193,6 +6371,10 @@
          eventi su movimenti_collezione (sql/54), usato da ui/entry.ui.js
          (log "aggiunta" sealed) e dai prossimi punti di mutazione. -->
     <script src="data/movimenti.repository.js"></script>
+    <!-- data/achievement.repository.js: Fase 9 (2026-09-13) — sola lettura
+         di achievement_catalogo/achievement_sbloccati (sql/59), scrittura
+         esclusivamente via RPC riscatta_traguardo. -->
+    <script src="data/achievement.repository.js"></script>
     <!-- data/richieste-scambio.repository.js: Fase 4, Step 3 (2026-09-13). -->
     <script src="data/richieste-scambio.repository.js"></script>
     <!-- data/bustina.repository.js: usata da renderPaginaBustina()/motore
@@ -6330,6 +6512,14 @@
     <script src="ui/widget-set.ui.js"></script>
     <script src="ui/set-libreria-sigle.ui.js"></script>
     <script src="ui/widget-valore-collezione.ui.js"></script>
+    <!-- ui/widget-achievement.ui.js: Fase 9 (2026-09-13) — widget/pagina
+         Achievement (Binder 4×4 diviso per rarità + Vetrina). Dipende da
+         data/achievement.repository.js e data/user-settings.repository.js
+         (userSettingsUpsertAchievementVetrina), entrambi già caricati sopra. -->
+    <script src="ui/widget-achievement.ui.js"></script>
+    <!-- ui/impostazioni.ui.js: Fase 10 (2026-09-13) — router hub/sotto-
+         pagine per #impostazioni. -->
+    <script src="ui/impostazioni.ui.js"></script>
     <script src="ui/widget-vetrina.ui.js"></script>
     <script src="ui/widget-visualizzazione.ui.js"></script>
     <script src="ui/widget-wishlist.ui.js"></script>
