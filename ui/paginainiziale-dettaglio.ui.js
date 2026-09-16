@@ -66,6 +66,17 @@ function _impostaOrigineAnimazione(container, evt) {
 async function apriDettaglioWidget(tabId, evt) {
     clearTimeout(_chiusuraDettaglioTimeout); // annulla un'eventuale chiusura ancora in corso (riapertura rapida)
 
+    // FASE 11 (2026-09-13): Work in Progress — un solo controllo qui copre
+    // sia 'widget' sia 'pagina' (stesso tabId in entrambi i casi). Vedi
+    // ui/wip.ui.js per lo scope dichiarato (non copre ancora binder
+    // speciali/funzioni singole).
+    const wip = (typeof _wipVerifica === 'function') ? (_wipVerifica('widget', tabId) || _wipVerifica('pagina', tabId)) : null;
+    if (wip) {
+        const ehAdmin = (typeof _impostazioniControllaAdmin === 'function') ? await _impostazioniControllaAdmin() : false;
+        const procedi = await _wipMostraBlocco(wip, ehAdmin);
+        if (!procedi) return; // utente normale bloccato, o admin che ha scelto di non entrare
+    }
+
     const container = document.querySelector('.container');
     if (tabId === 'dafare' || tabId === 'match' || tabId === 'condividi' || tabId === 'missioni' || tabId === 'valore' || tabId === 'variazione' || tabId === 'wishlist' || tabId === 'location' || tabId === 'doppioni' || tabId === 'sealed' || tabId === 'set' || tabId === 'bustina' || tabId === 'scaffali' || tabId === 'richieste' || tabId === 'achievement') {
         // MAI switchTab() qui: quella funzione ha una whitelist fissa di 5

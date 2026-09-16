@@ -200,6 +200,13 @@ async function initPhoneShell() {
     // _spostaHomeNellaPaginaPrincipale() rimossa con la home fissa.
 
     await _caricaLayoutWidget();
+    // Fase 11 (2026-09-13): cache WIP caricata PRIMA del render, così le
+    // eventuali aperture immediate (deep link, riapertura automatica)
+    // trovano già la mappa pronta. Fire-and-forget rispetto al render
+    // stesso: un ritardo/fallimento qui non deve mai bloccare la Home
+    // (nessun WIP attivo è il caso normale — meglio degradare a "nessun
+    // blocco" che a "Home che non si apre").
+    if (typeof _wipCaricaCache === 'function') _wipCaricaCache();
     await renderWidgetHome();
     // _aggiornaOrologioStatusBar()/relativo setInterval RIMOSSI da qui
     // (2026-09-01): la nuova status bar (CSBar) ha un proprio orologio

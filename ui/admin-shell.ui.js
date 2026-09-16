@@ -77,6 +77,7 @@ async function controllaRuoloEAvvia() {
   caricaRichieste();
   caricaUtenti();
   caricaLogAdmin();
+  if (typeof caricaWip === 'function') caricaWip();
 }
 
 // ── TABS ───────────────────────────────────────────────────────

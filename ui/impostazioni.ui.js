@@ -25,7 +25,45 @@ function _impostazioniApri(pagina) {
     }
     if (pagina === 'connessioni') {
         _connessioniRicontrolla();
+        _impostazioniAggiornaDiagnostica();
     }
+}
+
+// ── DIAGNOSTICA (admin) ──────────────────────────────────────────────────
+let _impostazioniEhAdmin = null; // cache: null = non ancora verificato
+
+async function _impostazioniControllaAdmin() {
+    if (_impostazioniEhAdmin !== null) return _impostazioniEhAdmin;
+    try {
+        const userId = await authGetUserId();
+        if (!userId || typeof authGetRuolo !== 'function') { _impostazioniEhAdmin = false; return false; }
+        const { data, error } = await authGetRuolo(userId);
+        _impostazioniEhAdmin = !error && !!data && data.role === 'admin';
+    } catch (_) {
+        _impostazioniEhAdmin = false;
+    }
+    return _impostazioniEhAdmin;
+}
+
+async function _impostazioniAggiornaDiagnostica() {
+    const card = document.getElementById('impostazioniDiagnosticaCard');
+    if (!card) return;
+    const ehAdmin = await _impostazioniControllaAdmin();
+    card.style.display = ehAdmin ? '' : 'none';
+    if (ehAdmin) {
+        const viewer = document.getElementById('impostazioniLogViewer');
+        if (viewer && typeof _logDiagnosticoTesto === 'function') viewer.textContent = _logDiagnosticoTesto(80);
+    }
+}
+
+function _impostazioniCopiaLog() {
+    if (typeof _logDiagnosticoTesto !== 'function' || typeof _logDiagnosticoInfoDispositivo !== 'function') return;
+    const testo = _logDiagnosticoInfoDispositivo() + '\n\n--- Log ---\n' + _logDiagnosticoTesto(80);
+    navigator.clipboard.writeText(testo).then(() => {
+        alert('📋 Log copiato negli appunti.');
+    }).catch(() => {
+        alert(testo); // fallback se il clipboard non è disponibile
+    });
 }
 
 // ═══════════════════════════════════════════════════════════════════════

@@ -244,11 +244,43 @@
 
 
         // ── SEGNALAZIONE BUG (EASTER EGG: il bug è un Caterpie) ───────────────────
-        function segnalaCaterpie() {
+        // Fase 10, Step 3 (2026-09-13): "Report to admin" vero — prima era
+        // solo un mailto: (nessuna traccia per l'admin se l'utente non
+        // mandava davvero l'email, niente contesto tecnico allegato). Ora
+        // salva su segnalazioni_bug (sql/61) con il log diagnostico
+        // dell'ultima sessione allegato automaticamente (ui/log-
+        // diagnostico.ui.js) — l'utente non deve più sapere cos'è la
+        // console F12. mailto: tenuto come fallback SOLO se l'insert
+        // fallisce (es. offline), per non perdere comunque la
+        // segnalazione.
+        async function segnalaCaterpie() {
             const descrizione = prompt('🐛 Un Caterpie selvatico appare! Descrivi cosa hai visto (cosa NON funzionava come dovrebbe):');
             if (!descrizione || !descrizione.trim()) return;
+
+            const userId = await authGetUserId();
+            const logTesto = typeof _logDiagnosticoTesto === 'function' ? _logDiagnosticoTesto() : null;
+            const pagina = document.querySelector('.view-section.active')?.id || null;
+
+            if (userId) {
+                const { error } = await segnalazioniBugInvia({
+                    ownerId: userId,
+                    descrizione: descrizione.trim(),
+                    logDiagnostico: logTesto,
+                    pagina,
+                    browser: navigator.userAgent,
+                    schermo: `${window.innerWidth}x${window.innerHeight}`,
+                });
+                if (!error) {
+                    alert('🐛 Caterpie catturato! Grazie della segnalazione, l\'admin la vedrà a breve.');
+                    return;
+                }
+                console.error('Errore invio segnalazione bug, uso il fallback email:', error.message);
+            }
+
+            // Fallback (utente non loggato, o insert fallito): stesso
+            // mailto di prima, con in più il log diagnostico nel corpo.
             const corpo = encodeURIComponent(
-                `Ho catturato un Caterpie!\n\nDescrizione: ${descrizione.trim()}\n\nPagina: ${window.location.href}\nData: ${new Date().toLocaleString('it-IT')}`
+                `Ho catturato un Caterpie!\n\nDescrizione: ${descrizione.trim()}\n\nPagina: ${window.location.href}\nData: ${new Date().toLocaleString('it-IT')}\n\n--- Log diagnostico ---\n${logTesto || '(non disponibile)'}`
             );
             window.location.href = `mailto:admin@cardsyncpro.local?subject=${encodeURIComponent('🐛 Caterpie catturato — CardSync Pro')}&body=${corpo}`;
         }
