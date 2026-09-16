@@ -4994,7 +4994,7 @@
         <div id="dafare" class="view-section">
             <div class="settings-card" style="max-width: 700px;">
                 <h3 style="margin-bottom: 0.3rem; color: var(--text-dark); display: flex; align-items: center; gap: 0.6rem; font-size: 1.15rem; font-weight: 800;">
-                    <i class="fa-solid fa-list-check" style="color: var(--primary);"></i> Da fare
+                    <i class="fa-solid fa-list-check" style="color: var(--primary);"></i> Centro operativo
                 </h3>
                 <p style="font-size: 0.78rem; color: var(--text-muted); margin-bottom: 1.2rem;">
                     Le cose che richiedono la tua attenzione in questo momento, in ordine di priorità.
@@ -5071,6 +5071,17 @@
                  colori dal tema reale del sito. Contenuto riempito da
                  renderPaginaValoreCollezione() in ui/widget-valore-collezione.ui.js. -->
             <div id="valoreContenuto"></div>
+        </div>
+
+        <div id="variazione" class="view-section">
+            <!-- FASE 8, STEP 3 (2026-09-13): pagina "Variazione valore" —
+                 prima il widget cadeva su Visualizzazione come fallback
+                 silenzioso (nessun tab impostato), stesso bug già noto per
+                 "Contributi al gruppo". Contenuto riempito da
+                 renderPaginaVariazioneValore() in
+                 ui/widget-valore-collezione.ui.js, basato su
+                 movimenti_collezione (sql/54) per spiegare il "perché". -->
+            <div id="variazioneContenuto"></div>
         </div>
 
         <div id="wishlist" class="view-section">
