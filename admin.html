@@ -164,6 +164,7 @@
     <button class="tab-btn active" data-tab="richieste">📋 Richieste <span class="tab-count" id="count-richieste">0</span></button>
     <button class="tab-btn" data-tab="utenti">👥 Utenti</button>
     <button class="tab-btn" data-tab="logadmin">🛡️ Log admin</button>
+    <button class="tab-btn" data-tab="wip">🚧 Work in Progress</button>
   </div>
 
   <div id="status-msg" class="status-msg"></div>
@@ -226,6 +227,34 @@
   <div class="panel" id="panel-logadmin">
     <div class="card" id="logadmin-list"><div class="empty-state">Caricamento…</div></div>
   </div>
+
+  <!-- FASE 11 (2026-09-13): Work in Progress — attiva/disattiva per
+       widget/pagina (binder speciale/funzione: colonne già pronte nel
+       form sotto, ma non ancora verificate da nessun punto del sito,
+       vedi ui/wip.ui.js su index.html). -->
+  <div class="panel" id="panel-wip">
+    <div class="card">
+      <h3 style="margin-top:0;">Attiva un Work in Progress</h3>
+      <div class="search-bar" style="flex-wrap:wrap; gap:0.6rem;">
+        <select id="wipTargetTipo">
+          <option value="widget">Widget Home</option>
+          <option value="pagina">Pagina</option>
+          <option value="binder_speciale">Binder speciale (non ancora verificato lato client)</option>
+          <option value="funzione">Singola funzione (non ancora verificato lato client)</option>
+        </select>
+        <input type="text" id="wipTargetId" placeholder="id (es. bustina, dafare, scambio...)" style="min-width:220px;">
+        <select id="wipMessaggio">
+          <option value="Un Ditto ha copiato qualche impostazione di troppo. Stiamo sistemando.">Un Ditto ha copiato qualche impostazione di troppo…</option>
+          <option value="Il Professor Oak sta facendo un controllo qualità. Torniamo presto.">Il Professor Oak sta facendo un controllo qualità…</option>
+          <option value="Team Rocket ha temporaneamente preso possesso di questa pagina. Stiamo recuperando tutto.">Team Rocket ha preso possesso di questa pagina…</option>
+          <option value="Porygon sta aggiornando questa funzione. Nessun Pokémon è stato danneggiato.">Porygon sta aggiornando questa funzione…</option>
+          <option value="Questa funzione è in evoluzione. Torna a trovarci tra poco.">Questa funzione è in evoluzione…</option>
+        </select>
+        <button class="btn-main" onclick="attivaWip()">🚧 Attiva</button>
+      </div>
+    </div>
+    <div class="card" id="wip-list"><div class="empty-state">Caricamento…</div></div>
+  </div>
 </div>
 
 <!-- ── MODALE DETTAGLIO UTENTE ───────────────────────────────────── -->
@@ -242,6 +271,7 @@
 </div>
 
 <script src="data/admin.repository.js"></script>
+<script src="data/wip.repository.js"></script>
 <script src="state/admin.state.js"></script>
 <script src="utils/admin-formatters.js"></script>
 <script src="ui/admin-shell.ui.js"></script>
@@ -249,6 +279,7 @@
     <script src="ui/admin-requests-utility.ui.js"></script>
 <script src="ui/admin-users.ui.js"></script>
 <script src="ui/admin-log.ui.js"></script>
+<script src="ui/admin-wip.ui.js"></script>
 <script>
 // SUPABASE_URL e SUPABASE_ANON_KEY arrivano da config/supabase.js
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);

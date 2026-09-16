@@ -5538,6 +5538,26 @@
                     <button class="btn-secondary" style="margin-top:0.8rem;" onclick="_connessioniRicontrolla()"><i class="fa-solid fa-rotate"></i> Ricontrolla</button>
                 </div>
 
+                <!-- FASE 10, STEP 3 (2026-09-13): "Diagnostica" — SOLO admin
+                     (roadmap: "utente normale vede stato connessione
+                     semplice; admin vede diagnostica e Report to admin").
+                     Nascosta di default, mostrata da _impostazioniApri()
+                     solo se authGetRuolo() conferma role='admin'
+                     (data/auth.repository.js, già caricato qui — evitato
+                     di caricare tutto data/admin.repository.js solo per
+                     questo controllo). -->
+                <div id="impostazioniDiagnosticaCard" class="settings-card" style="display:none;">
+                    <h3 style="margin-bottom: 0.3rem; color: var(--text-dark); display: flex; align-items: center; gap: 0.6rem; font-size: 1.15rem; font-weight: 800;">
+                        <i class="fa-solid fa-stethoscope" style="color: var(--primary);"></i> Diagnostica (admin)
+                    </h3>
+                    <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.8rem;">Log di QUESTA sessione soltanto — riparte vuoto ad ogni refresh, non può leggere retroattivamente la console.</p>
+                    <div style="display:flex; gap:0.6rem; flex-wrap:wrap; margin-bottom:0.8rem;">
+                        <button class="btn-secondary" onclick="document.getElementById('impostazioniLogViewer').textContent = _logDiagnosticoTesto(80);"><i class="fa-solid fa-arrows-rotate"></i> Aggiorna log</button>
+                        <button class="btn-secondary" onclick="_impostazioniCopiaLog()"><i class="fa-solid fa-copy"></i> Copia (Report to admin)</button>
+                    </div>
+                    <pre id="impostazioniLogViewer" style="max-height:280px; overflow:auto; background:var(--bg-secondary, rgba(0,0,0,0.05)); border-radius:10px; padding:0.8rem; font-size:0.72rem; white-space:pre-wrap; word-break:break-word; margin:0;">(nessun evento registrato in questa sessione)</pre>
+                </div>
+
                 <!-- Preferenze estensione — SPOSTATE qui da "Generali" perché
                      riguardano proprio il comportamento del dispositivo verso
                      l'estensione/il worker del gruppo, stesso tema di questa
@@ -6320,6 +6340,22 @@
         </div>
     </div>
 
+    <!-- FASE 11 (2026-09-13): modale di blocco Work in Progress —
+         _wipMostraBlocco()/_wipChiudiModale() in ui/wip.ui.js. -->
+    <div id="wipModal" class="modal-overlay" style="display:none;">
+        <div class="modal-content" style="max-width: 340px; text-align: center;" onclick="event.stopPropagation()">
+            <div style="font-size: 2.4rem; margin-bottom: 0.6rem;">🚧</div>
+            <h3 style="font-weight: 800; margin-bottom: 0.8rem;">Lavori in corso</h3>
+            <p id="wipModalTesto" style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 1.2rem;"></p>
+            <button class="btn-main" style="width: 100%; justify-content:center;" onclick="_wipChiudiModale(false)">
+                <i class="fa-solid fa-check"></i> Ho capito
+            </button>
+            <button class="btn-secondary" id="wipModalBypassBtn" style="width: 100%; justify-content:center; margin-top: 0.6rem; display:none;" onclick="_wipChiudiModale(true)">
+                <i class="fa-solid fa-screwdriver-wrench"></i> Apri comunque (modalità manutenzione)
+            </button>
+        </div>
+    </div>
+
     <!-- MODALE POPUP BULBASAUR (EASTER EGG) -->
     <div id="bulbasaurModal" class="modal-overlay" onclick="closeBulbasaurModal()">
         <div class="modal-content" style="max-width: 340px; padding: 2rem 1.2rem 1.2rem 1.2rem;" onclick="event.stopPropagation()">
@@ -6339,6 +6375,10 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
     <script src="config/supabase.js"></script>
+    <!-- ui/log-diagnostico.ui.js: Fase 10, Step 3 (2026-09-13) — caricato
+         SUBITO dopo supabase.js, il più presto possibile, così cattura
+         anche gli errori dei primissimi istanti di caricamento pagina. -->
+    <script src="ui/log-diagnostico.ui.js"></script>
     <script src="data/moderation.repository.js"></script>
     <script src="data/auth.repository.js"></script>
     <script src="data/locations.repository.js"></script>
@@ -6375,6 +6415,12 @@
          di achievement_catalogo/achievement_sbloccati (sql/59), scrittura
          esclusivamente via RPC riscatta_traguardo. -->
     <script src="data/achievement.repository.js"></script>
+    <!-- data/segnalazioni.repository.js: Fase 10, Step 3 (2026-09-13) —
+         invio segnalazioni bug con log diagnostico allegato (sql/61). -->
+    <script src="data/segnalazioni.repository.js"></script>
+    <!-- data/wip.repository.js: Fase 11 (2026-09-13) — sola lettura qui
+         (scrittura solo su admin.html), stato Work in Progress. -->
+    <script src="data/wip.repository.js"></script>
     <!-- data/richieste-scambio.repository.js: Fase 4, Step 3 (2026-09-13). -->
     <script src="data/richieste-scambio.repository.js"></script>
     <!-- data/bustina.repository.js: usata da renderPaginaBustina()/motore
@@ -6520,6 +6566,9 @@
     <!-- ui/impostazioni.ui.js: Fase 10 (2026-09-13) — router hub/sotto-
          pagine per #impostazioni. -->
     <script src="ui/impostazioni.ui.js"></script>
+    <!-- ui/wip.ui.js: Fase 11 (2026-09-13) — verifica/blocco Work in
+         Progress per widget/pagine (sql/62). -->
+    <script src="ui/wip.ui.js"></script>
     <script src="ui/widget-vetrina.ui.js"></script>
     <script src="ui/widget-visualizzazione.ui.js"></script>
     <script src="ui/widget-wishlist.ui.js"></script>
