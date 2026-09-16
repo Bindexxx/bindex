@@ -11,3 +11,14 @@
 async function movimentiCollezioneInsertRighe(righe) {
     return supabaseClient.from('movimenti_collezione').insert(righe);
 }
+
+// Fase 8, Step 3 (2026-09-13): lettura per la pagina "Variazione valore" —
+// gli ultimi N eventi dell'utente, più recenti prima (stesso ordine
+// garantito dall'indice idx_movimenti_collezione_owner_data, sql/54).
+async function movimentiCollezioneListMie(userId, limite = 200) {
+    return supabaseClient.from('movimenti_collezione')
+        .select('*')
+        .eq('owner_id', userId)
+        .order('avvenuto_il', { ascending: false })
+        .limit(limite);
+}

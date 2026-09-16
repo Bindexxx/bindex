@@ -41,7 +41,7 @@ async function cardsUpdateRecord(isWishlist, id, aggiornamento) {
 }
 
 async function cardsInsertNellaCollezione(record) {
-    return supabaseClient.from('carte').insert(record);
+    return supabaseClient.from('carte').insert(record).select();
 }
 
 async function wishlistDelete(id) {

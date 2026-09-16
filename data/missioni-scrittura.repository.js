@@ -203,6 +203,20 @@ async function missioniAccessoRegistraOggi(userId) {
 // missioniTraguardiRiscossiIdTotale, ricompenseSaldo) restano in
 // data/missioni.repository.js.
 
+// ⚠ FASE 9 (2026-09-13), BLINDATURA SICUREZZA (sql/58): le 3 funzioni sotto
+// NON sono più utilizzabili dal client dopo l'esecuzione di sql/58 — le
+// RLS di missioni_completate/traguardi_riscossi/inventario_ricompense sono
+// state ristrette a sola SELECT (stesso modello già in uso per
+// bustina_carte_possedute). Un insert diretto da qui in poi fallisce con
+// "new row violates row-level security policy". Lasciate qui SOLO come
+// riferimento storico — la vulnerabilità reale che proteggevano (nessun
+// controllo su tipo/quantità: chiunque poteva scriversi premi arbitrari
+// dalla console del browser) è quella corretta da sql/58. Uso corretto ora:
+// missioneRiscattaCompletamento()/traguardoRiscatta() poco sotto, che
+// chiamano le due RPC SECURITY DEFINER (riscatta_missione_completata/
+// riscatta_traguardo) — l'UNICA fonte di verità per quanto premio dare è
+// ora catalogo_ricompense lato server, mai un valore passato dal client.
+
 async function missioniInserisciCompletamento(userId, missioneId, finestra, periodo) {
     return supabaseClient.from('missioni_completate').insert({
         owner_id: userId,
@@ -283,8 +297,40 @@ async function ricompensaConsumaSkip(userId, missioneId, finestra, periodo) {
     // colonna sbagliata — un caso limite noto, non gestito automaticamente
     // qui: da decidere quando questa funzione avrà una UI reale se
     // rimborsare lo skip in quel caso specifico).
+    // ⚠ FASE 9 (2026-09-13): questo insert diretto su missioni_completate
+    // fallirà anch'esso dopo sql/58 (stesso motivo delle 3 funzioni sopra)
+    // — ma questa funzione non ha ancora nessuna UI che la chiama (vedi
+    // commento in cima alla funzione), quindi nessuna regressione dal vivo.
+    // Se in futuro guadagna una UI reale, va riscritta come RPC dedicata
+    // PRIMA di collegarla (stessa raccomandazione già scritta qui prima
+    // del fix di sicurezza, ora ancora più vera).
     return supabaseClient.from('missioni_completate').insert({
         owner_id: userId, missione_id: missioneId, finestra, periodo, origine: 'skip',
         completato_il: new Date().toISOString(),
     });
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════
+// FASE 9 (2026-09-13) — RISCATTO SICURO (sql/58)
+// ═══════════════════════════════════════════════════════════════════════
+// Sostituiscono l'uso di missioniInserisciCompletamento()/
+// traguardiInserisciRiscossione()/ricompenseInserisci() sopra nei due
+// punti che le chiamavano (ui/missioni.ui.js: _valutaEAssegnaUnGiro;
+// ui/paginainiziale.ui.js: _missioneAggancioPersonalizzaLayout). Una sola
+// chiamata RPC al posto di due insert separati non atomici — anche più
+// corretto sul piano transazionale, non solo più sicuro. Il valore di
+// ritorno (booleano) sostituisce il controllo `error.code !== '23505'` di
+// prima: true = nuovo completamento appena assegnato (con relativa
+// ricompensa, se presente nel catalogo), false = era già completato,
+// nessuna nuova ricompensa — MAI un errore per il caso "già fatto".
+
+async function missioneRiscattaCompletamento(missioneId, finestra, periodo) {
+    return supabaseClient.rpc('riscatta_missione_completata', {
+        p_missione_id: missioneId, p_finestra: finestra, p_periodo: periodo,
+    });
+}
+
+async function traguardoRiscatta(traguardoId) {
+    return supabaseClient.rpc('riscatta_traguardo', { p_traguardo_id: traguardoId });
 }
