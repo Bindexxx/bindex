@@ -74,7 +74,7 @@ async function _segnaDaFareRisolto(id, testo) {
 
 // ── VOCE DI CATALOGO ──────────────────────────────────────────────────
 CATALOGO_WIDGET.suggerimento = {
-        titolo: 'Prossima azione', icona: 'fa-lightbulb',
+        titolo: 'Centro operativo', icona: 'fa-lightbulb',
         // UNIFICATO con "Da fare" (Claudio, 2026-08-28: "saranno la stessa
         // cosa"). Stessa priorità di sempre (coda errori → prezzi scaduti
         // → wishlist sotto obiettivo → gruppo al lavoro) ma ora raccoglie
@@ -84,6 +84,23 @@ CATALOGO_WIDGET.suggerimento = {
         // attivi, e 'dati.segnali' è l'elenco completo che legge
         // renderPaginaDaFare(). Il tap apre sempre la pagina dedicata,
         // mai più una tab diversa a seconda del segnale.
+        //
+        // FASE 8, STEP 4 (2026-09-13): rinominato da "Prossima azione" a
+        // "Centro operativo" (roadmap) — id di catalogo 'suggerimento'
+        // NON cambiato apposta (il tracciamento missioni/il resto del
+        // codice lo referenzia per id, non per titolo). Aggiunti 3 nuovi
+        // segnali chiesti dalla roadmap: match trovati, richieste da
+        // gestire ("interesse ricevuto"), elementi ancora in "?". Tutti e
+        // tre a ZERO query aggiuntive: match e richieste riusano
+        // CATALOGO_WIDGET.match.preview()/CATALOGO_WIDGET.richieste.
+        // preview() (stessa filosofia già in uso per valore_collezione —
+        // "un solo posto dove il dato è calcolato"), elementi in "?" legge
+        // carteReali già in memoria (nessuna nuova interrogazione).
+        // "Missioni/reward pronti da riscuotere" (anch'esso nella lista
+        // della roadmap) NON incluso in questo giro: servirebbe una nuova
+        // query dedicata (nessun conteggio "completata ma non ancora
+        // riscossa" già esposto da nessuna parte) — rimandato apposta
+        // piuttosto che costruire un numero approssimativo.
         preview: async () => {
             const segnali = [];
             const codaErrori = await _contaCodaErrori();
@@ -92,8 +109,31 @@ CATALOGO_WIDGET.suggerimento = {
             const lista = (typeof _elencoPrezziScaduti !== 'undefined' && _elencoPrezziScaduti) ? _elencoPrezziScaduti : [];
             if (lista.length > 0) segnali.push({ id: 'prezzi_scaduti', testo: `${lista.length} prezzi da aggiornare`, stato: 'allerta', tab: 'prezzi' });
 
+            // "Interesse ricevuto" — richieste di scambio ricevute che
+            // aspettano una MIA decisione (accetta/rifiuta). Zero query
+            // proprie: CATALOGO_WIDGET.richieste.preview() la fa già.
+            try {
+                const richiesteInfo = await CATALOGO_WIDGET.richieste.preview();
+                const daGestire = (richiesteInfo.dati && richiesteInfo.dati.totale) || 0;
+                if (daGestire > 0) segnali.push({ id: 'richieste_da_gestire', testo: `${daGestire} richiest${daGestire === 1 ? 'a' : 'e'} da gestire`, stato: 'allerta', tab: 'richieste' });
+            } catch (e) { console.error('[Centro operativo] richieste:', e); }
+
             const wishlistSottoTarget = carteReali.filter(c => c.tabella === 'wishlist' && c.prezzoObiettivo != null && c.price > 0 && c.price <= c.prezzoObiettivo);
             if (wishlistSottoTarget.length > 0) segnali.push({ id: 'wishlist_obiettivo', testo: `${wishlistSottoTarget.length} in wishlist sotto obiettivo`, stato: 'ok', tab: 'binder' });
+
+            // Match — stessa idea di richieste sopra: CATALOGO_WIDGET.match
+            // .preview() è sincrona (legge due variabili di modulo già
+            // aggiornate dal polling di queue.ui.js), zero query qui.
+            try {
+                const matchInfo = CATALOGO_WIDGET.match.preview();
+                const totaleMatch = ((matchInfo.dati && matchInfo.dati.scambio) || 0) + ((matchInfo.dati && matchInfo.dati.wishlist) || 0);
+                if (totaleMatch > 0) segnali.push({ id: 'match_trovati', testo: `${totaleMatch} corrispondenz${totaleMatch === 1 ? 'a' : 'e'} nel gruppo`, stato: 'ok', tab: 'match' });
+            } catch (e) { console.error('[Centro operativo] match:', e); }
+
+            // Elementi ancora in location "?" — solo collezione (mai
+            // wishlist, che non ha una location reale).
+            const inAttesaLocation = carteReali.filter(c => c.tabella === 'carte' && c.location === '?');
+            if (inAttesaLocation.length > 0) segnali.push({ id: 'elementi_senza_location', testo: `${inAttesaLocation.length} element${inAttesaLocation.length === 1 ? 'o' : 'i'} ancora in "?"`, stato: undefined, tab: 'location' });
 
             const alLavoro = await _dispositiviAttiviOra();
             if (alLavoro) segnali.push({ id: 'gruppo_al_lavoro', testo: 'Il gruppo sta lavorando', stato: undefined, tab: 'home' });

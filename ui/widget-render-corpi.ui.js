@@ -413,7 +413,7 @@ const _ballCORPI = {
     suggerimento: (d) => {
         if (!d) return { inline: '', blocco: '' };
         const inline =
-            '<p class="ball-k-tit">Prossima azione</p>' +
+            '<p class="ball-k-tit">Centro operativo</p>' +
             `<div class="ball-k-mid">${d.testo || ''}</div>` +
             '<span class="ball-k-lab">la cosa più utile ora</span>';
         const blocco = d.tab && d.tab !== 'home'

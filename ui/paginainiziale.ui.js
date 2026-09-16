@@ -333,18 +333,25 @@ function _salvaLayoutWidget(daAzioneUtente = true) {
 }
 
 // Fire-and-forget: un fallimento qui non deve mai bloccare il salvataggio
-// del layout, che è la parte importante di questa funzione. UNIQUE(owner_id,
-// periodo, missione_id) in missioni_completate assorbe silenziosamente le
+// del layout, che è la parte importante di questa funzione. Il vincolo
+// UNIQUE(owner_id, periodo, missione_id) assorbe silenziosamente le
 // chiamate ripetute nello stesso giorno (drag/resize possono chiamare
-// _salvaLayoutWidget() molte volte) — solo il primo insert del giorno va a
-// buon fine, gli altri falliscono con 23505 e va bene così.
+// _salvaLayoutWidget() molte volte) — solo il primo giro del giorno va a
+// buon fine, gli altri ritornano false senza errore e va bene così.
+// Fase 9 (2026-09-13, sql/58): missioneRiscattaCompletamento() al posto
+// dell'insert diretto — oltre a essere ora l'unica via permessa dalla RLS
+// (blindatura sicurezza premi), corregge di riflesso un gap preesistente:
+// prima questo hook marcava la missione completata SENZA mai chiamare
+// ricompenseInserisci(), quindi m94/m95 non assegnavano mai la loro
+// ricompensa da questo percorso diretto. La RPC fa entrambe le cose in
+// un colpo solo, sempre.
 async function _missioneAggancioPersonalizzaLayout() {
     try {
         const userId = await authGetUserId();
         if (!userId) return;
         const oggi = new Date().toISOString().slice(0, 10);
-        await missioniInserisciCompletamento(userId, 'm94_personalizza', 'giornaliera', oggi);
-        await missioniInserisciCompletamento(userId, 'm95_il_tuo_telefono', 'una_tantum', 'sempre');
+        await missioneRiscattaCompletamento('m94_personalizza', 'giornaliera', oggi);
+        await missioneRiscattaCompletamento('m95_il_tuo_telefono', 'una_tantum', 'sempre');
     } catch (_) { /* silenzioso, vedi commento sopra */ }
 }
 

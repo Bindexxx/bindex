@@ -271,6 +271,47 @@ async function salvaModificaSealed() {
         return;
     }
 
+    // Fase 8, Step 2 (2026-09-13): stessa logica di modificaCampoInline
+    // (ui/cards-modifica.ui.js) per le carte — qui in un colpo solo perché
+    // il modale sealed salva tutti i campi insieme, non riga per riga.
+    // _sealedInModifica è lo stato PRIMA di questa modifica (catturato da
+    // apriModificaSealed). Fire-and-forget, mai bloccante.
+    (async () => {
+        const movimenti = [];
+        const prezzoCambiato = Number(aggiornamento.prezzo) !== Number(_sealedInModifica.price || 0)
+            && aggiornamento.prezzo != null;
+        const qtyCambiata = Number(aggiornamento.qty) !== Number(_sealedInModifica.qty || 0);
+        if (prezzoCambiato) {
+            movimenti.push({
+                tipo_evento: 'prezzo_manuale',
+                quantita_delta: null,
+                prezzo_unitario: aggiornamento.prezzo,
+                valore_delta: (Number(aggiornamento.prezzo) - Number(_sealedInModifica.price || 0)) * (Number(_sealedInModifica.qty) || 1),
+            });
+        }
+        if (qtyCambiata) {
+            movimenti.push({
+                tipo_evento: 'variazione_quantita',
+                quantita_delta: Number(aggiornamento.qty) - Number(_sealedInModifica.qty || 0),
+                prezzo_unitario: aggiornamento.prezzo,
+                valore_delta: (Number(aggiornamento.qty) - Number(_sealedInModifica.qty || 0)) * (Number(aggiornamento.prezzo) || 0),
+            });
+        }
+        if (movimenti.length === 0) return;
+        const userId = await authGetUserId();
+        if (!userId) return;
+        const righe = movimenti.map(m => ({
+            owner_id: userId,
+            oggetto_tipo: 'sealed',
+            oggetto_id: idProdotto,
+            nome_snapshot: aggiornamento.nome || _sealedInModifica.name || '',
+            fonte: 'sito',
+            ...m,
+        }));
+        const { error: errMov } = await movimentiCollezioneInsertRighe(righe);
+        if (errMov) console.error('Log movimenti (modifica sealed):', errMov.message);
+    })();
+
     chiudiModificaSealed();
     await caricaProdottiSealedReali();
     if (typeof renderPaginaSealed === 'function') renderPaginaSealed();
@@ -287,10 +328,27 @@ async function eliminaSealedDaModale() {
 
 async function eliminaSealed(id) {
     if (!confirm('Eliminare definitivamente questo prodotto sealed dalla collezione?\n\nQuesta azione non si può annullare.')) return;
+    // Fase 8, Step 2 (2026-09-13): snapshot PRIMA della delete — l'oggetto
+    // non esisterà più per rileggerlo dopo.
+    const prodotto = prodottiSealedReali.find(p => String(p.id) === String(id));
     const { error } = await sealedDelete(id);
     if (error) {
         alert('❌ Errore nell\'eliminazione: ' + error.message);
         return;
+    }
+    if (prodotto) {
+        (async () => {
+            const userId = await authGetUserId();
+            if (!userId) return;
+            const { error: errMov } = await movimentiCollezioneInsertRighe([{
+                owner_id: userId, tipo_evento: 'rimozione', oggetto_tipo: 'sealed',
+                oggetto_id: id, nome_snapshot: prodotto.name || '',
+                quantita_delta: -(Number(prodotto.qty) || 1), prezzo_unitario: prodotto.price || null,
+                valore_delta: prodotto.price != null ? -(prodotto.price * (Number(prodotto.qty) || 1)) : null,
+                fonte: 'sito',
+            }]);
+            if (errMov) console.error('Log movimenti (eliminazione sealed):', errMov.message);
+        })();
     }
     await caricaProdottiSealedReali();
     if (typeof renderPaginaSealed === 'function') renderPaginaSealed();

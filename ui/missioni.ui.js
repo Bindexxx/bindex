@@ -554,23 +554,26 @@ const MOTORE_MISSIONI = {
         const nuoveMissioni = [];
         for (const m of missioniSoddisfatte) {
             const { periodo } = this.periodoCorrente(m.finestra);
-            const { error } = await missioniInserisciCompletamento(userId, m.id, m.finestra, periodo);
-            if (!error) {
-                nuoveMissioni.push(m);
-                await ricompenseInserisci(userId, m.ricompensa.tipo, m.id, m.ricompensa.quantita || 1);
-            } else if (error.code !== '23505') {
+            // Fase 9 (2026-09-13, sql/58): una sola RPC atomica al posto
+            // di due insert separati — vedi data/missioni-scrittura.
+            // repository.js per il motivo (blindatura sicurezza premi).
+            // true = nuovo davvero, false = già completata (mai un errore
+            // per quel caso, il controllo error.code==='23505' non serve più).
+            const { data: nuovaDavvero, error } = await missioneRiscattaCompletamento(m.id, m.finestra, periodo);
+            if (error) {
                 console.error('[missioni] errore assegnazione', m.id, error.message);
+            } else if (nuovaDavvero) {
+                nuoveMissioni.push(m);
             }
         }
 
         const nuoviTraguardi = [];
         for (const t of traguardiSoddisfatti) {
-            const { error } = await traguardiInserisciRiscossione(userId, t.id);
-            if (!error) {
-                nuoviTraguardi.push(t);
-                await ricompenseInserisci(userId, t.ricompensa.tipo, t.id, t.ricompensa.quantita || 1);
-            } else if (error.code !== '23505') {
+            const { data: nuovoDavvero, error } = await traguardoRiscatta(t.id);
+            if (error) {
                 console.error('[missioni] errore riscossione', t.id, error.message);
+            } else if (nuovoDavvero) {
+                nuoviTraguardi.push(t);
             }
         }
 

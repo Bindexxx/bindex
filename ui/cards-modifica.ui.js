@@ -146,9 +146,12 @@
             if (!_cartaInModifica) return;
             const isWishlist = _cartaInModifica.tabella === 'wishlist';
             // Catturati PRIMA di chiudiModificaCarta(), che azzera
-            // _cartaInModifica — servono dopo per il feedback A14.
+            // _cartaInModifica — servono dopo per il feedback A14 e (Fase
+            // 8, Step 2) per calcolare i delta del log movimenti.
             const idCartaModificata = _cartaInModifica.id;
             const prezzoPrecedente = _cartaInModifica.price;
+            const qtyPrecedente = _cartaInModifica.qty;
+            const nomePrecedente = _cartaInModifica.name;
 
             const aggiornamento = {
                 nome: document.getElementById('editNome').value.trim(),
@@ -185,6 +188,44 @@
                 return;
             }
 
+            // Fase 8, Step 2 (2026-09-13): log prezzo_manuale/
+            // variazione_quantita — SOLO su 'carte' (mai wishlist, stessa
+            // regola dell'"aggiunta"), solo se il valore è DAVVERO cambiato
+            // (evita righe di log per un salvataggio che non tocca quel
+            // campo). Fire-and-forget, non blocca il salvataggio già
+            // riuscito sopra. Un editing può cambiare prezzo E quantità
+            // insieme: due eventi separati, non uno solo, perché la
+            // roadmap li vuole distinti nel "perché" della variazione.
+            if (!isWishlist) {
+                (async () => {
+                    const userId = await authGetUserId();
+                    if (!userId) return;
+                    const righe = [];
+                    if (aggiornamento.prezzo != null && prezzoPrecedente != null && aggiornamento.prezzo !== prezzoPrecedente) {
+                        righe.push({
+                            owner_id: userId, tipo_evento: 'prezzo_manuale', oggetto_tipo: 'carta',
+                            oggetto_id: idCartaModificata, nome_snapshot: aggiornamento.nome || nomePrecedente || '',
+                            quantita_delta: null, prezzo_unitario: aggiornamento.prezzo,
+                            valore_delta: (aggiornamento.prezzo - prezzoPrecedente) * (Number(aggiornamento.qty) || 1),
+                            fonte: 'sito',
+                        });
+                    }
+                    if (aggiornamento.qty !== qtyPrecedente) {
+                        righe.push({
+                            owner_id: userId, tipo_evento: 'variazione_quantita', oggetto_tipo: 'carta',
+                            oggetto_id: idCartaModificata, nome_snapshot: aggiornamento.nome || nomePrecedente || '',
+                            quantita_delta: aggiornamento.qty - qtyPrecedente, prezzo_unitario: aggiornamento.prezzo,
+                            valore_delta: (aggiornamento.qty - qtyPrecedente) * (Number(aggiornamento.prezzo) || 0),
+                            fonte: 'sito',
+                        });
+                    }
+                    if (righe.length) {
+                        const { error: errMov } = await movimentiCollezioneInsertRighe(righe);
+                        if (errMov) console.error('Log movimenti (modifica carta, modale):', errMov.message);
+                    }
+                })();
+            }
+
             // A14: feedback visivo solo se il prezzo è stato toccato
             // (campo lasciato/impostato non-vuoto) e risulta davvero
             // salito o sceso rispetto a prima.
@@ -208,7 +249,7 @@
             const location = prompt(`In che Location metti "${card.name}"? (lascia vuoto per "?")`, '');
             if (location === null) return; // annullato
 
-            const { error: errInsert } = await cardsInsertNellaCollezione({
+            const { error: errInsert, data: righeInserite } = await cardsInsertNellaCollezione({
                 owner_id: userId,
                 nome: card.name,
                 codice: card.code || null,
@@ -224,6 +265,24 @@
             if (errInsert) {
                 alert('❌ Errore nello spostare la carta in collezione: ' + errInsert.message);
                 return;
+            }
+
+            // Fase 8, Step 2 (2026-09-13): "segna come ottenuta" è un
+            // secondo punto reale di 'aggiunta' alla collezione (insert
+            // diretto, non passa da coda_carte/completa_riga_coda_carte —
+            // per questo non era ancora coperto dal log). fonte='sito'
+            // come tutti gli inserimenti diretti client.
+            const nuovaCarta = righeInserite && righeInserite[0];
+            if (nuovaCarta) {
+                movimentiCollezioneInsertRighe([{
+                    owner_id: userId, tipo_evento: 'aggiunta', oggetto_tipo: 'carta',
+                    oggetto_id: nuovaCarta.id, nome_snapshot: card.name || '',
+                    quantita_delta: card.qty, prezzo_unitario: card.price || null,
+                    valore_delta: card.price != null ? card.price * (Number(card.qty) || 1) : null,
+                    fonte: 'sito',
+                }]).then(({ error: errMov }) => {
+                    if (errMov) console.error('Log movimenti (segna ottenuta):', errMov.message);
+                });
             }
 
             const { error: errDelete } = await wishlistDelete(card.id);
@@ -246,6 +305,26 @@
                 alert('❌ Errore nell\'eliminazione: ' + error.message);
                 return;
             }
+
+            // Fase 8, Step 2 (2026-09-13): log 'rimozione' — SOLO collezione
+            // (mai wishlist, eliminare un desiderio non è un movimento di
+            // inventario). Snapshot preso da 'card' PRIMA della delete
+            // (catturato sopra), l'oggetto non esiste più per rileggerlo.
+            if (!isWishlist) {
+                (async () => {
+                    const userId = await authGetUserId();
+                    if (!userId) return;
+                    const { error: errMov } = await movimentiCollezioneInsertRighe([{
+                        owner_id: userId, tipo_evento: 'rimozione', oggetto_tipo: 'carta',
+                        oggetto_id: id, nome_snapshot: card.name || '',
+                        quantita_delta: -(Number(card.qty) || 1), prezzo_unitario: card.price || null,
+                        valore_delta: card.price != null ? -(card.price * (Number(card.qty) || 1)) : null,
+                        fonte: 'sito',
+                    }]);
+                    if (errMov) console.error('Log movimenti (eliminazione carta):', errMov.message);
+                })();
+            }
+
             await caricaCarteReali();
         }
 
@@ -366,8 +445,45 @@
             if (_normalizza(valore) === _normalizza(valoreAttuale)) return; // nessuna modifica reale
             if (!confirm(`Salvare "${etichetta}" = "${valore === null ? '(vuoto)' : valore}"?`)) return;
 
+            // Fase 8, Step 2 (2026-09-13): cattura la carta PRIMA
+            // dell'update/ricarica — serve prezzo/qty "dell'altro campo"
+            // (quello NON appena modificato) per calcolare valore_delta.
+            const cardPrima = carteReali.find(c => String(c.id) === String(id));
+
             const { error } = await cardsUpdateCampo(tabella, id, campo, valore);
             if (error) { alert(`❌ Errore nel salvare "${etichetta}": ` + error.message); return; }
+
+            // Log SOLO su 'carte' (mai wishlist, non è collezione — stessa
+            // regola già applicata all'"aggiunta") e solo per i due campi
+            // che la roadmap Fase 8 vuole distinti: prezzo_manuale e
+            // variazione_quantita. Fire-and-forget: un fallimento del log
+            // non deve mai bloccare la modifica vera, già riuscita sopra.
+            if (tabella === 'carte' && (campo === 'prezzo' || campo === 'qty') && cardPrima) {
+                (async () => {
+                    const userId = await authGetUserId();
+                    if (!userId) return;
+                    const riga = campo === 'prezzo' ? {
+                        tipo_evento: 'prezzo_manuale',
+                        quantita_delta: null,
+                        prezzo_unitario: valore,
+                        valore_delta: (Number(valore) - Number(valoreAttuale || 0)) * (Number(cardPrima.qty) || 1),
+                    } : {
+                        tipo_evento: 'variazione_quantita',
+                        quantita_delta: Number(valore) - Number(valoreAttuale || 0),
+                        prezzo_unitario: cardPrima.price,
+                        valore_delta: (Number(valore) - Number(valoreAttuale || 0)) * (Number(cardPrima.price) || 0),
+                    };
+                    const { error: errMov } = await movimentiCollezioneInsertRighe([{
+                        owner_id: userId,
+                        oggetto_tipo: 'carta',
+                        oggetto_id: id,
+                        nome_snapshot: cardPrima.name || '',
+                        fonte: 'sito',
+                        ...riga,
+                    }]);
+                    if (errMov) console.error('Log movimenti (modifica campo inline):', errMov.message);
+                })();
+            }
 
             // A14: feedback visivo solo quando il campo modificato è il
             // prezzo e il valore è davvero salito/sceso (il controllo
