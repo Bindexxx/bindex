@@ -141,6 +141,11 @@ function _clickTastoFisico() {
 }
 
 // ── PRESENZA LIVE (2026-09-01, punto 4 status bar) ──────────────────────
+// Fase 10, Step 2 (2026-09-13): stato dell'ultima subscribe, letto in
+// sola lettura dalla pagina Impostazioni > Connessioni — null finché il
+// primo giro non è ancora arrivato.
+let _ultimoStatoPresenzaRealtime = null;
+
 // Supabase Realtime, prima volta usato nel progetto — solo Presence pura
 // (channel().track()), effimera: nessuna tabella, nessuna RLS, nessuna
 // migration, niente scritto su Postgres. Un canale unico condiviso da
@@ -177,12 +182,17 @@ async function _avviaPresenzaLive() {
             })
             .subscribe(async (status) => {
                 if (status === 'SUBSCRIBED') {
+                    // Fase 10, Step 2 (2026-09-13): stato salvato per la
+                    // pagina Impostazioni > Connessioni — sola lettura da
+                    // lì, mai una seconda subscribe a parte.
+                    _ultimoStatoPresenzaRealtime = 'ok';
                     await canale.track({ online: true }); // nessun dato identificativo, vedi nota sopra
                 } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+                    _ultimoStatoPresenzaRealtime = 'errore';
                     console.warn('[presenza] canale realtime non disponibile (status: ' + status + ') — controllare che Realtime sia attivo sul progetto Supabase.');
                 }
             });
-    } catch (e) { console.error('[presenza] errore avvio:', e); }
+    } catch (e) { _ultimoStatoPresenzaRealtime = 'errore'; console.error('[presenza] errore avvio:', e); }
 }
 
 // ── AVVIO ─────────────────────────────────────────────────────────────
@@ -282,18 +292,17 @@ async function initPhoneShell() {
             // ora fisso e visibile nell'header della home (index.html) —
             // due strade per la stessa azione avrebbero richiesto tenerle
             // sincronizzate (stato 'attivo'/testo) senza un vantaggio reale.
-            // Voce diagnostica 'test2x2' (Claudio, 2026-09-10, screenshot:
-            // "metti un tasto... così lo clicco e vedo quanto diventa
-            // grande"): forza il PRIMO widget visibile a 2x2 per giudicare
-            // a occhio la taglia minima standard, dal vivo, senza dover
-            // trascinare a mano fino in fondo. Strumento usa-e-getta, non
-            // pensato per restare per sempre — stesso spirito dei bottoni
-            // diagnostici della bustina rimossi in un'altra sessione: se
-            // non serve più basta togliere questa riga.
+            // FASE 10 (2026-09-13): rimossi gli shortcut diagnostici
+            // 'densita'/'test2x2' dalla tendina — richiesto esplicitamente
+            // dalla roadmap ("rimuovere shortcut debug Home Densità comoda
+            // e 2×2 widget; non rimuovere i layout Binder reali", che
+            // restano intatti, questi erano solo scorciatoie di debug).
+            // Le funzioni toggleDensitaWidgetHome()/_testForzaTaglia2x2()
+            // restano nel codice (non più richiamate da qui) — nessun
+            // altro punto le chiama, rimozione a costo zero se in futuro
+            // si vuole ripulire anche quelle.
             quickActions: [
                 { id: 'suoni', label: 'Suoni', glyph: '\u266a', active: prefSuoniWidgetGet(), onToggle: () => toggleSuoniWidgetHome() },
-                { id: 'densita', label: 'Densità comoda', glyph: '\u25a6', active: _densitaCompatta, onToggle: () => toggleDensitaWidgetHome() },
-                { id: 'test2x2', label: '2x2', glyph: '\u25a2', type: 'action', onToggle: () => _testForzaTaglia2x2() },
             ],
 
             onSettings: () => apriDettaglioWidget('impostazioni'),

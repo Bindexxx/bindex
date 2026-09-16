@@ -118,8 +118,18 @@
         // e applica lei stessa la soglia di 10 minuti — non serve più
         // calcolarla qui lato client.
 
+        // FASE 10 (2026-09-13), BUG TROVATO E CORRETTO: questa riga
+        // chiamava claimGruppoStato(SOGLIA_MINUTI_CLAIM_PREZZI) — una
+        // costante MAI dichiarata da nessuna parte nel progetto (verificato
+        // con grep su tutto ui/). Ogni chiamata lanciava ReferenceError,
+        // silenziosamente inghiottito perché nessun chiamante la avvolgeva
+        // in try/catch fino al punto giusto — il segnale "il gruppo sta
+        // lavorando" nel Centro operativo (Fase 8) non ha mai funzionato.
+        // Il commento qui sopra spiega da solo il fix giusto: la RPC
+        // applica GIÀ la sua soglia di 10 minuti di default (sql/13,
+        // p_soglia_minuti default 10) — non serve passare nulla.
         async function _dispositiviAttiviOra() {
-            const { data, error } = await claimGruppoStato(SOGLIA_MINUTI_CLAIM_PREZZI);
+            const { data, error } = await claimGruppoStato();
 
             if (error) { console.error('Errore lettura dispositivi attivi:', error.message); return false; }
             return (data || []).length > 0;

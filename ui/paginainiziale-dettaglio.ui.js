@@ -67,7 +67,7 @@ async function apriDettaglioWidget(tabId, evt) {
     clearTimeout(_chiusuraDettaglioTimeout); // annulla un'eventuale chiusura ancora in corso (riapertura rapida)
 
     const container = document.querySelector('.container');
-    if (tabId === 'dafare' || tabId === 'match' || tabId === 'condividi' || tabId === 'missioni' || tabId === 'valore' || tabId === 'variazione' || tabId === 'wishlist' || tabId === 'location' || tabId === 'doppioni' || tabId === 'sealed' || tabId === 'set' || tabId === 'bustina' || tabId === 'scaffali' || tabId === 'richieste') {
+    if (tabId === 'dafare' || tabId === 'match' || tabId === 'condividi' || tabId === 'missioni' || tabId === 'valore' || tabId === 'variazione' || tabId === 'wishlist' || tabId === 'location' || tabId === 'doppioni' || tabId === 'sealed' || tabId === 'set' || tabId === 'bustina' || tabId === 'scaffali' || tabId === 'richieste' || tabId === 'achievement') {
         // MAI switchTab() qui: quella funzione ha una whitelist fissa di 5
         // tab (navigation.ui.js r.199) ed è segnata nella memoria di
         // progetto come "deve restare stabile e intoccata" — un bug reale
@@ -86,6 +86,7 @@ async function apriDettaglioWidget(tabId, evt) {
         if (tabId === 'missioni') renderPaginaMissioni();
         if (tabId === 'valore') renderPaginaValoreCollezione();
         if (tabId === 'variazione') renderPaginaVariazioneValore();
+        if (tabId === 'achievement') renderPaginaAchievement();
         if (tabId === 'wishlist') renderPaginaWishlist();
         if (tabId === 'location') renderPaginaLocation();
         if (tabId === 'doppioni') renderPaginaDoppioni();
@@ -96,6 +97,10 @@ async function apriDettaglioWidget(tabId, evt) {
         if (tabId === 'richieste') apriPaginaRichieste();
     } else {
         switchTab(tabId, null);
+        // Fase 10 (2026-09-13): riparti sempre dall'hub Impostazioni, mai
+        // da una sotto-pagina rimasta aperta dall'ultima visita — wrapper
+        // qui, MAI dentro switchTab() stessa (vedi commento sopra).
+        if (tabId === 'impostazioni' && typeof _impostazioniTornaHub === 'function') _impostazioniTornaHub();
     }
     document.body.classList.add('phone-detail-open');
 

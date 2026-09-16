@@ -125,6 +125,10 @@ function toggleSuoniWidgetHome() {
     prefSuoniWidgetSet(nuovoStato);
     const icona = document.getElementById('iconaSuoniWidgetHome');
     if (icona) icona.className = nuovoStato ? 'fa-solid fa-volume-high' : 'fa-solid fa-volume-xmark';
+    // Fase 10 (2026-09-13): tenuto in sincronia anche il checkbox della
+    // pagina Impostazioni > Suoni (id diverso, stesso stato sottostante).
+    const checkbox = document.getElementById('suoniAppToggle');
+    if (checkbox) checkbox.checked = nuovoStato;
     if (nuovoStato) _beep(660, 60);
 }
 
