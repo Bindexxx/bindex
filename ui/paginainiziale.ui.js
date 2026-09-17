@@ -250,6 +250,29 @@ function _nuovoInstanceId() {
 // (async), quindi la funzione e' diventata async — entrambi i chiamanti
 // (riga ~2954 e initPhoneShell) sono gia' dentro funzioni async, nessun
 // altro punto la chiamava.
+// Aggiunge alla lista, come nascosti (visibile:false), tutti i widget del
+// catalogo non ancora presenti — QUALUNQUE sia il punto di partenza
+// (layout mai salvato o layout vecchio). Prima di questo fix (STEP 8
+// restyle "cornice Pokédex", 2026-09-17) questo passaggio girava SOLO nel
+// ramo "layout già salvato" qui sotto — un account/dispositivo MAI
+// salvato prima (Claudio, screenshot 2026-09-17: "posso mettere nella
+// home solo quei widget, tutti gli altri non posso metterli") restava
+// bloccato per sempre con SOLO i 5 di ORDINE_WIDGET_DEFAULT: il resto del
+// catalogo non compariva mai nel picker "Aggiungi widget", perché non
+// esisteva alcuna riga (nemmeno nascosta) per loro. Bug preesistente,
+// indipendente dal restyle di questa sessione — semplicemente mai emerso
+// prima perché non era mai stato provato un account/dispositivo davvero
+// vergine su questo fronte.
+// Stessa eccezione di sempre per i widget multiIstanza (Vetrina): le loro
+// copie nascono solo dal picker "Aggiungi", mai automaticamente qui.
+function _aggiungiWidgetCatalogoMancanti(lista) {
+    Object.entries(CATALOGO_WIDGET).forEach(([id, def]) => {
+        if (def.multiIstanza) return;
+        if (!lista.find(w => w.id === id)) lista.push({ id, instanceId: _nuovoInstanceId(), visibile: false, size: '3x2', mini: false, cartaId: null, pagina: 0, v: VERSIONE_LAYOUT_WIDGET });
+    });
+    return lista;
+}
+
 async function _caricaLayoutWidget() {
     const userId = await authGetUserId();
     _layoutWidgetUserId = userId || null;
@@ -257,7 +280,7 @@ async function _caricaLayoutWidget() {
         // Nessun utente risolto (non dovrebbe succedere qui, la home a
         // widget e' dietro login) — layout di default SENZA salvarlo: non
         // c'e' una chiave utente su cui scriverlo.
-        _layoutWidget = ORDINE_WIDGET_DEFAULT.map(id => ({ id, instanceId: _nuovoInstanceId(), visibile: true, size: '3x2', mini: false, cartaId: null, pagina: 0, v: VERSIONE_LAYOUT_WIDGET }));
+        _layoutWidget = _aggiungiWidgetCatalogoMancanti(ORDINE_WIDGET_DEFAULT.map(id => ({ id, instanceId: _nuovoInstanceId(), visibile: true, size: '3x2', mini: false, cartaId: null, pagina: 0, v: VERSIONE_LAYOUT_WIDGET })));
         return;
     }
 
@@ -266,8 +289,12 @@ async function _caricaLayoutWidget() {
 
     if (!Array.isArray(salvato) || salvato.length === 0) {
         // '3x2' = il vecchio '1x1' nella griglia a 6 colonne: mezza
-        // larghezza, stessa altezza di prima. Primo avvio identico a com'era.
-        _layoutWidget = ORDINE_WIDGET_DEFAULT.map(id => ({ id, instanceId: _nuovoInstanceId(), visibile: true, size: '3x2', mini: false, cartaId: null, pagina: 0, v: VERSIONE_LAYOUT_WIDGET }));
+        // larghezza, stessa altezza di prima. Primo avvio identico a com'era
+        // PER I 5 DI DEFAULT — poi (fix sopra) il resto del catalogo entra
+        // comunque, nascosto, così il picker "Aggiungi widget" li offre
+        // subito invece di restare vuoto finché non arriva un layout salvato.
+        _layoutWidget = _aggiungiWidgetCatalogoMancanti(ORDINE_WIDGET_DEFAULT.map(id => ({ id, instanceId: _nuovoInstanceId(), visibile: true, size: '3x2', mini: false, cartaId: null, pagina: 0, v: VERSIONE_LAYOUT_WIDGET })));
+        _salvaLayoutWidget(false); // primo avvio, non un'azione utente — persiste subito così il picker resta giusto anche senza toccare nulla
         return;
     }
     let generatoQualcheId = false;
@@ -306,10 +333,7 @@ async function _caricaLayoutWidget() {
     // widget multiIstanza (Vetrina) nascono esclusivamente dal picker
     // "Aggiungi", mai automaticamente — un id simile qui creerebbe una
     // copia vuota e invisibile che nessuno ha chiesto.
-    Object.entries(CATALOGO_WIDGET).forEach(([id, def]) => {
-        if (def.multiIstanza) return;
-        if (!validi.find(w => w.id === id)) validi.push({ id, instanceId: _nuovoInstanceId(), visibile: false, size: '3x2', mini: false, cartaId: null, pagina: 0, v: VERSIONE_LAYOUT_WIDGET });
-    });
+    _aggiungiWidgetCatalogoMancanti(validi);
     _layoutWidget = validi;
     // Persiste subito gli instanceId appena generati per un layout vecchio,
     // così al prossimo giro non li rigenera (restano stabili tra i render).
