@@ -319,6 +319,30 @@ async function initPhoneShell() {
             onProfile: () => { if (typeof toggleMenuProfilo === 'function') toggleMenuProfilo(); },
         });
 
+        // STEP 4 restyle "cornice Pokédex" (2026-09-17): pallina che
+        // "viaggia" dentro la tendina quando si apre/chiude — vedi
+        // commento CSS su .pokedex-ball-tendina per come funziona.
+        // Opzione A concordata con Claudio: NON tocca CSBar, si limita ad
+        // aggiungere un elemento decorativo dentro il suo pannello dopo
+        // che si è già montato da solo.
+        const _tendinaShade = document.querySelector('.csb-shade');
+        if (_tendinaShade) {
+            const pallinaTendina = document.createElement('div');
+            pallinaTendina.className = 'pokedex-ball pokedex-ball-tendina';
+            _tendinaShade.appendChild(pallinaTendina);
+        }
+
+        // FIX (STEP 7, 2026-09-17): la vera Poké Ball "maniglia" visibile —
+        // vedi commento CSS su .pokedex-ball-maniglia per il perché non
+        // basta più stilizzare .csb-handle. .csb-bar ha position:fixed
+        // (quindi è già un contenitore valido per un figlio absolute).
+        const _barraCSBar = document.querySelector('.csb-bar');
+        if (_barraCSBar) {
+            const pallinaManiglia = document.createElement('div');
+            pallinaManiglia.className = 'pokedex-ball pokedex-ball-maniglia';
+            _barraCSBar.appendChild(pallinaManiglia);
+        }
+
         // #profiloContainer (menu profilo completo: nome, email, cambio
         // username, logout) esiste già nell'HTML dentro la vecchia barra
         // (ora nascosta) — spostato qui via appendChild, stesso nodo DOM,
