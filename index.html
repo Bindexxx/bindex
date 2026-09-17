@@ -623,39 +623,38 @@
            #phoneScreen) restano intonsi.
            Le "luci che respirano" (calibrate sui pixel del PNG) decadono
            insieme all'immagine, come da roadmap — nessun sostituto. */
-        /* AGGIORNATO (STEP 3 restyle "cornice Pokédex", 2026-09-17): la
-           vecchia formula fluida min()/vw/vh (che ricalcolava larghezza e
-           altezza in continuazione seguendo la finestra, con un tetto
-           1366x768 solo su desktop) è sostituita dal motore a RISOLUZIONE
-           NATIVA FISSA + transform:scale() del mockup "Pokédex Frame
-           Test" — struttura esplicitamente voluta da Claudio identica al
-           mockup su questo punto. #phoneFrameBox ora nasce SEMPRE a una
-           delle 4 dimensioni fisse in POKEDEX_MODES (vedi
-           _aggiornaScalaCornice in ui/paginainiziale-cornice-statusbar.ui.js,
-           che imposta width/height/transform via JS ad ogni caricamento,
-           resize e cambio orientamento) e viene poi scalato come un blocco
-           RIGIDO UNICO per stare nello spazio reale disponibile —
-           esattamente come una foto che si rimpicciolisce/ingrandisce
-           mantenendo le proporzioni, mai una formula CSS che ricalcola
-           larghezza/altezza per conto proprio.
+        /* SEMPLIFICATO (STEP 9 restyle "cornice Pokédex", 2026-09-17):
+           Claudio ha dimostrato nel suo mockup aggiornato che il motore a
+           risoluzione nativa fissa + transform:scale() (Step 3) non serve
+           — creava spazio vuoto ai lati quando la finestra non aveva
+           esattamente una delle 4 proporzioni previste. #phoneFrameBox
+           torna semplicemente width:100%/height:100% del suo contenitore
+           (#phoneShell): diventa sempre esattamente la forma dello schermo
+           reale, senza calcoli JS, senza mai spazio vuoto intorno. Le due
+           Poké Ball (percentuali su questo stesso box) restano sempre
+           perfette proprio perché non c'è più nessuna trasformazione.
            #phoneScreen resta con le SUE percentuali di inset INVARIATE
-           (vedi --phone-screen-* in :root): la sua posizione relativa
-           dentro la cornice non cambia, cambia solo la base fissa su cui
-           quelle percentuali si applicano.
-           border-radius resta legato all'orientamento FISICO reale
-           (@media orientation), indipendente da quale delle 4 risoluzioni
-           native JS sceglie — è pura estetica, non geometria. */
+           (vedi --phone-screen-* in :root): nessun cambiamento lì. */
         #phoneFrameBox {
+            /* SEMPLIFICATO (STEP 9 restyle "cornice Pokédex", 2026-09-17) —
+               niente più risoluzione nativa fissa + transform:scale() via
+               JS (Step 3). Claudio ha dimostrato nel mockup che non serve:
+               #phoneFrameBox diventa semplicemente grande quanto
+               #phoneShell, sempre, senza spazio vuoto MAI intorno — le due
+               Poké Ball (percentuali su questo stesso box) restano sempre
+               perfette perché non dipendono da nessuna trasformazione. La
+               formula "colonne = spazio disponibile ÷ diametro" continua a
+               funzionare da sola: la griglia CSS (auto-fill, vedi
+               .widget-griglia) la calcola già dal vivo sulla dimensione
+               VERA di #phoneScreen, non serviva affatto un numero di
+               risoluzione nativa finto per quello. */
             position: relative;
+            width: 100%;
+            height: 100%;
             background: linear-gradient(135deg, var(--primary) 0 49.7%, var(--secondary) 50.3% 100%);
             border-radius: 34px;
             border: 2px solid rgba(0, 0, 0, 0.35);
             box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.15), 0 10px 30px rgba(0, 0, 0, 0.35);
-            /* width/height/transform: impostati da _aggiornaScalaCornice()
-               via JS — vedi commento sopra. transform-origin center perché
-               #phoneShell centra il box con flex, la scala deve restare
-               centrata su se stessa. */
-            transform-origin: center center;
         }
         @media (orientation: landscape) {
             #phoneFrameBox {
@@ -6727,10 +6726,9 @@
             // valore salvato su Supabase (se presente) — non blocca il resto
             // dell'avvio, gira in parallelo.
             sincronizzaColoriConSupabase();
-            // STEP 3 (2026-09-17): dimensiona/scala la cornice PRIMA di
-            // initPhoneShell() più sotto, così il primo renderWidgetHome()
-            // misura una griglia già alla dimensione reale definitiva.
-            _aggiornaScalaCornice();
+            // STEP 9 (2026-09-17): _aggiornaScalaCornice() non esiste più —
+            // #phoneFrameBox è puro CSS (width/height:100%), niente da
+            // calcolare all'avvio.
             // Ripristina la preferenza "Riduci animazioni" (per-dispositivo)
             document.getElementById('riduciAnimazioniToggle').checked = _animazioniRidotte();
 
