@@ -801,7 +801,15 @@
             box-sizing: border-box;
             overflow: hidden;
             scroll-snap-align: start;
-            padding: 1.1rem 0.9rem calc(2.2rem + env(safe-area-inset-bottom));
+            /* AGGIORNATO (STEP 8 fix restyle "cornice Pokédex", 2026-09-17):
+               era 2.2rem, calibrato per i soli puntini di paginazione — da
+               quando i margini della cornice sono sottili (Step 7) il tasto
+               fisico (sempre visibile ora) cade dentro quest'area, non più
+               nel bordo. 4.5rem lascia spazio libero sia per i puntini che
+               per il tasto, evitando che l'ultima riga di widget ci finisca
+               sotto (Claudio, screenshot 2026-09-17: "Set e Valore non
+               dovrebbero esser posizionati in quel modo"). */
+            padding: 1.1rem 0.9rem calc(4.5rem + env(safe-area-inset-bottom));
         }
 
         .widget-pagina-vuota {
