@@ -552,9 +552,20 @@
         .qty-control-mini { display: flex; align-items: center; gap: 0.2rem; }
         .qty-control-mini .qty-btn { width: 20px; height: 20px; font-size: 0.7rem; }
         .qty-control-mini .qty-value { font-size: 0.7rem; min-width: 14px; text-align: center; color: #fff; font-weight: 700; }
+
+        /* AGGIORNATO (STEP 5 restyle "cornice Pokédex", 2026-09-17) —
+           stesso trattamento delle altre 2 pagine pubbliche. */
+        .barra-totale, #immagineModal { position: absolute !important; }
     </style>
+    <link rel="stylesheet" href="statusbar.css">
+    <link rel="stylesheet" href="utils/cornice-pubblica.css">
 </head>
 <body>
+
+    <div id="phoneShell">
+    <div id="phoneFrameBox">
+    <div id="phoneScreen">
+    <div id="phoneContenutoScorribile" style="padding-bottom: 90px;">
 
     <header>
         <div class="logo">
@@ -568,7 +579,7 @@
     <img class="copertina-banner" id="copertinaBinderBanner" alt="">
 
     <!-- MODALE IMMAGINE INGRANDITA / FLIP-CARD -->
-    <div id="immagineModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:200; align-items:center; justify-content:center;" onclick="chiudiImmagineIngrandita()">
+    <div id="immagineModal" style="display:none; inset:0; background:rgba(0,0,0,0.7); z-index:200; align-items:center; justify-content:center;" onclick="chiudiImmagineIngrandita()">
         <div style="max-width:320px; width:90%; background:var(--card-bg); border-radius:16px; padding:1rem; position:relative;" onclick="event.stopPropagation()">
             <button class="close-modal-btn" onclick="chiudiImmagineIngrandita()"><i class="fa-solid fa-xmark"></i></button>
             <div id="flipCardScene" style="margin-top:0.5rem;">
@@ -688,6 +699,8 @@
         </div>
     </div>
 
+    </div><!-- /phoneContenutoScorribile -->
+
     <div class="barra-totale">
         <div class="barra-totale-info">
             <div class="barra-totale-count" id="conteggioSelezionate">0 carte selezionate</div>
@@ -698,16 +711,28 @@
         </button>
     </div>
 
+    <div id="btnPubblicoTornaSu" class="pokedex-ball" onclick="_clickTornaSuPubblico()" title="Torna su">
+        <i class="fa-solid fa-arrow-up"></i>
+    </div>
+
+    </div><!-- /phoneScreen -->
+    </div><!-- /phoneFrameBox -->
+    </div><!-- /phoneShell -->
+
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="config/supabase.js"></script>
     <script src="data/card-back-viewer.repository.js"></script>
     <script src="data/binder-pubblico.repository.js"></script>
     <script src="data/wishlist.repository.js"></script>
     <script src="state/wishlist.state.js"></script>
+    <script src="data/cornice-pubblica.repository.js"></script>
+    <script src="utils/theme-colori.js"></script>
     <script src="utils/shared-public.js"></script>
     <script src="ui/card-back-viewer.ui.js"></script>
     <script src="ui/binder-flipbook.ui.js"></script>
     <script src="ui/wishlist.ui.js"></script>
+    <script src="statusbar.js"></script>
+    <script src="utils/cornice-pubblica.js"></script>
     <script>
 
         // Fix 26/08/2026: creazione del client Supabase mancante — mai
@@ -721,7 +746,12 @@
 
         // ── AVVIO ────────────────────────────────────────────────────────
         applicaTemaCondiviso();
-        caricaCatalogo();
+        // STEP 6 (2026-09-17): vedi commento identico in scaffali-pubblico.html
+        (async () => {
+            await caricaCatalogo();
+            await applicaColoreCorniceProprietario(_ownerUserId);
+            initCorniciaPubblica();
+        })();
     </script>
 </body>
 </html>

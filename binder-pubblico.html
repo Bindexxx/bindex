@@ -527,9 +527,20 @@
             font-size: 26px; font-weight: 800; color: #14142a; text-align: center;
             min-width: 44px; max-width: 114px; line-height: 1.05;
         }
+
+        /* AGGIORNATO (STEP 5 restyle "cornice Pokédex", 2026-09-17) —
+           stesso trattamento di scaffali-pubblico.html, vedi commento lì. */
+        .barra-totale, #immagineModal, #loginPubblicoModal { position: absolute !important; }
     </style>
+    <link rel="stylesheet" href="statusbar.css">
+    <link rel="stylesheet" href="utils/cornice-pubblica.css">
 </head>
 <body>
+
+    <div id="phoneShell">
+    <div id="phoneFrameBox">
+    <div id="phoneScreen">
+    <div id="phoneContenutoScorribile">
 
     <header>
         <div class="logo">
@@ -543,7 +554,7 @@
     <img class="copertina-banner" id="copertinaBinderBanner" alt="">
 
     <!-- MODALE IMMAGINE INGRANDITA / FLIP-CARD -->
-    <div id="immagineModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:200; align-items:center; justify-content:center;" onclick="chiudiImmagineIngrandita()">
+    <div id="immagineModal" style="display:none; inset:0; background:rgba(0,0,0,0.7); z-index:200; align-items:center; justify-content:center;" onclick="chiudiImmagineIngrandita()">
         <div style="max-width:320px; width:90%; background:var(--card-bg); border-radius:16px; padding:1rem; position:relative;" onclick="event.stopPropagation()">
             <button class="close-modal-btn" onclick="chiudiImmagineIngrandita()"><i class="fa-solid fa-xmark"></i></button>
             <div id="flipCardScene" style="margin-top:0.5rem;">
@@ -642,6 +653,8 @@
         </div>
     </div>
 
+    </div><!-- /phoneContenutoScorribile -->
+
     <!-- FASE 1 CONSOLIDAMENTO (26/08/2026): barra totale, porta da
          scambio.html — nascosta di default, mostrata via JS
          (caricaCatalogo() in ui/binder-pubblico.ui.js) solo quando
@@ -661,7 +674,7 @@
 
     <!-- Login minimo — Fase 4, Step 4 (2026-09-13). Funzioni in
          utils/shared-public.js (condivise con scaffali-pubblico.html). -->
-    <div id="loginPubblicoModal" class="modal-overlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:300; align-items:center; justify-content:center;" onclick="chiudiLoginPubblico()">
+    <div id="loginPubblicoModal" class="modal-overlay" style="display:none; inset:0; background:rgba(0,0,0,0.7); z-index:300; align-items:center; justify-content:center;" onclick="chiudiLoginPubblico()">
         <div style="max-width:320px; width:90%; background:var(--card-bg); border-radius:16px; padding:1.3rem; position:relative;" onclick="event.stopPropagation()">
             <button class="close-modal-btn" onclick="chiudiLoginPubblico()"><i class="fa-solid fa-xmark"></i></button>
             <h3 style="font-weight:800; margin-bottom:0.3rem;"><i class="fa-solid fa-right-to-bracket" style="color:var(--primary);"></i> Accedi per richiedere</h3>
@@ -673,13 +686,25 @@
         </div>
     </div>
 
+    <div id="btnPubblicoTornaSu" class="pokedex-ball" onclick="_clickTornaSuPubblico()" title="Torna su">
+        <i class="fa-solid fa-arrow-up"></i>
+    </div>
+
+    </div><!-- /phoneScreen -->
+    </div><!-- /phoneFrameBox -->
+    </div><!-- /phoneShell -->
+
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="config/supabase.js"></script>
     <script src="data/binder-pubblico.repository.js"></script>
     <script src="state/binder-pubblico.state.js"></script>
+    <script src="data/cornice-pubblica.repository.js"></script>
+    <script src="utils/theme-colori.js"></script>
     <script src="utils/shared-public.js"></script>
     <script src="ui/binder-flipbook.ui.js"></script>
     <script src="ui/binder-pubblico.ui.js"></script>
+    <script src="statusbar.js"></script>
+    <script src="utils/cornice-pubblica.js"></script>
     <script>
 
         // ── AVVIO ────────────────────────────────────────────────────────
@@ -690,7 +715,12 @@
             auth: { persistSession: false, autoRefreshToken: false }
         });
         applicaTemaCondiviso();
-        caricaCatalogo();
+        // STEP 6 (2026-09-17): vedi commento identico in scaffali-pubblico.html
+        (async () => {
+            await caricaCatalogo();
+            await applicaColoreCorniceProprietario(_ownerUserId);
+            initCorniciaPubblica();
+        })();
     </script>
 </body>
 </html>

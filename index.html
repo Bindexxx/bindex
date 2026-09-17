@@ -1882,21 +1882,119 @@
            Il valore 12 resta qui per lo stato normale (bottone dentro la
            cornice, nessun dettaglio aperto) — innocuo, non è quello che
            risolve il problema del "tasto indietro" a schermo intero. */
+        /* ── COMPONENTE POKÉ BALL CONDIVISO (STEP 4 restyle "cornice
+           Pokédex", 2026-09-17) — un solo cerchio riusato da: tasto fisico
+           in basso, maniglia tendina in alto, le 2 decorative laterali, e
+           la pallina che "viaggia" dentro la tendina quando si apre (JS,
+           vedi ui/paginainiziale-polling-avvio.ui.js). Colori legati a
+           Principale/Secondario, coerenti col resto del tema. */
+        .pokedex-ball {
+            border-radius: 50%;
+            background: linear-gradient(to bottom, var(--primary) 0 46%, #171717 46% 54%, var(--secondary) 54% 100%);
+            border: 2px solid #171717;
+            box-shadow: 0 3px 8px rgba(0, 0, 0, 0.4), inset 0 0 0 2px rgba(255, 255, 255, 0.12);
+            position: relative;
+        }
+        .pokedex-ball::after {
+            content: '';
+            position: absolute;
+            inset: 30%;
+            border-radius: 50%;
+            background: #eee9df;
+            border: 1.5px solid #171717;
+            box-shadow: inset 0 0 0 1.5px #fff;
+        }
+
+        /* Decorative laterali (Claudio: cliccabili ma per ora non fanno
+           nulla — placeholder easter egg futuri). Posizionate come
+           #btnFisicoTelefono, stesso sistema di coordinate percentuali su
+           #phoneFrameBox. */
+        .pokedex-ball-laterale {
+            position: absolute;
+            top: 50%;
+            width: 5%;
+            aspect-ratio: 1;
+            transform: translateY(-50%);
+            cursor: pointer;
+            z-index: 12;
+        }
+        #pokeballSinistra { left: 2.5%; }
+        #pokeballDestra { right: 2.5%; }
+        @media (orientation: landscape) {
+            .pokedex-ball-laterale { width: 3.2%; }
+        }
+
         #btnFisicoTelefono {
             position: absolute;
             left: 49.94%; top: 93.95%; /* cornice verticale */
             transform: translate(-50%, -50%);
             width: 5.6%; aspect-ratio: 1;
-            border-radius: 50%;
-            background: radial-gradient(circle at 50% 45%, #121214 55%, #030304 100%);
-            border: 1.2px solid #38c9e8;
-            color: #6fe3ff;
             display: flex; align-items: center; justify-content: center;
-            font-size: 0.55rem;
             cursor: pointer;
             z-index: 12;
-            box-shadow: 0 0 2px rgba(56, 201, 232, 0.45), inset 0 0 2px rgba(56, 201, 232, 0.3);
             transition: visibility 0s;
+        }
+        /* AGGIORNATO (STEP 4, 2026-09-17): sostituisce lo sfondo scuro con
+           bordo ciano — ora usa .pokedex-ball (classe aggiunta in HTML).
+           L'icona (freccia/casetta) resta sopra, più piccola, per non
+           perdere la funzione "indietro/home" a colpo d'occhio. */
+        #btnFisicoTelefono i {
+            position: relative;
+            z-index: 1;
+            font-size: 0.5rem;
+            color: #171717;
+        }
+
+        /* ── MANIGLIA TENDINA → POKÉ BALL (STEP 4 restyle "cornice
+           Pokédex", 2026-09-17) — sovrascrive SOLO l'aspetto di
+           .csb-handle (statusbar.css/js NON toccati, come da Opzione A
+           concordata con Claudio). Funziona perché queste regole sono
+           dichiarate DOPO <link href="statusbar.css"> nel documento: a
+           parità di specificità vince l'ultima, nessun !important
+           necessario. La logica di trascinamento/apertura resta
+           interamente di CSBar — qui cambia solo cosa si vede. */
+        .csb-handle {
+            height: 44px;
+        }
+        .csb-handle i {
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            background: linear-gradient(to bottom, var(--primary) 0 46%, #171717 46% 54%, var(--secondary) 54% 100%);
+            border: 2px solid #171717;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.35), inset 0 0 0 2px rgba(255, 255, 255, 0.12);
+            position: relative;
+        }
+        .csb-handle i::after {
+            content: '';
+            position: absolute;
+            inset: 30%;
+            border-radius: 50%;
+            background: #eee9df;
+            border: 1.5px solid #171717;
+            box-shadow: inset 0 0 0 1.5px #fff;
+        }
+
+        /* Pallina che "viaggia" dentro la tendina quando si apre — inserita
+           come ultimo figlio di .csb-shade via JS (vedi initPhoneShell in
+           ui/paginainiziale-polling-avvio.ui.js). Ancorata al FONDO del
+           pannello: quando .csb-shade è tradotta a y=-altezza (chiusa),
+           il suo fondo (quindi questa pallina) si trova esattamente a
+           y=0, cioè in cima allo schermo, vicino alla maniglia; quando è
+           aperta (y=0) il fondo del pannello scende fino in fondo — stessa
+           animazione di CSBar, "gratis", senza JS scritto da noi.
+           NOTA PER IL COLLAUDO (Claudio): se il pannello ha contenuto più
+           alto dello schermo con scroll interno, questa pallina potrebbe
+           non allinearsi esattamente al tasto fisico in basso — dimmi
+           cosa vedi, la calibro sul riscontro reale. */
+        .pokedex-ball-tendina {
+            position: absolute;
+            bottom: 12px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 40px;
+            height: 40px;
+            z-index: 5;
         }
         @media (orientation: landscape) {
             #btnFisicoTelefono { left: 52.79%; top: 87.58%; width: 5.2%; }
@@ -4307,9 +4405,11 @@
                  overflow:hidden per gli angoli arrotondati) ma dentro
                  #phoneFrameBox, stesso sistema di coordinate percentuali
                  dello schermo. -->
-            <button id="btnFisicoTelefono" class="nascosto" onclick="_clickTastoFisico()" title="Home">
+            <button id="btnFisicoTelefono" class="nascosto pokedex-ball" onclick="_clickTastoFisico()" title="Home">
                 <i class="fa-solid fa-house"></i>
             </button>
+            <div id="pokeballSinistra" class="pokedex-ball pokedex-ball-laterale" onclick="_clickPokeballDecorativa('sinistra')"></div>
+            <div id="pokeballDestra" class="pokedex-ball pokedex-ball-laterale" onclick="_clickPokeballDecorativa('destra')"></div>
         </div>
     </div>
 
@@ -6601,6 +6701,10 @@
             }
             applicaColoriTema();
             applicaDiametroWidget();
+            // STEP 6 restyle "cornice Pokédex" (2026-09-17): sincronizza col
+            // valore salvato su Supabase (se presente) — non blocca il resto
+            // dell'avvio, gira in parallelo.
+            sincronizzaColoriConSupabase();
             // STEP 3 (2026-09-17): dimensiona/scala la cornice PRIMA di
             // initPhoneShell() più sotto, così il primo renderWidgetHome()
             // misura una griglia già alla dimensione reale definitiva.
