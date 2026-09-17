@@ -49,3 +49,17 @@ async function authRequestUsernameChange(userId, nuovoUsername) {
 async function authGetRuolo(userId) {
     return supabaseClient.from('profiles').select('role').eq('id', userId).single();
 }
+
+// ── COLORE CORNICE (STEP 6 restyle "cornice Pokédex", 2026-09-17) ───────
+// Lettura DIRETTA (non RPC): la RLS di profiles permette già a un utente
+// di leggere la PROPRIA riga (policy "utente vede il proprio profilo"),
+// quindi non serve una funzione server-side solo per questo — a
+// differenza della scrittura, dove RLS blocca l'UPDATE diretto (solo
+// admin), da lì la RPC imposta_colore_cornice (vedi sql/63).
+async function coloreCorniceProprioGet(userId) {
+    return supabaseClient.from('profiles').select('colore_principale, colore_secondario').eq('id', userId).single();
+}
+
+async function coloreCorniceProprioSet(principale, secondario) {
+    return supabaseClient.rpc('imposta_colore_cornice', { p_principale: principale, p_secondario: secondario });
+}
