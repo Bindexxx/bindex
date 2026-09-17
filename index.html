@@ -32,6 +32,17 @@
             --bg-color: #f3eeff;
             --card-bg: #ffffff;
             --primary: #7c4dff;
+            /* Fallback statico, sovrascritto a runtime da applicaColoriTema()
+               (STEP 1/2 restyle "cornice Pokédex", 2026-09-17) — serve solo
+               per il primo istante prima che il JS giri, es. per il
+               gradiente della cornice (#phoneFrameBox) che usa var(--secondary)
+               direttamente. Stesso valore del default TEMA_COLORE_SECONDARIO_DEFAULT
+               in utils/theme-colori.js — se cambi uno, cambia anche l'altro. */
+            --secondary: #756a8a;
+            /* Fallback statico per --ball-misura (STEP 3, 2026-09-17) —
+               sovrascritto a runtime da applicaDiametroWidget(). Stesso
+               principio di --secondary qui sopra. */
+            --ball-misura: 90px;
             --primary-light: #ede7ff;
             --primary-dark: #5e35b1;
             --text-dark: #2a2438;
@@ -577,112 +588,69 @@
             100% { opacity: 1; filter: brightness(1); transform: scale(1); }
         }
 
-        /* FIX 4 (Claudio: "resta incollata ai bordi superiori/inferiori,
-           si deforma lo stesso"): nel giro precedente il tetto massimo
-           desktop (800px) era una regola max-height/max-width SEPARATA,
-           scollegata dalla formula che calcola l'altra dimensione — quando
-           scattava, larghezza e altezza smettevano di essere proporzionate
-           tra loro (es. altezza restava a 100% toccando i bordi, mentre
-           la larghezza veniva tagliata a 800px) e l'immagine si stirava di
-           nuovo. Qui il tetto è dentro la STESSA formula min() di
-           entrambe le dimensioni (terzo valore, già convertito con lo
-           stesso rapporto dell'immagine) — quale che sia il valore che
-           "vince" il min(), larghezza e altezza restano SEMPRE
-           proporzionate esattamente come l'immagine originale, mai
-           deformata, mai incollata a un bordo senza il corrispondente
-           sull'altro asse.
-
-           RIVISTO 2026-09-10 (Claudio: "cornice pokedex sempre il più
-           grande possibile ... metti il cap a una risoluzione HD
-           standard, 1366x768"): il numero fisso "800px"/"398.5px" di
-           prima era arbitrario (un mockup "abbastanza piccolo da stare
-           su un monitor", nessun riferimento preciso) — sostituito con
-           --pokedex-cap-altezza/--pokedex-cap-larghezza (1366×768,
-           :root), usati come terzo termine del min() esattamente come
-           prima, stesso principio anti-deformazione. In verticale il
-           vincolo è l'altezza (768px), in orizzontale è la larghezza
-           (1366px) — la cornice orizzontale prima NON aveva alcun tetto
-           su desktop, ora lo ha anche lei per coerenza con la richiesta
-           "sempre un tetto 1366×768", non solo in verticale. */
+        /* AGGIORNATO (STEP 2 restyle "cornice Pokédex", 2026-09-17): le
+           immagini frame-verticale.png/frame-orizzontale.png sono
+           abbandonate (decisione esplicita di Claudio — la struttura del
+           mockup "Pokédex Frame Test" sopravvive). Il gradiente a due
+           colori (Principale in alto/sinistra, Secondario in basso/destra,
+           split diagonale 49.7%/50.3% — stessa proporzione del mockup)
+           è dipinto DIRETTAMENTE su #phoneFrameBox: prima la "cornice" era
+           un div separato (.phone-frame-bg, z-index sopra lo schermo, con
+           un buco trasparente nel PNG); ora non serve più un div a parte,
+           #phoneFrameBox stesso è la cornice, e #phoneScreen (sopra, con
+           il suo sfondo opaco --bg-color) copre semplicemente il
+           rettangolo dove prima c'era il "buco" dell'immagine — stesso
+           effetto, una dipendenza in meno.
+           #phoneScreen NON è stato spostato/ridimensionato: stesse
+           percentuali di inset di prima (vedi --phone-screen-* in :root),
+           quindi drag/resize/CSBar (che leggono/montano tutti su
+           #phoneScreen) restano intonsi.
+           Le "luci che respirano" (calibrate sui pixel del PNG) decadono
+           insieme all'immagine, come da roadmap — nessun sostituto. */
+        /* AGGIORNATO (STEP 3 restyle "cornice Pokédex", 2026-09-17): la
+           vecchia formula fluida min()/vw/vh (che ricalcolava larghezza e
+           altezza in continuazione seguendo la finestra, con un tetto
+           1366x768 solo su desktop) è sostituita dal motore a RISOLUZIONE
+           NATIVA FISSA + transform:scale() del mockup "Pokédex Frame
+           Test" — struttura esplicitamente voluta da Claudio identica al
+           mockup su questo punto. #phoneFrameBox ora nasce SEMPRE a una
+           delle 4 dimensioni fisse in POKEDEX_MODES (vedi
+           _aggiornaScalaCornice in ui/paginainiziale-cornice-statusbar.ui.js,
+           che imposta width/height/transform via JS ad ogni caricamento,
+           resize e cambio orientamento) e viene poi scalato come un blocco
+           RIGIDO UNICO per stare nello spazio reale disponibile —
+           esattamente come una foto che si rimpicciolisce/ingrandisce
+           mantenendo le proporzioni, mai una formula CSS che ricalcola
+           larghezza/altezza per conto proprio.
+           #phoneScreen resta con le SUE percentuali di inset INVARIATE
+           (vedi --phone-screen-* in :root): la sua posizione relativa
+           dentro la cornice non cambia, cambia solo la base fissa su cui
+           quelle percentuali si applicano.
+           border-radius resta legato all'orientamento FISICO reale
+           (@media orientation), indipendente da quale delle 4 risoluzioni
+           native JS sceglie — è pura estetica, non geometria. */
         #phoneFrameBox {
             position: relative;
-            height: min(100%, 100vw * 1777 / 885);
-            width: min(100%, 100vh * 885 / 1777);
+            background: linear-gradient(135deg, var(--primary) 0 49.7%, var(--secondary) 50.3% 100%);
+            border-radius: 34px;
+            border: 2px solid rgba(0, 0, 0, 0.35);
+            box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.15), 0 10px 30px rgba(0, 0, 0, 0.35);
+            /* width/height/transform: impostati da _aggiornaScalaCornice()
+               via JS — vedi commento sopra. transform-origin center perché
+               #phoneShell centra il box con flex, la scala deve restare
+               centrata su se stessa. */
+            transform-origin: center center;
         }
         @media (orientation: landscape) {
             #phoneFrameBox {
-                height: min(100%, 100vw * 821 / 1916);
-                width: min(100%, 100vh * 1916 / 821);
-            }
-        }
-        /* Solo su desktop (mouse reale, non touch): tetto massimo perché
-           resti un mockup, non riempia il monitor. Su telefono/tablet
-           touch invece NESSUN tetto (regole sopra, senza media query):
-           lì la cornice pokedex riempie sempre tutto lo spazio reale
-           disponibile — Claudio, 2026-09-10: "più si avvicina
-           all'esperienza di un normale smartphone meglio è". */
-        @media (pointer: fine) {
-            #phoneFrameBox {
-                height: min(100%, 100vw * 1777 / 885, var(--pokedex-cap-altezza));
-                width: min(100%, 100vh * 885 / 1777, var(--pokedex-cap-altezza) * 885 / 1777);
-            }
-        }
-        @media (pointer: fine) and (orientation: landscape) {
-            #phoneFrameBox {
-                height: min(100%, 100vw * 821 / 1916, var(--pokedex-cap-larghezza) * 821 / 1916);
-                width: min(100%, 100vh * 1916 / 821, var(--pokedex-cap-larghezza));
+                border-radius: 26px;
             }
         }
 
-        .phone-frame-bg {
-            position: absolute;
-            inset: 0;
-            background-repeat: no-repeat;
-            background-position: center;
-            background-size: 100% 100%; /* il box ha già le proporzioni esatte dell'immagine: riempie senza deformare né ritagliare */
-            pointer-events: none;
-            z-index: 2;
-        }
-        #phoneFrameV { background-image: url('assets/frame/frame-verticale.png'); }
-        #phoneFrameO { background-image: url('assets/frame/frame-orizzontale.png'); display: none; }
-        @media (orientation: landscape) {
-            #phoneFrameV { display: none; }
-            #phoneFrameO { display: block; }
-        }
-
-        /* Respiro luminoso (Claudio: "animazioni di leggera illuminazione
-           sulle luci azzurre e sulla fotocamera in alto") — la cornice è
-           un'immagine statica, quindi le "luci" non possono animarsi da
-           sole: sovrapponiamo piccoli bagliori sfocati, posizionati pixel
-           per pixel sopra i punti luce reali del disegno (fotocamera,
-           barretta sotto la fotocamera, striscia laterale), che pulsano
-           dolcemente — danno l'illusione che la luce disegnata "respiri",
-           senza toccare l'immagine. Ritardi di animazione diversi per
-           ciascuna luce: pulsano leggermente sfalsate, sembra più organico
-           che tutte insieme in perfetto sincrono. */
-        .phone-luce-respiro {
-            position: absolute;
-            transform: translate(-50%, -50%);
-            border-radius: 50%;
-            pointer-events: none;
-            background: radial-gradient(ellipse, rgba(130, 225, 255, 0.85) 0%, rgba(130, 225, 255, 0) 72%);
-            z-index: 3;
-            animation: phoneLuceRespiro 2.8s ease-in-out infinite;
-        }
-        @keyframes phoneLuceRespiro {
-            0%, 100% { opacity: 0.35; }
-            50% { opacity: 1; }
-        }
-
-        .phone-luce-camera { left: 50.11%; top: 5.40%; width: 3%; aspect-ratio: 1; animation-delay: 0s; }
-        .phone-luce-barra-camera { left: 50.06%; top: 8.02%; width: 12%; height: 1.4%; animation-delay: 0.4s; }
-        .phone-luce-laterale { left: 93.22%; top: 25.35%; width: 1.4%; height: 9%; animation-delay: 0.9s; }
-
-        @media (orientation: landscape) {
-            .phone-luce-camera { left: 47.60%; top: 9.68%; width: 1.6%; }
-            .phone-luce-barra-camera { display: none; }
-            .phone-luce-laterale { left: 95.15%; top: 26.80%; width: 1%; height: 13%; }
-        }
+        /* #phoneScreen ha un bordo/ombra propri (STEP 2, sostituiscono il
+           bezel scuro che prima disegnava il PNG intorno al ritaglio
+           trasparente) — solo decorazione aggiunta, nessuna variazione di
+           posizione/dimensione rispetto a prima. */
 
         #phoneScreen {
             position: absolute;
@@ -694,6 +662,7 @@
             border-radius: 22px;
             overflow: hidden;
             background-color: var(--bg-color);
+            box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.55), 0 0 0 5px rgba(255, 255, 255, 0.06);
         }
         @media (orientation: landscape) {
             #phoneScreen {
@@ -1009,35 +978,27 @@
              107.2px, cioe' la vecchia riga singola.
            Risultato: ogni widget esistente resta della stessa dimensione
            in pixel di prima. Cambia cosa si PUO' fare, non cosa si vede. */
+        /* AGGIORNATO (STEP 3 restyle "cornice Pokédex", 2026-09-17): UNA
+           SOLA regola per entrambi gli orientamenti, guidata da
+           var(--ball-misura) — che ora è il diametro scelto dall'utente
+           (slider Impostazioni > Tema), non più fisso a 90px. "1 unità di
+           resize" = 1 diametro pieno (prima un widget "1x1" occupava 2-3
+           delle 6 colonne fisse; ora occupa esattamente 1 colonna larga
+           quanto la sfera — corrispondenza diretta, niente più
+           colonne-frazione indipendenti dal diametro). Sostituisce sia la
+           vecchia regola verticale (repeat(6, 1fr) fisso) sia quella
+           orizzontale (minmax(30px,37px) hardcoded, pensata per
+           approssimare 90px su 3 colonne) — stesso principio "auto-fill"
+           già usato in orizzontale, ora applicato ovunque con l'unità
+           vera. _misuraPaginaWidget() (ui/paginainiziale-paginazione.ui.js)
+           già misurava le colonne dal vivo via getComputedStyle: nessuna
+           modifica necessaria lì, si adatta da sola. */
         .widget-griglia {
             display: grid;
-            grid-template-columns: repeat(6, 1fr);
+            grid-template-columns: repeat(auto-fill, minmax(var(--ball-misura, 90px), 1fr));
             grid-auto-rows: 48px;
             gap: 0.7rem;
-        }
-        @media (orientation: landscape) {
-            /* Opzione B (Claudio, 2026-08-28): elastica invece di colonne
-               fisse. Prima erano 4 colonne rigide (repeat(4, 1fr)): su
-               schermi larghi ogni cella diventava molto più larga della
-               sfera fissa (--ball-misura: 90px), che restava centrata in
-               mezzo a un vuoto. Ora ogni colonna sta tra 90px (mai sotto,
-               la sfera non si schiaccia mai) e 110px (mai sopra, niente
-               più celle enormi) — il browser ne mette quante ce ne stanno.
-               Su un landscape tipico ne escono 6 per riga; su schermi più
-               stretti scende a 5/4 da sola senza andare in overflow; su
-               desktop molto larghi (la cornice landscape non ha un tetto
-               massimo come quella verticale, per restare agganciata ai
-               bordi) può salirne anche di più — accettato come trade-off,
-               vedi discussione in sessione. justify-content: center evita
-               che l'ultima riga incompleta si accalchi a sinistra. */
-            /* Aggiornato al modello a 6 colonne: la cella e' un terzo di
-               quella di prima, quindi i limiti si dividono per 3
-               (90-110px -> 30-37px). Una sfera continua a occupare 3 celle
-               e resta larga 90-110px esattamente come prima. */
-            .widget-griglia {
-                grid-template-columns: repeat(auto-fill, minmax(30px, 37px));
-                justify-content: center;
-            }
+            justify-content: center;
         }
 
         /* Taglie multiple (Claudio: "ridimensionamento libero") — 4 preset,
@@ -1359,10 +1320,10 @@
            Origine: mockup approvato (mockup-widget.html).
            ═══════════════════════════════════════════════════════════════ */
 
-        /* Misura UNICA della sfera: uguale su 1x1, 2x1, 1x2, 2x2, mini e in
-           entrambe le densità (Claudio: "la ball non deve MAI rimpicciolire").
-           90px in una cella alta 108 lascia ~9px di respiro per lato. */
-        .widget-griglia.ball-ui { --ball-misura: 90px; }
+        /* AGGIORNATO (STEP 3, 2026-09-17): --ball-misura NON è più fissata
+           qui — arriva da applicaDiametroWidget() (ui/navigation-tema.ui.js),
+           scritta su :root, con fallback statico nel blocco :root principale
+           per il primissimo istante prima che il JS giri. */
 
         /* Riquadro QUASI INVISIBILE: la sfera è il soggetto, il rettangolo
            serve solo al layout e ai gesti. Riappare in modalità modifica,
@@ -4262,14 +4223,14 @@
          stesso per qualunque nuovo elemento dello stesso tipo. ═══ -->
     <div id="phoneShell">
         <div id="phoneFrameBox">
-            <div class="phone-frame-bg" id="phoneFrameV"></div>
-            <div class="phone-frame-bg" id="phoneFrameO"></div>
-
-            <!-- Respiro luminoso — vedi commento CSS su .phone-luce-respiro -->
-            <div class="phone-luce-respiro phone-luce-camera"></div>
-            <div class="phone-luce-respiro phone-luce-barra-camera"></div>
-            <div class="phone-luce-respiro phone-luce-laterale"></div>
-
+            <!-- STEP 2 restyle "cornice Pokédex" (2026-09-17): i due div
+                 immagine (.phone-frame-bg, frame-verticale/orizzontale.png)
+                 e le 3 "luci che respirano" calibrate su quel PNG sono
+                 stati rimossi — la cornice ora è il gradiente CSS dipinto
+                 direttamente su #phoneFrameBox (vedi CSS). #phoneScreen
+                 sotto è INVARIATO (stesse percentuali di inset, stesso
+                 id/z-index): nessun altro punto del sito che dipende da
+                 lui (CSBar, drag/resize, ecc.) ha bisogno di modifiche. -->
             <div id="phoneScreen">
                 <div id="phoneBarraStato">
                     <span class="phone-lcd" id="phoneStatusOra"></span>
@@ -5394,21 +5355,40 @@
                             <span class="slider"></span>
                         </label>
                     </div>
+                    <!-- AGGIORNATO (STEP 1 restyle "cornice Pokédex", 2026-09-17):
+                         i 3 preset fissi (Viola/Verde/Pokémon, bottoni
+                         .theme-btn) sono sostituiti da 2 color-picker liberi.
+                         Le altre ~11 variabili CSS che ogni preset ridefiniva
+                         a mano ora si derivano da questi due soli colori, vedi
+                         utils/theme-colori.js. Markup/CSS .theme-btn/
+                         .theme-options-grid lasciati intonsi altrove (nessuno
+                         li referenzia più da qui, ma restano per rollback). -->
                     <div class="setting-row" style="flex-direction: column; align-items: flex-start; gap: 0.6rem;">
                         <div>
-                            <h4 style="font-size: 0.9rem; font-weight: 700;">Palette Colori</h4>
-                            <p style="font-size: 0.75rem; color: var(--text-muted);">Personalizza i toni pastello dell'interfaccia</p>
+                            <h4 style="font-size: 0.9rem; font-weight: 700;">Colore Principale</h4>
+                            <p style="font-size: 0.75rem; color: var(--text-muted);">Colore delle sfere/widget — determina anche il resto della palette</p>
                         </div>
-                        <div class="theme-options-grid">
-                            <button type="button" class="theme-btn active" id="themeBtn-viola" onclick="setSiteTheme('viola')">
-                                <span class="theme-color-preview" style="background-color: #7c4dff;"></span> Viola Soft
-                            </button>
-                            <button type="button" class="theme-btn" id="themeBtn-verde" onclick="setSiteTheme('verde')">
-                                <span class="theme-color-preview" style="background-color: #2e7d32;"></span> Verde Salvia
-                            </button>
-                            <button type="button" class="theme-btn" id="themeBtn-pokemon" onclick="setSiteTheme('pokemon')">
-                                <span class="theme-color-preview" style="background: linear-gradient(135deg, #2a75d3 50%, #ffcb05 50%);"></span> Pokémon
-                            </button>
+                        <input type="color" id="temaColorePrincipale" value="#7c4dff" oninput="setColorePrincipale(this.value)" style="width: 64px; height: 40px; border: 1px solid var(--border-color); border-radius: 8px; padding: 2px; cursor: pointer; background: var(--card-bg);">
+                    </div>
+                    <div class="setting-row" style="flex-direction: column; align-items: flex-start; gap: 0.6rem;">
+                        <div>
+                            <h4 style="font-size: 0.9rem; font-weight: 700;">Colore Secondario</h4>
+                            <p style="font-size: 0.75rem; color: var(--text-muted);">Contorni, linee e testo attenuato</p>
+                        </div>
+                        <input type="color" id="temaColoreSecondario" value="#756a8a" oninput="setColoreSecondario(this.value)" style="width: 64px; height: 40px; border: 1px solid var(--border-color); border-radius: 8px; padding: 2px; cursor: pointer; background: var(--card-bg);">
+                    </div>
+                    <!-- STEP 3 restyle "cornice Pokédex" (2026-09-17): diametro
+                         widget — "1 unità" di resize (vedi setDiametroWidget in
+                         ui/navigation-tema.ui.js e la griglia in CSS, entrambe
+                         guidate da questo stesso valore via --ball-misura). -->
+                    <div class="setting-row" style="flex-direction: column; align-items: flex-start; gap: 0.6rem;">
+                        <div>
+                            <h4 style="font-size: 0.9rem; font-weight: 700;">Dimensione Widget</h4>
+                            <p style="font-size: 0.75rem; color: var(--text-muted);">Diametro delle sfere — è anche "1 unità" di ridimensionamento</p>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 0.8rem; width: 100%;">
+                            <input type="range" id="temaDiametroWidget" min="80" max="220" step="10" value="90" oninput="setDiametroWidget(this.value)" style="flex: 1; accent-color: var(--primary); cursor: pointer;">
+                            <span id="temaDiametroWidgetValore" style="font-size: 0.8rem; color: var(--text-muted); min-width: 48px; text-align: right;">90 px</span>
                         </div>
                     </div>
                 </div>
@@ -6455,6 +6435,13 @@
     <script src="state/binder.state.js"></script>
     <script src="utils/formatters.js"></script>
     <script src="utils/pagination.utils.js"></script>
+    <!-- utils/theme-colori.js: STEP 1 restyle "cornice Pokédex" (2026-09-17)
+         — deriva le variabili CSS del tema e la palette Poké Ball da 2
+         colori liberi (Principale/Secondario). Deve caricarsi PRIMA di
+         ui/navigation-tema.ui.js e ui/widget-render-condiviso.ui.js, che
+         la consumano — nessuna dipendenza propria, va bene qui con gli
+         altri utils/*.js. -->
+    <script src="utils/theme-colori.js"></script>
     <script src="ui/auth.ui.js"></script>
     <script src="ui/prices.ui.js"></script>
     <script src="ui/entry.ui.js"></script>
@@ -6600,14 +6587,24 @@
 
         // ── AVVIO APP — punto d'ingresso unico, eseguito al caricamento pagina ──
         window.onload = async () => {
-            // Ripristina Dark Mode e Temi salvati
-            const savedTheme = prefSiteThemeGet();
-            if (savedTheme) setSiteTheme(savedTheme);
+            // Ripristina Dark Mode e Colori tema salvati.
+            // AGGIORNATO (STEP 1 restyle "cornice Pokédex", 2026-09-17):
+            // setSiteTheme(savedTheme) sostituita — applicaColoriTema()
+            // legge da sola Principale/Secondario salvati (o i default) e
+            // applica anche in assenza di dark mode, quindi va chiamata
+            // SEMPRE qui, non solo dentro il ramo savedDark come faceva
+            // prima toggleDarkMode(true) con setSiteTheme.
             const savedDark = prefDarkModeGet();
             if (savedDark) {
                 document.getElementById('darkModeToggle').checked = true;
-                toggleDarkMode(true);
+                document.body.classList.add('dark-mode');
             }
+            applicaColoriTema();
+            applicaDiametroWidget();
+            // STEP 3 (2026-09-17): dimensiona/scala la cornice PRIMA di
+            // initPhoneShell() più sotto, così il primo renderWidgetHome()
+            // misura una griglia già alla dimensione reale definitiva.
+            _aggiornaScalaCornice();
             // Ripristina la preferenza "Riduci animazioni" (per-dispositivo)
             document.getElementById('riduciAnimazioniToggle').checked = _animazioniRidotte();
 
