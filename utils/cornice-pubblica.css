@@ -11,6 +11,11 @@
    altre variabili derivate) PRIMA che questo CSS le usi — vedi
    applicaTemaCondiviso() in utils/shared-public.js, che ora chiama anche
    derivaVariabiliTema() da utils/theme-colori.js.
+
+   SEMPLIFICATO (STEP 9 restyle "cornice Pokédex", 2026-09-17): niente più
+   motore di scala JS (mai citato correttamente in questo commento — era
+   quello di index.html, mai serviva qui). #phoneFrameBox è puro CSS,
+   width/height:100% del suo contenitore.
    ═══════════════════════════════════════════════════════════════════════ */
 
 html, body {
@@ -35,11 +40,12 @@ html, body {
 
 #phoneFrameBox {
     position: relative;
+    width: 100%;
+    height: 100%;
     background: linear-gradient(135deg, var(--primary) 0 49.7%, var(--secondary) 50.3% 100%);
     border-radius: 34px;
     border: 2px solid rgba(0, 0, 0, 0.35);
     box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.15), 0 10px 30px rgba(0, 0, 0, 0.35);
-    transform-origin: center center;
 }
 @media (orientation: landscape) {
     #phoneFrameBox { border-radius: 26px; }

@@ -15,58 +15,16 @@
 // applicative: queste pagine sono viste da visitatori anonimi).
 // ───────────────────────────────────────────────────────────────────────
 
-// NOTA: barra-totale/modali di queste pagine sono stati convertiti da
-// position:fixed a position:absolute (rispetto a #phoneScreen) nell'HTML
-// di ciascuna pagina — un elemento fixed dentro un antenato con
-// transform (qui #phoneFrameBox) ha un comportamento sottile che non
-// potevo verificare dal vivo; absolute rispetto a #phoneScreen è più
-// prevedibile ed è il motivo per cui lo scroll vero vive in
-// #phoneContenutoScorribile (figlio di #phoneScreen) invece che su
-// #phoneScreen stesso — vedi utils/cornice-pubblica.css.
-const POKEDEX_MODES = {
-    'mobile-verticale':    { larghezza: 390,  altezza: 844 },
-    'mobile-orizzontale':  { larghezza: 844,  altezza: 390 },
-    'desktop-verticale':   { larghezza: 768,  altezza: 1366 },
-    'desktop-orizzontale': { larghezza: 1366, altezza: 768 },
-};
-
-function _modalitaCorniceCorrente() {
-    const desktop = window.matchMedia('(pointer: fine)').matches;
-    const verticale = window.innerHeight > window.innerWidth;
-    if (desktop) return verticale ? 'desktop-verticale' : 'desktop-orizzontale';
-    return verticale ? 'mobile-verticale' : 'mobile-orizzontale';
-}
-
-function _aggiornaScalaCornice() {
-    const box = document.getElementById('phoneFrameBox');
-    const shell = document.getElementById('phoneShell');
-    if (!box || !shell) return;
-
-    const modo = _modalitaCorniceCorrente();
-    const nativa = POKEDEX_MODES[modo];
-
-    const margine = parseFloat(getComputedStyle(shell).paddingLeft) || 0;
-    const spazioW = Math.max(0, shell.clientWidth - margine * 2);
-    const spazioH = Math.max(0, shell.clientHeight - margine * 2);
-    if (!spazioW || !spazioH) return;
-
-    const scala = Math.min(spazioW / nativa.larghezza, spazioH / nativa.altezza);
-
-    box.style.width = nativa.larghezza + 'px';
-    box.style.height = nativa.altezza + 'px';
-    box.style.transform = `scale(${scala})`;
-    box.dataset.modalitaCornice = modo;
-}
-
-function _gestisciResizeCornicePubblica() {
-    _aggiornaScalaCornice();
-}
-
-let _resizeCornicePubblicaTimer = null;
-function _gestisciResizeCornicePubblicaDebounced() {
-    clearTimeout(_resizeCornicePubblicaTimer);
-    _resizeCornicePubblicaTimer = setTimeout(_gestisciResizeCornicePubblica, 120);
-}
+// NOTA: barra-totale/modali di queste pagine sono position:absolute
+// (rispetto a #phoneScreen) invece di fixed — vedi utils/cornice-pubblica.css
+// per il perché (deciso allo Step 5, resta valido anche ora che
+// #phoneFrameBox non ha più alcuna trasformazione: absolute rispetto a
+// #phoneScreen è comunque la scelta più semplice e prevedibile).
+//
+// SEMPLIFICATO (STEP 9 restyle "cornice Pokédex", 2026-09-17): tolto tutto
+// il motore POKEDEX_MODES/_modalitaCorniceCorrente/_aggiornaScalaCornice —
+// #phoneFrameBox è ora puro CSS (width/height:100%, vedi
+// utils/cornice-pubblica.css), niente più da calcolare al resize.
 
 // Torna in cima al contenuto scorribile — unica funzione sensata per il
 // "tasto fisico" su una pagina pubblica senza navigazione multi-pagina.
@@ -101,10 +59,6 @@ async function applicaColoreCorniceProprietario(ownerId) {
 // Inizializza cornice + tendina — chiamata dal bootstrap di ciascuna
 // pagina (dopo applicaTemaCondiviso(), così i colori sono già pronti).
 function initCorniciaPubblica() {
-    _aggiornaScalaCornice();
-    window.addEventListener('resize', _gestisciResizeCornicePubblicaDebounced, { passive: true });
-    window.addEventListener('orientationchange', _gestisciResizeCornicePubblica);
-
     if (typeof CSBar === 'undefined') return; // statusbar.js non caricato, pagina resta usabile senza tendina
 
     CSBar.init({
