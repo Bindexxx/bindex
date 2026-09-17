@@ -35,75 +35,21 @@
 // righe 6459-fine file di phone.ui.js).
 // ───────────────────────────────────────────────────────────────────────
 
-// ── STAGE A RISOLUZIONE NATIVA + SCALA (STEP 3 restyle "cornice
-// Pokédex", 2026-09-17) ──────────────────────────────────────────────────
-// Sostituisce la vecchia formula CSS fluida min()/vw/vh di #phoneFrameBox
-// (rimossa da index.html): #phoneFrameBox nasce SEMPRE a una delle 4
-// dimensioni fisse qui sotto (stessa struttura del mockup "Pokédex Frame
-// Test" approvato da Claudio) e viene scalato come blocco rigido unico
-// per stare nello spazio reale disponibile dentro #phoneShell.
-//
-// I 4 numeri: mobile-verticale/orizzontale sono lo stesso 390x844 (e il
-// suo ribaltato) del mockup; desktop-verticale è lo stesso 768x1366 del
-// mockup; desktop-orizzontale è 1366x768, lo stesso già presente nel sito
-// PRIMA di questo restyle (--pokedex-cap-larghezza/altezza, ora inutili e
-// lasciate in :root solo per rollback) — Claudio ha confermato che la
-// coincidenza tra mockup e sito reale su questo numero era voluta.
-//
-// Il criterio touch/desktop riusa lo STESSO segnale già in uso nel CSS
-// rimosso (media query "pointer: fine"), non i 3 controlli più elaborati
-// del mockup (isTouchFirst) — per restare coerenti con quello che il sito
-// reale già considerava "desktop" prima di questo step, invece di
-// introdurre un criterio nuovo.
-const POKEDEX_MODES = {
-    'mobile-verticale':    { larghezza: 390,  altezza: 844 },
-    'mobile-orizzontale':  { larghezza: 844,  altezza: 390 },
-    'desktop-verticale':   { larghezza: 768,  altezza: 1366 },
-    'desktop-orizzontale': { larghezza: 1366, altezza: 768 },
-};
-
-function _modalitaCorniceCorrente() {
-    const desktop = window.matchMedia('(pointer: fine)').matches;
-    const verticale = window.innerHeight > window.innerWidth;
-    if (desktop) return verticale ? 'desktop-verticale' : 'desktop-orizzontale';
-    return verticale ? 'mobile-verticale' : 'mobile-orizzontale';
-}
-
-// Chiamata da _gestisciResizeCornice() (resize/orientationchange) e una
-// volta all'avvio (window.onload in index.html, PRIMA di initPhoneShell,
-// cosi' #phoneScreen ha gia' la sua dimensione reale quando
-// renderWidgetHome() misura la griglia per la prima volta).
-function _aggiornaScalaCornice() {
-    const box = document.getElementById('phoneFrameBox');
-    const shell = document.getElementById('phoneShell');
-    if (!box || !shell) return;
-
-    const modo = _modalitaCorniceCorrente();
-    const nativa = POKEDEX_MODES[modo];
-
-    // #phoneShell ha padding: var(--pokedex-margine) — lo spazio VERO
-    // disponibile per il box e' il suo clientWidth/Height MENO quel
-    // padding (i figli flex si dispongono dentro il content-box, non
-    // dentro il padding-box).
-    const margine = parseFloat(getComputedStyle(shell).paddingLeft) || 0;
-    const spazioW = Math.max(0, shell.clientWidth - margine * 2);
-    const spazioH = Math.max(0, shell.clientHeight - margine * 2);
-    if (!spazioW || !spazioH) return; // shell non ancora misurabile (display:none/primissimo istante)
-
-    const scala = Math.min(spazioW / nativa.larghezza, spazioH / nativa.altezza);
-
-    box.style.width = nativa.larghezza + 'px';
-    box.style.height = nativa.altezza + 'px';
-    box.style.transform = `scale(${scala})`;
-    box.dataset.modalitaCornice = modo; // utile per debug dal vivo (DevTools)
-}
+// ── STAGE SEMPLIFICATO (STEP 9 restyle "cornice Pokédex", 2026-09-17) ────
+// SUPERA lo Step 3 (risoluzione nativa fissa + transform:scale()): Claudio
+// ha dimostrato nel suo mockup aggiornato che non serve — #phoneFrameBox è
+// tornato ad essere semplicemente width:100%/height:100% via CSS puro
+// (vedi index.html), niente più JS a calcolare dimensioni/scala. Le due
+// Poké Ball (percentuali su #phoneFrameBox) restano sempre perfette
+// proprio perché non c'è più nessuna trasformazione a complicare i conti.
+// La formula "colonne = spazio disponibile ÷ diametro" continua a
+// funzionare da sola: la griglia CSS (auto-fill, .widget-griglia) la
+// calcola già dal vivo sulla dimensione VERA di #phoneScreen.
+// POKEDEX_MODES/_modalitaCorniceCorrente/_aggiornaScalaCornice
+// rimosse — nessun altro punto del sito le chiamava (verificato via grep
+// prima di toglierle) a parte i 2 punti sistemati in questo stesso step.
 
 function _gestisciResizeCornice() {
-    // STEP 3 (2026-09-17): la cornice a risoluzione nativa+scala va
-    // ricalcolata ad OGNI resize/orientamento, prima di tutto il resto —
-    // renderWidgetHome() qui sotto misura la griglia DOPO che #phoneScreen
-    // ha già la sua dimensione reale aggiornata.
-    _aggiornaScalaCornice();
     if (document.body.classList.contains('phone-detail-open')) {
         requestAnimationFrame(_posizionaContainerNelloSchermo);
     } else if (_layoutWidget) {
