@@ -531,6 +531,14 @@
            proporzioni diverse, queste 4 percentuali per orientamento sono
            l'UNICO punto da aggiornare. */
         :root {
+            /* SUPERATE (STEP 7 fix restyle "cornice Pokédex", 2026-09-17):
+               queste 8 percentuali erano calibrate sulle proporzioni del
+               vecchio PNG, sproporzionate rispetto ai 4 formati nativi
+               fissi introdotti allo Step 3 — producevano bordi enormi e
+               asimmetrici. Sostituite da un margine unico e sottile, vedi
+               #phoneScreen più sotto (stesso principio del mockup:
+               inset: var(--frame) uguale su tutti i lati). Lasciate qui
+               inutilizzate invece che cancellate, per rollback. */
             --phone-screen-top-v: 9.2%;
             --phone-screen-bottom-v: 9.3%;
             --phone-screen-left-v: 17.6%;
@@ -540,6 +548,14 @@
             --phone-screen-bottom-o: 18.39%;
             --phone-screen-left-o: 5.43%;
             --phone-screen-right-o: 5.90%;
+
+            /* Margine cornice→schermo, unico su tutti i lati (STEP 7,
+               2026-09-17) — stesso principio del mockup originale
+               (--frame: clamp(8px, 2vw, 32px)). Qui un valore fisso in px
+               nativi basta, dato che tutto il box è già scalato come
+               blocco unico (Step 3): non serve vw/clamp, la scala della
+               cornice fa già il lavoro di adattamento. */
+            --pokedex-margine-schermo: 16px;
 
             /* Tetto massimo desktop per la cornice pokedex (2026-09-10,
                Claudio: "una risoluzione HD standard, 1366x768") — un solo
@@ -654,10 +670,7 @@
 
         #phoneScreen {
             position: absolute;
-            top: var(--phone-screen-top-v);
-            bottom: var(--phone-screen-bottom-v);
-            left: var(--phone-screen-left-v);
-            right: var(--phone-screen-right-v);
+            inset: var(--pokedex-margine-schermo);
             z-index: 1;
             border-radius: 22px;
             overflow: hidden;
@@ -666,10 +679,6 @@
         }
         @media (orientation: landscape) {
             #phoneScreen {
-                top: var(--phone-screen-top-o);
-                bottom: var(--phone-screen-bottom-o);
-                left: var(--phone-screen-left-o);
-                right: var(--phone-screen-right-o);
                 border-radius: 14px;
             }
         }
@@ -1934,6 +1943,17 @@
             z-index: 12;
             transition: visibility 0s;
         }
+        /* FIX (STEP 7, 2026-09-17): Claudio vuole la Poké Ball SEMPRE
+           visibile in basso, come nel mockup (prima spariva del tutto
+           quando non c'era "indietro" da fare — comportamento ereditato
+           da prima di questo restyle). La classe .nascosto viene ancora
+           applicata da _aggiornaTastoFisico() (JS invariato, l'icona
+           dentro cambia comunque freccia/casetta secondo la logica
+           esistente) — qui la neutralizziamo SOLO per questo bottone,
+           senza toccare la funzione che la assegna. */
+        #btnFisicoTelefono.nascosto {
+            visibility: visible !important;
+        }
         /* AGGIORNATO (STEP 4, 2026-09-17): sostituisce lo sfondo scuro con
            bordo ciano — ora usa .pokedex-ball (classe aggiunta in HTML).
            L'icona (freccia/casetta) resta sopra, più piccola, per non
@@ -1945,34 +1965,28 @@
             color: #171717;
         }
 
-        /* ── MANIGLIA TENDINA → POKÉ BALL (STEP 4 restyle "cornice
-           Pokédex", 2026-09-17) — sovrascrive SOLO l'aspetto di
-           .csb-handle (statusbar.css/js NON toccati, come da Opzione A
-           concordata con Claudio). Funziona perché queste regole sono
-           dichiarate DOPO <link href="statusbar.css"> nel documento: a
-           parità di specificità vince l'ultima, nessun !important
-           necessario. La logica di trascinamento/apertura resta
-           interamente di CSBar — qui cambia solo cosa si vede. */
-        .csb-handle {
-            height: 44px;
-        }
-        .csb-handle i {
-            width: 34px;
-            height: 34px;
-            border-radius: 50%;
-            background: linear-gradient(to bottom, var(--primary) 0 46%, #171717 46% 54%, var(--secondary) 54% 100%);
-            border: 2px solid #171717;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.35), inset 0 0 0 2px rgba(255, 255, 255, 0.12);
-            position: relative;
-        }
-        .csb-handle i::after {
-            content: '';
+        /* ── MANIGLIA TENDINA → POKÉ BALL — CORRETTO (STEP 7 fix restyle
+           "cornice Pokédex", 2026-09-17). Il tentativo originale (skin su
+           .csb-handle) non funzionava: .csb-handle vive DENTRO .csb-shade
+           (il pannello, non la barra) e quando la tendina è chiusa finisce
+           esattamente dietro .csb-bar (stesso top:0, ma la barra ha
+           z-index più alto ed è opaca) — invisibile per costruzione, non
+           per un errore di stile. Verificato nel codice: .csb-bar ha già
+           il proprio gestore di trascinamento/click (stesso
+           onPointerDown della maniglia, el.bar.addEventListener
+           ("pointerdown", onPointerDown)) — quindi la Poké Ball qui sotto
+           è SOLO decorativa (pointer-events:none), i click/trascinamenti
+           passano alla barra sottostante che già li gestisce da sola.
+           Inserita come figlio di .csb-bar via JS (vedi
+           ui/paginainiziale-polling-avvio.ui.js), centrata su di lei. */
+        .csb-handle { height: 44px; } /* invariato per rollback, non più decisivo visivamente */
+        .pokedex-ball-maniglia {
             position: absolute;
-            inset: 30%;
-            border-radius: 50%;
-            background: #eee9df;
-            border: 1.5px solid #171717;
-            box-shadow: inset 0 0 0 1.5px #fff;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            width: 34px; height: 34px;
+            pointer-events: none;
+            z-index: 1;
         }
 
         /* Pallina che "viaggia" dentro la tendina quando si apre — inserita
