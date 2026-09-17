@@ -10,8 +10,16 @@
 // Contiene: toggleDarkMode, _animazioniRidotte, toggleRiduciAnimazioni,
 // setSiteTheme.
 //
+// AGGIORNATO (STEP 1 restyle "cornice Pokédex", 2026-09-17): setSiteTheme
+// (3 preset fissi) sostituita da applicaColoriTema/setColorePrincipale/
+// setColoreSecondario (2 colori liberi, vedi utils/theme-colori.js).
+// toggleDarkMode ora richiama anche applicaColoriTema() perché la
+// derivazione dipende dal flag scuro/chiaro. setSiteTheme() resta
+// definita più sotto per rollback ma non è più chiamata da nessuna parte.
+//
 // Nessuna istruzione qui gira a tempo di caricamento script — l'ordine
-// tra i quattro file navigation-*.ui.js è indifferente.
+// tra i quattro file navigation-*.ui.js è indifferente, MA questo file
+// deve caricarsi DOPO utils/theme-colori.js (già garantito in index.html).
 // ───────────────────────────────────────────────────────────────────────
 
         function toggleDarkMode(isDark) {
@@ -21,6 +29,80 @@
             } else {
                 document.body.classList.remove('dark-mode');
             }
+            applicaColoriTema();
+        }
+
+        // ── TEMA A 2 COLORI (STEP 1 restyle "cornice Pokédex", 2026-09-17) ──
+        // Legge Principale/Secondario salvati (o i default), deriva le
+        // variabili CSS (utils/theme-colori.js) e le scrive su :root.
+        // Invalida anche la cache SVG delle sfere Poké Ball (colori diversi
+        // => calotta/pancia diverse => renderWidgetHome va rifatto), SOLO
+        // se il motore sfere è già caricato (questa funzione gira anche
+        // primissima, prima che tutto il resto sia pronto).
+        function applicaColoriTema() {
+            const principale = prefColorePrincipaleGet() || TEMA_COLORE_PRINCIPALE_DEFAULT;
+            const secondario = prefColoreSecondarioGet() || TEMA_COLORE_SECONDARIO_DEFAULT;
+            const scuro = document.body.classList.contains('dark-mode');
+
+            const variabili = derivaVariabiliTema(principale, secondario, scuro);
+            Object.entries(variabili).forEach(([nome, valore]) => {
+                document.documentElement.style.setProperty(nome, valore);
+            });
+
+            // Sincronizza i due color-picker in Impostazioni > Tema, se già
+            // renderizzati (potrebbero non esserlo ancora al primissimo
+            // avvio, prima che window.onload apra la pagina Impostazioni).
+            const inputPrincipale = document.getElementById('temaColorePrincipale');
+            const inputSecondario = document.getElementById('temaColoreSecondario');
+            if (inputPrincipale) inputPrincipale.value = principale;
+            if (inputSecondario) inputSecondario.value = secondario;
+
+            // La cache SVG delle sfere si invalida da sola (la chiave include
+            // già calotta/pancia correnti, vedi _ballSvgCache) — qui basta
+            // rifare il render se il motore Home è già partito, altrimenti
+            // initPhoneShell() ci penserà al primo giro.
+            if (typeof renderWidgetHome === 'function' && typeof _layoutWidget !== 'undefined' && _layoutWidget) {
+                renderWidgetHome();
+            }
+        }
+
+        function setColorePrincipale(hex) {
+            prefColorePrincipaleSet(hex);
+            applicaColoriTema();
+        }
+
+        function setColoreSecondario(hex) {
+            prefColoreSecondarioSet(hex);
+            applicaColoriTema();
+        }
+
+        // ── DIAMETRO WIDGET (STEP 3 restyle "cornice Pokédex", 2026-09-17) ──
+        const DIAMETRO_WIDGET_DEFAULT = 90;
+        const DIAMETRO_WIDGET_MIN = 80;
+        const DIAMETRO_WIDGET_MAX = 220;
+
+        function applicaDiametroWidget() {
+            const diametro = prefDiametroWidgetGet() || DIAMETRO_WIDGET_DEFAULT;
+            document.documentElement.style.setProperty('--ball-misura', diametro + 'px');
+
+            const input = document.getElementById('temaDiametroWidget');
+            const valoreEl = document.getElementById('temaDiametroWidgetValore');
+            if (input) input.value = diametro;
+            if (valoreEl) valoreEl.textContent = diametro + ' px';
+
+            // Cambiare il diametro cambia quante colonne/righe entrano nella
+            // pagina (la griglia CSS è auto-fill su var(--ball-misura), vedi
+            // index.html) — _misuraPaginaWidget() la rimisura da sola dal DOM
+            // ad ogni renderWidgetHome(), quindi basta rifare il render.
+            if (typeof renderWidgetHome === 'function' && typeof _layoutWidget !== 'undefined' && _layoutWidget) {
+                renderWidgetHome();
+            }
+        }
+
+        function setDiametroWidget(px) {
+            const valore = Math.max(DIAMETRO_WIDGET_MIN, Math.min(DIAMETRO_WIDGET_MAX, parseInt(px, 10) || DIAMETRO_WIDGET_DEFAULT));
+            prefDiametroWidgetSet(valore);
+            applicaDiametroWidget();
         }
 
 

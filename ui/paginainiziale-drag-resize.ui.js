@@ -124,7 +124,16 @@ function _onResizeHandlePointerDown(e) {
         // raggiungibile trascinando, e non si puo' andare oltre lo schermo.
         maxRowSpan: (() => {
             const wrap = grid.closest('.widget-pagina') || document.getElementById('phoneWidgetHomeWrap') || grid.parentElement;
-            const hVisibile = wrap ? wrap.clientHeight : 0;
+            // FIX (STEP 3 restyle "cornice Pokédex", 2026-09-17): era
+            // wrap.clientHeight (misura NATIVA/pre-transform dell'elemento,
+            // ignara di un eventuale transform:scale() su un antenato —
+            // vedi #phoneFrameBox). cellH/cellHTot qui sotto derivano invece
+            // da getBoundingClientRect() (tileRect, riga ~102), che RISPETTA
+            // gli scale — mischiare le due unità avrebbe fatto sbagliare
+            // maxRowSpan ogni volta che la cornice non è a scala 1:1 (praticamente
+            // sempre su desktop). getBoundingClientRect().height è nella
+            // STESSA unità di cellH: stesso spazio, coerente in ogni caso.
+            const hVisibile = wrap ? wrap.getBoundingClientRect().height : 0;
             const cellHTot = cellH + rowGap;
             if (!hVisibile || cellHTot <= 0) return RIGHE_MAX_WIDGET;
             return Math.max(1, Math.min(RIGHE_MAX_WIDGET, Math.floor((hVisibile + rowGap) / cellHTot)));

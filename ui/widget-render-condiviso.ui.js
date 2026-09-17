@@ -72,24 +72,18 @@ const _ballVIEWBOX = '16 22 96 96';
 // riportando _ballPaletteWidget a true.
 let _ballPaletteWidget = false;
 
-const _ballPALETTE = {
-    viola:       { calotta: '#9b7ce0', pancia: ['#ffffff', '#f0efeb', '#c9c8c2'] },
-    verde:       { calotta: '#5aa860', pancia: ['#ffffff', '#f0efeb', '#c9c8c2'] },
-    pokemon:     { calotta: '#4f93de', pancia: ['#ffffff', '#f0efeb', '#c9c8c2'] },
-    scuro_viola: { calotta: '#5b4a86', pancia: ['#a9a8b0', '#94939c', '#6f6e77'] },
-    scuro_verde: { calotta: '#3c6b45', pancia: ['#a9aca8', '#949892', '#6e726d'] },
-    scuro_poke:  { calotta: '#2f5687', pancia: ['#a8abb2', '#93969d', '#6d7077'] }
-};
-
+// AGGIORNATO (STEP 1 restyle "cornice Pokédex", 2026-09-17): la vecchia
+// tabella fissa _ballPALETTE (3 temi x chiaro/scuro, 6 voci hardcoded) è
+// sostituita da derivaPaletteBall() in utils/theme-colori.js, che calcola
+// calotta/pancia dai DUE colori liberi (Principale/Secondario) scelti
+// dall'utente invece che da un tema preimpostato. Nessun'altra riga di
+// questo file cambia: _ballSvg/_ballSvgCache continuano a chiamare
+// _ballTemaAttivo() esattamente come prima, ignare del cambio sotto.
 function _ballTemaAttivo() {
-    const b = document.body.classList;
-    const scuro = b.contains('dark-mode');
-    const verde = b.contains('theme-verde');
-    const poke  = b.contains('theme-pokemon');
-    if (scuro) return _ballPALETTE[verde ? 'scuro_verde' : (poke ? 'scuro_poke' : 'scuro_viola')];
-    if (verde) return _ballPALETTE.verde;
-    if (poke)  return _ballPALETTE.pokemon;
-    return _ballPALETTE.viola;
+    const scuro = document.body.classList.contains('dark-mode');
+    const principale = (typeof prefColorePrincipaleGet === 'function' && prefColorePrincipaleGet()) || TEMA_COLORE_PRINCIPALE_DEFAULT;
+    const secondario = (typeof prefColoreSecondarioGet === 'function' && prefColoreSecondarioGet()) || TEMA_COLORE_SECONDARIO_DEFAULT;
+    return derivaPaletteBall(principale, secondario, scuro);
 }
 
 // ── COLORI DERIVATI ──────────────────────────────────────────────────────
