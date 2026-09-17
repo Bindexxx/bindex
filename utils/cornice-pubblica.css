@@ -1,0 +1,141 @@
+/* ═══════════════════════════════════════════════════════════════════════
+   utils/cornice-pubblica.css — STEP 5 restyle "cornice Pokédex"
+   (2026-09-17). Cornice condivisa da wishlist.html, binder-pubblico.html,
+   scaffali-pubblico.html — stessa struttura di index.html (#phoneShell >
+   #phoneFrameBox > #phoneScreen) ma SENZA griglia widget: qui dentro
+   #phoneScreen c'è semplicemente il contenuto esistente della pagina
+   (header + lista + eventuale barra in fondo), che scorre verticalmente
+   come sempre — vedi utils/cornice-pubblica.js per il motore di scala.
+
+   Richiede che la pagina abbia già definito --primary/--secondary (e le
+   altre variabili derivate) PRIMA che questo CSS le usi — vedi
+   applicaTemaCondiviso() in utils/shared-public.js, che ora chiama anche
+   derivaVariabiliTema() da utils/theme-colori.js.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+html, body {
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    background: #111;
+    width: 100%;
+    height: 100%;
+}
+
+#phoneShell {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1px;
+    box-sizing: border-box;
+    background: #111;
+}
+
+#phoneFrameBox {
+    position: relative;
+    background: linear-gradient(135deg, var(--primary) 0 49.7%, var(--secondary) 50.3% 100%);
+    border-radius: 34px;
+    border: 2px solid rgba(0, 0, 0, 0.35);
+    box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.15), 0 10px 30px rgba(0, 0, 0, 0.35);
+    transform-origin: center center;
+}
+@media (orientation: landscape) {
+    #phoneFrameBox { border-radius: 26px; }
+}
+
+#phoneScreen {
+    position: absolute;
+    top: 9.2%; bottom: 9.3%; left: 17.6%; right: 13.6%; /* stesse percentuali di index.html verticale */
+    z-index: 1;
+    border-radius: 22px;
+    overflow: hidden;
+    background-color: var(--bg-color);
+    box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.55), 0 0 0 5px rgba(255, 255, 255, 0.06);
+}
+@media (orientation: landscape) {
+    #phoneScreen {
+        top: 14.25%; bottom: 18.39%; left: 5.43%; right: 5.90%; /* stesse percentuali di index.html orizzontale */
+        border-radius: 14px;
+    }
+}
+
+/* Il vero scroll avviene qui dentro (figlio diretto di #phoneScreen), NON
+   su #phoneScreen stesso — così barra-totale/modali (fratelli di questo
+   div, position:absolute rispetto a #phoneScreen) restano ANCORATI al
+   bordo dello schermo invece di scorrere via col contenuto o dipendere
+   dalle sottigliezze di position:fixed dentro un antenato con transform
+   (vedi commento in utils/cornice-pubblica.js). */
+#phoneContenutoScorribile {
+    height: 100%;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* ── Poké Ball condivise (stesso componente/stessa idea di index.html) ── */
+.pokedex-ball {
+    border-radius: 50%;
+    background: linear-gradient(to bottom, var(--primary) 0 46%, #171717 46% 54%, var(--secondary) 54% 100%);
+    border: 2px solid #171717;
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.4), inset 0 0 0 2px rgba(255, 255, 255, 0.12);
+    position: relative;
+}
+.pokedex-ball::after {
+    content: '';
+    position: absolute;
+    inset: 30%;
+    border-radius: 50%;
+    background: #eee9df;
+    border: 1.5px solid #171717;
+    box-shadow: inset 0 0 0 1.5px #fff;
+}
+
+#btnPubblicoTornaSu {
+    position: absolute;
+    left: 49.94%; top: 93.95%;
+    transform: translate(-50%, -50%);
+    width: 5.6%; aspect-ratio: 1;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    z-index: 12;
+}
+#btnPubblicoTornaSu i { position: relative; z-index: 1; font-size: 0.5rem; color: #171717; }
+@media (orientation: landscape) {
+    #btnPubblicoTornaSu { left: 52.79%; top: 87.58%; width: 5.2%; }
+}
+
+/* Maniglia tendina → Poké Ball, stesso trucco di index.html (dichiarato
+   DOPO <link href="statusbar.css">, vince sulla regola di libreria senza
+   bisogno di !important). */
+.csb-handle { height: 44px; }
+.csb-handle i {
+    width: 34px; height: 34px;
+    border-radius: 50%;
+    background: linear-gradient(to bottom, var(--primary) 0 46%, #171717 46% 54%, var(--secondary) 54% 100%);
+    border: 2px solid #171717;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.35), inset 0 0 0 2px rgba(255, 255, 255, 0.12);
+    position: relative;
+}
+.csb-handle i::after {
+    content: '';
+    position: absolute;
+    inset: 30%;
+    border-radius: 50%;
+    background: #eee9df;
+    border: 1.5px solid #171717;
+    box-shadow: inset 0 0 0 1.5px #fff;
+}
+.pokedex-ball-tendina {
+    position: absolute;
+    bottom: 12px; left: 50%;
+    transform: translateX(-50%);
+    width: 40px; height: 40px;
+    z-index: 5;
+}
+
+/* La pagina esistente (header/.container/barra-totale/modali) viene
+   spostata DENTRO #phoneScreen com'era, con overflow naturale — nessuna
+   regola qui sotto: il CSS proprio di ciascuna pagina (già nel suo
+   <style>) resta valido invariato, vive semplicemente in un contenitore
+   più piccolo adesso. */
