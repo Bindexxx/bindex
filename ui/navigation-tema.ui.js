@@ -69,11 +69,64 @@
         function setColorePrincipale(hex) {
             prefColorePrincipaleSet(hex);
             applicaColoriTema();
+            _salvaColoreCorniceRemoto();
         }
 
         function setColoreSecondario(hex) {
             prefColoreSecondarioSet(hex);
             applicaColoriTema();
+            _salvaColoreCorniceRemoto();
+        }
+
+        // ── SINCRONIZZAZIONE SUPABASE (STEP 6 restyle "cornice Pokédex",
+        // 2026-09-17) — il colore cornice, a differenza del layout widget,
+        // NON è più solo locale: deve essere visibile anche ai visitatori
+        // anonimi dei link pubblici (vedi sql/63). localStorage resta come
+        // cache veloce per il primo paint (evita un flash prima del giro di
+        // rete); Supabase è la fonte di verità quando disponibile.
+
+        // Scrittura: "fire and forget", non blocca l'interfaccia — se fallisce
+        // (rete assente, non loggato) il colore resta comunque applicato in
+        // locale su questo dispositivo, si ritenterà al prossimo cambio.
+        async function _salvaColoreCorniceRemoto() {
+            if (typeof authGetUserId !== 'function') return;
+            const userId = await authGetUserId();
+            if (!userId) return; // non loggato (non dovrebbe succedere in index.html, ma per sicurezza)
+            const principale = prefColorePrincipaleGet() || TEMA_COLORE_PRINCIPALE_DEFAULT;
+            const secondario = prefColoreSecondarioGet() || TEMA_COLORE_SECONDARIO_DEFAULT;
+            try {
+                await coloreCorniceProprioSet(principale, secondario);
+            } catch (e) {
+                console.error('[colore cornice] salvataggio remoto fallito, resta solo locale su questo dispositivo', e);
+            }
+        }
+
+        // Lettura: chiamata UNA VOLTA all'avvio (vedi window.onload in
+        // index.html). Se sul server c'è già un colore salvato (da questo
+        // o da un altro dispositivo), sovrascrive il locale — coerente con
+        // "il colore non è più per-dispositivo, è dell'utente". Se il
+        // server non ha ancora nulla (prima volta), scrive lì il valore
+        // locale corrente, così i link pubblici hanno subito qualcosa da
+        // mostrare invece di restare sui default per sempre.
+        async function sincronizzaColoriConSupabase() {
+            if (typeof authGetUserId !== 'function' || typeof coloreCorniceProprioGet !== 'function') return;
+            const userId = await authGetUserId();
+            if (!userId) return;
+            try {
+                const { data, error } = await coloreCorniceProprioGet(userId);
+                if (error) throw error;
+                if (data && data.colore_principale && data.colore_secondario) {
+                    prefColorePrincipaleSet(data.colore_principale);
+                    prefColoreSecondarioSet(data.colore_secondario);
+                    applicaColoriTema();
+                } else {
+                    // Prima volta per questo utente — semina il server col
+                    // valore locale/default corrente.
+                    await _salvaColoreCorniceRemoto();
+                }
+            } catch (e) {
+                console.error('[colore cornice] sincronizzazione iniziale fallita, resta il valore locale', e);
+            }
         }
 
         // ── DIAMETRO WIDGET (STEP 3 restyle "cornice Pokédex", 2026-09-17) ──
