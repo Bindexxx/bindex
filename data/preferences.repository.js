@@ -12,6 +12,29 @@ function prefMantieniAccessoSet(valore) { localStorage.setItem('cardsyncMantieni
 function prefSiteThemeGet() { return localStorage.getItem('siteTheme'); }
 function prefSiteThemeSet(nome) { localStorage.setItem('siteTheme', nome); }
 
+// ── TEMA A 2 COLORI LIBERI (STEP 1 restyle "cornice Pokédex",
+// 2026-09-17) — sostituisce i 3 preset fissi sopra (prefSiteThemeGet/Set
+// restano definite per rollback, ma setSiteTheme() non è più chiamata da
+// nessuna parte dopo questo step). Per-dispositivo come tutte le altre
+// preferenze qui: ogni utente su ogni device sceglie i propri colori.
+// null = non ancora scelto, usa il default (vedi TEMA_COLORE_*_DEFAULT
+// in utils/theme-colori.js).
+function prefColorePrincipaleGet() { return localStorage.getItem('cardsyncColorePrincipale'); }
+function prefColorePrincipaleSet(hex) { localStorage.setItem('cardsyncColorePrincipale', hex); }
+function prefColoreSecondarioGet() { return localStorage.getItem('cardsyncColoreSecondario'); }
+function prefColoreSecondarioSet(hex) { localStorage.setItem('cardsyncColoreSecondario', hex); }
+
+// ── DIAMETRO WIDGET (STEP 3 restyle "cornice Pokédex", 2026-09-17) ──────
+// Sostituisce --ball-misura fissa a 90px con un valore scelto dall'utente
+// (slider Impostazioni > Tema, 80-220px) — "1 unità" di resize (vedi
+// COLONNE_GRIGLIA_WIDGET/griglia in ui/paginainiziale.ui.js + CSS
+// .widget-griglia) è ora il diametro scelto, non più un numero fisso.
+// Per-dispositivo come le altre preferenze qui: ogni schermo ha la sua
+// dimensione comoda. null = non ancora scelto, usa il default (vedi
+// DIAMETRO_WIDGET_DEFAULT in ui/navigation-tema.ui.js).
+function prefDiametroWidgetGet() { const v = parseInt(localStorage.getItem('cardsyncDiametroWidget'), 10); return Number.isFinite(v) ? v : null; }
+function prefDiametroWidgetSet(px) { localStorage.setItem('cardsyncDiametroWidget', String(px)); }
+
 function prefDarkModeGet() { return localStorage.getItem('darkMode') === 'true'; }
 function prefDarkModeSet(isDark) { localStorage.setItem('darkMode', isDark); }
 
