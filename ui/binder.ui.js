@@ -258,10 +258,32 @@ async function impostaPubblicazioneBinderAttivo(pubblico) {
 
 function tornaAllaGrigliaBinders() {
     _binderAttivo = null;
+    chiudiImpostazioniBinderAttivo(); // difensivo: se il modale era rimasto aperto
     _libroSmonta(); // OPUS 2026-08-25: libera ResizeObserver e handler del libro
     const wrapDettaglio = document.getElementById('binderDettaglioWrap');
     if (wrapDettaglio) wrapDettaglio.style.display = 'none';
     document.getElementById('bindersContenitoriGrid').style.display = '';
+}
+
+// ── Modale impostazioni per-binder (Claudio, 2026-09-18) ─────────────────
+// Rinomina/pubblicazione/condivisione/toggle Immagini-Elenco/Design/layout
+// — prima tutte visibili sopra la griglia carte in #binderDettaglioWrap,
+// ora raccolte in #binderImpostazioniModal (markup in index.html, vicino
+// agli altri modali del sito) aperto da un'icona ingranaggio nell'header:
+// "ogni binder ha le sue impostazioni". Nessuna logica toccata — gli id
+// interni (#binderRinominaWrap, #binderPubblicazioneWrap, ecc.) sono
+// identici a prima e continuano a essere popolati/nascosti dalle stesse
+// funzioni di sempre (_aggiornaControlliRinominaPubblicazioneCondivisione,
+// renderBinderContenuto, caricaDesignBinderAttivo) — solo il contenitore
+// che li ospita è cambiato, getElementById non dipende da dove sta il nodo.
+function apriImpostazioniBinderAttivo() {
+    const modal = document.getElementById('binderImpostazioniModal');
+    if (modal) modal.style.display = 'flex';
+}
+
+function chiudiImpostazioniBinderAttivo() {
+    const modal = document.getElementById('binderImpostazioniModal');
+    if (modal) modal.style.display = 'none';
 }
 
 // Popola _carteBinderAttivoCache con le carte del binder aperto, forma
