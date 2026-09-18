@@ -1854,6 +1854,22 @@
         }
         .container:not(.container-visibile) { display: none; }
 
+        /* AGGIUNTO (STEP 12 fix restyle "cornice Pokédex", 2026-09-17):
+           Claudio non si fidava del cerchio di anteprima vicino allo
+           slider diametro ("mi pare che la dimensione dello slider e dei
+           widget non corrisponda davvero") — invece di un'approssimazione
+           disegnata a mano, rende TRASPARENTE l'intero pannello mentre
+           trascini lo slider, così si vede attraverso la VERA Home che
+           sta sotto (rimane sempre montata, .container le sta solo sopra
+           — vedi apriDettaglioWidget) aggiornarsi dal vivo con il
+           rendering reale, non un'approssimazione. Vedi setDiametroWidget
+           in ui/navigation-tema.ui.js per quando questa classe viene
+           aggiunta/tolta. */
+        .container.container-visibile.container-trasparente-diametro {
+            opacity: 0.2;
+            transition: opacity 0.15s ease;
+        }
+
         /* Bottone fisico unico (Claudio: "il tasto in basso... se apro i
            widget la saetta diventa indietro") — sostituisce sia il vecchio
            tasto "Indietro" flottante sia l'idea di rendere cliccabile il
@@ -1940,33 +1956,33 @@
            bordo. Misure fisse (clamp, come nel mockup — --pokeball-size)
            restano sempre coerenti col bordo, a prescindere dalla finestra. */
         :root { --pokeball-size: clamp(32px, 5vw, 56px); }
-        /* AGGIORNATO (STEP 11 fix restyle "cornice Pokédex", 2026-09-17):
-           i 3 controlli sono ora DENTRO #phoneScreen (spostati anche nel
-           markup, vedi commento HTML) — "pochissimo ma visibile a occhio
-           nudo" (Claudio): 12px dal bordo VERO dello schermo, non più
-           dalla cornice colorata. Essendo #phoneScreen il nuovo
-           riferimento (invece di #phoneFrameBox), il posizionamento è già
-           "automatico" — un valore fisso in px funziona identico a
-           qualunque dimensione/proporzione prenda lo schermo, senza
-           bisogno di calcoli: lo calcola il browser da solo rispetto al
-           bordo vero, qualunque esso sia. */
-        :root { --pokeball-inset-schermo: 12px; }
+        /* CORRETTO (STEP 12 fix restyle "cornice Pokédex", 2026-09-17):
+           Claudio, dopo aver visto lo Step 11: "voglio che le pokeball
+           siano una decorazione del bordo... SOPRA AL BORDO", non dentro
+           lo schermo. Ora sono di nuovo figlie di #phoneFrameBox (vedi
+           commento HTML), e il CENTRO di ciascuna (non il bordo esterno)
+           è posizionato esattamente sulla linea di confine tra cornice e
+           schermo (--pokedex-margine-schermo, lo stesso 16px del bordo
+           vero) — metà pallina sulla cornice colorata, metà sullo
+           schermo, un vero "rivetto" decorativo sul bordo, non incollata
+           né dentro né fuori. Stesso principio del mockup originale
+           (pokeball--left/right/bottom: centrate esattamente sul confine
+           del device). */
         .pokedex-ball-laterale {
             position: absolute;
             top: 50%;
             width: var(--pokeball-size);
             aspect-ratio: 1;
-            transform: translateY(-50%);
             cursor: pointer;
             z-index: 12;
         }
-        #pokeballSinistra { left: var(--pokeball-inset-schermo); }
-        #pokeballDestra { right: var(--pokeball-inset-schermo); }
+        #pokeballSinistra { left: var(--pokedex-margine-schermo); transform: translate(-50%, -50%); }
+        #pokeballDestra { right: var(--pokedex-margine-schermo); transform: translate(50%, -50%); }
 
         #btnFisicoTelefono {
             position: absolute;
-            left: 50%; bottom: var(--pokeball-inset-schermo);
-            transform: translateX(-50%);
+            left: 50%; bottom: var(--pokedex-margine-schermo);
+            transform: translate(-50%, 50%);
             width: var(--pokeball-size); aspect-ratio: 1;
             display: flex; align-items: center; justify-content: center;
             cursor: pointer;
@@ -4434,23 +4450,28 @@
                         <div id="phoneWidgetPagine"></div>
                     </div>
                 </div>
-
-                <!-- Bottone fisico unico — home/indietro, vedi commento CSS su
-                     #btnFisicoTelefono. SPOSTATE DENTRO #phoneScreen (STEP 11
-                     fix restyle "cornice Pokédex", 2026-09-17 — prima erano
-                     fuori, sul bordo della cornice: Claudio le vuole dentro
-                     lo schermo vero, non sulla cornice colorata). Il
-                     reparenting a schermo intero (.a-schermo-intero,
-                     position:fixed !important) funziona lo stesso
-                     indipendentemente da dove vive il nodo nel DOM — è un
-                     semplice toggle di classe, non un vero spostamento nel
-                     documento, verificato prima di spostarle. -->
-                <button id="btnFisicoTelefono" class="nascosto pokedex-ball" onclick="_clickTastoFisico()" title="Home">
-                    <i class="fa-solid fa-house"></i>
-                </button>
-                <div id="pokeballSinistra" class="pokedex-ball pokedex-ball-laterale" onclick="_clickPokeballDecorativa('sinistra')"></div>
-                <div id="pokeballDestra" class="pokedex-ball pokedex-ball-laterale" onclick="_clickPokeballDecorativa('destra')"></div>
             </div>
+
+            <!-- Bottone fisico unico — home/indietro, vedi commento CSS su
+                 #btnFisicoTelefono. RIPORTATE fuori da #phoneScreen (STEP 12
+                 fix restyle "cornice Pokédex", 2026-09-17 — lo Step 11 le
+                 aveva spostate dentro per errore: Claudio vuole che siano
+                 "una decorazione del bordo, sopra al bordo", cioè a
+                 cavallo esatto tra cornice e schermo, non chiuse dentro lo
+                 schermo — #phoneScreen ha overflow:hidden per gli angoli
+                 arrotondati, che taglierebbe a metà l'effetto "a cavallo"
+                 voluto. In più: chiudiDettaglioWidget() rimette SEMPRE
+                 #btnFisicoTelefono dentro #phoneFrameBox dopo un dettaglio
+                 aperto (vedi ui/paginainiziale-dettaglio.ui.js, riga con
+                 frameBox.appendChild) — averle spostate dentro #phoneScreen
+                 allo Step 11 avrebbe rotto quel ripristino al primo widget
+                 aperto e richiuso. Tornando qui, tutto torna coerente
+                 senza toccare quella funzione. -->
+            <button id="btnFisicoTelefono" class="nascosto pokedex-ball" onclick="_clickTastoFisico()" title="Home">
+                <i class="fa-solid fa-house"></i>
+            </button>
+            <div id="pokeballSinistra" class="pokedex-ball pokedex-ball-laterale" onclick="_clickPokeballDecorativa('sinistra')"></div>
+            <div id="pokeballDestra" class="pokedex-ball pokedex-ball-laterale" onclick="_clickPokeballDecorativa('destra')"></div>
         </div>
     </div>
 
@@ -5541,12 +5562,17 @@
                             <input type="range" id="temaDiametroWidget" min="80" max="220" step="10" value="90" oninput="setDiametroWidget(this.value)" style="flex: 1; accent-color: var(--primary); cursor: pointer;">
                             <span id="temaDiametroWidgetValore" style="font-size: 0.8rem; color: var(--text-muted); min-width: 48px; text-align: right;">90 px</span>
                         </div>
-                        <div style="display: flex; align-items: center; gap: 0.9rem; width: 100%; margin-top: 0.2rem;">
-                            <div id="temaDiametroAnteprimaWrap" style="flex-shrink: 0; width: 90px; height: 90px; display: flex; align-items: center; justify-content: center;">
-                                <div id="temaDiametroAnteprima" style="width: 90px; height: 90px; border-radius: 50%; background: rgba(158, 158, 170, 0.28); border: 2px dashed rgba(158, 158, 170, 0.6); transition: none;"></div>
-                            </div>
-                            <p id="temaDiametroAnteprimaTesto" style="font-size: 0.78rem; color: var(--text-muted); margin: 0;">Con questa dimensione, per questo dispositivo, ci saranno 0 colonne e 0 righe</p>
-                        </div>
+                        <!-- AGGIORNATO (STEP 12 fix restyle "cornice
+                             Pokédex", 2026-09-17): tolto il cerchio di
+                             anteprima disegnato a mano — Claudio non si
+                             fidava che corrispondesse davvero alla resa
+                             reale. Sostituito con la trasparenza del
+                             pannello stesso durante il trascinamento (vedi
+                             commento CSS su .container-trasparente-diametro
+                             e setDiametroWidget in ui/navigation-tema.ui.js)
+                             — resta solo il testo colonne/righe, calcolato
+                             dallo spazio vero, sempre istantaneo. -->
+                        <p id="temaDiametroAnteprimaTesto" style="font-size: 0.78rem; color: var(--text-muted); margin: 0.4rem 0 0;">Con questa dimensione, per questo dispositivo, ci saranno 0 colonne e 0 righe</p>
                     </div>
                 </div>
             </div>
