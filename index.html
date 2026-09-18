@@ -3928,6 +3928,110 @@
 
         .binder-page-btn:disabled { background-color: var(--border-color); color: var(--text-muted); cursor: not-allowed; }
 
+        /* ═══════════════════════════════════════════════════════════════
+           BINDER — dettaglio a schermo intero (Claudio, 2026-09-18: "il
+           binder deve essere aperto a schermo intero... dare più
+           importanza al binder che al resto").
+           #binder condivide il SUO .settings-card fra la griglia
+           contenitori (pagina normale, stile Impostazioni) e il dettaglio
+           di un binder aperto — qui SOLO quando #binder ha la classe
+           .binder-dettaglio-attivo (aggiunta/tolta da apriBinderDettaglio/
+           tornaAllaGrigliaBinders in ui/binder.ui.js) il .settings-card
+           abbandona il tetto 900px/padding "da pagina" e diventa una
+           colonna flex che riempie TUTTO lo spazio che .container lascia
+           libero (.container è già a schermo intero dentro la cornice per
+           qualunque dettaglio widget, vedi apriDettaglioWidget — qui non
+           si tocca nulla di quel meccanismo, solo il contenuto interno).
+           Selettore con #binder come antenato: non cambia .settings-card
+           altrove nel sito (Regola d'Oro #1). */
+        #binder.binder-dettaglio-attivo {
+            height: 100%;
+        }
+        #binder.binder-dettaglio-attivo > .settings-card {
+            max-width: none;
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0.6rem;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+        }
+        #binder.binder-dettaglio-attivo #binderDettaglioWrap {
+            flex: 1;
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
+        }
+        /* Header ridotto al minimo (Claudio: "più importanza al binder che
+           al resto") — stessi bottoni di prima, solo più compatti. Il testo
+           "Binders" del bottone indietro sparisce (resta l'icona, il title
+           attribute copre l'accessibilità), il titolo si riduce. */
+        #binder.binder-dettaglio-attivo #binderDettaglioHeader {
+            margin-bottom: 0.5rem;
+            flex-shrink: 0;
+        }
+        #binder.binder-dettaglio-attivo #binderDettaglioHeader .btn-secondary {
+            padding: 0.4rem 0.6rem;
+            font-size: 0.75rem;
+        }
+        #binder.binder-dettaglio-attivo #binderDettaglioHeader .btn-secondary span { display: none; }
+        #binder.binder-dettaglio-attivo #binderDettaglioTitolo {
+            font-size: 0.82rem !important;
+        }
+        /* Libro: riempie tutto lo spazio verticale rimasto dopo l'header
+           (minimo indispensabile) invece del vecchio tetto 62% di
+           .container — vedi _libroMisura() in ui/binder.ui.js, ora legge
+           l'altezza VERA di questo wrap. position:relative fa da ancora
+           alle frecce laterali qui sotto. */
+        #binder.binder-dettaglio-attivo #binderLibroWrap {
+            flex: 1;
+            min-height: 0;
+            margin-top: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+        /* Frecce spostate nei lati liberi del binder aperto (Claudio,
+           2026-09-18) invece che sotto: in modalità "doppia" (schermo
+           largo) cadono nel margine libero ai lati del libro; in modalità
+           "singola" (schermo stretto, il libro è quasi tutta la
+           larghezza) restano comunque leggibili sovrapposte al bordo,
+           semi-trasparenti finché non si passa sopra. Spostate nel markup
+           dentro #binderLibroWrap (prima erano dentro #binderPagination
+           insieme all'etichetta) — stesso id, stessa funzione onclick,
+           nessuna logica JS cambiata. */
+        #binder.binder-dettaglio-attivo #binderLibroWrap > .binder-page-btn {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            z-index: 6;
+            opacity: 0.7;
+            transition: opacity 0.15s ease;
+        }
+        #binder.binder-dettaglio-attivo #binderLibroWrap > .binder-page-btn:hover { opacity: 1; }
+        #binder.binder-dettaglio-attivo #binderLibroWrap > .binder-page-btn:disabled { opacity: 0.25; }
+        #binder.binder-dettaglio-attivo #binderPrevBtn { left: 0.4rem; }
+        #binder.binder-dettaglio-attivo #binderNextBtn { right: 0.4rem; }
+        /* Etichetta pagina: sola cosa che resta in #binderPagination,
+           barra minima sotto il libro. */
+        #binder.binder-dettaglio-attivo #binderPagination {
+            margin-top: 0.4rem;
+            flex-shrink: 0;
+            font-size: 0.75rem;
+            gap: 0;
+        }
+        /* Elenco (soglia carte superata, o preferenza utente): stessa
+           logica "riempi lo spazio rimasto", con scroll proprio invece di
+           un'altezza indovinata — coerenza con la stessa filosofia del
+           libro, anche se qui non era esplicitamente richiesto. */
+        #binder.binder-dettaglio-attivo #binderElencoBody {
+            flex: 1;
+            min-height: 0;
+            overflow-y: auto;
+        }
+
         /* ============================================================
            PAGINE DI DETTAGLIO WIDGET — struttura adottata dal mockup
            cardsync-tutto.html (2026-08-30, Claudio: "la struttura di
@@ -5060,9 +5164,9 @@
                          "ogni binder ha le sue impostazioni", niente più da
                          scrollare per arrivare al contenuto. Stessi id di prima,
                          solo spostati: nessuna funzione JS toccata. -->
-                    <div style="display:flex; align-items:center; gap:0.6rem; margin-bottom:1rem;">
-                        <button type="button" class="btn-secondary" style="padding:0.5rem 0.8rem; font-size:0.8rem;" onclick="tornaAllaGrigliaBinders()">
-                            <i class="fa-solid fa-arrow-left"></i> Binders
+                    <div id="binderDettaglioHeader" style="display:flex; align-items:center; gap:0.6rem; margin-bottom:1rem;">
+                        <button type="button" class="btn-secondary" style="padding:0.5rem 0.8rem; font-size:0.8rem;" onclick="tornaAllaGrigliaBinders()" title="Torna a Binders" aria-label="Torna a Binders">
+                            <i class="fa-solid fa-arrow-left"></i> <span>Binders</span>
                         </button>
                         <h4 id="binderDettaglioTitolo" style="margin:0; font-size:1rem; font-weight:800; color:var(--text-dark);"></h4>
                         <button type="button" class="btn-secondary" style="padding:0.5rem 0.7rem; margin-left:auto;" onclick="apriImpostazioniBinderAttivo()" title="Impostazioni binder" aria-label="Impostazioni binder">
@@ -5085,6 +5189,7 @@
                          usato: è il rollback immediato alla vecchia griglia
                          statica (vedi renderBinderContenuto). -->
                     <div id="binderLibroWrap" class="libro-wrap" style="display:none;">
+                        <button type="button" class="binder-page-btn" id="binderPrevBtn" onclick="binderPaginaIndietro()" aria-label="Pagina precedente"><i class="fa-solid fa-chevron-left"></i></button>
                         <div class="libro-scena" id="binderLibroScena">
                             <div class="libro-lato libro-lato-sx" id="binderLibroSx"></div>
                             <div class="libro-lato libro-lato-dx" id="binderLibroDx"></div>
@@ -5093,6 +5198,7 @@
                                 <div class="libro-faccia libro-faccia-retro" id="binderLibroRetro"></div>
                             </div>
                         </div>
+                        <button type="button" class="binder-page-btn" id="binderNextBtn" onclick="binderPaginaAvanti()" aria-label="Pagina successiva"><i class="fa-solid fa-chevron-right"></i></button>
                     </div>
 
                     <div class="binder-grid" id="binderGrid"></div>
@@ -5102,10 +5208,14 @@
                         Nessuna carta in questo binder.
                     </p>
 
+                    <!-- AGGIORNATO (Claudio, 2026-09-18): le frecce prev/next
+                         sono ora dentro #binderLibroWrap sopra (nei lati
+                         liberi del binder aperto) — qui resta solo
+                         l'etichetta pagina, stesso id #binderPaginaLabel,
+                         stessa logica di sincronizzazione
+                         (_libroSincronizzaEtichette in ui/binder.ui.js). -->
                     <div class="binder-pagination" id="binderPagination">
-                        <button type="button" class="binder-page-btn" id="binderPrevBtn" onclick="binderPaginaIndietro()" aria-label="Pagina precedente"><i class="fa-solid fa-chevron-left"></i></button>
                         <span id="binderPaginaLabel">Pagina 1 di 1</span>
-                        <button type="button" class="binder-page-btn" id="binderNextBtn" onclick="binderPaginaAvanti()" aria-label="Pagina successiva"><i class="fa-solid fa-chevron-right"></i></button>
                     </div>
                 </div>
             </div>
