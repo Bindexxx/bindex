@@ -3959,6 +3959,11 @@
         #binder.binder-dettaglio-attivo {
             height: 100%;
         }
+        /* Titolo "Binders" + descrizione: ridondanti a binder aperto
+           (Claudio, 2026-09-18) — visibili solo sulla griglia contenitori. */
+        #binder.binder-dettaglio-attivo #binderTestataHub {
+            display: none;
+        }
         #binder.binder-dettaglio-attivo > .settings-card {
             max-width: none;
             width: 100%;
@@ -5156,12 +5161,14 @@
              che unico per utente — vedi ui/binder.ui.js per la logica. -->
         <div id="binder" class="view-section">
             <div class="settings-card">
-                <h3 style="margin-bottom: 0.3rem; color: var(--text-dark); display: flex; align-items: center; gap: 0.6rem; font-size: 1.15rem; font-weight: 800;">
-                    <i class="fa-solid fa-layer-group" style="color: var(--primary);"></i> Binders
-                </h3>
-                <p style="font-size: 0.78rem; color: var(--text-muted); margin-bottom: 1.2rem;">
-                    Un binder per ogni Location, uno per la Wishlist, e uno tutto tuo da riempire come vuoi.
-                </p>
+                <div id="binderTestataHub">
+                    <h3 style="margin-bottom: 0.3rem; color: var(--text-dark); display: flex; align-items: center; gap: 0.6rem; font-size: 1.15rem; font-weight: 800;">
+                        <i class="fa-solid fa-layer-group" style="color: var(--primary);"></i> Binders
+                    </h3>
+                    <p style="font-size: 0.78rem; color: var(--text-muted); margin-bottom: 1.2rem;">
+                        Un binder per ogni Location, uno per la Wishlist, e uno tutto tuo da riempire come vuoi.
+                    </p>
+                </div>
 
                 <!-- Griglia dei contenitori -->
                 <div id="bindersContenitoriGrid" class="binders-contenitori-grid"></div>
