@@ -1925,26 +1925,32 @@
            nulla — placeholder easter egg futuri). Posizionate come
            #btnFisicoTelefono, stesso sistema di coordinate percentuali su
            #phoneFrameBox. */
+        /* AGGIORNATO (STEP 10 fix restyle "cornice Pokédex", 2026-09-17):
+           erano in percentuale della cornice — taratura pensata per il
+           bordo spesso di prima. Ora che #phoneFrameBox è width/height:100%
+           (Step 9) il bordo è sottile e fisso (--pokedex-margine-schermo:
+           16px): una percentuale grande come 5% su una finestra larga
+           spinge la pallina ben dentro il contenuto invece di tenerla sul
+           bordo. Misure fisse (clamp, come nel mockup — --pokeball-size)
+           restano sempre coerenti col bordo, a prescindere dalla finestra. */
+        :root { --pokeball-size: clamp(32px, 5vw, 56px); }
         .pokedex-ball-laterale {
             position: absolute;
             top: 50%;
-            width: 5%;
+            width: var(--pokeball-size);
             aspect-ratio: 1;
             transform: translateY(-50%);
             cursor: pointer;
             z-index: 12;
         }
-        #pokeballSinistra { left: 2.5%; }
-        #pokeballDestra { right: 2.5%; }
-        @media (orientation: landscape) {
-            .pokedex-ball-laterale { width: 3.2%; }
-        }
+        #pokeballSinistra { left: var(--pokedex-margine-schermo); }
+        #pokeballDestra { right: var(--pokedex-margine-schermo); }
 
         #btnFisicoTelefono {
             position: absolute;
-            left: 49.94%; top: 93.95%; /* cornice verticale */
-            transform: translate(-50%, -50%);
-            width: 5.6%; aspect-ratio: 1;
+            left: 50%; bottom: var(--pokedex-margine-schermo);
+            transform: translateX(-50%);
+            width: var(--pokeball-size); aspect-ratio: 1;
             display: flex; align-items: center; justify-content: center;
             cursor: pointer;
             z-index: 12;
@@ -2016,9 +2022,6 @@
             width: 40px;
             height: 40px;
             z-index: 5;
-        }
-        @media (orientation: landscape) {
-            #btnFisicoTelefono { left: 52.79%; top: 87.58%; width: 5.2%; }
         }
         #btnFisicoTelefono.nascosto { visibility: hidden; pointer-events: none; }
 
