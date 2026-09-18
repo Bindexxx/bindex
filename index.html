@@ -808,7 +808,19 @@
                per il tasto, evitando che l'ultima riga di widget ci finisca
                sotto (Claudio, screenshot 2026-09-17: "Set e Valore non
                dovrebbero esser posizionati in quel modo"). */
-            padding: 1.1rem 0.9rem calc(4.5rem + env(safe-area-inset-bottom));
+            /* AGGIORNATO (STEP 13 fix restyle "cornice Pokédex", 2026-09-17):
+               il padding SOPRA era 1.1rem — calibrato prima che arrivasse
+               la barra CSBar fissa (~2.5rem + eventuale notch, vedi --csb-h)
+               sopra tutto il contenuto. Troppo poco: l'intestazione Home
+               (logo + bottone "Modifica") ci finiva parzialmente sotto,
+               sovrapposta alle icone della barra (Claudio, screenshot
+               2026-09-17: "un paio di tasti che si sovrappongono"). Stesso
+               valore già usato correttamente da .container per le altre
+               pagine (2.6rem + eventuale notch) — coerente in tutto il
+               sito, non un numero nuovo inventato qui.
+               Il padding SOTTO resta invariato (era già corretto, vedi
+               commento precedente sotto). */
+            padding: calc(2.6rem + env(safe-area-inset-top)) 0.9rem calc(4.5rem + env(safe-area-inset-bottom));
         }
 
         .widget-pagina-vuota {
@@ -2054,6 +2066,16 @@
             transform: translate(-50%, 0); /* la componente verticale la scrive il JS, la orizzontale resta qui */
             width: calc(var(--pokeball-size) * 1.15); /* "un po' più grande delle altre 3" */
             height: calc(var(--pokeball-size) * 1.15);
+            /* AGGIORNATO (STEP 14 fix, 2026-09-17): senza questo, la
+               pallina (z-index 9010, sopra la barra) intercettava lei i
+               click al posto della barra sottostante — che è quella che
+               gestisce DAVVERO il trascinamento (Claudio: "non mi fa
+               aprire facilmente la tendina, esce il simbolo di divieto").
+               pointer-events:none la rende puramente visiva: un click
+               "sulla pallina" passa attraverso, arriva alla barra sotto,
+               che risponde esattamente come se la pallina non ci fosse —
+               visivamente sembra comunque di afferrare la pallina. */
+            pointer-events: none;
             cursor: grab;
             z-index: 9010; /* sopra .csb-bar (9004) — non più figlia di .csb-shade, stacking normale, nessun trucco necessario */
         }
