@@ -32,6 +32,17 @@
 // - _scaffaliElenco (dichiarato in ui/scaffali.ui.js) — riusato come
 //   variabile globale, ma NON caricato tramite apriPaginaScaffali() (vedi
 //   _garantisciScaffaliElencoWidget più sotto per il motivo).
+// - _rettangoloSchermoCornice() (ui/paginainiziale-drag-resize.ui.js) —
+//   RIUSATA per posizionare il modale share sul rettangolo vero di
+//   #phoneScreen, non toccata né duplicata (vedi _condividiSharePosiziona
+//   più sotto, mirror di _binderImpostazioniPosiziona in binder.ui.js).
+//
+// AGGIORNATO 2026-09-18 (Claudio: "con molti binder/scaffali diventa
+// incastrato"): il pannello link/QR/nativo non è più inline sotto la
+// griglia — è #condividiShareModal, un modale a schermo intero dentro la
+// cornice (markup spostato vicino agli altri modali globali in index.html,
+// subito prima di #qrModal — stessa posizione fisica scelta oggi per
+// #binderImpostazioniModal).
 // ───────────────────────────────────────────────────────────────────────
 
 // ── VOCE DI CATALOGO ──────────────────────────────────────────────────
@@ -49,7 +60,7 @@ async function renderPaginaCondividi() {
     const container = document.getElementById('condividiLista');
     if (!container) return;
     container.innerHTML = '<p style="text-align:center; color:var(--text-muted); font-size:0.85rem; padding:1rem 0;">Caricamento…</p>';
-    document.getElementById('condividiPannelloShare').style.display = 'none';
+    chiudiCondividiPannelloShare(); // difensivo: se il modale era rimasto aperto (stesso pattern di chiudiImpostazioniBinderAttivo in binder.ui.js)
 
     const userId = await authGetUserId();
 
@@ -170,6 +181,50 @@ async function _linkCondivisioneWidget(pagina, idParamNome, id, tipoBinder) {
 
 let _condividiLinkCorrente = null;
 
+// ── Modale condivisione a schermo intero (Claudio, 2026-09-18: "con
+// molti binder/scaffali diventa incastrato") — MIRROR ESATTO di
+// _binderImpostazioniPosiziona()/apriImpostazioniBinderAttivo()/
+// chiudiImpostazioniBinderAttivo() in ui/binder.ui.js: stessa tecnica
+// (_rettangoloSchermoCornice() per combaciare col rettangolo VERO di
+// #phoneScreen, listener su resize tenuto vivo solo mentre il modale è
+// aperto). Duplicazione intenzionale (Regola d'Oro #1) — dominio diverso
+// (pannello share vs impostazioni binder), nessun rischio di toccare
+// binder.ui.js riusando/generalizzando quelle funzioni. ─────────────────
+let _condividiShareResizeHandler = null;
+
+function _condividiSharePosiziona() {
+    const modal = document.getElementById('condividiShareModal');
+    const r = (typeof _rettangoloSchermoCornice === 'function') ? _rettangoloSchermoCornice() : null;
+    if (!modal || !r) return;
+    modal.style.top = r.top + 'px';
+    modal.style.left = r.left + 'px';
+    modal.style.width = r.width + 'px';
+    modal.style.height = r.height + 'px';
+    modal.style.borderRadius = r.borderRadius;
+    const contenuto = modal.querySelector('.modal-content');
+    if (contenuto) contenuto.style.borderRadius = r.borderRadius;
+}
+
+function apriCondividiPannelloShare() {
+    const modal = document.getElementById('condividiShareModal');
+    if (!modal) return;
+    modal.style.display = 'flex';
+    _condividiSharePosiziona();
+    if (!_condividiShareResizeHandler) {
+        _condividiShareResizeHandler = () => _condividiSharePosiziona();
+        window.addEventListener('resize', _condividiShareResizeHandler);
+    }
+}
+
+function chiudiCondividiPannelloShare() {
+    const modal = document.getElementById('condividiShareModal');
+    if (modal) modal.style.display = 'none';
+    if (_condividiShareResizeHandler) {
+        window.removeEventListener('resize', _condividiShareResizeHandler);
+        _condividiShareResizeHandler = null;
+    }
+}
+
 async function _condividiElementoWidget(pagina, idParamNome, id, tipoBinder, evt) {
     if (evt) evt.stopPropagation();
     const link = await _linkCondivisioneWidget(pagina, idParamNome, id, tipoBinder);
@@ -194,7 +249,7 @@ async function _condividiElementoWidget(pagina, idParamNome, id, tipoBinder, evt
     // Stesso criterio di navigation.ui.js: il pulsante nativo compare solo
     // dove il browser lo supporta davvero, niente pulsante rotto altrove.
     document.getElementById('condividiBtnNativo').style.display = navigator.share ? 'block' : 'none';
-    document.getElementById('condividiPannelloShare').style.display = 'block';
+    apriCondividiPannelloShare();
 }
 
 async function _copiaLinkCondividiWidget() {
