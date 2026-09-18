@@ -222,6 +222,143 @@
         }
 
 
+        // ── DIAMETRO BINDER/SCAFFALI + DIAMETRO ACHIEVEMENT (2026-09-18) ────
+        // Claudio: "le anteprime dei binder sono troppo piccole" — scollegati
+        // da --ball-misura (che resta SOLO quella dei widget Home, invariata
+        // sopra — è anche "1 unità" di resize dei widget, non va toccata).
+        // Due nuove CSS var isolate: --ball-misura-binder (Binder + Scaffali,
+        // Claudio: "uno per binder/scaffali" — un solo slider per entrambi,
+        // stessa classe CSS condivisa .binders-contenitori-grid) e
+        // --ball-misura-achievement.
+        //
+        // SEMPLIFICATO rispetto al diametro Widget qui sopra — niente
+        // ritardo/trasparenza pannello: quel trucco funziona SOLO per il
+        // diametro Widget perché sotto Impostazioni c'è sempre la Home vera
+        // montata (apriDettaglioWidget mette ogni pagina, Impostazioni
+        // inclusa, in .container SOPRA la Home fissa). Binder/Scaffali/
+        // Achievement non sono MAI montati sotto Impostazioni allo stesso
+        // tempo, quindi la trasparenza non mostrerebbe nulla di utile.
+        // Buona notizia: le loro griglie leggono --ball-misura-binder/
+        // -achievement PURAMENTE da CSS (nessun redraw JS pesante, a
+        // differenza di renderWidgetHome() che rigenera SVG) — il cambio è
+        // già istantaneo appena l'utente apre quella pagina, senza bisogno
+        // di nessun trucco (verificato: nuovo+achievement.txt, "colonne
+        // dinamiche... zero JS necessario").
+        //
+        // Persistenza: stesso principio "preferenza per-dispositivo" del
+        // diametro Widget, MA scritta qui direttamente via localStorage con
+        // chiavi dedicate — non ho letto il file che definisce
+        // prefDiametroWidgetGet/Set (probabile wrapper generico pref*) e non
+        // volevo aggiungerci funzioni alla cieca senza vederne la struttura
+        // (Regola d'Oro #4). Se preferisci che siano centralizzate lì con le
+        // altre preferenze, dimmi in che file vivono e le sposto in un giro
+        // a sé — funzionalmente identico, cambia solo dove vive il dato.
+        const DIAMETRO_BINDER_DEFAULT = 90;
+        const DIAMETRO_BINDER_MIN = 80;
+        const DIAMETRO_BINDER_MAX = 440;
+        const DIAMETRO_ACHIEVEMENT_DEFAULT = 90;
+        const DIAMETRO_ACHIEVEMENT_MIN = 80;
+        const DIAMETRO_ACHIEVEMENT_MAX = 440;
+
+        const LS_CHIAVE_DIAMETRO_BINDER = 'cardsync_diametro_binder';
+        const LS_CHIAVE_DIAMETRO_ACHIEVEMENT = 'cardsync_diametro_achievement';
+
+        function _diametroBinderGet() {
+            const v = parseInt(localStorage.getItem(LS_CHIAVE_DIAMETRO_BINDER), 10);
+            return Number.isFinite(v) ? v : null;
+        }
+        function _diametroBinderSet(v) { localStorage.setItem(LS_CHIAVE_DIAMETRO_BINDER, String(v)); }
+
+        function _diametroAchievementGet() {
+            const v = parseInt(localStorage.getItem(LS_CHIAVE_DIAMETRO_ACHIEVEMENT), 10);
+            return Number.isFinite(v) ? v : null;
+        }
+        function _diametroAchievementSet(v) { localStorage.setItem(LS_CHIAVE_DIAMETRO_ACHIEVEMENT, String(v)); }
+
+        // Stima SOLO colonne per Binder/Scaffali (niente "righe": a
+        // differenza di .widget-griglia/.achievement-grid, .binders-
+        // contenitori-grid NON ha grid-auto-rows fisso legato al diametro —
+        // l'altezza di ogni tessera segue il contenuto (copertina+nome+
+        // conteggio), non una cella quadrata — darei un numero di righe
+        // indicativo ma potenzialmente fuorviante, meglio ometterlo che
+        // inventarlo).
+        function _colonneStimateBinder(diametro) {
+            const schermo = document.getElementById('phoneScreen');
+            if (!schermo || !schermo.clientWidth) return 0;
+            const remPx = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+            const gapPx = 1 * remPx; // gap: 1rem in .binders-contenitori-grid
+            // Stima del padding di .container (1rem lati — stesso
+            // contenitore di Binder/Scaffali E di questo stesso pannello
+            // Impostazioni), come per il diametro Widget qui sopra.
+            const larghezzaDisponibile = schermo.clientWidth - (2 * remPx);
+            return Math.max(1, Math.floor((larghezzaDisponibile + gapPx) / (diametro + gapPx)));
+        }
+
+        // Stima colonne E righe per Achievement — QUESTA griglia ha
+        // grid-auto-rows fisso al diametro (come i widget Home), quindi qui
+        // il conteggio righe è affidabile quanto quello del diametro Widget.
+        function _colonneRigheStimateAchievement(diametro) {
+            const schermo = document.getElementById('phoneScreen');
+            if (!schermo || !schermo.clientWidth) return { colonne: 0, righe: 0 };
+            const remPx = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+            const gapPx = 0.7 * remPx; // gap: 0.7rem in .achievement-grid
+            // Stima del padding di .container (1rem lati, 2.6rem+safe-area
+            // sopra, 1rem sotto — stesso contenitore di Achievement E di
+            // questo stesso pannello Impostazioni).
+            const larghezzaDisponibile = schermo.clientWidth - (2 * remPx);
+            const altezzaDisponibile = schermo.clientHeight - (4.6 * remPx);
+            const colonne = Math.max(1, Math.floor((larghezzaDisponibile + gapPx) / (diametro + gapPx)));
+            const righe = Math.max(1, Math.floor((altezzaDisponibile + gapPx) / (diametro + gapPx)));
+            return { colonne, righe };
+        }
+
+        function applicaDiametroBinder() {
+            const diametro = _diametroBinderGet() || DIAMETRO_BINDER_DEFAULT;
+            document.documentElement.style.setProperty('--ball-misura-binder', diametro + 'px');
+
+            const input = document.getElementById('temaDiametroBinder');
+            const valoreEl = document.getElementById('temaDiametroBinderValore');
+            if (input) input.value = diametro;
+            if (valoreEl) valoreEl.textContent = diametro + ' px';
+
+            const testo = document.getElementById('temaDiametroBinderAnteprimaTesto');
+            if (testo) {
+                const colonne = _colonneStimateBinder(diametro);
+                testo.textContent = `Con questa dimensione, per questo dispositivo, ci saranno ${colonne} colonne`;
+            }
+            // Nessun redraw JS/trasparenza necessario — vedi commento sopra.
+        }
+
+        function setDiametroBinder(px) {
+            const valore = Math.max(DIAMETRO_BINDER_MIN, Math.min(DIAMETRO_BINDER_MAX, parseInt(px, 10) || DIAMETRO_BINDER_DEFAULT));
+            _diametroBinderSet(valore);
+            applicaDiametroBinder();
+        }
+
+        function applicaDiametroAchievement() {
+            const diametro = _diametroAchievementGet() || DIAMETRO_ACHIEVEMENT_DEFAULT;
+            document.documentElement.style.setProperty('--ball-misura-achievement', diametro + 'px');
+
+            const input = document.getElementById('temaDiametroAchievement');
+            const valoreEl = document.getElementById('temaDiametroAchievementValore');
+            if (input) input.value = diametro;
+            if (valoreEl) valoreEl.textContent = diametro + ' px';
+
+            const testo = document.getElementById('temaDiametroAchievementAnteprimaTesto');
+            if (testo) {
+                const { colonne, righe } = _colonneRigheStimateAchievement(diametro);
+                testo.textContent = `Con questa dimensione, per questo dispositivo, ci saranno ${colonne} colonne e ${righe} righe`;
+            }
+            // Nessun redraw JS/trasparenza necessario — vedi commento sopra.
+        }
+
+        function setDiametroAchievement(px) {
+            const valore = Math.max(DIAMETRO_ACHIEVEMENT_MIN, Math.min(DIAMETRO_ACHIEVEMENT_MAX, parseInt(px, 10) || DIAMETRO_ACHIEVEMENT_DEFAULT));
+            _diametroAchievementSet(valore);
+            applicaDiametroAchievement();
+        }
+
+
         // ── A14 — TOGGLE "RIDUCI ANIMAZIONI" + FEEDBACK VISIVO SUL PREZZO ───────
         // Preferenza per-dispositivo (localStorage, stesso pattern di
         // "Aiuta il gruppo" e del layout Binder), NON legata all'account:
