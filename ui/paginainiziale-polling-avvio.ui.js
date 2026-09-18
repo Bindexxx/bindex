@@ -341,13 +341,18 @@ async function initPhoneShell() {
             function fotogramma() {
                 const rectShade = shade.getBoundingClientRect();
                 const rectSchermo = schermo.getBoundingClientRect();
-                // Fondo vero della tendina, relativo a #phoneScreen — stesso
-                // margine di sicurezza (12px) che prima era nel CSS dentro
-                // .csb-shade, ora applicato qui perché il fondo di
-                // riferimento è quello VERO letto dal DOM, non un valore
-                // fisso calcolato a mano.
-                const centroBersaglio = (rectShade.bottom - rectSchermo.top) - 12;
-                const offsetY = centroBersaglio - (pallina.offsetHeight / 2);
+                // CORRETTO (STEP 14 fix, 2026-09-17): la versione precedente
+                // centrava la pallina ESATTAMENTE sul fondo della tendina —
+                // da chiusa il fondo coincide col bordo vero dello schermo,
+                // quindi metà pallina restava sopra (tagliata da
+                // #phoneScreen overflow:hidden). Le altre 3 palline sono
+                // tutte intere (Claudio: "le altre 3 vanno benissimo") — non
+                // deve stare A CAVALLO di un bordo, deve restare INTERA e
+                // appesa appena sotto il fondo della tendina, in ogni
+                // momento (chiusa, aperta, durante il trascinamento).
+                const fondoTendina = rectShade.bottom - rectSchermo.top;
+                const piccoloStacco = 4; // solo estetico, la tiene "attaccata" senza sovrapporsi al bordo della tendina
+                const offsetY = fondoTendina + piccoloStacco;
                 pallina.style.transform = `translate(-50%, ${offsetY}px)`;
                 requestAnimationFrame(fotogramma);
             }
