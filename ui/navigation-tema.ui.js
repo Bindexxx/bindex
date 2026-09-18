@@ -134,22 +134,26 @@
         const DIAMETRO_WIDGET_MIN = 80;
         const DIAMETRO_WIDGET_MAX = 220;
 
-        // AGGIORNATO (STEP 11 fix, 2026-09-17): il ridisegno vero della Home
-        // rigenera SVG animati per ogni widget — su schermi con molti widget
-        // farlo ad ogni singolo pixel di trascinamento dello slider scatta
-        // (Claudio: "concordo col ritardo"). Anteprima/testo/variabile CSS
-        // restano invece SEMPRE istantanei (vedi applicaDiametroWidget) —
-        // solo la chiamata pesante renderWidgetHome() ha questo piccolo
-        // ritardo, azzerato ad ogni nuovo movimento dello slider.
+        // AGGIORNATO (STEP 11/12 fix, 2026-09-17): il ridisegno vero della
+        // Home rigenera SVG animati per ogni widget — su schermi con molti
+        // widget farlo ad ogni singolo pixel di trascinamento scatta
+        // (Claudio: "concordo col ritardo"). Testo/variabile CSS restano
+        // istantanei — solo renderWidgetHome() (pesante) ha questo
+        // ritardo, azzerato ad ogni nuovo movimento dello slider. La
+        // trasparenza del pannello (Step 12, vedi sotto) resta accesa
+        // per tutta la durata del trascinamento + questo stesso ritardo,
+        // così l'utente vede la Home vera aggiornarsi prima che il
+        // pannello ridiventi opaco.
         let _ritardoRenderDiametro = null;
         const RITARDO_RENDER_DIAMETRO_MS = 150;
+        const RITARDO_OPACO_DIAMETRO_MS = 500; // un po' più lungo del render, per dare tempo di vedere il risultato
 
         // Stima colonne/righe SENZA aspettare il ridisegno vero — calcolata
         // dallo spazio reale di #phoneScreen con la stessa formula
         // dell'auto-fill CSS (spazio disponibile ÷ diametro), non letta dal
         // DOM: deve restare accurata anche quando la griglia vera non si è
         // ancora ridisegnata (per via del ritardo qui sopra) o quando
-        // l'utente è su Impostazioni e la Home non è la vista attiva.
+        // il pannello Impostazioni la copre (trasparente o no).
         function _colonneRigheStimate(diametro) {
             const schermo = document.getElementById('phoneScreen');
             if (!schermo || !schermo.clientWidth) return { colonne: 0, righe: 0 };
@@ -166,6 +170,8 @@
             return { colonne, righe };
         }
 
+        let _ritardoOpacoDiametro = null;
+
         function applicaDiametroWidget() {
             const diametro = prefDiametroWidgetGet() || DIAMETRO_WIDGET_DEFAULT;
             document.documentElement.style.setProperty('--ball-misura', diametro + 'px');
@@ -175,24 +181,25 @@
             if (input) input.value = diametro;
             if (valoreEl) valoreEl.textContent = diametro + ' px';
 
-            // Anteprima + testo: SEMPRE istantanei, mai il ritardo qui sotto.
-            const anteprima = document.getElementById('temaDiametroAnteprima');
-            const anteprimaWrap = document.getElementById('temaDiametroAnteprimaWrap');
-            if (anteprima) {
-                anteprima.style.width = diametro + 'px';
-                anteprima.style.height = diametro + 'px';
-            }
-            if (anteprimaWrap) {
-                // Il contenitore resta alla misura MASSIMA possibile (220px)
-                // così il layout del pannello non "salta" mentre il cerchio
-                // dentro cresce/rimpicciolisce.
-                anteprimaWrap.style.width = DIAMETRO_WIDGET_MAX + 'px';
-                anteprimaWrap.style.height = DIAMETRO_WIDGET_MAX + 'px';
-            }
+            // Testo: SEMPRE istantaneo, mai il ritardo qui sotto.
             const testo = document.getElementById('temaDiametroAnteprimaTesto');
             if (testo) {
                 const { colonne, righe } = _colonneRigheStimate(diametro);
                 testo.textContent = `Con questa dimensione, per questo dispositivo, ci saranno ${colonne} colonne e ${righe} righe`;
+            }
+
+            // STEP 12: rende trasparente il pannello Impostazioni per far
+            // vedere la VERA Home (sempre montata sotto, vedi
+            // apriDettaglioWidget) aggiornarsi dal vivo — meglio di un
+            // cerchio di anteprima disegnato a mano, che Claudio non si
+            // fidava rispecchiasse davvero la resa reale.
+            const pannello = document.querySelector('.container.container-visibile');
+            if (pannello) {
+                pannello.classList.add('container-trasparente-diametro');
+                clearTimeout(_ritardoOpacoDiametro);
+                _ritardoOpacoDiametro = setTimeout(() => {
+                    pannello.classList.remove('container-trasparente-diametro');
+                }, RITARDO_OPACO_DIAMETRO_MS);
             }
 
             // Cambiare il diametro cambia quante colonne/righe entrano nella
