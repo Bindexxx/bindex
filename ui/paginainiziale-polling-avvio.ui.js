@@ -319,17 +319,53 @@ async function initPhoneShell() {
             onProfile: () => { if (typeof toggleMenuProfilo === 'function') toggleMenuProfilo(); },
         });
 
-        // STEP 11 fix restyle "cornice Pokédex" (2026-09-17): UNA sola
-        // pallina, non più due — vedi commento CSS su .pokedex-ball-tendina
-        // (nel blocco "MANIGLIA/TENDINA → UNA SOLA POKÉ BALL") per il
-        // perché e come funziona (ancorata al fondo di .csb-shade, resa
-        // sempre visibile sopra la barra tramite z-index di .csb-shade
-        // alzato via CSS esterno — Opzione A, statusbar.css/js invariati).
-        const _tendinaShade = document.querySelector('.csb-shade');
-        if (_tendinaShade) {
+        // STEP 13 fix restyle "cornice Pokédex" (2026-09-17), seconda
+        // versione — corregge lo Step 11: la pallina NON è più figlia di
+        // .csb-shade (i suoi angoli arrotondati la tagliavano/nascondevano
+        // del tutto da chiusa, vedi commento CSS su .pokedex-ball-tendina
+        // per la spiegazione geometrica completa). È inserita come sorella
+        // di .csb-bar, dentro #phoneScreen — mai tagliata dalla tendina,
+        // solo (fisiologicamente) dal bordo vero dello schermo.
+        // Pallina "tendina" — segue la posizione VERA di .csb-shade ad ogni
+        // fotogramma (letta dal DOM, mai calcolata a mano: gira anche
+        // durante l'animazione elastica di apertura/chiusura di CSBar,
+        // che non è un semplice trascinamento lineare). Un
+        // getBoundingClientRect() + una scrittura di stile per frame è un
+        // costo trascurabile, gira per tutta la sessione senza pesare.
+        function _avviaSincronizzaPallinaTendina() {
+            const pallina = document.getElementById('pallinaTendinaVisibile');
+            const shade = document.querySelector('.csb-shade');
+            const schermo = document.getElementById('phoneScreen');
+            if (!pallina || !shade || !schermo) return;
+
+            function fotogramma() {
+                const rectShade = shade.getBoundingClientRect();
+                const rectSchermo = schermo.getBoundingClientRect();
+                // Fondo vero della tendina, relativo a #phoneScreen — stesso
+                // margine di sicurezza (12px) che prima era nel CSS dentro
+                // .csb-shade, ora applicato qui perché il fondo di
+                // riferimento è quello VERO letto dal DOM, non un valore
+                // fisso calcolato a mano.
+                const centroBersaglio = (rectShade.bottom - rectSchermo.top) - 12;
+                const offsetY = centroBersaglio - (pallina.offsetHeight / 2);
+                pallina.style.transform = `translate(-50%, ${offsetY}px)`;
+                requestAnimationFrame(fotogramma);
+            }
+            requestAnimationFrame(fotogramma);
+        }
+
+        const _schermoPerPallina = document.getElementById('phoneScreen');
+        if (_schermoPerPallina && document.querySelector('.csb-bar')) {
             const pallinaTendina = document.createElement('div');
+            pallinaTendina.id = 'pallinaTendinaVisibile';
             pallinaTendina.className = 'pokedex-ball pokedex-ball-tendina';
-            _tendinaShade.appendChild(pallinaTendina);
+            // Appesa direttamente a #phoneScreen (non al genitore della
+            // barra: CSBar crea un <div> di supporto attorno a barra+
+            // tendina — appendere lì renderebbe il posizionamento assoluto
+            // relativo a un contenitore incerto invece che allo schermo
+            // vero, che è il riferimento usato da _avviaSincronizzaPallinaTendina).
+            _schermoPerPallina.appendChild(pallinaTendina);
+            _avviaSincronizzaPallinaTendina();
         }
 
         // #profiloContainer (menu profilo completo: nome, email, cambio
