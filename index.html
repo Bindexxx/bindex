@@ -6035,6 +6035,17 @@
     <div id="binderImpostazioniModal" class="modal-overlay" onclick="chiudiImpostazioniBinderAttivo()">
         <div class="modal-content" style="text-align:left;" onclick="event.stopPropagation()">
             <button class="close-modal-btn" onclick="chiudiImpostazioniBinderAttivo()"><i class="fa-solid fa-xmark"></i></button>
+            <!-- Contenuto in colonna centrata (Claudio, 2026-09-18): il
+                 modale-overlay è a schermo intero dentro la cornice (vedi
+                 CSS #binderImpostazioniModal più sopra), ma i controlli
+                 stessi (checkbox, tendina, bottoni) restano leggibili in
+                 una colonna di larghezza comoda invece di spargersi su
+                 tutta la larghezza disponibile — stessa larghezza (640px)
+                 già approvata quando il modale era ancora un box piccolo
+                 centrato. Il bottone chiudi resta FUORI da questo wrapper,
+                 sempre ancorato all'angolo vero del modale (position:
+                 absolute su .modal-content, invariato). -->
+            <div style="max-width: 640px; margin: 0 auto;">
             <h3 style="font-weight: 800; margin-bottom: 1rem; display:flex; align-items:center; gap:0.5rem;">
                 <i class="fa-solid fa-gear" style="color: var(--primary);"></i> Impostazioni binder
             </h3>
@@ -6289,6 +6300,7 @@
                         </div>
                         <span style="font-size:0.72rem; color:var(--text-muted);">Per aggiungere carte al tuo binder personale, usa "Aggiungi al Binder" da Visualizzazione.</span>
                     </div>
+            </div>
 
         </div>
     </div>
