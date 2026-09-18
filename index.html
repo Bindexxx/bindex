@@ -1012,7 +1012,13 @@
         .widget-griglia {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(var(--ball-misura, 90px), 1fr));
-            grid-auto-rows: 48px;
+            /* AGGIORNATO (STEP 11 fix restyle "cornice Pokédex", 2026-09-17):
+               era 48px fisso — Claudio conferma che vuole "righe" allineate
+               al diametro esattamente come le colonne, completando quanto
+               chiesto fin dallo Step 3. Un widget "3x2" ora è alto 2
+               diametri interi, non più ~96px fissi indipendenti dalla
+               misura scelta. */
+            grid-auto-rows: var(--ball-misura, 90px);
             gap: 0.7rem;
             justify-content: center;
         }
@@ -1512,7 +1518,7 @@
            riga NON cambia e si comprimono solo distanze e testo
            (Claudio: "si comprimono solo gap e testo"). */
         #phoneWidgetHomeWrap.densita-compatta .widget-griglia.ball-ui {
-            grid-auto-rows: 48px; gap: 0.7rem;
+            grid-auto-rows: var(--ball-misura, 90px); gap: 0.7rem;
         }
         #phoneWidgetHomeWrap.densita-compatta .ball-ui .widget-tile { padding: 0.15rem; gap: 0.1rem; }
 
@@ -1934,6 +1940,17 @@
            bordo. Misure fisse (clamp, come nel mockup — --pokeball-size)
            restano sempre coerenti col bordo, a prescindere dalla finestra. */
         :root { --pokeball-size: clamp(32px, 5vw, 56px); }
+        /* AGGIORNATO (STEP 11 fix restyle "cornice Pokédex", 2026-09-17):
+           i 3 controlli sono ora DENTRO #phoneScreen (spostati anche nel
+           markup, vedi commento HTML) — "pochissimo ma visibile a occhio
+           nudo" (Claudio): 12px dal bordo VERO dello schermo, non più
+           dalla cornice colorata. Essendo #phoneScreen il nuovo
+           riferimento (invece di #phoneFrameBox), il posizionamento è già
+           "automatico" — un valore fisso in px funziona identico a
+           qualunque dimensione/proporzione prenda lo schermo, senza
+           bisogno di calcoli: lo calcola il browser da solo rispetto al
+           bordo vero, qualunque esso sia. */
+        :root { --pokeball-inset-schermo: 12px; }
         .pokedex-ball-laterale {
             position: absolute;
             top: 50%;
@@ -1943,12 +1960,12 @@
             cursor: pointer;
             z-index: 12;
         }
-        #pokeballSinistra { left: var(--pokedex-margine-schermo); }
-        #pokeballDestra { right: var(--pokedex-margine-schermo); }
+        #pokeballSinistra { left: var(--pokeball-inset-schermo); }
+        #pokeballDestra { right: var(--pokeball-inset-schermo); }
 
         #btnFisicoTelefono {
             position: absolute;
-            left: 50%; bottom: var(--pokedex-margine-schermo);
+            left: 50%; bottom: var(--pokeball-inset-schermo);
             transform: translateX(-50%);
             width: var(--pokeball-size); aspect-ratio: 1;
             display: flex; align-items: center; justify-content: center;
@@ -1978,49 +1995,44 @@
             color: #171717;
         }
 
-        /* ── MANIGLIA TENDINA → POKÉ BALL — CORRETTO (STEP 7 fix restyle
-           "cornice Pokédex", 2026-09-17). Il tentativo originale (skin su
-           .csb-handle) non funzionava: .csb-handle vive DENTRO .csb-shade
-           (il pannello, non la barra) e quando la tendina è chiusa finisce
-           esattamente dietro .csb-bar (stesso top:0, ma la barra ha
-           z-index più alto ed è opaca) — invisibile per costruzione, non
-           per un errore di stile. Verificato nel codice: .csb-bar ha già
-           il proprio gestore di trascinamento/click (stesso
-           onPointerDown della maniglia, el.bar.addEventListener
-           ("pointerdown", onPointerDown)) — quindi la Poké Ball qui sotto
-           è SOLO decorativa (pointer-events:none), i click/trascinamenti
-           passano alla barra sottostante che già li gestisce da sola.
-           Inserita come figlio di .csb-bar via JS (vedi
-           ui/paginainiziale-polling-avvio.ui.js), centrata su di lei. */
-        .csb-handle { height: 44px; } /* invariato per rollback, non più decisivo visivamente */
-        .pokedex-ball-maniglia {
-            position: absolute;
-            top: 50%; left: 50%;
-            transform: translate(-50%, -50%);
-            width: 34px; height: 34px;
-            pointer-events: none;
-            z-index: 1;
-        }
-
-        /* Pallina che "viaggia" dentro la tendina quando si apre — inserita
-           come ultimo figlio di .csb-shade via JS (vedi initPhoneShell in
-           ui/paginainiziale-polling-avvio.ui.js). Ancorata al FONDO del
-           pannello: quando .csb-shade è tradotta a y=-altezza (chiusa),
-           il suo fondo (quindi questa pallina) si trova esattamente a
-           y=0, cioè in cima allo schermo, vicino alla maniglia; quando è
-           aperta (y=0) il fondo del pannello scende fino in fondo — stessa
-           animazione di CSBar, "gratis", senza JS scritto da noi.
-           NOTA PER IL COLLAUDO (Claudio): se il pannello ha contenuto più
-           alto dello schermo con scroll interno, questa pallina potrebbe
-           non allinearsi esattamente al tasto fisico in basso — dimmi
-           cosa vedi, la calibro sul riscontro reale. */
+        /* ── MANIGLIA/TENDINA → UNA SOLA POKÉ BALL (STEP 11 fix restyle
+           "cornice Pokédex", 2026-09-17). Corregge lo Step 7: prima
+           c'erano 2 palline separate (una decorativa statica sopra la
+           barra, una che viaggiava nascosta dentro la tendina). Claudio le
+           vuole UNITE — una sola pallina, identica alle altre 3 ma un po'
+           più grande, che fa da maniglia quando la tendina è chiusa E che
+           scende insieme a lei quando viene trascinata aperta.
+           .pokedex-ball-maniglia RIMOSSA — non serve più un elemento a
+           parte sopra la barra.
+           La pallina (.pokedex-ball-tendina) resta l'UNICA, ancorata al
+           FONDO di .csb-shade (child, via JS — invariato dallo Step 4):
+           quando chiusa (.csb-shade tradotta a y=-altezza) il suo fondo
+           coincide con y=0, cioè proprio dove serve per fare da maniglia;
+           quando aperta scende con lei fino in fondo, "gratis" (nessuna
+           animazione scritta da noi).
+           Il problema che la rendeva invisibile da chiusa non era lo
+           stile — era lo STACKING: .csb-shade (z-index 9001, con
+           transform quindi contesto di stacking isolato) finiva SEMPRE
+           sotto .csb-bar (9004), qualunque z-index si desse ai suoi
+           figli — un limite del CSS, non del mio codice. Soluzione: alzo
+           lo z-index di .csb-shade SOLO tramite CSS esterno (Opzione A,
+           statusbar.css/js non toccati) sopra quello della barra — la
+           tendina (quindi anche la pallina) ora vince sempre lo stacking.
+           .csb-shade ha overflow:hidden e visibility:hidden quando chiusa
+           (regole della libreria, invariate): la pallina resta visibile
+           perché le override esplicitamente visibility:visible — un
+           figlio PUÒ riportare a visibile ciò che un antenato nasconde,
+           il resto del pannello (lista notifiche ecc.) resta
+           correttamente invisibile finché non è aperto. */
+        .csb-shade { z-index: 9005 !important; }
         .pokedex-ball-tendina {
             position: absolute;
             bottom: 12px;
             left: 50%;
             transform: translateX(-50%);
-            width: 40px;
-            height: 40px;
+            width: calc(var(--pokeball-size) * 1.15); /* "un po' più grande delle altre 3" */
+            height: calc(var(--pokeball-size) * 1.15);
+            visibility: visible !important; /* riporta visibile ciò che .csb-shade (chiusa) nasconde ai suoi discendenti */
             z-index: 5;
         }
         #btnFisicoTelefono.nascosto { visibility: hidden; pointer-events: none; }
@@ -4422,18 +4434,23 @@
                         <div id="phoneWidgetPagine"></div>
                     </div>
                 </div>
-            </div>
 
-            <!-- Bottone fisico unico — home/indietro, vedi commento CSS su
-                 #btnFisicoTelefono. Fuori da #phoneScreen (che ha
-                 overflow:hidden per gli angoli arrotondati) ma dentro
-                 #phoneFrameBox, stesso sistema di coordinate percentuali
-                 dello schermo. -->
-            <button id="btnFisicoTelefono" class="nascosto pokedex-ball" onclick="_clickTastoFisico()" title="Home">
-                <i class="fa-solid fa-house"></i>
-            </button>
-            <div id="pokeballSinistra" class="pokedex-ball pokedex-ball-laterale" onclick="_clickPokeballDecorativa('sinistra')"></div>
-            <div id="pokeballDestra" class="pokedex-ball pokedex-ball-laterale" onclick="_clickPokeballDecorativa('destra')"></div>
+                <!-- Bottone fisico unico — home/indietro, vedi commento CSS su
+                     #btnFisicoTelefono. SPOSTATE DENTRO #phoneScreen (STEP 11
+                     fix restyle "cornice Pokédex", 2026-09-17 — prima erano
+                     fuori, sul bordo della cornice: Claudio le vuole dentro
+                     lo schermo vero, non sulla cornice colorata). Il
+                     reparenting a schermo intero (.a-schermo-intero,
+                     position:fixed !important) funziona lo stesso
+                     indipendentemente da dove vive il nodo nel DOM — è un
+                     semplice toggle di classe, non un vero spostamento nel
+                     documento, verificato prima di spostarle. -->
+                <button id="btnFisicoTelefono" class="nascosto pokedex-ball" onclick="_clickTastoFisico()" title="Home">
+                    <i class="fa-solid fa-house"></i>
+                </button>
+                <div id="pokeballSinistra" class="pokedex-ball pokedex-ball-laterale" onclick="_clickPokeballDecorativa('sinistra')"></div>
+                <div id="pokeballDestra" class="pokedex-ball pokedex-ball-laterale" onclick="_clickPokeballDecorativa('destra')"></div>
+            </div>
         </div>
     </div>
 
@@ -5510,9 +5527,25 @@
                             <h4 style="font-size: 0.9rem; font-weight: 700;">Dimensione Widget</h4>
                             <p style="font-size: 0.75rem; color: var(--text-muted);">Diametro delle sfere — è anche "1 unità" di ridimensionamento</p>
                         </div>
+                        <!-- AGGIORNATO (STEP 11 fix restyle "cornice Pokédex",
+                             2026-09-17): anteprima trasparente della misura
+                             reale + colonne/righe che risulteranno su
+                             questo schermo — tutto aggiornato ad ogni
+                             movimento dello slider (vedi
+                             setDiametroWidget in ui/navigation-tema.ui.js),
+                             il ridisegno VERO della Home ha invece un
+                             piccolo ritardo (Claudio: "concordo col
+                             ritardo") per non scattare ad ogni pixel di
+                             trascinamento su schermi con molti widget. -->
                         <div style="display: flex; align-items: center; gap: 0.8rem; width: 100%;">
                             <input type="range" id="temaDiametroWidget" min="80" max="220" step="10" value="90" oninput="setDiametroWidget(this.value)" style="flex: 1; accent-color: var(--primary); cursor: pointer;">
                             <span id="temaDiametroWidgetValore" style="font-size: 0.8rem; color: var(--text-muted); min-width: 48px; text-align: right;">90 px</span>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 0.9rem; width: 100%; margin-top: 0.2rem;">
+                            <div id="temaDiametroAnteprimaWrap" style="flex-shrink: 0; width: 90px; height: 90px; display: flex; align-items: center; justify-content: center;">
+                                <div id="temaDiametroAnteprima" style="width: 90px; height: 90px; border-radius: 50%; background: rgba(158, 158, 170, 0.28); border: 2px dashed rgba(158, 158, 170, 0.6); transition: none;"></div>
+                            </div>
+                            <p id="temaDiametroAnteprimaTesto" style="font-size: 0.78rem; color: var(--text-muted); margin: 0;">Con questa dimensione, per questo dispositivo, ci saranno 0 colonne e 0 righe</p>
                         </div>
                     </div>
                 </div>
