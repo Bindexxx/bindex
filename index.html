@@ -43,6 +43,12 @@
                sovrascritto a runtime da applicaDiametroWidget(). Stesso
                principio di --secondary qui sopra. */
             --ball-misura: 90px;
+            /* AGGIUNTI 2026-09-18: --ball-misura-binder (Binder+Scaffali)
+               e --ball-misura-achievement, scollegati da --ball-misura —
+               sovrascritti a runtime da applicaDiametroBinder()/
+               applicaDiametroAchievement() (ui/navigation-tema.ui.js). */
+            --ball-misura-binder: 90px;
+            --ball-misura-achievement: 90px;
             --primary-light: #ede7ff;
             --primary-dark: #5e35b1;
             --text-dark: #2a2438;
@@ -3412,17 +3418,23 @@
         .binder-layout-btn.active { border-color: var(--primary); background-color: var(--primary); color: white; }
 
         /* Multi-Binder (2026-08-25) — griglia dei contenitori cliccabili.
-           AGGIORNATO (Claudio, 2026-09-18): colonne a diametro --ball-
-           misura, stessa formula auto-fill di .widget-griglia/.achievement-
-           grid — la larghezza fissa 120px lascia il posto al diametro
-           scelto in Impostazioni. Questa classe è CONDIVISA con Scaffali
-           (#scaffaliContenitoriGrid/#scaffaleContenutoGrid usano la stessa
-           .binders-contenitori-grid — vedi CSS tema Scaffali più sotto):
-           il cambio è DELIBERATO su entrambi, non un effetto collaterale
-           — Claudio: "applica ad entrambi". */
+           AGGIORNATO (Claudio, 2026-09-18, poi RIVISTO più tardi la stessa
+           sessione): colonne a diametro, stessa formula auto-fill di
+           .widget-griglia/.achievement-grid — la larghezza fissa 120px
+           lascia il posto al diametro scelto in Impostazioni. Questa
+           classe è CONDIVISA con Scaffali (#scaffaliContenitoriGrid/
+           #scaffaleContenutoGrid usano la stessa .binders-contenitori-grid
+           — vedi CSS tema Scaffali più sotto): il cambio è DELIBERATO su
+           entrambi, non un effetto collaterale — Claudio: "applica ad
+           entrambi".
+           RIVISTO (Claudio, stessa sessione: "le anteprime dei binder
+           risultano troppo piccole... scolleghiamola dalla dimensione dei
+           widget"): non più --ball-misura (quella resta SOLO dei widget
+           Home) — --ball-misura-binder, slider dedicato in Impostazioni
+           (vedi applicaDiametroBinder in ui/navigation-tema.ui.js). */
         .binders-contenitori-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(var(--ball-misura, 90px), 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(var(--ball-misura-binder, 90px), 1fr));
             gap: 1rem;
             margin-top: 0.8rem;
         }
@@ -3784,13 +3796,18 @@
            segue da sola via aspect-ratio.
            Vetrina: dimensione FISSA più grande, deliberatamente SVINCOLATA
            dal diametro (Claudio: "devono dominare la scena visivamente" —
-           con un diametro Home piccolo, 3 achievement a quella misura
-           sarebbero minuscoli e la vetrina perderebbe senso come "vanto").
+           con un diametro piccolo, 3 achievement a quella misura sarebbero
+           minuscoli e la vetrina perderebbe senso come "vanto").
+           RIVISTO (Claudio, stessa sessione, dopo aver scollegato anche il
+           diametro Binder/Scaffali): non più --ball-misura (quella resta
+           SOLO dei widget Home) — --ball-misura-achievement, slider
+           dedicato in Impostazioni (vedi applicaDiametroAchievement in
+           ui/navigation-tema.ui.js).
            ═══════════════════════════════════════════════════════════════ */
         .achievement-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(var(--ball-misura, 90px), 1fr));
-            grid-auto-rows: var(--ball-misura, 90px);
+            grid-template-columns: repeat(auto-fill, minmax(var(--ball-misura-achievement, 90px), 1fr));
+            grid-auto-rows: var(--ball-misura-achievement, 90px);
             gap: 0.7rem;
             justify-content: center;
             margin-top: 1.2rem;
@@ -3881,10 +3898,15 @@
            pubblici (copertina reale) + scaffali pubblici (solo icona +
            nome enfatizzato — stessa scelta già fatta per #scaffali,
            Claudio: "la copertina non serve, serve il titolo").
+           RIVISTO (Claudio, stessa sessione, dopo aver scollegato il
+           diametro Binder/Scaffali dai widget Home): le tessere qui sono
+           copertine di binder/scaffali, quindi seguono --ball-misura-
+           binder (stesso slider di Binder/Scaffali in Impostazioni), non
+           più --ball-misura dei widget.
            ═══════════════════════════════════════════════════════════════ */
         .condividi-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(var(--ball-misura, 90px), 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(var(--ball-misura-binder, 90px), 1fr));
             gap: 1rem;
             margin-top: 0.8rem;
         }
@@ -5888,6 +5910,42 @@
                              dallo spazio vero, sempre istantaneo. -->
                         <p id="temaDiametroAnteprimaTesto" style="font-size: 0.78rem; color: var(--text-muted); margin: 0.4rem 0 0;">Con questa dimensione, per questo dispositivo, ci saranno 0 colonne e 0 righe</p>
                     </div>
+
+                    <!-- AGGIUNTI 2026-09-18 (Claudio: "le anteprime dei
+                         binder risultano troppo piccole... scolleghiamola
+                         dalla dimensione dei widget") — due slider in più,
+                         scollegati da --ball-misura (quella resta SOLO dei
+                         widget Home, invariata sopra). SEMPLIFICATI
+                         rispetto allo slider Widget: niente trasparenza del
+                         pannello — quel trucco funziona solo lì perché sotto
+                         Impostazioni c'è sempre la Home vera montata,
+                         Binder/Scaffali/Achievement mai (vedi
+                         ui/navigation-tema.ui.js, applicaDiametroBinder/
+                         applicaDiametroAchievement). Testo anteprima
+                         comunque istantaneo, stesso principio. -->
+                    <div class="setting-row" style="flex-direction: column; align-items: flex-start; gap: 0.6rem;">
+                        <div>
+                            <h4 style="font-size: 0.9rem; font-weight: 700;">Dimensione Binder/Scaffali</h4>
+                            <p style="font-size: 0.75rem; color: var(--text-muted);">Diametro delle copertine nella griglia Binder e Scaffali (e in Condividi)</p>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 0.8rem; width: 100%;">
+                            <input type="range" id="temaDiametroBinder" min="80" max="440" step="10" value="90" oninput="setDiametroBinder(this.value)" style="flex: 1; accent-color: var(--primary); cursor: pointer;">
+                            <span id="temaDiametroBinderValore" style="font-size: 0.8rem; color: var(--text-muted); min-width: 48px; text-align: right;">90 px</span>
+                        </div>
+                        <p id="temaDiametroBinderAnteprimaTesto" style="font-size: 0.78rem; color: var(--text-muted); margin: 0.4rem 0 0;">Con questa dimensione, per questo dispositivo, ci saranno 0 colonne</p>
+                    </div>
+
+                    <div class="setting-row" style="flex-direction: column; align-items: flex-start; gap: 0.6rem;">
+                        <div>
+                            <h4 style="font-size: 0.9rem; font-weight: 700;">Dimensione Achievement</h4>
+                            <p style="font-size: 0.75rem; color: var(--text-muted);">Diametro delle tessere nella griglia Achievement (non tocca la Vetrina, a dimensione fissa)</p>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 0.8rem; width: 100%;">
+                            <input type="range" id="temaDiametroAchievement" min="80" max="440" step="10" value="90" oninput="setDiametroAchievement(this.value)" style="flex: 1; accent-color: var(--primary); cursor: pointer;">
+                            <span id="temaDiametroAchievementValore" style="font-size: 0.8rem; color: var(--text-muted); min-width: 48px; text-align: right;">90 px</span>
+                        </div>
+                        <p id="temaDiametroAchievementAnteprimaTesto" style="font-size: 0.78rem; color: var(--text-muted); margin: 0.4rem 0 0;">Con questa dimensione, per questo dispositivo, ci saranno 0 colonne e 0 righe</p>
+                    </div>
                 </div>
             </div>
 
@@ -7489,6 +7547,12 @@
             }
             applicaColoriTema();
             applicaDiametroWidget();
+            // AGGIUNTI 2026-09-18: diametro Binder/Scaffali + diametro
+            // Achievement, scollegati da applicaDiametroWidget() sopra —
+            // stesso principio, nessuna trasparenza/ritardo (vedi
+            // ui/navigation-tema.ui.js).
+            applicaDiametroBinder();
+            applicaDiametroAchievement();
             // STEP 6 restyle "cornice Pokédex" (2026-09-17): sincronizza col
             // valore salvato su Supabase (se presente) — non blocca il resto
             // dell'avvio, gira in parallelo.
