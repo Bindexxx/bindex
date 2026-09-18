@@ -103,10 +103,14 @@ html, body {
    tutto lo spazio, Step 9) — spostato a un inset fisso e piccolo dal
    bordo VERO dello schermo (già dentro #phoneScreen nel markup, nessuno
    spostamento HTML necessario qui, solo CSS). */
+/* CORRETTO (STEP 12 fix restyle "cornice Pokédex", 2026-09-17) — stesso
+   principio di index.html: "decorazione del bordo", centrata sulla linea
+   di confine tra cornice e schermo (metà pallina su ciascun lato), non
+   dentro lo schermo. */
 #btnPubblicoTornaSu {
     position: absolute;
-    left: 50%; bottom: 12px;
-    transform: translateX(-50%);
+    left: 50%; bottom: var(--pokedex-margine-schermo, 16px);
+    transform: translate(-50%, 50%);
     width: var(--pokeball-size, clamp(32px, 5vw, 56px)); aspect-ratio: 1;
     display: flex; align-items: center; justify-content: center;
     cursor: pointer;
