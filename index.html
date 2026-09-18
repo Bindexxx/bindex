@@ -2679,6 +2679,29 @@
             max-height: none;
         }
 
+        /* Modale condivisione del widget Condividi — stesso identico
+           trattamento "schermo intero dentro la cornice" di
+           #binderImpostazioniModal qui sopra (Claudio, 2026-09-18: "con
+           molti binder/scaffali diventa incastrato"). Riposizionato via
+           _condividiSharePosiziona() in ui/widget-condividi.ui.js con la
+           STESSA _rettangoloSchermoCornice(), nessuna duplicazione della
+           logica di misura. Il contenuto interno resta in colonna stretta
+           (vedi max-width:380px inline nel markup del modale) — qui non
+           serve una griglia di zone come per le Impostazioni Binder,
+           link+QR+bottone restano leggibili centrati anche su schermo
+           largo. */
+        #condividiShareModal.modal-overlay {
+            align-items: stretch;
+            justify-content: stretch;
+            padding: 0;
+        }
+        #condividiShareModal .modal-content {
+            max-width: none;
+            width: 100%;
+            height: 100%;
+            max-height: none;
+        }
+
         /* ═══════════════════════════════════════════════════════════════
            MODALE IMPOSTAZIONI BINDER — redesign 2026-09-18 (Claudio:
            "layout a più zone", "raggruppa in tab", "uniformalo al resto").
@@ -5474,21 +5497,16 @@
                 <p class="pg-sotto" style="margin:-6px 0 2px;">Scegli cosa condividere — link, QR o condivisione nativa.</p>
                 <div id="condividiLista"></div>
 
-                <!-- Pannello di condivisione, comparso solo dopo aver
-                     scelto una riga qui sopra — vedi _condividiElementoWidget
-                     in ui/widget-condividi.ui.js. Non è #qrModal (quello dipende dallo
-                     stato globale di navigazione, pensato per "il binder che
-                     hai aperto ora"): qui serve condividere una cosa scelta
-                     da una lista, senza navigarci dentro — pannello proprio,
-                     stessa libreria QRCode già caricata nel sito. -->
-                <div id="condividiPannelloShare" style="display:none; margin-top:1.2rem; padding-top:1.2rem; border-top:1px solid var(--border-color);">
-                    <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.9rem;">
-                        <input type="text" id="condividiLinkInput" readonly style="flex:1;">
-                        <button type="button" class="btn-secondary" onclick="_copiaLinkCondividiWidget()" title="Copia link"><i class="fa-solid fa-copy"></i></button>
-                    </div>
-                    <div id="condividiQrContainer" style="display:flex; justify-content:center; margin-bottom:0.9rem;"></div>
-                    <button type="button" class="btn-main" id="condividiBtnNativo" style="display:none; width:100%;" onclick="_condividiNativoWidget()"><i class="fa-solid fa-share-nodes"></i> Condividi</button>
-                </div>
+                <!-- AGGIORNATO 2026-09-18 (Claudio: "con molti binder/scaffali
+                     diventa un po' incastrato" — il vecchio pannello inline
+                     qui sotto spingeva la griglia in basso). Il pannello di
+                     condivisione ora è #condividiShareModal, un modale a
+                     schermo intero DENTRO la cornice — stesso trattamento e
+                     stessa posizione fisica nel file di #binderImpostazioniModal
+                     (vicino agli altri modali globali, subito prima di
+                     #qrModal), non più qui dentro. Vedi
+                     apriCondividiPannelloShare()/_condividiElementoWidget in
+                     ui/widget-condividi.ui.js. -->
             </div>
         </div>
 
@@ -6524,6 +6542,33 @@
                 </div>
             </div>
 
+        </div>
+    </div>
+
+    <!-- Modale condivisione del widget Condividi (link/QR/nativo) — a
+         schermo intero DENTRO la cornice, aggiunto 2026-09-18 (Claudio:
+         "con molti binder/scaffali diventa incastrato"). Stessa tecnica
+         di #binderImpostazioniModal qui sopra (CSS override subito dopo
+         quello, _rettangoloSchermoCornice() per il posizionamento —
+         nessuna logica di misura duplicata). Non è #qrModal sotto (quello
+         dipende dallo stato globale di navigazione, "il binder che hai
+         aperto ORA"): qui serve condividere un elemento scelto da una
+         lista, senza navigarci dentro — vedi apriCondividiPannelloShare()/
+         _condividiElementoWidget in ui/widget-condividi.ui.js. -->
+    <div id="condividiShareModal" class="modal-overlay" onclick="chiudiCondividiPannelloShare()">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <button class="close-modal-btn" onclick="chiudiCondividiPannelloShare()"><i class="fa-solid fa-xmark"></i></button>
+            <div style="max-width: 380px; margin: 0 auto;">
+                <h3 style="font-weight: 800; margin-bottom: 1rem; display:flex; align-items:center; justify-content:center; gap:0.5rem;">
+                    <i class="fa-solid fa-share-nodes" style="color: var(--primary);"></i> Condividi
+                </h3>
+                <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.9rem;">
+                    <input type="text" id="condividiLinkInput" readonly style="flex:1;">
+                    <button type="button" class="btn-secondary" onclick="_copiaLinkCondividiWidget()" title="Copia link"><i class="fa-solid fa-copy"></i></button>
+                </div>
+                <div id="condividiQrContainer" style="display:flex; justify-content:center; margin-bottom:0.9rem;"></div>
+                <button type="button" class="btn-main" id="condividiBtnNativo" style="display:none; width:100%;" onclick="_condividiNativoWidget()"><i class="fa-solid fa-share-nodes"></i> Condividi</button>
+            </div>
         </div>
     </div>
 
