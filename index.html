@@ -2678,6 +2678,16 @@
             height: 100%;
             max-height: none;
         }
+        /* Design del binder e Sleeve (Claudio, 2026-09-18: l'editor sleeve
+           deve poter usare tutto lo spazio) — entrambi hanno .settings-card
+           come classe, che porta un max-width:600px di base (pensato per
+           card normali). Qui lo tolgo SOLO a questi due, scoped per id: gli
+           altri blocchi (Informazioni, Nome, Copertina) restano stretti
+           come prima, dentro la colonna 640px o il loro 600px ereditato. */
+        #binderDesignDetails,
+        #binderSleeveCard {
+            max-width: none;
+        }
 
         #qrcodeContainer { display: flex; justify-content: center; margin: 1rem 0; }
 
@@ -2892,10 +2902,21 @@
            namespace "cardback-" per non toccare nessuna classe esistente.
            Stage a 900x1260 (5:7, vedi ROADMAP sez.1 punto 8), non più
            750x1040 come nel file originale. */
+        /* AGGIORNATO 2026-09-18 (Claudio: "deve espandersi per tutto lo
+           schermo... altrimenti la modifica della sleeve non è fattibile
+           perché taglia l'immagine a metà") — era max-width:420px, pensato
+           per il vecchio modale piccolo. #cardBackStageWrap è usato SOLO
+           qui in tutto il sito (verificato via grep), quindi alzo
+           direttamente il tetto qui invece di aggiungere una regola scoped
+           a parte. 1100px: oltre non ha senso ingrandire ulteriormente
+           un'immagine sorgente a 900px nativi (vedi .cardback-stage
+           sotto). L'elemento che lo ospita (#binderSleeveCard) non ha più
+           il tetto 600px di .settings-card (vedi regola dedicata più
+           sotto), quindi questo può davvero espandersi. */
         .cardback-stage-wrap {
             position: relative;
             width: 100%;
-            max-width: 420px;
+            max-width: 1100px;
             margin: 0.8rem auto 0;
             overflow: hidden;
             touch-action: none;
@@ -6132,11 +6153,20 @@
                 <button type="button" class="binder-modalita-btn" data-modalita="immagini" onclick="impostaModalitaBinder('immagini')"><i class="fa-solid fa-images"></i> Immagini</button>
                 <button type="button" class="binder-modalita-btn" data-modalita="elenco" onclick="impostaModalitaBinder('elenco')"><i class="fa-solid fa-list"></i> Elenco</button>
             </div>
+            </div>
 
             <!-- Design: nome + copertina + sleeve del binder aperto (Claudio,
                  2026-09-18: "così com'è adesso" — stesso pannello richiudibile
-                 di prima, solo dentro il modale invece che sulla pagina). -->
-            <details class="settings-card" style="margin: 1.2rem 0; padding: 1rem;">
+                 di prima, solo dentro il modale invece che sulla pagina).
+                 AGGIORNATO 2026-09-18: fuori dalla colonna stretta qui sopra
+                 — l'editor sleeve dentro (Sleeve, in fondo) ha bisogno di
+                 tutta la larghezza vera del modale, "altrimenti la modifica
+                 non è fattibile perché taglia l'immagine a metà" (Claudio).
+                 Nome e Copertina restano comunque strette (hanno il proprio
+                 max-width:600px dalla classe .settings-card condivisa, qui
+                 solo ricentrate con margin:auto invece di 1rem 0) — solo
+                 Sleeve (#binderSleeveCard sotto) esce da quel tetto. -->
+            <details id="binderDesignDetails" class="settings-card" style="margin: 1.2rem 0; padding: 1rem;">
                 <summary style="cursor:pointer; font-weight:700; font-size:0.9rem; display:flex; align-items:center; gap:0.5rem;">
                     <i class="fa-solid fa-wand-magic-sparkles" style="color: var(--primary);"></i> Design del binder
                 </summary>
@@ -6146,7 +6176,7 @@
                              la rinomina immediata del binder 'extra' più sopra
                              (#binderRinominaWrap, senza moderazione) — le due
                              convivono, segnalato a Claudio. -->
-                        <div class="settings-card" style="margin: 1rem 0; padding: 1rem;">
+                        <div class="settings-card" style="margin: 1rem auto; padding: 1rem;">
                             <h4 style="margin: 0 0 0.5rem; font-size: 0.9rem; font-weight: 700; display:flex; align-items:center; gap:0.5rem;">
                                 <i class="fa-solid fa-signature" style="color: var(--primary);"></i> Nome
                             </h4>
@@ -6160,7 +6190,7 @@
                             <div id="binderNomeError" style="display:none; color:var(--danger); font-size:0.78rem; margin-top:0.4rem;"></div>
                         </div>
 
-                        <div class="settings-card" style="margin: 1rem 0; padding: 1rem;">
+                        <div class="settings-card" style="margin: 1rem auto; padding: 1rem;">
                             <h4 style="margin: 0 0 0.5rem; font-size: 0.9rem; font-weight: 700; display:flex; align-items:center; gap:0.5rem;">
                                 <i class="fa-solid fa-image" style="color: var(--primary);"></i> Copertina
                             </h4>
@@ -6187,7 +6217,7 @@
                             </div>
                         </div>
 
-                        <div class="settings-card" style="margin: 1rem 0; padding: 1rem;">
+                        <div id="binderSleeveCard" class="settings-card" style="margin: 1rem 0; padding: 1rem;">
                             <h4 style="margin: 0 0 0.5rem; font-size: 0.9rem; font-weight: 700; display:flex; align-items:center; gap:0.5rem;">
                                 <i class="fa-solid fa-clone" style="color: var(--primary);"></i> Sleeve (retro carta)
                             </h4>
@@ -6290,6 +6320,7 @@
                         </div>
                     </details>
 
+                    <div style="max-width: 640px; margin: 0 auto;">
                     <!-- Layout griglia immagini — nascosto via JS in modalità elenco -->
                     <div class="binder-layout-switcher" style="display:flex; align-items:center; justify-content:space-between; gap:0.6rem; flex-wrap:wrap;">
                         <div style="display:flex; gap:0.4rem;">
