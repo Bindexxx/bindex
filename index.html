@@ -5847,11 +5847,52 @@
          spostati di posto nel DOM (getElementById non dipende dal
          contenitore). -->
     <div id="binderImpostazioniModal" class="modal-overlay" onclick="chiudiImpostazioniBinderAttivo()">
-        <div class="modal-content" style="max-width: 480px; text-align:left;" onclick="event.stopPropagation()">
+        <div class="modal-content" style="max-width: 640px; text-align:left;" onclick="event.stopPropagation()">
             <button class="close-modal-btn" onclick="chiudiImpostazioniBinderAttivo()"><i class="fa-solid fa-xmark"></i></button>
             <h3 style="font-weight: 800; margin-bottom: 1rem; display:flex; align-items:center; gap:0.5rem;">
                 <i class="fa-solid fa-gear" style="color: var(--primary);"></i> Impostazioni binder
             </h3>
+
+            <!-- PLACEHOLDER (Claudio, 2026-09-18): solo UI, NESSUN salvataggio
+                 e NESSUNA colonna DB dietro — Regola d'Oro #3, mai scrivere
+                 SQL/repository senza verifica diretta sullo schema reale.
+                 Le due spunte qui sotto non fanno ancora nulla oltre
+                 abilitare/disabilitare la tendina (puro JS locale, zero
+                 chiamate a supabaseClient). Da collegare a una funzione vera
+                 quando la struttura dati sarà decisa con Claudio. -->
+            <div class="settings-card" style="margin: 0 0 1.2rem; padding: 1rem;">
+                <h4 style="margin: 0 0 0.2rem; font-size: 0.9rem; font-weight: 700; display:flex; align-items:center; gap:0.5rem;">
+                    <i class="fa-solid fa-circle-info" style="color: var(--primary);"></i> Informazioni
+                    <span style="font-size:0.65rem; font-weight:700; color:var(--text-muted); background:var(--bg-color); border:1px solid var(--border-color); border-radius:6px; padding:0.1rem 0.4rem;">WIP</span>
+                </h4>
+
+                <div class="setting-row">
+                    <div style="flex:1; min-width:0; margin-right:0.6rem;">
+                        <label for="binderAutoAggiornaCheckbox" style="display:block; font-size:0.85rem; font-weight:700; cursor:pointer;">Aggiorna questo binder ogni</label>
+                        <select id="binderAutoAggiornaGiorni" disabled style="margin-top:0.4rem; padding:0.35rem 0.5rem; border-radius:8px; border:1px solid var(--border-color); font-size:0.82rem; background:var(--card-bg); color:var(--text-dark);">
+                            <option value="1">1 giorno</option>
+                            <option value="3">3 giorni</option>
+                            <option value="7" selected>7 giorni</option>
+                            <option value="14">14 giorni</option>
+                            <option value="30">30 giorni</option>
+                        </select>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox" id="binderAutoAggiornaCheckbox" onchange="document.getElementById('binderAutoAggiornaGiorni').disabled = !this.checked">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+
+                <div class="setting-row">
+                    <div style="flex:1; min-width:0; margin-right:0.6rem;">
+                        <h4 style="font-size: 0.85rem; font-weight: 700;">Non aggiungere il valore di queste carte alla mia collezione</h4>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox" id="binderEscludiValoreCollezioneCheckbox">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+            </div>
 
             <!-- Rinomina — mostrata via JS solo per il binder tipo 'extra' -->
             <div id="binderRinominaWrap" style="display:none; margin-bottom:1rem; gap:0.5rem; flex-wrap:wrap;">
