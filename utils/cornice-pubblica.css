@@ -118,24 +118,32 @@ html, body {
 }
 #btnPubblicoTornaSu i { position: relative; z-index: 1; font-size: 0.5rem; color: #171717; }
 
-/* ── MANIGLIA/TENDINA → UNA SOLA POKÉ BALL (STEP 11, 2026-09-17) — stessa
-   correzione di index.html, vedi il commento lì per il perché
-   (.csb-handle i non funzionava: nascosta dietro .csb-bar per motivi di
-   stacking, non di stile — qui in più non era mai stata nemmeno tentata
-   una seconda pallina, quindi la maniglia non è MAI stata visibile su
-   queste pagine finora). .csb-handle i rimossa (dead code, mai
-   funzionante): resta solo .pokedex-ball-tendina, unica, sempre visibile
-   sopra la barra grazie allo z-index di .csb-shade alzato qui sotto. */
-.csb-shade { z-index: 9005 !important; }
+/* NASCOSTA (STEP 13 fix, 2026-09-17) — stesso residuo dimenticato di
+   index.html: .csb-handle i (barretta 38×5px) non era mai stata coperta,
+   quindi mostrava lo stile di libreria non voluto. .csb-bar gestisce già
+   da sola il trascinamento (stesso onPointerDown), nasconderla non toglie
+   funzione. */
+.csb-handle { display: none; }
+
+/* ── MANIGLIA/TENDINA → UNA SOLA POKÉ BALL (STEP 13, seconda versione —
+   corregge lo Step 11). Stessa correzione geometrica di index.html: la
+   pallina NON è più figlia di .csb-shade (i suoi angoli arrotondati la
+   nascondevano del tutto da chiusa — non uno stacking, una questione di
+   geometria: da chiusa il fondo della tendina coincide col bordo vero
+   dello schermo, un margine di sicurezza verso l'interno la spingeva
+   tutta FUORI dall'area visibile). È una pallina indipendente che segue
+   la posizione vera della tendina ad ogni fotogramma — vedi
+   _avviaSincronizzaPallinaTendina in utils/cornice-pubblica.js. */
 .pokedex-ball-tendina {
     position: absolute;
-    bottom: 12px; left: 50%;
-    transform: translateX(-50%);
+    left: 50%; top: 0;
+    transform: translate(-50%, 0); /* la componente verticale la scrive il JS */
     width: calc(var(--pokeball-size, clamp(32px, 5vw, 56px)) * 1.15);
     height: calc(var(--pokeball-size, clamp(32px, 5vw, 56px)) * 1.15);
-    visibility: visible !important;
-    z-index: 5;
+    cursor: grab;
+    z-index: 9010; /* sopra .csb-bar (9004) — sorella diretta, nessun trucco di stacking necessario */
 }
+.pokedex-ball-tendina:active { cursor: grabbing; }
 
 /* La pagina esistente (header/.container/barra-totale/modali) viene
    spostata DENTRO #phoneScreen com'era, con overflow naturale — nessuna

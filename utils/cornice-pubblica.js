@@ -69,10 +69,38 @@ function initCorniciaPubblica() {
         watchNetwork: true, // clock + pallino di connessione, generico, nessuna logica applicativa
     });
 
-    const shade = document.querySelector('.csb-shade');
-    if (shade) {
+    // STEP 13 fix (2026-09-17), seconda versione — corregge lo Step 11:
+    // vedi commento CSS su .pokedex-ball-tendina per la spiegazione
+    // geometrica completa. La pallina è indipendente da .csb-shade,
+    // appesa direttamente a #phoneScreen, e segue la posizione vera della
+    // tendina ad ogni fotogramma.
+    const schermoPerPallina = document.getElementById('phoneScreen');
+    if (schermoPerPallina && document.querySelector('.csb-bar')) {
         const pallina = document.createElement('div');
+        pallina.id = 'pallinaTendinaVisibile';
         pallina.className = 'pokedex-ball pokedex-ball-tendina';
-        shade.appendChild(pallina);
+        schermoPerPallina.appendChild(pallina);
+        _avviaSincronizzaPallinaTendina();
     }
+}
+
+// Segue la posizione VERA di .csb-shade ad ogni fotogramma — stessa
+// funzione di ui/paginainiziale-polling-avvio.ui.js (index.html),
+// duplicata qui per lo stesso motivo di sempre: queste pagine pubbliche
+// non caricano quel file (Regola d'Oro #1, niente cross-file coupling).
+function _avviaSincronizzaPallinaTendina() {
+    const pallina = document.getElementById('pallinaTendinaVisibile');
+    const shade = document.querySelector('.csb-shade');
+    const schermo = document.getElementById('phoneScreen');
+    if (!pallina || !shade || !schermo) return;
+
+    function fotogramma() {
+        const rectShade = shade.getBoundingClientRect();
+        const rectSchermo = schermo.getBoundingClientRect();
+        const centroBersaglio = (rectShade.bottom - rectSchermo.top) - 12;
+        const offsetY = centroBersaglio - (pallina.offsetHeight / 2);
+        pallina.style.transform = `translate(-50%, ${offsetY}px)`;
+        requestAnimationFrame(fotogramma);
+    }
+    requestAnimationFrame(fotogramma);
 }
