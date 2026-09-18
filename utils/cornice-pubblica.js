@@ -81,6 +81,27 @@ function initCorniciaPubblica() {
         pallina.className = 'pokedex-ball pokedex-ball-tendina';
         schermoPerPallina.appendChild(pallina);
         _avviaSincronizzaPallinaTendina();
+
+        // FIX (STEP 15, 2026-09-17) — stesso meccanismo di index.html:
+        // inoltra il pointerdown a .csb-handle (nascosta via CSS, ma
+        // pienamente funzionante — dispatchEvent() invoca comunque i suoi
+        // listener). Funziona in entrambe le direzioni, chiusa e aperta.
+        pallina.addEventListener('pointerdown', (ev) => {
+            const maniglia = document.querySelector('.csb-handle');
+            if (!maniglia) return;
+            const inoltrato = new PointerEvent('pointerdown', {
+                bubbles: true,
+                cancelable: true,
+                pointerId: ev.pointerId,
+                pointerType: ev.pointerType,
+                isPrimary: ev.isPrimary,
+                button: 0,
+                buttons: ev.buttons,
+                clientX: ev.clientX,
+                clientY: ev.clientY,
+            });
+            maniglia.dispatchEvent(inoltrato);
+        });
     }
 }
 

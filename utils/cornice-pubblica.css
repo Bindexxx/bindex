@@ -140,11 +140,11 @@ html, body {
     transform: translate(-50%, 0); /* la componente verticale la scrive il JS */
     width: calc(var(--pokeball-size, clamp(32px, 5vw, 56px)) * 1.15);
     height: calc(var(--pokeball-size, clamp(32px, 5vw, 56px)) * 1.15);
-    /* AGGIUNTO (STEP 14 fix, 2026-09-17) — stessa correzione di
-       index.html: senza questo, la pallina (sopra la barra) intercettava
-       lei i click al posto della barra, che è quella che gestisce
-       davvero il trascinamento. */
-    pointer-events: none;
+    /* CORRETTO (STEP 15 fix, 2026-09-17) — stessa correzione di
+       index.html: pointer-events:none funzionava solo da chiusa. Ora la
+       pallina è interattiva davvero, il suo click viene inoltrato a
+       .csb-handle via JS (vedi utils/cornice-pubblica.js), funziona in
+       entrambe le direzioni. */
     cursor: grab;
     z-index: 9010; /* sopra .csb-bar (9004) — sorella diretta, nessun trucco di stacking necessario */
 }
