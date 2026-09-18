@@ -903,7 +903,23 @@
             position: absolute; top: 0; left: 0; right: 0;
             height: var(--phone-barra-stato-h, 2.5rem);
             z-index: 7;
-            display: flex; align-items: center; justify-content: space-between;
+            /* CORRETTO (STEP 15 fix restyle "cornice Pokédex", 2026-09-17)
+               — era "display: flex". statusbar.css nasconde per intero
+               questa barra vecchia (#phoneBarraStato { display:none })
+               dal giorno della migrazione a CSBar — ma questa regola qui,
+               con la stessa specificità e scritta DOPO nel documento,
+               vinceva sempre, riportandola visibile. Normalmente restava
+               coperta dalla barra nuova (z-index più alto), ma quando la
+               tendina si apre la barra nuova perde temporaneamente lo
+               sfondo (effetto vetro voluto) — rivelando in trasparenza i
+               vecchi bottoni Suoni/Densità sotto (Claudio, zoomato: "il
+               tasto del volume" e "un quadrato diviso in 4 da una
+               croce" — esattamente le icone fa-volume-high e
+               fa-table-cells-large di questa barra). Allineata a
+               display:none: questa barra è davvero obsoleta (sostituita
+               in pieno da CSBar), non c'è motivo di tenerla visibile MAI. */
+            display: none;
+            align-items: center; justify-content: space-between;
             gap: 0.5rem;
             padding: 0 0.9rem;
             background: var(--bg-color);
@@ -2066,16 +2082,17 @@
             transform: translate(-50%, 0); /* la componente verticale la scrive il JS, la orizzontale resta qui */
             width: calc(var(--pokeball-size) * 1.15); /* "un po' più grande delle altre 3" */
             height: calc(var(--pokeball-size) * 1.15);
-            /* AGGIORNATO (STEP 14 fix, 2026-09-17): senza questo, la
-               pallina (z-index 9010, sopra la barra) intercettava lei i
-               click al posto della barra sottostante — che è quella che
-               gestisce DAVVERO il trascinamento (Claudio: "non mi fa
-               aprire facilmente la tendina, esce il simbolo di divieto").
-               pointer-events:none la rende puramente visiva: un click
-               "sulla pallina" passa attraverso, arriva alla barra sotto,
-               che risponde esattamente come se la pallina non ci fosse —
-               visivamente sembra comunque di afferrare la pallina. */
-            pointer-events: none;
+            /* CORRETTO (STEP 15 fix, 2026-09-17): pointer-events:none
+               funzionava solo da chiusa (i click passavano alla barra
+               sotto, che apre). Da aperta la pallina sta in fondo alla
+               tendina — lì sotto non c'è nessun gestore di trascinamento,
+               quindi "attraversare" non chiudeva più nulla (Claudio: "non
+               si può tirare su afferrandola"). Ora la pallina è
+               interattiva DAVVERO: un suo click viene inoltrato a
+               .csb-handle (nascosta ma perfettamente funzionante, vedi
+               JS) con le stesse coordinate — da lì la libreria gestisce
+               tutto il trascinamento come se l'utente avesse toccato la
+               maniglia vera, in entrambe le direzioni. */
             cursor: grab;
             z-index: 9010; /* sopra .csb-bar (9004) — non più figlia di .csb-shade, stacking normale, nessun trucco necessario */
         }
