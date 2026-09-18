@@ -847,7 +847,15 @@ function _libroOsservaResize() {
     // intercetta sia quello sia qualunque altro cambio di larghezza, senza
     // dipendere da phone.ui.js né da @media sulla finestra.
     _libroObserver = new ResizeObserver(() => {
-        if (!_libro || _libro.animando) return;
+        // AGGIUNTO 2026-09-18 (difensivo, Claudio: "hai rotto il flip"):
+        // mancava _libro.drag qui — solo _libro.animando (l'animazione di
+        // scatto finale) bloccava il ridisegno, non il trascinamento LIVE.
+        // Un resize durante un drag attivo (anche minimo, es. un reflow
+        // innescato da qualunque cosa nella pagina) faceva ripartire
+        // _libroDisegnaStatico(), che rimette .libro-foglio a display:none
+        // e ridisegna da _libro.k pre-drag — cancellando visivamente il
+        // trascinamento in corso.
+        if (!_libro || _libro.animando || _libro.drag) return;
         const modoPrima = _libro.modo;
         const paginaCorrente = _libroPaginaCorrente();
         _libroMisura();
