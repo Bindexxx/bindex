@@ -81,12 +81,48 @@ function _cardBackClampIntoStage(fieldKey) {
     applyCardBackFieldState(fieldKey);
 }
 
+// AGGIORNATO 2026-09-18 (Claudio: "non voglio scrollare... deve scalare in
+// base alle dimensioni della cornice per rimanerci all'interno") — prima
+// la scala dipendeva SOLO dalla larghezza disponibile (stageWrap.clientWidth
+// / CARD_BACK_W). Su un'immagine ritratto (900×1260) dentro un modale più
+// largo che alto, questo poteva produrre un canvas più alto dello spazio
+// verticale reale rimasto sotto di lui — da cui lo scroll. Ora si calcola
+// ANCHE la scala massima che l'altezza vera consente (letta dal DOM, mai
+// un valore indovinato — stesso principio già usato per .container/il
+// libro binder in questa sessione) e si usa la più PICCOLA delle due: il
+// canvas resta sempre dentro lo spazio visibile, sia in larghezza sia in
+// altezza.
+//
+// IMPORTANTE: la larghezza disponibile si legge da stageWrap.parentElement
+// (il contenitore #cardBackEditorWrap, la cui larghezza è fissata da CSS/
+// dal layout, MAI toccata da questa funzione), non da stageWrap.clientWidth
+// stesso — perché ora stageWrap.style.width viene impostato qui sotto in
+// px: leggerlo per calcolare la scala successiva creerebbe un ciclo che si
+// restringe (ogni resize partirebbe dalla larghezza già ridotta dal giro
+// precedente invece che da quella vera disponibile).
 function _cardBackRescale() {
     const stageWrap = document.getElementById('cardBackStageWrap');
     const stage = document.getElementById('cardBackStage');
-    if (!stageWrap || !stage || stageWrap.clientWidth === 0) return;
-    const scale = stageWrap.clientWidth / CARD_BACK_W;
+    if (!stageWrap || !stage) return;
+
+    const contenitoreLarghezza = stageWrap.parentElement ? stageWrap.parentElement.clientWidth : stageWrap.clientWidth;
+    if (!contenitoreLarghezza) return;
+    const scaleW = contenitoreLarghezza / CARD_BACK_W;
+
+    let scaleH = scaleW; // fallback: se non riesco a misurare l'altezza vera, mi comporto come prima (solo larghezza)
+    const modalContent = stageWrap.closest('.modal-content');
+    if (modalContent) {
+        const rectContent = modalContent.getBoundingClientRect();
+        const rectWrap = stageWrap.getBoundingClientRect();
+        const RISERVA_SOTTO_CANVAS_PX = 90; // bottoni "Salva posizioni"/"Ripristina", sotto il canvas nella stessa colonna
+        const MARGINE_FONDO_PX = 16;
+        const disponibileVerticale = rectContent.bottom - rectWrap.top - RISERVA_SOTTO_CANVAS_PX - MARGINE_FONDO_PX;
+        if (disponibileVerticale > 0) scaleH = disponibileVerticale / CARD_BACK_H;
+    }
+
+    const scale = Math.max(0.1, Math.min(scaleW, scaleH));
     stage.style.transform = `scale(${scale})`;
+    stageWrap.style.width = (CARD_BACK_W * scale) + 'px';
     stageWrap.style.height = (CARD_BACK_H * scale) + 'px';
 }
 window.addEventListener('resize', _cardBackRescale);
