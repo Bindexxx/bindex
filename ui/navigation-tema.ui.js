@@ -134,6 +134,38 @@
         const DIAMETRO_WIDGET_MIN = 80;
         const DIAMETRO_WIDGET_MAX = 220;
 
+        // AGGIORNATO (STEP 11 fix, 2026-09-17): il ridisegno vero della Home
+        // rigenera SVG animati per ogni widget — su schermi con molti widget
+        // farlo ad ogni singolo pixel di trascinamento dello slider scatta
+        // (Claudio: "concordo col ritardo"). Anteprima/testo/variabile CSS
+        // restano invece SEMPRE istantanei (vedi applicaDiametroWidget) —
+        // solo la chiamata pesante renderWidgetHome() ha questo piccolo
+        // ritardo, azzerato ad ogni nuovo movimento dello slider.
+        let _ritardoRenderDiametro = null;
+        const RITARDO_RENDER_DIAMETRO_MS = 150;
+
+        // Stima colonne/righe SENZA aspettare il ridisegno vero — calcolata
+        // dallo spazio reale di #phoneScreen con la stessa formula
+        // dell'auto-fill CSS (spazio disponibile ÷ diametro), non letta dal
+        // DOM: deve restare accurata anche quando la griglia vera non si è
+        // ancora ridisegnata (per via del ritardo qui sopra) o quando
+        // l'utente è su Impostazioni e la Home non è la vista attiva.
+        function _colonneRigheStimate(diametro) {
+            const schermo = document.getElementById('phoneScreen');
+            if (!schermo || !schermo.clientWidth) return { colonne: 0, righe: 0 };
+            const remPx = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+            const gapPx = 0.7 * remPx; // gap: 0.7rem in .widget-griglia
+            // Stima del padding di .widget-pagina (0.9rem lati, 1.1rem sopra,
+            // 4.5rem sotto per il tasto fisico — vedi CSS) — approssimata,
+            // questo è un numero indicativo per l'utente, non un valore
+            // preciso al pixel.
+            const larghezzaDisponibile = schermo.clientWidth - (1.8 * remPx);
+            const altezzaDisponibile = schermo.clientHeight - (5.6 * remPx);
+            const colonne = Math.max(1, Math.floor((larghezzaDisponibile + gapPx) / (diametro + gapPx)));
+            const righe = Math.max(1, Math.floor((altezzaDisponibile + gapPx) / (diametro + gapPx)));
+            return { colonne, righe };
+        }
+
         function applicaDiametroWidget() {
             const diametro = prefDiametroWidgetGet() || DIAMETRO_WIDGET_DEFAULT;
             document.documentElement.style.setProperty('--ball-misura', diametro + 'px');
@@ -143,13 +175,37 @@
             if (input) input.value = diametro;
             if (valoreEl) valoreEl.textContent = diametro + ' px';
 
+            // Anteprima + testo: SEMPRE istantanei, mai il ritardo qui sotto.
+            const anteprima = document.getElementById('temaDiametroAnteprima');
+            const anteprimaWrap = document.getElementById('temaDiametroAnteprimaWrap');
+            if (anteprima) {
+                anteprima.style.width = diametro + 'px';
+                anteprima.style.height = diametro + 'px';
+            }
+            if (anteprimaWrap) {
+                // Il contenitore resta alla misura MASSIMA possibile (220px)
+                // così il layout del pannello non "salta" mentre il cerchio
+                // dentro cresce/rimpicciolisce.
+                anteprimaWrap.style.width = DIAMETRO_WIDGET_MAX + 'px';
+                anteprimaWrap.style.height = DIAMETRO_WIDGET_MAX + 'px';
+            }
+            const testo = document.getElementById('temaDiametroAnteprimaTesto');
+            if (testo) {
+                const { colonne, righe } = _colonneRigheStimate(diametro);
+                testo.textContent = `Con questa dimensione, per questo dispositivo, ci saranno ${colonne} colonne e ${righe} righe`;
+            }
+
             // Cambiare il diametro cambia quante colonne/righe entrano nella
             // pagina (la griglia CSS è auto-fill su var(--ball-misura), vedi
             // index.html) — _misuraPaginaWidget() la rimisura da sola dal DOM
-            // ad ogni renderWidgetHome(), quindi basta rifare il render.
-            if (typeof renderWidgetHome === 'function' && typeof _layoutWidget !== 'undefined' && _layoutWidget) {
-                renderWidgetHome();
-            }
+            // ad ogni renderWidgetHome(). QUESTA chiamata (pesante, rigenera
+            // gli SVG di ogni widget) ha il piccolo ritardo di cui sopra.
+            clearTimeout(_ritardoRenderDiametro);
+            _ritardoRenderDiametro = setTimeout(() => {
+                if (typeof renderWidgetHome === 'function' && typeof _layoutWidget !== 'undefined' && _layoutWidget) {
+                    renderWidgetHome();
+                }
+            }, RITARDO_RENDER_DIAMETRO_MS);
         }
 
         function setDiametroWidget(px) {
