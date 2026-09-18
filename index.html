@@ -4000,15 +4000,31 @@
            (minimo indispensabile) invece del vecchio tetto 62% di
            .container — vedi _libroMisura() in ui/binder.ui.js, ora legge
            l'altezza VERA di questo wrap. position:relative fa da ancora
-           alle frecce laterali qui sotto. */
+           alle frecce laterali qui sotto.
+           CORRETTO 2026-09-18 (Claudio: "hai rotto il flip delle pagine"):
+           era display:flex con align-items/justify-content per centrare
+           .libro-scena — tolto: .libro-scena ha già margin:0 auto nel suo
+           CSS originale (ridondante), e il flex era l'unica variabile
+           strutturale nuova esattamente sul contenitore dove
+           _libroInitGesti() attacca pointerdown/pointermove/pointerup.
+           Non ho potuto testare dal vivo per confermarlo con certezza
+           (Regola d'Oro #2), ma è il sospetto più concreto e la rimozione
+           non cambia il risultato visivo (centratura ora via position:
+           absolute + transform su .libro-scena stessa, vedi sotto),
+           quindi la tolgo per prima. */
         #binder.binder-dettaglio-attivo #binderLibroWrap {
             flex: 1;
             min-height: 0;
             margin-top: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            display: block;
             position: relative;
+        }
+        #binder.binder-dettaglio-attivo #binderLibroWrap > #binderLibroScena {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            margin: 0;
         }
         /* Frecce spostate nei lati liberi del binder aperto (Claudio,
            2026-09-18) invece che sotto: in modalità "doppia" (schermo
