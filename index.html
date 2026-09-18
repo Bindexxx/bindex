@@ -2678,18 +2678,59 @@
             height: 100%;
             max-height: none;
         }
-        /* Design del binder e Sleeve (Claudio, 2026-09-18: l'editor sleeve
-           deve poter usare tutto lo spazio) — entrambi hanno .settings-card
-           come classe, che porta un max-width:600px di base (pensato per
-           card normali). Qui lo tolgo SOLO a questi due, scoped per id: gli
-           altri blocchi (Informazioni, Nome, Copertina) restano stretti
-           come prima, dentro la colonna 640px o il loro 600px ereditato. */
-        #binderDesignDetails,
-        #binderSleeveCard {
+
+        /* ═══════════════════════════════════════════════════════════════
+           MODALE IMPOSTAZIONI BINDER — redesign 2026-09-18 (Claudio:
+           "layout a più zone", "raggruppa in tab", "uniformalo al resto").
+           Sostituisce la vecchia colonna singola a 640px + pannello richiudibile
+           annidato per Nome/Copertina/Sleeve.
+
+           .binder-impostazioni-zone: griglia auto-fit — su schermo largo
+           più "zone" (card) affiancate, su schermo stretto una sola
+           colonna (nessuna media query serve: auto-fit lo fa da solo in
+           base allo spazio reale, stesso principio già usato per le
+           griglie a diametro di Achievement/Binders più sopra). Le card al
+           suo interno perdono il max-width:600px di .settings-card (qui
+           il contenitore/griglia decide la larghezza, non la card). */
+        #binderImpostazioniModal .binder-impostazioni-zone {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 1rem;
+            align-items: start;
+        }
+        #binderImpostazioniModal .binder-impostazioni-zone > .settings-card {
             max-width: none;
+            margin: 0;
         }
 
+        /* Editor sleeve immersivo (#binderSleeveEditorZona) — canvas e
+           controlli affiancati su schermo largo, impilati su schermo
+           stretto (flex-wrap, nessuna media query). */
+        #binderImpostazioniModal .binder-sleeve-editor-layout {
+            display: flex;
+            gap: 1.2rem;
+            align-items: flex-start;
+            flex-wrap: wrap;
+        }
+        #binderImpostazioniModal .binder-sleeve-editor-canvas {
+            flex: 1 1 420px;
+            max-width: 640px;
+        }
+        #binderImpostazioniModal .binder-sleeve-editor-controlli {
+            flex: 1 1 220px;
+            max-width: 320px;
+            min-width: 200px;
+        }
+        /* Canvas sleeve "maneggevole" (Claudio, punto 9) — non più a piena
+           larghezza: il tetto reale è .binder-sleeve-editor-canvas sopra
+           (640px). Il valore vero di .cardback-stage-wrap è modificato
+           direttamente alla sua regola base più sotto nel file (era
+           max-width:1100px da un tentativo precedente di questa stessa
+           sessione, ora 640px) — nessuna regola duplicata qui, per non
+           rischiare un ordine di cascata sbagliato. */
+
         #qrcodeContainer { display: flex; justify-content: center; margin: 1rem 0; }
+
 
 
         /* A10 (Dashboard/Home) — SCENA "GIRA CARTA" ─────────────────────────
@@ -2902,21 +2943,18 @@
            namespace "cardback-" per non toccare nessuna classe esistente.
            Stage a 900x1260 (5:7, vedi ROADMAP sez.1 punto 8), non più
            750x1040 come nel file originale. */
-        /* AGGIORNATO 2026-09-18 (Claudio: "deve espandersi per tutto lo
-           schermo... altrimenti la modifica della sleeve non è fattibile
-           perché taglia l'immagine a metà") — era max-width:420px, pensato
-           per il vecchio modale piccolo. #cardBackStageWrap è usato SOLO
-           qui in tutto il sito (verificato via grep), quindi alzo
-           direttamente il tetto qui invece di aggiungere una regola scoped
-           a parte. 1100px: oltre non ha senso ingrandire ulteriormente
-           un'immagine sorgente a 900px nativi (vedi .cardback-stage
-           sotto). L'elemento che lo ospita (#binderSleeveCard) non ha più
-           il tetto 600px di .settings-card (vedi regola dedicata più
-           sotto), quindi questo può davvero espandersi. */
+        /* AGGIORNATO 2026-09-18, redesign finale del modale impostazioni
+           (Claudio: "layout a più zone", editor sleeve immersivo affiancato
+           ai controlli): 640px, "maneggevole" (punto 9) — non più a piena
+           larghezza. Era 420px nel design originale, poi portato
+           brevemente a 1100px in un tentativo di metà sessione (superato).
+           #cardBackStageWrap è usato SOLO qui in tutto il sito (verificato
+           via grep), quindi va bene modificare direttamente questo valore
+           di base invece di scopare una regola a parte. */
         .cardback-stage-wrap {
             position: relative;
             width: 100%;
-            max-width: 1100px;
+            max-width: 640px;
             margin: 0.8rem auto 0;
             overflow: hidden;
             touch-action: none;
@@ -6066,185 +6104,253 @@
                  centrato. Il bottone chiudi resta FUORI da questo wrapper,
                  sempre ancorato all'angolo vero del modale (position:
                  absolute su .modal-content, invariato). -->
-            <div style="max-width: 640px; margin: 0 auto;">
             <h3 style="font-weight: 800; margin-bottom: 1rem; display:flex; align-items:center; gap:0.5rem;">
                 <i class="fa-solid fa-gear" style="color: var(--primary);"></i> Impostazioni binder
             </h3>
 
-            <!-- PLACEHOLDER (Claudio, 2026-09-18): solo UI, NESSUN salvataggio
-                 e NESSUNA colonna DB dietro — Regola d'Oro #3, mai scrivere
-                 SQL/repository senza verifica diretta sullo schema reale.
-                 Le due spunte qui sotto non fanno ancora nulla oltre
-                 abilitare/disabilitare la tendina (puro JS locale, zero
-                 chiamate a supabaseClient). Da collegare a una funzione vera
-                 quando la struttura dati sarà decisa con Claudio. -->
-            <div class="settings-card" style="margin: 0 0 1.2rem; padding: 1rem;">
-                <h4 style="margin: 0 0 0.2rem; font-size: 0.9rem; font-weight: 700; display:flex; align-items:center; gap:0.5rem;">
-                    <i class="fa-solid fa-circle-info" style="color: var(--primary);"></i> Informazioni
-                    <span style="font-size:0.65rem; font-weight:700; color:var(--text-muted); background:var(--bg-color); border:1px solid var(--border-color); border-radius:6px; padding:0.1rem 0.4rem;">WIP</span>
-                </h4>
+            <!-- Tab (Claudio, 2026-09-18: "raggruppa in tab" — Generali/Design
+                 invece di un'unica pagina lunga da scorrere). Stesso pattern
+                 .binder-modalita-toggle/.binder-modalita-btn già usato altrove
+                 nel sito (Achievement, Immagini/Elenco del binder), nessuno
+                 stile nuovo. _binderImpostazioniTab() in ui/binder.ui.js. -->
+            <div class="binder-modalita-toggle" id="binderImpostazioniTabs" style="margin-bottom:1.2rem;">
+                <button type="button" class="binder-modalita-btn active" data-itab="generali" onclick="_binderImpostazioniTab('generali')"><i class="fa-solid fa-sliders"></i> Generali</button>
+                <button type="button" class="binder-modalita-btn" data-itab="design" onclick="_binderImpostazioniTab('design')"><i class="fa-solid fa-wand-magic-sparkles"></i> Design</button>
+            </div>
 
-                <div class="setting-row">
-                    <div style="flex:1; min-width:0; margin-right:0.6rem;">
-                        <label for="binderAutoAggiornaCheckbox" style="display:block; font-size:0.85rem; font-weight:700; cursor:pointer;">Aggiorna questo binder ogni</label>
-                        <select id="binderAutoAggiornaGiorni" disabled style="margin-top:0.4rem; padding:0.35rem 0.5rem; border-radius:8px; border:1px solid var(--border-color); font-size:0.82rem; background:var(--card-bg); color:var(--text-dark);">
-                            <option value="1">1 giorno</option>
-                            <option value="3">3 giorni</option>
-                            <option value="7" selected>7 giorni</option>
-                            <option value="14">14 giorni</option>
-                            <option value="30">30 giorni</option>
-                        </select>
+            <!-- ═══════════ TAB GENERALI ═══════════ -->
+            <div id="binderImpostazioniTabGenerali">
+                <div class="binder-impostazioni-zone">
+
+                    <!-- PLACEHOLDER (Claudio, 2026-09-18): solo UI, NESSUN
+                         salvataggio e NESSUNA colonna DB dietro — Regola
+                         d'Oro #3, mai scrivere SQL/repository senza verifica
+                         diretta sullo schema reale. Le due spunte qui sotto
+                         non fanno ancora nulla oltre abilitare/disabilitare
+                         la tendina (puro JS locale, zero chiamate a
+                         supabaseClient). Da collegare a una funzione vera
+                         quando la struttura dati sarà decisa con Claudio —
+                         Claudio, 2026-09-18: contenuto INVARIATO, solo
+                         spostato nella nuova griglia a zone. -->
+                    <div class="settings-card">
+                        <h4 style="margin: 0 0 0.2rem; font-size: 0.9rem; font-weight: 700; display:flex; align-items:center; gap:0.5rem;">
+                            <i class="fa-solid fa-circle-info" style="color: var(--primary);"></i> Informazioni
+                            <span style="font-size:0.65rem; font-weight:700; color:var(--text-muted); background:var(--bg-color); border:1px solid var(--border-color); border-radius:6px; padding:0.1rem 0.4rem;">WIP</span>
+                        </h4>
+
+                        <div class="setting-row">
+                            <div style="flex:1; min-width:0; margin-right:0.6rem;">
+                                <label for="binderAutoAggiornaCheckbox" style="display:block; font-size:0.85rem; font-weight:700; cursor:pointer;">Aggiorna questo binder ogni</label>
+                                <select id="binderAutoAggiornaGiorni" disabled style="margin-top:0.4rem; padding:0.35rem 0.5rem; border-radius:8px; border:1px solid var(--border-color); font-size:0.82rem; background:var(--card-bg); color:var(--text-dark);">
+                                    <option value="1">1 giorno</option>
+                                    <option value="3">3 giorni</option>
+                                    <option value="7" selected>7 giorni</option>
+                                    <option value="14">14 giorni</option>
+                                    <option value="30">30 giorni</option>
+                                </select>
+                            </div>
+                            <label class="switch">
+                                <input type="checkbox" id="binderAutoAggiornaCheckbox" onchange="document.getElementById('binderAutoAggiornaGiorni').disabled = !this.checked">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+
+                        <div class="setting-row">
+                            <div style="flex:1; min-width:0; margin-right:0.6rem;">
+                                <h4 style="font-size: 0.85rem; font-weight: 700;">Non aggiungere il valore di queste carte alla mia collezione</h4>
+                            </div>
+                            <label class="switch">
+                                <input type="checkbox" id="binderEscludiValoreCollezioneCheckbox">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
                     </div>
-                    <label class="switch">
-                        <input type="checkbox" id="binderAutoAggiornaCheckbox" onchange="document.getElementById('binderAutoAggiornaGiorni').disabled = !this.checked">
-                        <span class="slider"></span>
-                    </label>
-                </div>
 
-                <div class="setting-row">
-                    <div style="flex:1; min-width:0; margin-right:0.6rem;">
-                        <h4 style="font-size: 0.85rem; font-weight: 700;">Non aggiungere il valore di queste carte alla mia collezione</h4>
+                    <!-- Rinomina + Pubblicazione + Condivisione raggruppate
+                         (Claudio, 2026-09-18: "sì vai") in UNA card visiva —
+                         i 3 blocchi interni restano id/logica invariati
+                         (_aggiornaControlliRinominaPubblicazioneCondivisione
+                         in ui/binder.ui.js continua a mostrarli/nasconderli
+                         singolarmente in base al tipo di binder), solo
+                         raggruppati sotto lo stesso titolo invece che sparsi. -->
+                    <div class="settings-card">
+                        <h4 style="margin: 0 0 0.6rem; font-size: 0.9rem; font-weight: 700; display:flex; align-items:center; gap:0.5rem;">
+                            <i class="fa-solid fa-globe" style="color: var(--primary);"></i> Nome pubblico e condivisione
+                        </h4>
+
+                        <!-- Rinomina — mostrata via JS solo per il binder tipo 'extra' -->
+                        <div id="binderRinominaWrap" style="display:none; margin-bottom:1rem; gap:0.5rem; flex-wrap:wrap;">
+                            <input type="text" id="binderRinominaInput" placeholder="Nome del binder" style="flex:1; min-width:160px; padding:0.5rem 0.7rem; border-radius:8px; border:1px solid var(--border-color); font-size:0.85rem;">
+                            <button type="button" class="btn-secondary" style="padding:0.5rem 0.9rem; font-size:0.8rem;" onclick="rinominaBinderExtraCorrente(document.getElementById('binderRinominaInput').value)">
+                                <i class="fa-solid fa-pen"></i> Rinomina
+                            </button>
+                        </div>
+
+                        <!-- Pubblicazione libera (2026-08-25) — nessuna
+                             approvazione admin, vedi
+                             19_binder_pubblicazione_libera.sql. Mostrata via
+                             JS solo per i binder che l'utente può davvero
+                             decidere (location diverse da SCAMBIO, extra) —
+                             Wishlist e Scambio sono sempre pubblici, il
+                             controllo qui non avrebbe senso e resta
+                             nascosto. -->
+                        <div id="binderPubblicazioneWrap" style="display:none; margin-bottom:1rem; align-items:center; gap:0.6rem;">
+                            <label style="display:inline-flex; align-items:center; gap:0.5rem; cursor:pointer; font-size:0.82rem; font-weight:700;">
+                                <input type="checkbox" id="binderPubblicazioneCheckbox" onchange="impostaPubblicazioneBinderAttivo(this.checked)">
+                                Rendi pubblico (link condivisibile)
+                            </label>
+                        </div>
+
+                        <!-- Condivisione (2026-08-25) — riusa lo stesso
+                             modale QR globale già esistente (#qrModal,
+                             openQrModal/copyShareLink/condividiLinkNativo in
+                             ui/navigation.ui.js), nessun modale nuovo.
+                             Mostrato via JS solo quando il binder è
+                             pubblico E ha una pagina pubblica reale
+                             (Wishlist, Scambio). -->
+                        <div id="binderCondivisioneWrap" style="display:none; align-items:center; gap:0.5rem; flex-wrap:wrap;">
+                            <button type="button" class="btn-main" style="padding:0.5rem 0.9rem; font-size:0.8rem;" onclick="openQrModal()">
+                                <i class="fa-solid fa-qrcode"></i> Condividi
+                            </button>
+                        </div>
+                        <p id="binderCondivisioneNonDisponibileWrap" style="display:none; font-size:0.72rem; color:var(--text-muted); margin:0;">
+                            Binder pubblico, ma non c'è ancora una pagina dedicata per condividerlo — solo Wishlist e Scambio hanno un link oggi.
+                        </p>
                     </div>
-                    <label class="switch">
-                        <input type="checkbox" id="binderEscludiValoreCollezioneCheckbox">
-                        <span class="slider"></span>
-                    </label>
+
+                    <!-- Toggle immagini/elenco + layout griglia — raggruppati
+                         sotto "Visualizzazione" (stessa area concettuale:
+                         come si vede il binder). Contenuto/id invariati. -->
+                    <div class="settings-card">
+                        <h4 style="margin: 0 0 0.6rem; font-size: 0.9rem; font-weight: 700; display:flex; align-items:center; gap:0.5rem;">
+                            <i class="fa-solid fa-table-cells-large" style="color: var(--primary);"></i> Visualizzazione
+                        </h4>
+                        <div class="binder-modalita-toggle">
+                            <button type="button" class="binder-modalita-btn" data-modalita="immagini" onclick="impostaModalitaBinder('immagini')"><i class="fa-solid fa-images"></i> Immagini</button>
+                            <button type="button" class="binder-modalita-btn" data-modalita="elenco" onclick="impostaModalitaBinder('elenco')"><i class="fa-solid fa-list"></i> Elenco</button>
+                        </div>
+                        <!-- Layout griglia immagini — nascosto via JS in modalità elenco -->
+                        <div class="binder-layout-switcher" style="display:flex; align-items:center; gap:0.6rem; flex-wrap:wrap; margin-top:0.8rem;">
+                            <div style="display:flex; gap:0.4rem;">
+                                <button type="button" class="binder-layout-btn" data-layout="2x2" onclick="cambiaLayoutBinder('2x2')">2×2</button>
+                                <button type="button" class="binder-layout-btn" data-layout="3x3" onclick="cambiaLayoutBinder('3x3')">3×3</button>
+                                <button type="button" class="binder-layout-btn" data-layout="3x4" onclick="cambiaLayoutBinder('3x4')">4×3</button>
+                                <button type="button" class="binder-layout-btn" data-layout="4x4" onclick="cambiaLayoutBinder('4x4')">4×4</button>
+                            </div>
+                            <span style="font-size:0.72rem; color:var(--text-muted);">Per aggiungere carte al tuo binder personale, usa "Aggiungi al Binder" da Visualizzazione.</span>
+                        </div>
+                    </div>
+
                 </div>
             </div>
 
-            <!-- Rinomina — mostrata via JS solo per il binder tipo 'extra' -->
-            <div id="binderRinominaWrap" style="display:none; margin-bottom:1rem; gap:0.5rem; flex-wrap:wrap;">
-                <input type="text" id="binderRinominaInput" placeholder="Nome del binder" style="flex:1; min-width:160px; padding:0.5rem 0.7rem; border-radius:8px; border:1px solid var(--border-color); font-size:0.85rem;">
-                <button type="button" class="btn-secondary" style="padding:0.5rem 0.9rem; font-size:0.8rem;" onclick="rinominaBinderExtraCorrente(document.getElementById('binderRinominaInput').value)">
-                    <i class="fa-solid fa-pen"></i> Rinomina
-                </button>
-            </div>
+            <!-- ═══════════ TAB DESIGN ═══════════ -->
+            <!-- AGGIORNATO 2026-09-18 (Claudio: "sì" a schermata/step
+                 separato invece del vecchio pannello richiudibile) — Nome/
+                 Copertina/Sleeve ora sono una tab a sé invece di un pannello
+                 annidato. "Uniformalo al resto" (Claudio, punto 8): Nome e
+                 Copertina non sono più card strette a parte, stessa griglia
+                 a zone di Informazioni/ecc. -->
+            <div id="binderImpostazioniTabDesign" style="display:none;">
 
-            <!-- Pubblicazione libera (2026-08-25) — nessuna approvazione
-                 admin, vedi 19_binder_pubblicazione_libera.sql. Mostrata
-                 via JS solo per i binder che l'utente può davvero
-                 decidere (location diverse da SCAMBIO, extra) — Wishlist
-                 e Scambio sono sempre pubblici, il controllo qui non
-                 avrebbe senso e resta nascosto. -->
-            <div id="binderPubblicazioneWrap" style="display:none; margin-bottom:1rem; align-items:center; gap:0.6rem;">
-                <label style="display:inline-flex; align-items:center; gap:0.5rem; cursor:pointer; font-size:0.82rem; font-weight:700;">
-                    <input type="checkbox" id="binderPubblicazioneCheckbox" onchange="impostaPubblicazioneBinderAttivo(this.checked)">
-                    Rendi pubblico (link condivisibile)
-                </label>
-            </div>
+                <div id="binderDesignContenutoNormale" class="binder-impostazioni-zone">
+                    <!-- Nome con approvazione admin (2026-08-25) — stessa
+                         metodologia di copertina/sleeve, vedi
+                         21_binder_nome_con_approvazione.sql. NON sostituisce
+                         la rinomina immediata del binder 'extra' più sopra
+                         (#binderRinominaWrap, senza moderazione) — le due
+                         convivono, segnalato a Claudio. -->
+                    <div class="settings-card">
+                        <h4 style="margin: 0 0 0.5rem; font-size: 0.9rem; font-weight: 700; display:flex; align-items:center; gap:0.5rem;">
+                            <i class="fa-solid fa-signature" style="color: var(--primary);"></i> Nome
+                        </h4>
+                        <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+                            <input type="text" id="binderNomeInput" placeholder="Nome del binder" style="flex:1; min-width:160px; padding:0.5rem 0.7rem; border-radius:8px; border:1px solid var(--border-color); font-size:0.85rem;">
+                            <button type="button" class="btn-secondary" style="padding:0.5rem 0.9rem; font-size:0.8rem;" onclick="proponiNomeBinderAttivo()">
+                                <i class="fa-solid fa-paper-plane"></i> Proponi
+                            </button>
+                        </div>
+                        <div id="binderNomeStato" style="font-size:0.8rem; color:var(--text-muted); margin-top:0.5rem;">Caricamento stato…</div>
+                        <div id="binderNomeError" style="display:none; color:var(--danger); font-size:0.78rem; margin-top:0.4rem;"></div>
+                    </div>
 
-            <!-- Condivisione (2026-08-25) — riusa lo stesso modale QR
-                 globale già esistente (#qrModal, openQrModal/
-                 copyShareLink/condividiLinkNativo in
-                 ui/navigation.ui.js), nessun modale nuovo. Mostrato
-                 via JS solo quando il binder è pubblico E ha una
-                 pagina pubblica reale (Wishlist, Scambio). -->
-            <div id="binderCondivisioneWrap" style="display:none; align-items:center; gap:0.5rem; margin-bottom:1rem; flex-wrap:wrap;">
-                <button type="button" class="btn-main" style="padding:0.5rem 0.9rem; font-size:0.8rem;" onclick="openQrModal()">
-                    <i class="fa-solid fa-qrcode"></i> Condividi
-                </button>
-            </div>
-            <p id="binderCondivisioneNonDisponibileWrap" style="display:none; font-size:0.72rem; color:var(--text-muted); margin-bottom:1rem;">
-                Binder pubblico, ma non c'è ancora una pagina dedicata per condividerlo — solo Wishlist e Scambio hanno un link oggi.
-            </p>
+                    <div class="settings-card">
+                        <h4 style="margin: 0 0 0.5rem; font-size: 0.9rem; font-weight: 700; display:flex; align-items:center; gap:0.5rem;">
+                            <i class="fa-solid fa-image" style="color: var(--primary);"></i> Copertina
+                        </h4>
+                        <div id="binderCoverPreviewWrap" style="display:flex; align-items:center; gap:1rem; flex-wrap:wrap;">
+                            <div id="binderCoverPreview" style="width:80px; height:80px; border-radius:10px; background:var(--border-color); display:flex; align-items:center; justify-content:center; overflow:hidden; flex-shrink:0;">
+                                <i class="fa-solid fa-image" style="color:var(--text-muted);"></i>
+                            </div>
+                            <div style="flex:1; min-width:180px;">
+                                <div id="binderCoverStato" style="font-size:0.8rem; color:var(--text-muted); margin-bottom:0.5rem;">Caricamento stato…</div>
 
-            <!-- Toggle immagini/elenco — preferenza per-utente -->
-            <div class="binder-modalita-toggle">
-                <button type="button" class="binder-modalita-btn" data-modalita="immagini" onclick="impostaModalitaBinder('immagini')"><i class="fa-solid fa-images"></i> Immagini</button>
-                <button type="button" class="binder-modalita-btn" data-modalita="elenco" onclick="impostaModalitaBinder('elenco')"><i class="fa-solid fa-list"></i> Elenco</button>
-            </div>
-            </div>
+                                <label class="btn-secondary" id="binderCoverUploadLabel" style="display:inline-flex; align-items:center; gap:0.5rem; padding:0.55rem 0.9rem; font-size:0.8rem; cursor:pointer;">
+                                    <i class="fa-solid fa-upload"></i> Carica foto
+                                    <input type="file" id="binderCoverInput" accept="image/*" style="display:none;" onchange="gestisciUploadCopertinaBinderAttivo(event)">
+                                </label>
+                                <button type="button" class="btn-secondary" style="display:inline-flex; align-items:center; gap:0.5rem; padding:0.55rem 0.9rem; font-size:0.8rem; margin-left:0.4rem;" onclick="toggleGalleriaDefaultCopertinaBinderAttivo()">
+                                    <i class="fa-solid fa-images"></i> Scegli da galleria
+                                </button>
+                                <div id="binderCoverError" style="display:none; color:var(--danger); font-size:0.78rem; margin-top:0.4rem;"></div>
+                                <div style="font-size:0.72rem; color:var(--text-muted); margin-top:0.4rem;">Qualsiasi foto, qualsiasi dimensione — convertita automaticamente. Visibile solo a te finché non è approvata.</div>
+                                <div id="binderCoverGalleriaWrap" style="display:none; margin-top:0.6rem;">
+                                    <div id="binderCoverGalleriaGrid" style="display:flex; gap:0.5rem; flex-wrap:wrap;"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
 
-            <!-- Design: nome + copertina + sleeve del binder aperto (Claudio,
-                 2026-09-18: "così com'è adesso" — stesso pannello richiudibile
-                 di prima, solo dentro il modale invece che sulla pagina).
-                 AGGIORNATO 2026-09-18: fuori dalla colonna stretta qui sopra
-                 — l'editor sleeve dentro (Sleeve, in fondo) ha bisogno di
-                 tutta la larghezza vera del modale, "altrimenti la modifica
-                 non è fattibile perché taglia l'immagine a metà" (Claudio).
-                 Nome e Copertina restano comunque strette (hanno il proprio
-                 max-width:600px dalla classe .settings-card condivisa, qui
-                 solo ricentrate con margin:auto invece di 1rem 0) — solo
-                 Sleeve (#binderSleeveCard sotto) esce da quel tetto. -->
-            <details id="binderDesignDetails" class="settings-card" style="margin: 1.2rem 0; padding: 1rem;" ontoggle="if (this.open && typeof _cardBackRescale === 'function') _cardBackRescale();">
-                <summary style="cursor:pointer; font-weight:700; font-size:0.9rem; display:flex; align-items:center; gap:0.5rem;">
-                    <i class="fa-solid fa-wand-magic-sparkles" style="color: var(--primary);"></i> Design del binder
-                </summary>
-                        <!-- Nome con approvazione admin (2026-08-25) — stessa
-                             metodologia di copertina/sleeve, vedi
-                             21_binder_nome_con_approvazione.sql. NON sostituisce
-                             la rinomina immediata del binder 'extra' più sopra
-                             (#binderRinominaWrap, senza moderazione) — le due
-                             convivono, segnalato a Claudio. -->
-                        <div class="settings-card" style="margin: 1rem auto; padding: 1rem;">
-                            <h4 style="margin: 0 0 0.5rem; font-size: 0.9rem; font-weight: 700; display:flex; align-items:center; gap:0.5rem;">
-                                <i class="fa-solid fa-signature" style="color: var(--primary);"></i> Nome
-                            </h4>
-                            <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
-                                <input type="text" id="binderNomeInput" placeholder="Nome del binder" style="flex:1; min-width:160px; padding:0.5rem 0.7rem; border-radius:8px; border:1px solid var(--border-color); font-size:0.85rem;">
-                                <button type="button" class="btn-secondary" style="padding:0.5rem 0.9rem; font-size:0.8rem;" onclick="proponiNomeBinderAttivo()">
-                                    <i class="fa-solid fa-paper-plane"></i> Proponi
+                    <!-- Sleeve — AGGIORNATO 2026-09-18 (Claudio, punto 10):
+                         card compatta con SOLO anteprima + un bottone
+                         "Modifica sleeve" — il canvas grande (#cardBackStageWrap)
+                         e i bottoni Carica/Galleria si spostano dentro
+                         #binderSleeveEditorZona qui sotto, invisibili finché
+                         non si apre l'editor ("visibili solo quando si vuole
+                         editare la sleeve"). _binderSleeveApriEditor() in
+                         ui/binder.ui.js. -->
+                    <div id="binderSleeveCard" class="settings-card">
+                        <h4 style="margin: 0 0 0.5rem; font-size: 0.9rem; font-weight: 700; display:flex; align-items:center; gap:0.5rem;">
+                            <i class="fa-solid fa-clone" style="color: var(--primary);"></i> Sleeve (retro carta)
+                        </h4>
+                        <p style="font-size:0.72rem; color:var(--text-muted); margin:0 0 0.8rem;">
+                            Sostituisce il retro standard per le carte di questo binder. Se non carichi nulla, viene mostrato un retro di sistema.
+                        </p>
+                        <div style="display:flex; align-items:center; gap:1rem; flex-wrap:wrap;">
+                            <div id="cardBackPreview" style="width:60px; height:84px; border-radius:8px; background:var(--border-color); display:flex; align-items:center; justify-content:center; overflow:hidden; flex-shrink:0;">
+                                <i class="fa-solid fa-image" style="color:var(--text-muted);"></i>
+                            </div>
+                            <div style="flex:1; min-width:160px;">
+                                <div id="cardBackStato" style="font-size:0.8rem; color:var(--text-muted); margin-bottom:0.5rem;">Caricamento stato…</div>
+                                <button type="button" class="btn-secondary" style="padding:0.55rem 0.9rem; font-size:0.8rem;" onclick="_binderSleeveApriEditor()">
+                                    <i class="fa-solid fa-pen"></i> Modifica sleeve
                                 </button>
                             </div>
-                            <div id="binderNomeStato" style="font-size:0.8rem; color:var(--text-muted); margin-top:0.5rem;">Caricamento stato…</div>
-                            <div id="binderNomeError" style="display:none; color:var(--danger); font-size:0.78rem; margin-top:0.4rem;"></div>
                         </div>
+                    </div>
+                </div>
 
-                        <div class="settings-card" style="margin: 1rem auto; padding: 1rem;">
-                            <h4 style="margin: 0 0 0.5rem; font-size: 0.9rem; font-weight: 700; display:flex; align-items:center; gap:0.5rem;">
-                                <i class="fa-solid fa-image" style="color: var(--primary);"></i> Copertina
-                            </h4>
-                            <div id="binderCoverPreviewWrap" style="display:flex; align-items:center; gap:1rem; flex-wrap:wrap;">
-                                <div id="binderCoverPreview" style="width:80px; height:80px; border-radius:10px; background:var(--border-color); display:flex; align-items:center; justify-content:center; overflow:hidden; flex-shrink:0;">
-                                    <i class="fa-solid fa-image" style="color:var(--text-muted);"></i>
-                                </div>
-                                <div style="flex:1; min-width:180px;">
-                                    <div id="binderCoverStato" style="font-size:0.8rem; color:var(--text-muted); margin-bottom:0.5rem;">Caricamento stato…</div>
+                <!-- Editor sleeve immersivo (Claudio, 2026-09-18: "va bene
+                     che si nasconda [il resto] prendendo tutto lo spazio" +
+                     "accanto per sfruttare lo spazio vuoto laterale") —
+                     nascosto finché non aperto da _binderSleeveApriEditor(),
+                     sostituisce interamente la vista normale della tab
+                     Design (tab bar compresa). Canvas e controlli fianco a
+                     fianco su schermo largo, impilati su schermo stretto
+                     (.binder-sleeve-editor-layout, flex-wrap). -->
+                <div id="binderSleeveEditorZona" style="display:none;">
+                    <div style="display:flex; align-items:center; gap:0.6rem; margin-bottom:1rem;">
+                        <button type="button" class="btn-secondary" style="padding:0.5rem 0.8rem; font-size:0.8rem;" onclick="_binderSleeveChiudiEditor()">
+                            <i class="fa-solid fa-arrow-left"></i> Design
+                        </button>
+                        <h4 style="margin:0; font-size:0.95rem; font-weight:800; display:flex; align-items:center; gap:0.5rem;">
+                            <i class="fa-solid fa-clone" style="color: var(--primary);"></i> Modifica sleeve
+                        </h4>
+                    </div>
 
-                                    <label class="btn-secondary" id="binderCoverUploadLabel" style="display:inline-flex; align-items:center; gap:0.5rem; padding:0.55rem 0.9rem; font-size:0.8rem; cursor:pointer;">
-                                        <i class="fa-solid fa-upload"></i> Carica foto
-                                        <input type="file" id="binderCoverInput" accept="image/*" style="display:none;" onchange="gestisciUploadCopertinaBinderAttivo(event)">
-                                    </label>
-                                    <button type="button" class="btn-secondary" style="display:inline-flex; align-items:center; gap:0.5rem; padding:0.55rem 0.9rem; font-size:0.8rem; margin-left:0.4rem;" onclick="toggleGalleriaDefaultCopertinaBinderAttivo()">
-                                        <i class="fa-solid fa-images"></i> Scegli da galleria
-                                    </button>
-                                    <div id="binderCoverError" style="display:none; color:var(--danger); font-size:0.78rem; margin-top:0.4rem;"></div>
-                                    <div style="font-size:0.72rem; color:var(--text-muted); margin-top:0.4rem;">Qualsiasi foto, qualsiasi dimensione — convertita automaticamente. Visibile solo a te finché non è approvata.</div>
-                                    <div id="binderCoverGalleriaWrap" style="display:none; margin-top:0.6rem;">
-                                        <div id="binderCoverGalleriaGrid" style="display:flex; gap:0.5rem; flex-wrap:wrap;"></div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div id="binderSleeveCard" class="settings-card" style="margin: 1rem 0; padding: 1rem;">
-                            <h4 style="margin: 0 0 0.5rem; font-size: 0.9rem; font-weight: 700; display:flex; align-items:center; gap:0.5rem;">
-                                <i class="fa-solid fa-clone" style="color: var(--primary);"></i> Sleeve (retro carta)
-                            </h4>
-                            <p style="font-size:0.72rem; color:var(--text-muted); margin:0 0 0.8rem;">
-                                Sostituisce il retro standard per le carte di questo binder. Se non carichi nulla, viene mostrato un retro di sistema.
-                            </p>
-                            <div id="cardBackPreviewWrap" style="display:flex; align-items:center; gap:1rem; flex-wrap:wrap;">
-                                <div id="cardBackPreview" style="width:60px; height:84px; border-radius:8px; background:var(--border-color); display:flex; align-items:center; justify-content:center; overflow:hidden; flex-shrink:0;">
-                                    <i class="fa-solid fa-image" style="color:var(--text-muted);"></i>
-                                </div>
-                                <div style="flex:1; min-width:180px;">
-                                    <div id="cardBackStato" style="font-size:0.8rem; color:var(--text-muted); margin-bottom:0.5rem;">Caricamento stato…</div>
-                                    <label class="btn-secondary" id="cardBackUploadLabel" style="display:inline-flex; align-items:center; gap:0.5rem; padding:0.55rem 0.9rem; font-size:0.8rem; cursor:pointer;">
-                                        <i class="fa-solid fa-upload"></i> Carica sleeve
-                                        <input type="file" id="cardBackInput" accept="image/*" style="display:none;" onchange="gestisciUploadSleeveBinderAttivo(event)">
-                                    </label>
-                                    <button type="button" class="btn-secondary" style="display:inline-flex; align-items:center; gap:0.5rem; padding:0.55rem 0.9rem; font-size:0.8rem; margin-left:0.4rem;" onclick="toggleGalleriaDefaultSleeveBinderAttivo()">
-                                        <i class="fa-solid fa-images"></i> Scegli da galleria
-                                    </button>
-                                    <div id="cardBackError" style="display:none; color:var(--danger); font-size:0.78rem; margin-top:0.4rem;"></div>
-                                    <div id="cardBackGalleriaWrap" style="display:none; margin-top:0.6rem;">
-                                        <div id="cardBackGalleriaGrid" style="display:flex; gap:0.5rem; flex-wrap:wrap;"></div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div id="cardBackEditorWrap" style="display:none; margin-top:0.6rem;">
+                    <div class="binder-sleeve-editor-layout">
+                        <div class="binder-sleeve-editor-canvas">
+                            <div id="cardBackEditorWrap" style="display:none;">
                                 <p style="font-size:0.72rem; color:var(--text-muted); margin:0 0 0.5rem;">Trascina i 4 campi per posizionarli, usa la maniglia per ridimensionarli.</p>
                                 <div class="cardback-stage-wrap" id="cardBackStageWrap">
                                     <div class="cardback-stage" id="cardBackStage">
@@ -6318,19 +6424,22 @@
                                 </div>
                             </div>
                         </div>
-                    </details>
 
-                    <div style="max-width: 640px; margin: 0 auto;">
-                    <!-- Layout griglia immagini — nascosto via JS in modalità elenco -->
-                    <div class="binder-layout-switcher" style="display:flex; align-items:center; justify-content:space-between; gap:0.6rem; flex-wrap:wrap;">
-                        <div style="display:flex; gap:0.4rem;">
-                            <button type="button" class="binder-layout-btn" data-layout="2x2" onclick="cambiaLayoutBinder('2x2')">2×2</button>
-                            <button type="button" class="binder-layout-btn" data-layout="3x3" onclick="cambiaLayoutBinder('3x3')">3×3</button>
-                            <button type="button" class="binder-layout-btn" data-layout="3x4" onclick="cambiaLayoutBinder('3x4')">4×3</button>
-                            <button type="button" class="binder-layout-btn" data-layout="4x4" onclick="cambiaLayoutBinder('4x4')">4×4</button>
+                        <div class="binder-sleeve-editor-controlli">
+                            <label class="btn-secondary" id="cardBackUploadLabel" style="display:inline-flex; align-items:center; gap:0.5rem; padding:0.55rem 0.9rem; font-size:0.8rem; cursor:pointer; width:100%; box-sizing:border-box; justify-content:center;">
+                                <i class="fa-solid fa-upload"></i> Carica sleeve
+                                <input type="file" id="cardBackInput" accept="image/*" style="display:none;" onchange="gestisciUploadSleeveBinderAttivo(event)">
+                            </label>
+                            <button type="button" class="btn-secondary" style="display:inline-flex; align-items:center; justify-content:center; gap:0.5rem; padding:0.55rem 0.9rem; font-size:0.8rem; width:100%; box-sizing:border-box; margin-top:0.5rem;" onclick="toggleGalleriaDefaultSleeveBinderAttivo()">
+                                <i class="fa-solid fa-images"></i> Scegli da galleria
+                            </button>
+                            <div id="cardBackError" style="display:none; color:var(--danger); font-size:0.78rem; margin-top:0.6rem;"></div>
+                            <div id="cardBackGalleriaWrap" style="display:none; margin-top:0.6rem;">
+                                <div id="cardBackGalleriaGrid" style="display:flex; gap:0.5rem; flex-wrap:wrap;"></div>
+                            </div>
                         </div>
-                        <span style="font-size:0.72rem; color:var(--text-muted);">Per aggiungere carte al tuo binder personale, usa "Aggiungi al Binder" da Visualizzazione.</span>
                     </div>
+                </div>
             </div>
 
         </div>
