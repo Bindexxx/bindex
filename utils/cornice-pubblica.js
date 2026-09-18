@@ -97,8 +97,12 @@ function _avviaSincronizzaPallinaTendina() {
     function fotogramma() {
         const rectShade = shade.getBoundingClientRect();
         const rectSchermo = schermo.getBoundingClientRect();
-        const centroBersaglio = (rectShade.bottom - rectSchermo.top) - 12;
-        const offsetY = centroBersaglio - (pallina.offsetHeight / 2);
+        // CORRETTO (STEP 14 fix, 2026-09-17) — stessa correzione di
+        // index.html: la pallina deve restare INTERA, appesa appena sotto
+        // il fondo della tendina, non a cavallo di esso.
+        const fondoTendina = rectShade.bottom - rectSchermo.top;
+        const piccoloStacco = 4;
+        const offsetY = fondoTendina + piccoloStacco;
         pallina.style.transform = `translate(-50%, ${offsetY}px)`;
         requestAnimationFrame(fotogramma);
     }
