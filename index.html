@@ -3849,6 +3849,88 @@
         .achievement-vetrina-grid .achievement-slot-fallback span { font-size: 0.8rem; }
 
         /* ═══════════════════════════════════════════════════════════════
+           WIDGET CONDIVIDI — griglia uniforme stile Pokédex (2026-09-18).
+           ISOLATE da .binders-contenitori-grid/.binder-contenitore-* —
+           stesso principio già usato per Achievement oggi: nuove classi
+           con la STESSA formula 58.2%/63:88 invece di riusare la classe
+           condivisa Binder/Scaffali, per non aggiungere un terzo
+           consumer a quella condivisa (Regola d'Oro #1). Elenca binder
+           pubblici (copertina reale) + scaffali pubblici (solo icona +
+           nome enfatizzato — stessa scelta già fatta per #scaffali,
+           Claudio: "la copertina non serve, serve il titolo").
+           ═══════════════════════════════════════════════════════════════ */
+        .condividi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(var(--ball-misura, 90px), 1fr));
+            gap: 1rem;
+            margin-top: 0.8rem;
+        }
+        .condividi-tile {
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.35rem;
+            padding: 0.5rem;
+            border-radius: 12px;
+            transition: background-color 0.15s ease;
+        }
+        .condividi-tile:hover { background-color: var(--bg-color); }
+        .condividi-cover {
+            position: relative;
+            width: 58.2%;
+            margin: 0 auto;
+            aspect-ratio: 63 / 88;
+            border-radius: 10px;
+            background: var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+        }
+        .condividi-cover img { width: 100%; height: 100%; object-fit: cover; }
+        .condividi-cover i { font-size: 1.6rem; color: var(--text-muted); }
+        .condividi-nome {
+            font-size: 0.8rem;
+            font-weight: 700;
+            color: var(--text-dark);
+            text-align: center;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            max-width: 100%;
+        }
+        /* Scaffali: nessuna foto (vedi sopra) — nome enfatizzato come già
+           fatto per #scaffali .binder-contenitore-nome, stessa scelta. */
+        .condividi-tile[data-tipo-elemento="scaffale"] .condividi-nome {
+            font-size: 0.88rem;
+            font-weight: 800;
+            color: var(--primary);
+        }
+        /* Placeholder "Condividi sul profilo" (feature futura, Claudio
+           2026-09-18) — SOLO UI, nessuna chiamata/salvataggio, stesso
+           trattamento delle spunte "Informazioni" placeholder nel modale
+           Impostazioni Binder di oggi. stopPropagation in JS perché il
+           click sulla spunta non deve aprire il pannello share sotto. */
+        .condividi-profilo-toggle {
+            position: absolute;
+            top: 4px;
+            right: 4px;
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background: color-mix(in srgb, var(--card-bg) 88%, transparent);
+            border: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 2;
+        }
+        .condividi-profilo-toggle input { width: 14px; height: 14px; margin: 0; cursor: pointer; }
+
+        /* ═══════════════════════════════════════════════════════════════
            LIBRO SFOGLIABILE — sessione Opus, 2026-08-25. Sostituisce la
            griglia statica come modalità "immagini" del widget Binders.
            Cerniera 3D rigida (rotateY attorno al dorso) con ombra che
