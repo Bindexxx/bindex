@@ -3944,6 +3944,18 @@
            si tocca nulla di quel meccanismo, solo il contenuto interno).
            Selettore con #binder come antenato: non cambia .settings-card
            altrove nel sito (Regola d'Oro #1). */
+        /* Vista griglia normale (non fullscreen) di #binder: il 900px che
+           prima era inline style sul div — spostato qui (Claudio,
+           2026-09-18: un max-width inline vince SEMPRE sulla regola
+           fullscreen sotto, per quanto specifica, quindi il tetto restava
+           anche a binder aperto — bug trovato da uno screenshot suo, box
+           fermo a 900px e "decentrato" perché margin:0 della regola
+           fullscreen si applicava comunque, uccidendo il margin:0 auto di
+           .settings-card). Scoped a #binder, non tocca .settings-card
+           altrove (Regola d'Oro #1). */
+        #binder > .settings-card {
+            max-width: 900px;
+        }
         #binder.binder-dettaglio-attivo {
             height: 100%;
         }
@@ -5143,7 +5155,7 @@
              prima, ora agganciato al binder aperto (_binderAttivo) invece
              che unico per utente — vedi ui/binder.ui.js per la logica. -->
         <div id="binder" class="view-section">
-            <div class="settings-card" style="max-width: 900px;">
+            <div class="settings-card">
                 <h3 style="margin-bottom: 0.3rem; color: var(--text-dark); display: flex; align-items: center; gap: 0.6rem; font-size: 1.15rem; font-weight: 800;">
                     <i class="fa-solid fa-layer-group" style="color: var(--primary);"></i> Binders
                 </h3>
