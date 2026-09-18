@@ -80,6 +80,7 @@ html, body {
 }
 
 /* ── Poké Ball condivise (stesso componente/stessa idea di index.html) ── */
+:root { --pokeball-size: clamp(32px, 5vw, 56px); }
 .pokedex-ball {
     border-radius: 50%;
     background: linear-gradient(to bottom, var(--primary) 0 46%, #171717 46% 54%, var(--secondary) 54% 100%);
@@ -97,46 +98,38 @@ html, body {
     box-shadow: inset 0 0 0 1.5px #fff;
 }
 
+/* AGGIORNATO (STEP 11 fix restyle "cornice Pokédex", 2026-09-17): era in
+   percentuale della cornice (fuori posto ora che #phoneFrameBox riempie
+   tutto lo spazio, Step 9) — spostato a un inset fisso e piccolo dal
+   bordo VERO dello schermo (già dentro #phoneScreen nel markup, nessuno
+   spostamento HTML necessario qui, solo CSS). */
 #btnPubblicoTornaSu {
     position: absolute;
-    left: 49.94%; top: 93.95%;
-    transform: translate(-50%, -50%);
-    width: 5.6%; aspect-ratio: 1;
+    left: 50%; bottom: 12px;
+    transform: translateX(-50%);
+    width: var(--pokeball-size, clamp(32px, 5vw, 56px)); aspect-ratio: 1;
     display: flex; align-items: center; justify-content: center;
     cursor: pointer;
     z-index: 12;
 }
 #btnPubblicoTornaSu i { position: relative; z-index: 1; font-size: 0.5rem; color: #171717; }
-@media (orientation: landscape) {
-    #btnPubblicoTornaSu { left: 52.79%; top: 87.58%; width: 5.2%; }
-}
 
-/* Maniglia tendina → Poké Ball, stesso trucco di index.html (dichiarato
-   DOPO <link href="statusbar.css">, vince sulla regola di libreria senza
-   bisogno di !important). */
-.csb-handle { height: 44px; }
-.csb-handle i {
-    width: 34px; height: 34px;
-    border-radius: 50%;
-    background: linear-gradient(to bottom, var(--primary) 0 46%, #171717 46% 54%, var(--secondary) 54% 100%);
-    border: 2px solid #171717;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.35), inset 0 0 0 2px rgba(255, 255, 255, 0.12);
-    position: relative;
-}
-.csb-handle i::after {
-    content: '';
-    position: absolute;
-    inset: 30%;
-    border-radius: 50%;
-    background: #eee9df;
-    border: 1.5px solid #171717;
-    box-shadow: inset 0 0 0 1.5px #fff;
-}
+/* ── MANIGLIA/TENDINA → UNA SOLA POKÉ BALL (STEP 11, 2026-09-17) — stessa
+   correzione di index.html, vedi il commento lì per il perché
+   (.csb-handle i non funzionava: nascosta dietro .csb-bar per motivi di
+   stacking, non di stile — qui in più non era mai stata nemmeno tentata
+   una seconda pallina, quindi la maniglia non è MAI stata visibile su
+   queste pagine finora). .csb-handle i rimossa (dead code, mai
+   funzionante): resta solo .pokedex-ball-tendina, unica, sempre visibile
+   sopra la barra grazie allo z-index di .csb-shade alzato qui sotto. */
+.csb-shade { z-index: 9005 !important; }
 .pokedex-ball-tendina {
     position: absolute;
     bottom: 12px; left: 50%;
     transform: translateX(-50%);
-    width: 40px; height: 40px;
+    width: calc(var(--pokeball-size, clamp(32px, 5vw, 56px)) * 1.15);
+    height: calc(var(--pokeball-size, clamp(32px, 5vw, 56px)) * 1.15);
+    visibility: visible !important;
     z-index: 5;
 }
 
