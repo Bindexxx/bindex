@@ -317,6 +317,11 @@ function apriImpostazioniBinderAttivo() {
         _binderImpostazioniResizeHandler = () => _binderImpostazioniPosiziona();
         window.addEventListener('resize', _binderImpostazioniResizeHandler);
     }
+    // Sempre da capo su Generali con editor sleeve chiuso (redesign
+    // 2026-09-18) — evita di riaprire il modale nello stato in cui era
+    // rimasto l'ultima volta (es. editor sleeve ancora aperto). Chiude
+    // anche l'editor da sola (vedi sotto: tab !== 'design').
+    _binderImpostazioniTab('generali');
 }
 
 function chiudiImpostazioniBinderAttivo() {
@@ -326,6 +331,55 @@ function chiudiImpostazioniBinderAttivo() {
         window.removeEventListener('resize', _binderImpostazioniResizeHandler);
         _binderImpostazioniResizeHandler = null;
     }
+}
+
+// ── Tab Generali/Design (Claudio, 2026-09-18: "raggruppa in tab") ────────
+// Stesso pattern .binder-modalita-toggle/.binder-modalita-btn già usato
+// altrove nel sito (Achievement, Immagini/Elenco) — solo lo stato di quale
+// tab è attiva, nessuna logica di caricamento dati qui (i dati di Nome/
+// Copertina/Sleeve sono già stati caricati una volta sola all'apertura del
+// binder da caricaDesignBinderAttivo(), indipendentemente da quale tab è
+// visibile — cambiare tab mostra/nasconde soltanto).
+function _binderImpostazioniTab(tab) {
+    document.querySelectorAll('#binderImpostazioniTabs .binder-modalita-btn').forEach(el => {
+        el.classList.toggle('active', el.dataset.itab === tab);
+    });
+    const generali = document.getElementById('binderImpostazioniTabGenerali');
+    const design = document.getElementById('binderImpostazioniTabDesign');
+    if (generali) generali.style.display = tab === 'generali' ? '' : 'none';
+    if (design) design.style.display = tab === 'design' ? '' : 'none';
+    // Difensivo: se si cambia tab mentre l'editor sleeve è aperto, lo
+    // richiude — evita lo stato incoerente "editor visibile ma tab Design
+    // non selezionata".
+    if (tab !== 'design') _binderSleeveChiudiEditor();
+}
+
+// ── Editor sleeve immersivo (Claudio, 2026-09-18: "va bene che si nasconda
+// [il resto] prendendo tutto lo spazio") — #binderSleeveEditorZona
+// sostituisce interamente #binderDesignContenutoNormale (Nome/Copertina/
+// anteprima Sleeve) e la barra dei tab finché non si torna indietro.
+// _cardBackRescale() richiamato esplicitamente all'apertura per lo stesso
+// motivo del fix precedente sul vecchio <details>: l'area del canvas ha
+// clientWidth 0 finché è display:none, e aprire questa zona non genera da
+// solo un evento resize.
+function _binderSleeveApriEditor() {
+    const zona = document.getElementById('binderSleeveEditorZona');
+    const normale = document.getElementById('binderDesignContenutoNormale');
+    const tabs = document.getElementById('binderImpostazioniTabs');
+    if (!zona) return;
+    zona.style.display = 'block';
+    if (normale) normale.style.display = 'none';
+    if (tabs) tabs.style.display = 'none';
+    if (typeof _cardBackRescale === 'function') _cardBackRescale();
+}
+
+function _binderSleeveChiudiEditor() {
+    const zona = document.getElementById('binderSleeveEditorZona');
+    const normale = document.getElementById('binderDesignContenutoNormale');
+    const tabs = document.getElementById('binderImpostazioniTabs');
+    if (zona) zona.style.display = 'none';
+    if (normale) normale.style.display = '';
+    if (tabs) tabs.style.display = '';
 }
 
 // Popola _carteBinderAttivoCache con le carte del binder aperto, forma
