@@ -3979,14 +3979,29 @@
             min-height: 0;
             display: flex;
             flex-direction: column;
+            position: relative;
         }
-        /* Header ridotto al minimo (Claudio: "più importanza al binder che
-           al resto") — stessi bottoni di prima, solo più compatti. Il testo
-           "Binders" del bottone indietro sparisce (resta l'icona, il title
-           attribute copre l'accessibilità), il titolo si riduce. */
+        /* Header (Claudio, 2026-09-18: "eliminiamo anche lo spazio sopra,
+           sfruttiamo tutto lo spazio possibile") — non è più una riga nel
+           flusso che spinge giù il libro: diventa un overlay flottante
+           sopra il libro, freccia+titolo a sinistra e ingranaggio a destra
+           (stesso flex di prima, solo tolto dal flusso). position:relative
+           su #binderDettaglioWrap qui sopra fa da ancora.
+           pointer-events:none sul contenitore e :auto sui figli — lo
+           spazio VUOTO fra titolo e ingranaggio (che ora sta sopra il
+           libro) non deve rubare il tocco/click al libro sottostante,
+           solo i due bottoni veri lo fanno. */
         #binder.binder-dettaglio-attivo #binderDettaglioHeader {
-            margin-bottom: 0.5rem;
-            flex-shrink: 0;
+            position: absolute;
+            top: 0.3rem;
+            left: 0.3rem;
+            right: 0.3rem;
+            z-index: 7;
+            margin-bottom: 0;
+            pointer-events: none;
+        }
+        #binder.binder-dettaglio-attivo #binderDettaglioHeader > * {
+            pointer-events: auto;
         }
         #binder.binder-dettaglio-attivo #binderDettaglioHeader .btn-secondary {
             padding: 0.4rem 0.6rem;
