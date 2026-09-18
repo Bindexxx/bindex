@@ -2654,7 +2654,33 @@
             overflow-y: auto;
         }
 
+        /* Modale impostazioni binder a schermo intero DENTRO la cornice
+           (Claudio, 2026-09-18: "così è tutto visibile") — l'overlay base
+           (.modal-overlay) è position:fixed;inset:0 sull'INTERA finestra
+           del browser, condiviso da ogni modale del sito (Regola d'Oro #1,
+           non lo tocco). Qui #binderImpostazioniModal viene riposizionato/
+           ridimensionato via JS (apriImpostazioniBinderAttivo, ui/
+           binder.ui.js) per combaciare col rettangolo VERO di #phoneScreen
+           — stessa funzione _rettangoloSchermoCornice() già usata da
+           _posizionaContainerNelloSchermo() per .container, nessuna
+           duplicazione della logica di misura. .modal-content diventa
+           100%/100% di quel rettangolo invece del solito box centrato
+           piccolo (niente più inline max-width: 640px, stessa trappola di
+           specificità già risolta per .settings-card del Binder). */
+        #binderImpostazioniModal.modal-overlay {
+            align-items: stretch;
+            justify-content: stretch;
+            padding: 0;
+        }
+        #binderImpostazioniModal .modal-content {
+            max-width: none;
+            width: 100%;
+            height: 100%;
+            max-height: none;
+        }
+
         #qrcodeContainer { display: flex; justify-content: center; margin: 1rem 0; }
+
 
         /* A10 (Dashboard/Home) — SCENA "GIRA CARTA" ─────────────────────────
            Rotazione orizzontale (rotateY), come si gira una carta fisica.
@@ -6007,7 +6033,7 @@
          spostati di posto nel DOM (getElementById non dipende dal
          contenitore). -->
     <div id="binderImpostazioniModal" class="modal-overlay" onclick="chiudiImpostazioniBinderAttivo()">
-        <div class="modal-content" style="max-width: 640px; text-align:left;" onclick="event.stopPropagation()">
+        <div class="modal-content" style="text-align:left;" onclick="event.stopPropagation()">
             <button class="close-modal-btn" onclick="chiudiImpostazioniBinderAttivo()"><i class="fa-solid fa-xmark"></i></button>
             <h3 style="font-weight: 800; margin-bottom: 1rem; display:flex; align-items:center; gap:0.5rem;">
                 <i class="fa-solid fa-gear" style="color: var(--primary);"></i> Impostazioni binder
