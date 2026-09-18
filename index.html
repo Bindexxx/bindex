@@ -2011,46 +2011,53 @@
             color: #171717;
         }
 
-        /* ── MANIGLIA/TENDINA → UNA SOLA POKÉ BALL (STEP 11 fix restyle
-           "cornice Pokédex", 2026-09-17). Corregge lo Step 7: prima
-           c'erano 2 palline separate (una decorativa statica sopra la
-           barra, una che viaggiava nascosta dentro la tendina). Claudio le
-           vuole UNITE — una sola pallina, identica alle altre 3 ma un po'
-           più grande, che fa da maniglia quando la tendina è chiusa E che
-           scende insieme a lei quando viene trascinata aperta.
-           .pokedex-ball-maniglia RIMOSSA — non serve più un elemento a
-           parte sopra la barra.
-           La pallina (.pokedex-ball-tendina) resta l'UNICA, ancorata al
-           FONDO di .csb-shade (child, via JS — invariato dallo Step 4):
-           quando chiusa (.csb-shade tradotta a y=-altezza) il suo fondo
-           coincide con y=0, cioè proprio dove serve per fare da maniglia;
-           quando aperta scende con lei fino in fondo, "gratis" (nessuna
-           animazione scritta da noi).
-           Il problema che la rendeva invisibile da chiusa non era lo
-           stile — era lo STACKING: .csb-shade (z-index 9001, con
-           transform quindi contesto di stacking isolato) finiva SEMPRE
-           sotto .csb-bar (9004), qualunque z-index si desse ai suoi
-           figli — un limite del CSS, non del mio codice. Soluzione: alzo
-           lo z-index di .csb-shade SOLO tramite CSS esterno (Opzione A,
-           statusbar.css/js non toccati) sopra quello della barra — la
-           tendina (quindi anche la pallina) ora vince sempre lo stacking.
-           .csb-shade ha overflow:hidden e visibility:hidden quando chiusa
-           (regole della libreria, invariate): la pallina resta visibile
-           perché le override esplicitamente visibility:visible — un
-           figlio PUÒ riportare a visibile ciò che un antenato nasconde,
-           il resto del pannello (lista notifiche ecc.) resta
-           correttamente invisibile finché non è aperto. */
-        .csb-shade { z-index: 9005 !important; }
+        /* NASCOSTA (STEP 13 fix restyle "cornice Pokédex", 2026-09-17):
+           Claudio: "sotto la pokeball c'è un simbolo orizzontale che
+           significa maniglia per tendina, toglilo". È lo stile DI
+           LIBRERIA di .csb-handle i (barretta 38×5px, mai coperta da me
+           in questo giro — un residuo dimenticato dello Step 11, quando
+           ho tolto la vecchia pallina statica sopra la barra ma non ho
+           rimesso una regola per la maniglia originale sotto). Il
+           trascinamento della tendina NON dipende da .csb-handle: .csb-bar
+           ha già il proprio gestore identico (stesso onPointerDown, vedi
+           statusbar.js) — nasconderla non toglie nessuna funzione, la
+           tendina resta trascinabile da qualunque punto della barra
+           (Claudio l'ha confermato: "è possibile trascinare la tendina da
+           ovunque"). */
+        .csb-handle { display: none; }
+
+        /* ── MANIGLIA/TENDINA → UNA SOLA POKÉ BALL (STEP 13 fix, seconda
+           versione — corregge lo Step 11). Il problema NON era lo
+           stacking (quello lo risolveva la z-index qui sotto, ora
+           inutile e rimossa): era la GEOMETRIA. La pallina viveva
+           DENTRO .csb-shade, con un margine di 12px dal suo fondo per
+           restare al sicuro dal ritaglio dei suoi angoli arrotondati
+           (overflow:hidden). Ma quando la tendina è chiusa, il suo
+           fondo coincide con y=0 (il bordo vero dello schermo) — quindi
+           quel margine di sicurezza la spingeva TUTTA sopra lo schermo,
+           fuori dall'area visibile: non nascosta da qualcosa, proprio
+           fuori inquadratura. Non esiste un margine che risolva
+           entrambi i problemi insieme (stare al sicuro E restare
+           visibile da chiusa) restando figlia di .csb-shade.
+           Soluzione: una pallina indipendente, mai figlia della tendina
+           — quindi mai tagliata dai suoi angoli — che ne segue la
+           posizione VERA leggendola dal DOM ad ogni fotogramma (vedi
+           _sincronizzaPallinaTendina in
+           ui/paginainiziale-polling-avvio.ui.js). Tagliata SOLO dal bordo
+           vero dello schermo (#phoneScreen ha overflow:hidden per gli
+           angoli arrotondati, fisiologico e corretto — come qualunque
+           altro elemento della UI). */
         .pokedex-ball-tendina {
             position: absolute;
-            bottom: 12px;
             left: 50%;
-            transform: translateX(-50%);
+            top: 0;
+            transform: translate(-50%, 0); /* la componente verticale la scrive il JS, la orizzontale resta qui */
             width: calc(var(--pokeball-size) * 1.15); /* "un po' più grande delle altre 3" */
             height: calc(var(--pokeball-size) * 1.15);
-            visibility: visible !important; /* riporta visibile ciò che .csb-shade (chiusa) nasconde ai suoi discendenti */
-            z-index: 5;
+            cursor: grab;
+            z-index: 9010; /* sopra .csb-bar (9004) — non più figlia di .csb-shade, stacking normale, nessun trucco necessario */
         }
+        .pokedex-ball-tendina:active { cursor: grabbing; }
         #btnFisicoTelefono.nascosto { visibility: hidden; pointer-events: none; }
 
         /* FIX (2026-08-30): quando il bottone viene spostato fuori da
