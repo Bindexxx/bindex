@@ -159,13 +159,21 @@ async function _risolviCopertinaBinder(userId, binder) {
 
 
 // ── Vista di dettaglio (modalità immagini, paginata) ────────────────────
+// AGGIORNATO (Claudio, 2026-09-18): "il binder deve essere aperto a
+// schermo intero... dare più importanza al binder che al resto".
+// .binder-dettaglio-attivo su #binder fa passare .settings-card (condiviso
+// con la griglia contenitori) da pagina normale (max-width 900px) a
+// colonna flex a tutta altezza — CSS in index.html, vicino a
+// .binder-page-btn. display:'flex' (non più 'block') su
+// #binderDettaglioWrap perché diventi lui stesso quella colonna.
 async function apriBinderDettaglio(binderId) {
     _binderAttivo = binderId;
     _binderPagina = 0;
 
     document.getElementById('bindersContenitoriGrid').style.display = 'none';
+    document.getElementById('binder')?.classList.add('binder-dettaglio-attivo');
     const wrapDettaglio = document.getElementById('binderDettaglioWrap');
-    if (wrapDettaglio) wrapDettaglio.style.display = 'block';
+    if (wrapDettaglio) wrapDettaglio.style.display = 'flex';
 
     const binder = _bindersElenco.find(b => String(b.id) === String(binderId));
     if (!binder) return;
@@ -260,6 +268,7 @@ function tornaAllaGrigliaBinders() {
     _binderAttivo = null;
     chiudiImpostazioniBinderAttivo(); // difensivo: se il modale era rimasto aperto
     _libroSmonta(); // OPUS 2026-08-25: libera ResizeObserver e handler del libro
+    document.getElementById('binder')?.classList.remove('binder-dettaglio-attivo');
     const wrapDettaglio = document.getElementById('binderDettaglioWrap');
     if (wrapDettaglio) wrapDettaglio.style.display = 'none';
     document.getElementById('bindersContenitoriGrid').style.display = '';
@@ -755,7 +764,7 @@ function renderBinderLibro() {
     const elenco = document.getElementById('binderElencoBody');
     if (griglia) griglia.style.display = 'none';
     if (elenco) elenco.style.display = 'none';
-    wrap.style.display = 'block';
+    wrap.style.display = 'flex'; // AGGIORNATO 2026-09-18: era 'block' — flex per centrare la scena e ancorare le frecce laterali (vedi CSS #binder.binder-dettaglio-attivo #binderLibroWrap)
 
     const binder = _bindersElenco.find(b => String(b.id) === String(_binderAttivo));
     const layout = BINDER_LAYOUTS[_binderLayout] || BINDER_LAYOUTS['3x3'];
@@ -874,11 +883,25 @@ function _libroMisura() {
 
     let ph = altezzaDaLarghezza(pw);
 
-    // Tetto in altezza: dentro la cornice telefono lo spazio verticale è
-    // quello di .container in px reali, non quello della finestra del browser.
-    const contenitore = document.querySelector('.container');
-    const altezzaUtile = (contenitore && contenitore.clientHeight) ? contenitore.clientHeight : window.innerHeight;
-    const maxH = Math.max(240, Math.round(altezzaUtile * 0.62));
+    // AGGIORNATO (Claudio, 2026-09-18: "binder a schermo intero, il minimo
+    // indispensabile di margine") — #binderLibroWrap è ora esso stesso
+    // l'area piena rimasta dopo l'header (flex:1 dentro #binderDettaglioWrap
+    // a schermo intero, vedi CSS #binder.binder-dettaglio-attivo in
+    // index.html, vicino a .binder-page-btn): si legge la SUA altezza vera,
+    // stesso principio già usato sopra per la larghezza, al posto del
+    // vecchio tetto indovinato (62% di .container, pensato per un libro
+    // incorporato in una pagina normale, non per uno a schermo intero). Il
+    // fallback sotto resta solo per un frame eventuale in cui il layout non
+    // si sia ancora assestato (clientHeight ancora a 0).
+    const altezzaWrap = wrap ? wrap.clientHeight : 0;
+    let maxH;
+    if (altezzaWrap > 0) {
+        maxH = Math.max(240, altezzaWrap);
+    } else {
+        const contenitore = document.querySelector('.container');
+        const altezzaUtile = (contenitore && contenitore.clientHeight) ? contenitore.clientHeight : window.innerHeight;
+        maxH = Math.max(240, Math.round(altezzaUtile * 0.9));
+    }
 
     if (ph > maxH) {
         const slotH = (maxH - 2 * LIBRO_PAD_PAGINA - LIBRO_ALTEZZA_NUMERO - (rows - 1) * LIBRO_GAP_TASCHE) / rows;
