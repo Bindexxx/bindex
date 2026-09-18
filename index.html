@@ -3645,6 +3645,110 @@
         }
 
         /* ═══════════════════════════════════════════════════════════════
+           ACHIEVEMENT — griglia/tessera ISOLATE (Claudio, 2026-09-18).
+           NON riusano .binder-grid/.binder-slot (quelle restano intonse
+           per il Binder vero — Regola d'Oro #1, no refactoring cross-uso).
+           Cella normale = stesso "diametro" scelto in Impostazioni per i
+           widget Home (--ball-misura), stessa formula auto-fill di
+           .widget-griglia (vedi CSS sopra) — le colonne si adattano allo
+           schermo esattamente come la Home, reattivo da solo via CSS
+           (nessun JS: il browser aggiorna il grid da sé quando cambia la
+           custom property, niente rAF/debounce come serve invece a
+           renderWidgetHome() per via degli SVG pesanti).
+           La CARTA dentro la cella è un rettangolo (proporzione carta
+           reale 63:88) INSCRITTO nel cerchio di quel diametro (Claudio):
+           width = diametro × 63/√(63²+88²) ≈ diametro × 58.2%, l'altezza
+           segue da sola via aspect-ratio.
+           Vetrina: dimensione FISSA più grande, deliberatamente SVINCOLATA
+           dal diametro (Claudio: "devono dominare la scena visivamente" —
+           con un diametro Home piccolo, 3 achievement a quella misura
+           sarebbero minuscoli e la vetrina perderebbe senso come "vanto").
+           ═══════════════════════════════════════════════════════════════ */
+        .achievement-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(var(--ball-misura, 90px), 1fr));
+            grid-auto-rows: var(--ball-misura, 90px);
+            gap: 0.7rem;
+            justify-content: center;
+            margin-top: 1.2rem;
+        }
+
+        .achievement-slot {
+            position: relative;
+            aspect-ratio: 63 / 88;
+            border-radius: 10px;
+            overflow: hidden;
+            background-color: var(--bg-color);
+            border: 1px solid var(--border-color);
+            box-shadow: var(--shadow-soft);
+        }
+        /* Larghezza (= "rettangolo inscritto nel cerchio") impostata dal
+           contesto griglia che la ospita, non qui: la stessa .achievement-
+           slot serve sia alla griglia normale sia alla Vetrina. */
+        .achievement-grid .achievement-slot { width: 58.2%; margin: 0 auto; align-self: center; }
+
+        .achievement-slot-filled { cursor: pointer; transition: transform 0.15s ease; }
+        .achievement-slot-filled:hover { transform: translateY(-3px) scale(1.02); }
+
+        .achievement-slot-fallback {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 0.4rem;
+            padding: 0.4rem;
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 0.68rem;
+            font-weight: 600;
+        }
+        .achievement-slot-fallback i { font-size: 1.3rem; color: var(--primary); }
+
+        .achievement-slot-locked {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--bg-secondary, rgba(0,0,0,0.06));
+            color: var(--text-muted);
+            font-size: 1.3rem;
+            cursor: default;
+        }
+
+        .achievement-slot-qty-badge {
+            position: absolute;
+            top: 6px;
+            right: 6px;
+            background: var(--primary);
+            color: #fff;
+            font-size: 0.68rem;
+            font-weight: 700;
+            padding: 0.1rem 0.4rem;
+            border-radius: 999px;
+            line-height: 1.3;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.25);
+            z-index: 2;
+        }
+
+        /* Vetrina — max 3 (vedi ACHIEVEMENT_VETRINA_MAX in
+           ui/widget-achievement.ui.js), grandi e centrate, svincolate dal
+           diametro. flex invece di grid: con 1-2 elementi (non ancora
+           piena) restano centrate invece di restare ancorate a sinistra
+           di colonne esplicite vuote. */
+        .achievement-vetrina-grid {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: center;
+            gap: 1.4rem;
+            margin: 2rem auto;
+        }
+        .achievement-vetrina-grid .achievement-slot { width: 160px; flex: 0 0 auto; }
+        .achievement-vetrina-grid .achievement-slot-fallback i { font-size: 2rem; }
+        .achievement-vetrina-grid .achievement-slot-fallback span { font-size: 0.8rem; }
+
+        /* ═══════════════════════════════════════════════════════════════
            LIBRO SFOGLIABILE — sessione Opus, 2026-08-25. Sostituisce la
            griglia statica come modalità "immagini" del widget Binders.
            Cerniera 3D rigida (rotateY attorno al dorso) con ombra che
@@ -5282,11 +5386,11 @@
         </div>
 
         <div id="achievement" class="view-section">
-            <!-- FASE 9 (2026-09-13): pagina Achievement — riusa .binder-grid/
-                 .binder-slot già definiti sopra per i Binder carte (vedi CSS
-                 vicino a .binder-slot-locked in fondo al file). Contenuto
-                 riempito da renderPaginaAchievement() in
-                 ui/widget-achievement.ui.js. -->
+            <!-- FASE 9 (2026-09-13). AGGIORNATO 2026-09-18: griglia/tessera
+                 ISOLATE .achievement-grid/.achievement-slot-* (CSS subito
+                 dopo .binder-slot-locked) — non riusa più .binder-grid/
+                 .binder-slot del Binder vero. Contenuto riempito da
+                 renderPaginaAchievement() in ui/widget-achievement.ui.js. -->
             <div id="achievementContenuto"></div>
         </div>
 
