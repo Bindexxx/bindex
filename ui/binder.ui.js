@@ -285,14 +285,47 @@ function tornaAllaGrigliaBinders() {
 // funzioni di sempre (_aggiornaControlliRinominaPubblicazioneCondivisione,
 // renderBinderContenuto, caricaDesignBinderAttivo) — solo il contenitore
 // che li ospita è cambiato, getElementById non dipende da dove sta il nodo.
+// AGGIORNATO 2026-09-18 (Claudio: "è bene che si espanda per tutto lo
+// schermo rimanendo dentro la cornice, così è tutto visibile") — il modale
+// non è più un box centrato piccolo: viene riposizionato/ridimensionato sul
+// rettangolo VERO di #phoneScreen con _rettangoloSchermoCornice() (stessa
+// funzione già usata da _posizionaContainerNelloSchermo() per .container in
+// ui/paginainiziale-drag-resize.ui.js — nessuna logica di misura duplicata).
+// Un listener su resize lo tiene allineato mentre è aperto (rotazione
+// schermo, ridimensionamento finestra desktop), rimosso alla chiusura.
+let _binderImpostazioniResizeHandler = null;
+
+function _binderImpostazioniPosiziona() {
+    const modal = document.getElementById('binderImpostazioniModal');
+    const r = (typeof _rettangoloSchermoCornice === 'function') ? _rettangoloSchermoCornice() : null;
+    if (!modal || !r) return;
+    modal.style.top = r.top + 'px';
+    modal.style.left = r.left + 'px';
+    modal.style.width = r.width + 'px';
+    modal.style.height = r.height + 'px';
+    modal.style.borderRadius = r.borderRadius;
+    const contenuto = modal.querySelector('.modal-content');
+    if (contenuto) contenuto.style.borderRadius = r.borderRadius;
+}
+
 function apriImpostazioniBinderAttivo() {
     const modal = document.getElementById('binderImpostazioniModal');
-    if (modal) modal.style.display = 'flex';
+    if (!modal) return;
+    modal.style.display = 'flex';
+    _binderImpostazioniPosiziona();
+    if (!_binderImpostazioniResizeHandler) {
+        _binderImpostazioniResizeHandler = () => _binderImpostazioniPosiziona();
+        window.addEventListener('resize', _binderImpostazioniResizeHandler);
+    }
 }
 
 function chiudiImpostazioniBinderAttivo() {
     const modal = document.getElementById('binderImpostazioniModal');
     if (modal) modal.style.display = 'none';
+    if (_binderImpostazioniResizeHandler) {
+        window.removeEventListener('resize', _binderImpostazioniResizeHandler);
+        _binderImpostazioniResizeHandler = null;
+    }
 }
 
 // Popola _carteBinderAttivoCache con le carte del binder aperto, forma
