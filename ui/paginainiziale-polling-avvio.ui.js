@@ -371,6 +371,37 @@ async function initPhoneShell() {
             // vero, che è il riferimento usato da _avviaSincronizzaPallinaTendina).
             _schermoPerPallina.appendChild(pallinaTendina);
             _avviaSincronizzaPallinaTendina();
+
+            // FIX (STEP 15, 2026-09-17): la pallina inoltra il proprio
+            // pointerdown a .csb-handle (nascosta via CSS, ma il suo
+            // gestore di trascinamento — identico a quello della barra,
+            // vedi statusbar.js — resta pienamente funzionante:
+            // dispatchEvent() invoca sempre i listener registrati, a
+            // prescindere da display:none, che blocca solo l'hit-test di
+            // un click VERO dell'utente, non un evento inoltrato via
+            // codice). Da qui in poi la libreria gestisce tutto da sola
+            // (i suoi listener di trascinamento sono globali su
+            // window/document, non legati all'elemento toccato — il resto
+            // del gesto, muovi/rilascia, segue il puntatore vero ovunque
+            // vada, non serve inoltrare altro). Funziona identico da
+            // chiusa (apre) e da aperta (chiude), risolvendo entrambe le
+            // direzioni con lo stesso meccanismo.
+            pallinaTendina.addEventListener('pointerdown', (ev) => {
+                const maniglia = document.querySelector('.csb-handle');
+                if (!maniglia) return;
+                const inoltrato = new PointerEvent('pointerdown', {
+                    bubbles: true,
+                    cancelable: true,
+                    pointerId: ev.pointerId,
+                    pointerType: ev.pointerType,
+                    isPrimary: ev.isPrimary,
+                    button: 0,
+                    buttons: ev.buttons,
+                    clientX: ev.clientX,
+                    clientY: ev.clientY,
+                });
+                maniglia.dispatchEvent(inoltrato);
+            });
         }
 
         // #profiloContainer (menu profilo completo: nome, email, cambio
