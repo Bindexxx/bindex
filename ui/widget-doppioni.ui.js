@@ -64,7 +64,8 @@ let _doppioniRicercaBox = '';
 let _doppioniGruppiCarte = [];
 let _doppioniGruppiBox = [];
 let _doppioniGruppoApertoIndice = null; // indice nell'array della modalità aperta
-let _doppioniRigaSorgenteScelta = null; // riga fisica scelta per lo split, nel pannello controlli
+let _doppioniRigheSorgenteScelta = null; // [{rigaId, qty}] — le righe fisiche dietro la posizione scelta, nel pannello controlli
+let _doppioniPosizioniRaggruppateCorrenti = []; // posizioni con la stessa etichetta unite, indice usato dai bottoni "Sposta da qui"
 let _doppioniDestinazioniCache = null;  // location/scaffali caricati alla prima apertura del pannello sposta
 
 
@@ -289,7 +290,7 @@ async function _doppioniApriDettaglio(indice) {
     if (!gruppo) return;
 
     _doppioniGruppoApertoIndice = indice;
-    _doppioniRigaSorgenteScelta = null;
+    _doppioniRigheSorgenteScelta = null;
     _doppioniDestinazioniCache = null;
 
     const controlli = document.getElementById('doppioniControlliContainer');
@@ -350,7 +351,7 @@ function _doppioniChiudiDettaglio() {
     controlli.classList.remove('doppioni-affiancato');
 
     _doppioniGruppoApertoIndice = null;
-    _doppioniRigaSorgenteScelta = null;
+    _doppioniRigheSorgenteScelta = null;
     _doppioniDestinazioniCache = null;
 }
 
@@ -410,6 +411,25 @@ async function _doppioniCaricaPosizioni(gruppo) {
     });
 }
 
+// Unisce posizioni con la STESSA etichetta (es. due righe fisiche diverse
+// entrambe "In BULBY", nate da split separati) in una sola voce mostrata,
+// con la qty sommata — richiesto da Claudio dopo il primo collaudo. Tiene
+// comunque traccia delle righe fisiche originali dietro ogni voce unita:
+// il flusso "sposta" deve poter attingere da più righe in sequenza se la
+// quantità richiesta supera quella di una singola riga.
+function _doppioniPosizioniRaggruppate(posizioni) {
+    const mappa = new Map();
+    posizioni.forEach(p => {
+        if (!mappa.has(p.etichetta)) mappa.set(p.etichetta, []);
+        mappa.get(p.etichetta).push({ rigaId: p.rigaId, qty: p.qty });
+    });
+    const gruppi = [];
+    mappa.forEach((righe, etichetta) => {
+        gruppi.push({ etichetta, qtyTotale: righe.reduce((t, r) => t + r.qty, 0), righe });
+    });
+    return gruppi;
+}
+
 // Disegna il pannello controlli: lista posizioni con "Sposta da qui" +
 // bottone Modifica, invariato nella sua funzione (apre il modale di
 // modifica già esistente, carte o box) come confermato da Claudio.
@@ -418,10 +438,11 @@ function _doppioniRenderControlli(gruppo, posizioni) {
     if (!controlli || _doppioniGruppoApertoIndice == null) return;
     const eur = (v) => '€ ' + Number(v || 0).toLocaleString('it-IT', { maximumFractionDigits: 0 });
 
-    const righePosizioni = posizioni.map(p => `
+    _doppioniPosizioniRaggruppateCorrenti = _doppioniPosizioniRaggruppate(posizioni);
+    const righePosizioni = _doppioniPosizioniRaggruppateCorrenti.map((p, i) => `
         <div class="pg-riga" data-tocca>
-            <div class="pg-testo"><b>${p.qty} ${p.qty === 1 ? 'copia' : 'copie'}</b><span>${escapeHtml(p.etichetta)}</span></div>
-            <button class="pg-filtro" onclick="_doppioniSelezionaSorgente('${String(p.rigaId).replace(/'/g, "\\'")}')">Sposta da qui</button>
+            <div class="pg-testo"><b>${p.qtyTotale} ${p.qtyTotale === 1 ? 'copia' : 'copie'}</b><span>${escapeHtml(p.etichetta)}</span></div>
+            <button class="pg-filtro" onclick="_doppioniSelezionaSorgente(${i})">Sposta da qui</button>
         </div>`).join('');
 
     controlli.innerHTML = `
@@ -441,15 +462,15 @@ function _doppioniRenderControlli(gruppo, posizioni) {
     `;
 }
 
-// Step 2 del flusso "sposta": scelta quantità per la riga selezionata.
-function _doppioniSelezionaSorgente(rigaId) {
-    _doppioniRigaSorgenteScelta = rigaId;
-    const gruppi = _doppioniModalita === 'carte' ? _doppioniGruppiCarte : _doppioniGruppiBox;
-    const gruppo = gruppi[_doppioniGruppoApertoIndice];
-    const riga = gruppo.righe.find(r => String(r.id) === String(rigaId));
-    if (!riga) return;
+// Step 2 del flusso "sposta": scelta quantità per la POSIZIONE selezionata
+// (può corrispondere a più righe fisiche unite, vedi
+// _doppioniPosizioniRaggruppate sopra).
+function _doppioniSelezionaSorgente(indicePosizione) {
+    const posizione = _doppioniPosizioniRaggruppateCorrenti[indicePosizione];
+    if (!posizione) return;
+    _doppioniRigheSorgenteScelta = posizione.righe; // [{rigaId, qty}, ...]
 
-    const qtyDisponibile = Number(riga.qty) || 1;
+    const qtyDisponibile = posizione.qtyTotale;
     const flusso = document.getElementById('doppioniSpostaFlusso');
     flusso.innerHTML = `
         <div class="pg-pagina" style="padding-top:0.6rem;">
@@ -475,8 +496,7 @@ async function _doppioniMostraDestinazioni() {
 
     const gruppi = _doppioniModalita === 'carte' ? _doppioniGruppiCarte : _doppioniGruppiBox;
     const gruppo = gruppi[_doppioniGruppoApertoIndice];
-    const riga = gruppo.righe.find(r => String(r.id) === String(_doppioniRigaSorgenteScelta));
-    if (!riga) return;
+    if (!gruppo || !_doppioniRigheSorgenteScelta || _doppioniRigheSorgenteScelta.length === 0) return;
 
     if (!_doppioniDestinazioniCache) {
         if (gruppo.tipo === 'carte') {
@@ -514,27 +534,52 @@ async function _doppioniMostraDestinazioni() {
 }
 let _doppioniOpzioniDestinazioneCorrenti = [];
 
-// Step 4: conferma e scrittura reale (split).
-async function _doppioniConfermaSposta(indiceOpzione, quantita) {
+// Step 4: conferma e scrittura reale (split). La posizione scelta può
+// corrispondere a PIÙ righe fisiche unite (vedi _doppioniPosizioniRaggruppate)
+// — attingo da ciascuna in sequenza, nell'ordine in cui compaiono, finché
+// non copro la quantità richiesta. Ogni riga è uno split INDIPENDENTE
+// (stessa scrittura di prima, solo ripetuta): se una fallisce a metà, le
+// precedenti sono già scritte per davvero (niente transazione unica sulle
+// più chiamate separate) — l'avviso lo dice esplicitamente, e ricarico
+// comunque i dati per riflettere quanto è effettivamente riuscito.
+async function _doppioniConfermaSposta(indiceOpzione, quantitaRichiesta) {
     const opzione = _doppioniOpzioniDestinazioneCorrenti[indiceOpzione];
-    if (!opzione) return;
+    if (!opzione || !_doppioniRigheSorgenteScelta) return;
 
     const gruppi = _doppioniModalita === 'carte' ? _doppioniGruppiCarte : _doppioniGruppiBox;
     const gruppo = gruppi[_doppioniGruppoApertoIndice];
-    const riga = gruppo.righe.find(r => String(r.id) === String(_doppioniRigaSorgenteScelta));
-    if (!riga) return;
+    if (!gruppo) return;
 
     const flusso = document.getElementById('doppioniSpostaFlusso');
     flusso.innerHTML = `<p style="text-align:center; padding:0.6rem 0;"><i class="fa-solid fa-spinner fa-spin"></i> Sposto...</p>`;
 
-    const risultato = gruppo.tipo === 'carte'
-        ? await _doppioniSplitCarta(riga, quantita, opzione)
-        : await _doppioniSplitBox(riga, quantita, opzione);
+    let restante = Math.max(1, quantitaRichiesta);
+    let spostateFinQui = 0;
+    for (const rigaSorgente of _doppioniRigheSorgenteScelta) {
+        if (restante <= 0) break;
+        const riga = gruppo.righe.find(r => String(r.id) === String(rigaSorgente.rigaId));
+        if (!riga) continue; // teoricamente non dovrebbe succedere, righe lette dallo stesso snapshot del gruppo aperto
 
-    if (risultato.error) {
-        alert('❌ Errore nello spostamento: ' + risultato.error.message);
-        flusso.innerHTML = '';
-        return;
+        const daQuestaRiga = Math.min(restante, rigaSorgente.qty);
+        const risultato = gruppo.tipo === 'carte'
+            ? await _doppioniSplitCarta(riga, daQuestaRiga, opzione)
+            : await _doppioniSplitBox(riga, daQuestaRiga, opzione);
+
+        if (risultato.error) {
+            const notaParziale = spostateFinQui > 0 ? `\n\n${spostateFinQui} copie erano già state spostate correttamente prima di questo errore.` : '';
+            alert('❌ Errore nello spostamento: ' + risultato.error.message + notaParziale);
+            flusso.innerHTML = '';
+            // Ricarico comunque, per riflettere quanto è effettivamente
+            // riuscito prima dell'errore (vedi nota sopra: niente rollback).
+            if (gruppo.tipo === 'carte') await caricaCarteReali(); else await caricaProdottiSealedReali();
+            _doppioniGruppiCarte = _doppioniRaggruppaCarte();
+            _doppioniGruppiBox = _doppioniRaggruppaBox();
+            _doppioniRenderGriglia();
+            return;
+        }
+
+        spostateFinQui += daQuestaRiga;
+        restante -= daQuestaRiga;
     }
 
     // Ricarico i dati reali e ridisegno da capo il dettaglio (il gruppo
@@ -557,7 +602,7 @@ async function _doppioniConfermaSposta(indiceOpzione, quantita) {
     }
     const nuovoIndice = gruppiAggiornati.indexOf(stessoGruppo);
     _doppioniGruppoApertoIndice = nuovoIndice;
-    _doppioniRigaSorgenteScelta = null;
+    _doppioniRigheSorgenteScelta = null;
     const posizioni = await _doppioniCaricaPosizioni(stessoGruppo);
     _doppioniRenderControlli(stessoGruppo, posizioni);
 }
@@ -608,7 +653,23 @@ async function _doppioniSplitCarta(rigaOriginale, quantitaRichiesta, destinazion
 async function _doppioniApplicaDestinazioneCarta(userId, cartaId, quantitaSullaRiga, destinazione) {
     if (destinazione.tipo === 'location') {
         const { error } = await cardsUpdateCampo('carte', cartaId, 'location', destinazione.valore);
-        return { error };
+        if (error) return { error };
+        // FIX (segnalato da Claudio dopo il primo collaudo, 2026-09-18):
+        // una riga spostata a una location restava "comunque in scambio"
+        // se era già membro di binder_carte (tag residuo, es. da prima di
+        // questa sessione) — questo scritto sopra cambia solo `location`,
+        // non toccava l'appartenenza al binder Scambio, quindi
+        // _idsInScambio continuava a includerla e il breakdown posizioni
+        // mostrava "In Scambio" ignorando la location nuova. Qui puliamo
+        // sempre l'eventuale riga in binder_carte per questa carta — un
+        // delete su una riga che non c'è non è un errore (nessun'altra
+        // conseguenza), quindi è sicuro farlo incondizionatamente ad ogni
+        // spostamento verso una location.
+        if (_binderScambioId) {
+            const { error: errPulizia } = await binderCarteDeleteOne(userId, _binderScambioId, cartaId);
+            if (errPulizia) console.error('_doppioniApplicaDestinazioneCarta (pulizia Scambio residuo):', errPulizia.message);
+        }
+        return { error: null };
     }
     if (destinazione.tipo === 'scambio') {
         if (!_binderScambioId) return { error: { message: 'Binder Scambio non ancora pronto — riprova tra un istante.' } };
