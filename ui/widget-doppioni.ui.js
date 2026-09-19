@@ -307,6 +307,15 @@ async function _doppioniApriDettaglio(indice) {
         // (classe .modal-content-flip-fullscreen, sempre applicata,
         // invariata) — nessuna classe aggiuntiva necessaria qui.
         apriFlipCardHome(gruppo.righe[0].id, { nascondiVaiAlBinder: true });
+        // FIX (segnalato da Claudio, 2026-09-18): #immagineModal ha i suoi
+        // modi nativi di chiudersi (click fuori, tasto chiudi proprio,
+        // ecc.) che non passano dalla mia _doppioniChiudiDettaglio() —
+        // senza questo, chiudere il flip in uno di quei modi lasciava il
+        // pannello Doppioni orfano in primo piano. Nessuna modifica a
+        // flip-card-detail.ui.js: osservo da fuori quando lo stile di
+        // #immagineModal cambia (MutationObserver, non invasivo) e chiudo
+        // il pannello di conseguenza se è ancora aperto.
+        _doppioniOsservaChiusuraFlip();
     } else {
         _doppioniMostraVisualStaticoBox(gruppo);
     }
@@ -339,11 +348,46 @@ function _doppioniMostraVisualStaticoBox(gruppo) {
     contenitore.style.display = 'flex';
 }
 
+// Osserva #immagineModal (condiviso, mai modificato) dall'esterno: quando
+// il SUO stile cambia (qualunque via nativa di chiusura, non solo la mia
+// "×"), se è appena diventato invisibile e il pannello Doppioni è ancora
+// aperto, lo chiudo di conseguenza. Disconnesso ad ogni chiusura (vedi
+// _doppioniChiudiDettaglio) per evitare che la chiusura innescata da qui
+// richiami se stessa.
+let _doppioniObserverFlipChiusura = null;
+
+function _doppioniOsservaChiusuraFlip() {
+    _doppioniFermaOsservazioneFlip();
+    const modale = document.getElementById('immagineModal');
+    if (!modale) return;
+    _doppioniObserverFlipChiusura = new MutationObserver(() => {
+        const ancoraNascosto = modale.style.display === 'none' || getComputedStyle(modale).display === 'none';
+        if (ancoraNascosto && _doppioniGruppoApertoIndice !== null) {
+            _doppioniChiudiDettaglio();
+        }
+    });
+    _doppioniObserverFlipChiusura.observe(modale, { attributes: true, attributeFilter: ['style', 'class'] });
+}
+
+function _doppioniFermaOsservazioneFlip() {
+    if (_doppioniObserverFlipChiusura) {
+        _doppioniObserverFlipChiusura.disconnect();
+        _doppioniObserverFlipChiusura = null;
+    }
+}
+
 function _doppioniChiudiDettaglio() {
+    _doppioniFermaOsservazioneFlip(); // PRIMA di richiudere il flip sotto, altrimenti la disconnect avverrebbe dopo aver già innescato un secondo giro
+
     const gruppi = _doppioniModalita === 'carte' ? _doppioniGruppiCarte : _doppioniGruppiBox;
     const gruppo = _doppioniGruppoApertoIndice != null ? gruppi[_doppioniGruppoApertoIndice] : null;
 
     if (gruppo && gruppo.tipo === 'carte') {
+        // Se questa chiusura è stata innescata DA _doppioniOsservaChiusuraFlip
+        // (il flip si era già chiuso da solo), #immagineModal ha già
+        // display:none — chiamare di nuovo chiudiImmagineIngrandita() qui
+        // resta comunque sicuro: fa solo le stesse pulizie (overflow/
+        // classi) di ogni altra chiusura, mai dannoso ripeterle.
         chiudiImmagineIngrandita(); // esistente, ui/modals.ui.js — ripristina overflow/classi come per ogni altra chiusura del flip
     } else {
         document.getElementById('doppioniBoxVisualContainer').style.display = 'none';
