@@ -305,8 +305,15 @@ async function _doppioniApriDettaglio(indice) {
         // apriFlipCardHome() da sola mette già #immagineModal a schermo
         // intero, centrato, grande quanto il suo contenuto naturale
         // (classe .modal-content-flip-fullscreen, sempre applicata,
-        // invariata) — nessuna classe aggiuntiva necessaria qui.
+        // invariata) — nessuna classe aggiuntiva necessaria per QUELLO.
         apriFlipCardHome(gruppo.righe[0].id, { nascondiVaiAlBinder: true });
+        // FIX (segnalato da Claudio con screenshot da telefono, 2026-09-18):
+        // senza questo la carta si centrava su TUTTO lo schermo e il
+        // pannello, ancorato a un bordo, finiva SOPRA alla sua metà
+        // inferiore/destra invece che nello spazio libero — questa classe
+        // aggiunge solo un padding (CSS in index.html), mai una modifica
+        // al file condiviso stesso.
+        document.getElementById('immagineModal').classList.add('doppioni-spazio-riservato');
         // FIX (segnalato da Claudio, 2026-09-18): #immagineModal ha i suoi
         // modi nativi di chiudersi (click fuori, tasto chiudi proprio,
         // ecc.) che non passano dalla mia _doppioniChiudiDettaglio() —
@@ -389,6 +396,7 @@ function _doppioniChiudiDettaglio() {
         // resta comunque sicuro: fa solo le stesse pulizie (overflow/
         // classi) di ogni altra chiusura, mai dannoso ripeterle.
         chiudiImmagineIngrandita(); // esistente, ui/modals.ui.js — ripristina overflow/classi come per ogni altra chiusura del flip
+        document.getElementById('immagineModal').classList.remove('doppioni-spazio-riservato');
     } else {
         document.getElementById('doppioniBoxVisualContainer').style.display = 'none';
     }
