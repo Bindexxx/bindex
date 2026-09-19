@@ -174,6 +174,13 @@ const _ballCORPI = {
     // Le tre categorie della home fissa: valore piu' alto, oscillazione in
     // su, oscillazione in giu'. Stesse tre carte per categoria.
     primo_piano: (d) => {
+        // 2026-09-19 (riscrittura widget "Primo Piano"): il corpo vive ora in
+        // ui/widget-in-primo-piano.ui.js (_primoPianoCorpo) — carte che
+        // riempiono lo spazio del tile, quarta categoria Box, titoli
+        // cliccabili. Se quella funzione non c'e' (file non ancora
+        // caricato) si ripiega sul corpo di prima, che legge le stesse
+        // chiavi di 'dati' (perValore/su/giu) ed e' quindi compatibile.
+        if (typeof _primoPianoCorpo === 'function') return _primoPianoCorpo(d);
         if (!d) return { inline: '', blocco: '' };
         const top = (d.perValore && d.perValore[0]) || null;
         const eur = (v) => '€ ' + Number(v || 0).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
