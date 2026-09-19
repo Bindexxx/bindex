@@ -32,12 +32,17 @@
 //      già: lo Scambio è un tag su binder_carte, non uno stato, quindi
 //      le righe sono comunque in carteReali.
 //   5. Il titolo di ogni categoria è cliccabile e apre la pagina "In
-//      primo piano" (view-section #primopiano) con TUTTE le voci di quella
+//      primo piano" (view-section #primopiano) con le voci di quella
 //      categoria, in ordine, come griglia di tessere alla maniera di
 //      Doppioni (stessa formula e stesso slider dei Binder, classi
-//      dedicate pp-pag-* in index.html). Il click sul resto del tile
-//      resta quello di prima: apre la carta di valore più alto nel
-//      flip-modal.
+//      dedicate pp-pag-* in index.html). Oscillazione + / − e Box le
+//      mostrano TUTTE (liste corte). La pagina VALORE no: Claudio non vuole
+//      scrolling ("massimo N carte"), quindi mostra tante tessere quante ne
+//      stanno nello spazio della pagina, misurato dal vivo sul contenitore
+//      (_ppAdattaGrigliaAlloSpazio), con tetto PRIMO_PIANO_MAX_PAGINA_VALORE.
+//      Quali categorie: PRIMO_PIANO_CATEGORIE_SENZA_SCROLL.
+//      Il click sul resto del tile resta quello di prima: apre la carta di
+//      valore più alto nel flip-modal.
 //
 // COSA SIGNIFICA "OSCILLAZIONE" QUI (aggiornato il 2026-09-19, sql/64):
 // variazione in euro DALL'ULTIMA VISITA. La baseline la decide il DB
@@ -71,6 +76,14 @@
 // mostra solo quante ne stanno). La pagina invece mostra TUTTE le voci
 // della categoria, in ordine (nessun tetto).
 const PRIMO_PIANO_MAX_TILE = 16;
+// Pagina VALORE: tetto di tessere disegnate. Quante se ne VEDONO lo decide lo
+// spazio disponibile (righe x colonne senza scrolling); questo numero e' il
+// massimo assoluto. Per un N fisso basta metterlo qui (es. 12).
+const PRIMO_PIANO_MAX_PAGINA_VALORE = 80;
+// Categorie della pagina che devono stare SENZA scrolling (mostrano solo
+// quante tessere ci stanno). Le altre mostrano tutte le voci. Per estendere
+// il taglio: ['valore', 'su', 'giu', 'box'].
+const PRIMO_PIANO_CATEGORIE_SENZA_SCROLL = ['valore'];
 // Ore di pausa che separano due "visite" (passate a registra_visita) e ogni
 // quanto si rilegge il prezzo alla baseline durante la sessione, cosi' un
 // controllo prezzi fatto mentre il sito e' aperto compare senza ricaricare.
@@ -425,16 +438,106 @@ function _ppImpostaCategoriaPagina(cat) {
     _ppRenderElencoPagina();
 }
 
+// Testo sopra la griglia. Con il taglio (pagina Valore) dice "N di TOT".
+function _ppTestoConteggio(def, mostrate, totale) {
+    if (!totale) return '';
+    const unita = def.unita[totale === 1 ? 0 : 1];
+    const quante = mostrate < totale ? `${mostrate} di ${totale}` : `${totale}`;
+    return `${quante} ${unita} · ${def.ordine}`;
+}
+
+// ── PAGINA VALORE: tante tessere quante ne stanno, senza scrolling ─────
+// Misura il contenitore delle pagine (.container, la cornice) e nasconde le
+// tessere che non entrano: righe = spazio sotto la testata / altezza tessera,
+// colonne = quelle che la griglia ha davvero (auto-fill sullo slider dei
+// Binder). Nessuna tessera tagliata a meta': si mostrano solo righe intere.
+// NON riporta tutte le tessere a "visibili" prima di misurare: la comparsa/
+// scomparsa della scrollbar (desktop) cambia il numero di colonne e
+// rifarlo a ogni giro farebbe ballare la pagina; serve solo l'altezza della
+// prima tessera (sempre visibile) e le colonne correnti.
+// Se il contenitore e' ancora nascosto (l'apertura di una pagina chiama il
+// render PRIMA di mostrarlo) non fa nulla: ci pensa il ResizeObserver, che
+// scatta appena il contenitore prende una dimensione.
+let _ppOsservatorePagina = null;
+
+function _ppFermaOsservatorePagina() {
+    if (_ppOsservatorePagina) { _ppOsservatorePagina.disconnect(); _ppOsservatorePagina = null; }
+}
+
+function _ppAvviaOsservatorePagina() {
+    _ppFermaOsservatorePagina();
+    if (typeof ResizeObserver !== 'function') return;
+    const griglia = document.getElementById('primopianoElenco');
+    const scroller = griglia && griglia.closest('.container');
+    if (!scroller) return;
+    _ppOsservatorePagina = new ResizeObserver(() => _ppAdattaGrigliaAlloSpazio());
+    _ppOsservatorePagina.observe(scroller);
+}
+
+function _ppAdattaGrigliaAlloSpazio() {
+    const griglia = document.getElementById('primopianoElenco');
+    if (!griglia || griglia.dataset.fit !== '1') return;
+    if (!griglia.offsetParent) return; // pagina non visibile (altra pagina aperta o contenitore nascosto)
+    const scroller = griglia.closest('.container');
+    if (!scroller || !scroller.clientHeight) return;
+    const tessere = Array.from(griglia.querySelectorAll(':scope > .pp-pag-tile'));
+    if (!tessere.length) return;
+
+    const hTessera = tessere[0].getBoundingClientRect().height;
+    if (!hTessera) return;
+    const stile = getComputedStyle(griglia);
+    const colonne = Math.max(1, stile.gridTemplateColumns.split(' ').filter(Boolean).length);
+    const gap = parseFloat(stile.rowGap) || 0;
+
+    // Dove comincia la griglia dentro il contenitore (testata, pillole e
+    // conteggio stanno sopra) e quanto spazio sotto va lasciato libero: il
+    // padding del contenitore e, se la tocca, la pokeball del tasto fisico.
+    const rs = scroller.getBoundingClientRect();
+    const inizio = griglia.getBoundingClientRect().top - rs.top + scroller.scrollTop;
+    let riserva = parseFloat(getComputedStyle(scroller).paddingBottom) || 0;
+    const tasto = document.getElementById('btnFisicoTelefono');
+    if (tasto) {
+        const rb = tasto.getBoundingClientRect();
+        if (rb.width && rb.top < rs.bottom && rb.bottom > rs.top) riserva = Math.max(riserva, rs.bottom - rb.top + 8);
+    }
+
+    // Cio' che sta SOTTO la griglia (la nota delle categorie di oscillazione).
+    const sotto = document.getElementById('primopianoNota');
+    if (sotto) riserva += sotto.offsetHeight;
+
+    const spazio = scroller.clientHeight - inizio - riserva - 1;
+    let righe = Math.max(1, Math.floor((spazio + gap) / (hTessera + gap)));
+    let n = righe * colonne;
+    const applica = () => tessere.forEach((t, i) => { t.style.display = i < n ? '' : 'none'; });
+    applica();
+    // Verifica sul risultato reale: se per margini o altro sotto la griglia
+    // il contenitore scrolla ancora, toglie una riga alla volta.
+    while (righe > 1 && scroller.scrollHeight > scroller.clientHeight + 1) {
+        righe--; n = righe * colonne; applica();
+    }
+
+    const conteggio = document.getElementById('primopianoConteggio');
+    const def = _PP_CATEGORIE_PAGINA.find(c => c.id === griglia.dataset.cat);
+    if (conteggio && def) conteggio.textContent = _ppTestoConteggio(def, Math.min(n, tessere.length), Number(griglia.dataset.totale) || tessere.length);
+}
+
 function _ppRenderElencoPagina() {
     const elenco = document.getElementById('primopianoElenco');
     const nota = document.getElementById('primopianoNota');
     const conteggio = document.getElementById('primopianoConteggio');
     if (!elenco) return;
+    _ppFermaOsservatorePagina();
 
     const def = _PP_CATEGORIE_PAGINA.find(c => c.id === _ppCategoriaPagina) || _PP_CATEGORIE_PAGINA[0];
-    // TUTTE le voci della categoria, gia' in ordine (nessun tetto).
-    const voci = _ppCategorie(Infinity)[_PP_CAMPO_DATI[def.id]] || [];
+    const tutte = _ppCategorie(Infinity)[_PP_CAMPO_DATI[def.id]] || [];
     const oscillazione = def.id === 'su' || def.id === 'giu';
+    // Categorie senza scrolling (Valore) -> si disegna un massimo e il resto lo
+    // decide lo spazio (vedi _ppAdattaGrigliaAlloSpazio). Le altre: tutte.
+    const conTaglio = PRIMO_PIANO_CATEGORIE_SENZA_SCROLL.includes(def.id);
+    const voci = conTaglio ? tutte.slice(0, PRIMO_PIANO_MAX_PAGINA_VALORE) : tutte;
+    elenco.dataset.fit = conTaglio ? '1' : '';
+    elenco.dataset.cat = def.id;
+    elenco.dataset.totale = String(tutte.length);
 
     if (nota) {
         // Dice sempre quale definizione di oscillazione è attiva (ultima
@@ -443,9 +546,7 @@ function _ppRenderElencoPagina() {
             ? `<p style="text-align:center; color:var(--text-muted); font-size:0.72rem; padding:0.6rem 0;">${_ppEsc(_ppNotaOscillazione())}</p>`
             : '';
     }
-    if (conteggio) {
-        conteggio.textContent = voci.length ? `${voci.length} ${def.unita[voci.length === 1 ? 0 : 1]} · ${def.ordine}` : '';
-    }
+    if (conteggio) conteggio.textContent = _ppTestoConteggio(def, voci.length, tutte.length);
 
     if (!voci.length) {
         elenco.innerHTML = `<p style="text-align:center; color:var(--text-muted); font-size:0.82rem; padding:1.2rem 0; grid-column:1/-1;">${def.vuoto}</p>`;
@@ -457,7 +558,7 @@ function _ppRenderElencoPagina() {
     // lo stesso delle miniature del widget: carta -> flip, box -> modifica.
     elenco.innerHTML = voci.map(v => {
         const src = (v.immagine && typeof _urlImmagineVisualizzabile === 'function') ? (_urlImmagineVisualizzabile(v.immagine, 200) || '') : '';
-        // loading="lazy": la categoria Valore puo' avere centinaia di tessere.
+        // loading="lazy": anche le tessere nascoste dal taglio non scaricano nulla.
         const fig = src
             ? `<img class="pp-pag-cover" src="${_ppEsc(src)}" alt="" loading="lazy" onerror="this.style.display='none';">`
             : `<div class="pp-pag-cover pp-pag-cover-vuota"><i class="fa-solid ${v.tipo === 'box' ? 'fa-box-archive' : 'fa-image'}"></i></div>`;
@@ -473,4 +574,9 @@ function _ppRenderElencoPagina() {
                 <div class="pp-pag-valori">${valori}</div>
             </div>`;
     }).join('');
+
+    if (conTaglio) {
+        _ppAdattaGrigliaAlloSpazio();
+        _ppAvviaOsservatorePagina();
+    }
 }
