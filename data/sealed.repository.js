@@ -21,6 +21,16 @@ async function sealedInsertRighe(righe) {
     return supabaseClient.from('prodotti_sealed').insert(righe).select();
 }
 
+// Aggiunta (sessione widget Doppioni, 2026-09-18) — mirror di
+// cardsSelectById in data/cards.repository.js, stesso identico motivo:
+// legge la riga GREZZA per intero (tutte le colonne reali, non gli alias
+// JS di prodottiSealedReali) per poterla duplicare in uno split senza
+// rischiare di perdere colonne mai mappate lato JS (es. dispositivo,
+// claimed_by/claimed_at, url).
+async function sealedSelectById(id) {
+    return supabaseClient.from('prodotti_sealed').select('*').eq('id', id).single();
+}
+
 async function sealedListMie(userId) {
     return supabaseClient.from('prodotti_sealed').select('*').eq('owner_id', userId).eq('stato', 'collezione').order('created_at', { ascending: false });
 }

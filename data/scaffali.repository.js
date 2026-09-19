@@ -54,6 +54,16 @@ async function scaffaleProdottoRimuovi(userId, scaffaleId, prodottoId) {
     return supabaseClient.from('scaffale_prodotti').delete().eq('owner_id', userId).eq('scaffale_id', scaffaleId).eq('prodotto_id', prodottoId);
 }
 
+// Aggiunta (sessione widget Doppioni, 2026-09-18) — TUTTE le associazioni
+// scaffale↔prodotto dell'utente in un solo giro (scaffale_id, prodotto_id,
+// quantita_offerta), a differenza di scaffaleProdottiConteggiTutti sotto
+// (che seleziona solo scaffale_id, pensata per un conteggio, non per
+// sapere DI QUALE prodotto). Serve al breakdown "dove si trovano le copie"
+// della pagina Doppioni: una query sola invece di una per scaffale.
+async function scaffaleProdottiTuttiUtente(userId) {
+    return supabaseClient.from('scaffale_prodotti').select('scaffale_id, prodotto_id, quantita_offerta').eq('owner_id', userId);
+}
+
 // Conteggio prodotti per OGNI scaffale in un solo giro (per la griglia) —
 // niente RPC dedicata: select minimale, conteggio fatto in JS. Se il
 // numero di scaffali/associazioni crescesse molto, valutare una RPC
