@@ -650,6 +650,18 @@ async function rimuoviDaScambio() {
 // a 0 = non ancora messa in vendita" già usato lato RPC pubblica (sql/45b),
 // e con lo stesso schema di toggleBinderMembership per l'extra (che elimina
 // del tutto, non lascia una riga "spenta").
+//
+// UNIFICATO (sessione widget Doppioni, 2026-09-18): il ramo "quantità > 0"
+// prima limitava se stesso a un tag sulla riga condivisa (mai spostava
+// davvero nulla) — stesso identico bug segnalato da Claudio su Doppioni
+// ("sposto 2 su 7, ma resta comunque 7"), qui semplicemente mai notato
+// perché la tabella Visualizzazione non mostra un "totale per identità".
+// Ora fa split reale, stesso motore di _doppioniSplitCarta/
+// _doppioniApplicaDestinazioneCarta in ui/widget-doppioni.ui.js —
+// DUPLICATO qui apposta (Regola d'Oro #1: niente refactoring cross-file
+// senza approvazione esplicita; qui approvata da Claudio, ma la
+// duplicazione resta comunque la scelta più sicura rispetto a far
+// dipendere binder.ui.js, file condiviso, da un widget specifico).
 async function _applicaQuantitaScambio(cartaId, quantita) {
     const userId = await authGetUserId();
     if (!userId || !_binderScambioId) return;
@@ -659,14 +671,24 @@ async function _applicaQuantitaScambio(cartaId, quantita) {
         if (error) { alert('❌ Errore nel rimuovere la carta dallo Scambio: ' + error.message); return; }
         _idsInScambio.delete(String(cartaId));
         delete _quantitaOfferteScambio[String(cartaId)];
+        _aggiornaBottoniScambioToggle(cartaId);
     } else {
-        const { error } = await binderCarteImpostaQuantitaScambio(userId, _binderScambioId, cartaId, quantita);
-        if (error) { alert('❌ Errore nell\'aggiornare la quantità offerta: ' + error.message); return; }
-        _idsInScambio.add(String(cartaId));
-        _quantitaOfferteScambio[String(cartaId)] = quantita;
-    }
+        const cartaEsistente = carteReali.find(c => String(c.id) === String(cartaId) && c.tabella === 'carte');
+        if (!cartaEsistente) { alert('Carta non trovata.'); return; }
+        const qtyOriginale = Number(cartaEsistente.qty) || 1;
+        const N = Math.max(1, Math.min(quantita, qtyOriginale));
 
-    _aggiornaBottoniScambioToggle(cartaId);
+        const { error } = await _scambioSplitCartaVerso(cartaId, qtyOriginale, N, userId);
+        if (error) { alert('❌ Errore nell\'aggiornare la quantità offerta: ' + error.message); return; }
+
+        // Split reale può aver creato una riga NUOVA (id diverso da
+        // cartaId) — ricarico tutto invece di aggiornare a mano Set/
+        // dizionari/DOM su un id che, dopo uno split, potrebbe non essere
+        // più quello giusto (a differenza del vecchio tag, che restava
+        // sempre sulla stessa riga).
+        await caricaCarteReali();
+        filterTable();
+    }
 
     // Stesso motivo di toggleBinderMembership: se il binder Scambio è
     // aperto proprio ora nel widget Binders, la cache locale è disallineata.
@@ -675,6 +697,43 @@ async function _applicaQuantitaScambio(cartaId, quantita) {
         await _caricaCarteBinderAttivo(binderAperto);
         renderBinderContenuto();
     }
+}
+
+// Motore di split verso Scambio — se N copre l'intera riga, nessuna riga
+// nuova (tag diretto, come il vecchio comportamento). Altrimenti split
+// reale: riga nuova con qty=N (cardsSelectById/cardsInsertNellaCollezione,
+// stesse funzioni di data/cards.repository.js usate da Doppioni),
+// decremento sull'originale, tag SOLO sulla riga nuova. ASSUNZIONE non
+// verificata esplicitamente: cardsSelectById/cardsInsertNellaCollezione/
+// cardsUpdateCampo sono definite in data/cards.repository.js, che per
+// l'architettura del progetto (data/* caricato prima di ui/*) dovrebbe
+// essere già disponibile qui — mai controllato l'ordine reale degli
+// script in index.html per questo file specifico.
+async function _scambioSplitCartaVerso(cartaId, qtyOriginale, N, userId) {
+    if (N >= qtyOriginale) {
+        const { error } = await binderCarteImpostaQuantitaScambio(userId, _binderScambioId, cartaId, qtyOriginale);
+        return { error };
+    }
+
+    const { data: grezza, error: errLettura } = await cardsSelectById(cartaId);
+    if (errLettura) return { error: errLettura };
+
+    const nuovaRiga = { ...grezza };
+    delete nuovaRiga.id;
+    delete nuovaRiga.updated_at;
+    nuovaRiga.owner_id = userId;
+    nuovaRiga.qty = N;
+
+    const { data: inserite, error: errInsert } = await cardsInsertNellaCollezione(nuovaRiga);
+    if (errInsert) return { error: errInsert };
+    const nuovoId = inserite && inserite[0] && inserite[0].id;
+    if (!nuovoId) return { error: { message: 'Riga inserita ma id non restituito dal database.' } };
+
+    const { error: errDecremento } = await cardsUpdateCampo('carte', cartaId, 'qty', qtyOriginale - N);
+    if (errDecremento) return { error: errDecremento };
+
+    const { error: errTag } = await binderCarteImpostaQuantitaScambio(userId, _binderScambioId, nuovoId, N);
+    return { error: errTag };
 }
 
 function _aggiornaBottoniScambioToggle(id) {

@@ -457,10 +457,25 @@ function _doppioniRenderControlli(gruppo, posizioni) {
             <div class="pg-elenco" id="doppioniPosizioniElenco">${righePosizioni}</div>
             <div id="doppioniSpostaFlusso"></div>
             <div class="pg-bottoni">
-                <button class="primario" onclick="${gruppo.tipo === 'carte' ? `_doppioneApriModifica('${gruppo.righe[0].id}')` : `apriModificaSealed('${gruppo.righe[0].id}')`}"><i class="fa-solid fa-pen"></i> Modifica</button>
+                <button class="primario" onclick="${gruppo.tipo === 'carte' ? `_doppioniApriModificaCarta('${gruppo.righe[0].id}')` : `_doppioniApriModificaBox('${gruppo.righe[0].id}')`}"><i class="fa-solid fa-pen"></i> Modifica</button>
             </div>
         </div>
     `;
+}
+
+// FIX (segnalato da Claudio dopo il collaudo, 2026-09-18): apriModificaCarta/
+// apriModificaSealed non sanno nulla di #doppioniControlliContainer (nato
+// in questa sessione, isolato a questo file) — cliccare "Modifica" apriva
+// il modale di modifica lasciando il pannello Doppioni orfano aperto
+// dietro/sopra. Chiudo prima il dettaglio Doppioni, poi apro la modifica
+// esistente — nessuna modifica a apriModificaCarta/apriModificaSealed.
+function _doppioniApriModificaCarta(id) {
+    _doppioniChiudiDettaglio();
+    _doppioneApriModifica(id);
+}
+function _doppioniApriModificaBox(id) {
+    _doppioniChiudiDettaglio();
+    apriModificaSealed(id);
 }
 
 // Step 2 del flusso "sposta": scelta quantità per la POSIZIONE selezionata
