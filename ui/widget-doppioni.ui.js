@@ -20,17 +20,21 @@
 //   detail.ui.js) — usata QUI SENZA opzioni.doppione (quindi il vecchio
 //   bottone "Gestisci doppione"/_mostraSceltaGestisciDoppione nell'overlay
 //   del flip non compare più da questa pagina: sostituito dal pannello
-//   dedicato #doppioniControlliContainer, affiancato via CSS). Il vecchio
-//   flusso resta comunque nel file condiviso, intatto, per compatibilità:
-//   se in futuro qualche altro punto d'ingresso chiamasse ancora
+//   dedicato #doppioniControlliContainer). Il vecchio flusso resta
+//   comunque nel file condiviso, intatto, per compatibilità: se in futuro
+//   qualche altro punto d'ingresso chiamasse ancora
 //   apriFlipCardHome(id,{doppione:true}), continuerebbe a funzionare come
 //   prima — semplicemente Doppioni non lo usa più.
 // - apriModificaCarta/apriModificaSealed: chiamate as-is dal pannello
 //   controlli, nessuna modifica ai loro file.
-// - #immagineModal/#flipCardScene: nessuna modifica al markup/JS —
-//   l'affiancamento in orizzontale/impilamento in verticale è ottenuto
-//   SOLO con una classe CSS aggiuntiva (.doppioni-affiancato) applicata e
-//   rimossa da qui, mai presente per gli altri punti d'ingresso del flip.
+// - #immagineModal/#flipCardScene: NESSUNA modifica, né di markup/JS né di
+//   CSS — la visuale (carta o box) resta SEMPRE a piena pagina, grande
+//   quanto il suo contenuto naturale (RIVISTO dopo il primo collaudo:
+//   prima si affiancava/impilava al 50% col pannello controlli, Claudio
+//   l'ha trovato uno spreco di spazio). #doppioniControlliContainer è ora
+//   un pannello COMPATTO E FLOTTANTE sopra la visuale (card ancorata a
+//   destra in orizzontale, "a foglio" in basso in verticale — vedi CSS in
+//   index.html), non più un contenitore che si contende metà schermo.
 // ───────────────────────────────────────────────────────────────────────
 
 // ── CHIAVI DI IDENTITÀ (raggruppamento righe → "stessa carta/box") ─────
@@ -294,13 +298,15 @@ async function _doppioniApriDettaglio(indice) {
     _doppioniDestinazioniCache = null;
 
     const controlli = document.getElementById('doppioniControlliContainer');
-    controlli.classList.add('doppioni-affiancato');
     controlli.style.display = 'flex';
     controlli.innerHTML = `<div class="doppioni-controlli-loading"><i class="fa-solid fa-spinner fa-spin"></i> Carico le posizioni...</div>`;
 
     if (gruppo.tipo === 'carte') {
+        // apriFlipCardHome() da sola mette già #immagineModal a schermo
+        // intero, centrato, grande quanto il suo contenuto naturale
+        // (classe .modal-content-flip-fullscreen, sempre applicata,
+        // invariata) — nessuna classe aggiuntiva necessaria qui.
         apriFlipCardHome(gruppo.righe[0].id, { nascondiVaiAlBinder: true });
-        document.getElementById('immagineModal').classList.add('doppioni-affiancato');
     } else {
         _doppioniMostraVisualStaticoBox(gruppo);
     }
@@ -315,21 +321,21 @@ async function _doppioniApriDettaglio(indice) {
 // Contenitore statico per i Box — stessa struttura del back-overlay del
 // flip (pg-riga/pg-stat, sleeve niente perché i sealed non hanno sleeve),
 // nessuna animazione. Markup nuovo, id propri: nessuna interferenza con
-// #flipCardScene.
+// #flipCardScene. RIVISTO (dopo il primo collaudo): stesso "sentiment"
+// del flip — grande, centrato, a piena pagina (niente più metà schermo).
 function _doppioniMostraVisualStaticoBox(gruppo) {
     const contenitore = document.getElementById('doppioniBoxVisualContainer');
     const eur = (v) => '€ ' + Number(v || 0).toLocaleString('it-IT', { maximumFractionDigits: 0 });
     const immagineSrc = gruppo.immagine ? (_urlImmagineVisualizzabile(gruppo.immagine, 500) || '') : '';
     contenitore.innerHTML = `
-        <button class="close-modal-btn" onclick="_doppioniChiudiDettaglio()"><i class="fa-solid fa-xmark"></i></button>
         <div class="doppioni-box-visual">
+            <button class="close-modal-btn" onclick="_doppioniChiudiDettaglio()"><i class="fa-solid fa-xmark"></i></button>
             ${immagineSrc ? `<img src="${immagineSrc}" alt="">` : '<div class="doppioni-cover-vuota" style="width:100%; aspect-ratio:3/4;"><i class="fa-solid fa-box-archive"></i></div>'}
             <div class="pg-stat">
                 <div><b>${gruppo.qtyTotale}</b><span>Copie totali</span></div>
                 <div><b>${eur(gruppo.valoreStack)}</b><span>Valore stack</span></div>
             </div>
         </div>`;
-    contenitore.classList.add('doppioni-affiancato');
     contenitore.style.display = 'flex';
 }
 
@@ -339,16 +345,11 @@ function _doppioniChiudiDettaglio() {
 
     if (gruppo && gruppo.tipo === 'carte') {
         chiudiImmagineIngrandita(); // esistente, ui/modals.ui.js — ripristina overflow/classi come per ogni altra chiusura del flip
-        document.getElementById('immagineModal').classList.remove('doppioni-affiancato');
     } else {
-        const contenitore = document.getElementById('doppioniBoxVisualContainer');
-        contenitore.style.display = 'none';
-        contenitore.classList.remove('doppioni-affiancato');
+        document.getElementById('doppioniBoxVisualContainer').style.display = 'none';
     }
 
-    const controlli = document.getElementById('doppioniControlliContainer');
-    controlli.style.display = 'none';
-    controlli.classList.remove('doppioni-affiancato');
+    document.getElementById('doppioniControlliContainer').style.display = 'none';
 
     _doppioniGruppoApertoIndice = null;
     _doppioniRigheSorgenteScelta = null;
@@ -446,9 +447,9 @@ function _doppioniRenderControlli(gruppo, posizioni) {
         </div>`).join('');
 
     controlli.innerHTML = `
-        <button class="close-modal-btn" onclick="_doppioniChiudiDettaglio()"><i class="fa-solid fa-xmark"></i></button>
-        <div class="doppioni-controlli-corpo">
-            <div class="page-header" style="padding:0 0 0.6rem;"><span class="page-title" style="font-size:1rem;">${escapeHtml(gruppo.nome)}</span></div>
+        <div class="doppioni-pannello-corpo">
+            <button class="close-modal-btn" onclick="_doppioniChiudiDettaglio()"><i class="fa-solid fa-xmark"></i></button>
+            <div class="page-header" style="padding:0 1.6rem 0.6rem 0;"><span class="page-title" style="font-size:1rem;">${escapeHtml(gruppo.nome)}</span></div>
             <div class="pg-stat">
                 <div><b>${gruppo.qtyTotale}</b><span>Copie totali</span></div>
                 <div><b>${eur(gruppo.valoreStack)}</b><span>Valore stack</span></div>
