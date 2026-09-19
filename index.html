@@ -3545,29 +3545,26 @@
         }
         .doppioni-valori b { color: var(--text-dark); font-size: 0.74rem; }
 
-        /* ── Doppioni: due contenitori a schermo intero (sessione 2026-09-18)
-           #doppioniBoxVisualContainer (solo Box, statico, niente flip) e
-           #doppioniControlliContainer (Carte E Box) sono modali NUOVI,
-           indipendenti da #immagineModal — markup/CSS/JS del flip esistente
-           NON toccati. L'affiancamento è ottenuto SOLO con questa classe
-           aggiuntiva .doppioni-affiancato, applicata via JS a UNO tra
-           #immagineModal/#doppioniBoxVisualContainer (a seconda che si
-           stia guardando una carta o un box) insieme, sempre, a
-           #doppioniControlliContainer — mai presente per gli altri 10
-           punti d'ingresso del flip in tutto il sito, quindi zero impatto
-           su di loro. Stesso pattern di override già usato da
-           #binderImpostazioniModal/#condividiShareModal poco sopra
-           (align-items/justify-content/padding), qui con inset esplicito
-           invece che stretch, per dividere lo schermo in due metà. */
-        #immagineModal.doppioni-affiancato,
-        #doppioniBoxVisualContainer.doppioni-affiancato,
-        #doppioniControlliContainer.doppioni-affiancato {
-            align-items: stretch;
-            justify-content: stretch;
-            padding: 0;
-        }
-        #doppioniBoxVisualContainer,
-        #doppioniControlliContainer {
+        /* ── Doppioni: visuale grande + pannello controlli flottante
+           (sessione 2026-09-18, RIVISTO dopo il primo collaudo: lo split
+           50/50 iniziale "occupava troppo spazio" — Claudio: "più è
+           grande, meglio si vede" per la visuale, e "snellisci" per i
+           controlli). Nuovo principio: la visuale (carta o box) resta a
+           PIENA PAGINA, centrata, grande quanto il suo contenuto naturale
+           lo permette — per le carte questo è già il comportamento
+           DI DEFAULT di #immagineModal con la classe
+           .modal-content-flip-fullscreen (apriFlipCardHome la applica
+           sempre, invariata, MAI toccata qui) — quindi qui non serve più
+           nessuna classe aggiuntiva su #immagineModal: la lascio
+           completamente stock. #doppioniBoxVisualContainer replica lo
+           stesso "sentiment" (grande, centrato) per i box.
+           #doppioniControlliContainer non è più un modale a metà schermo:
+           è un contenitore trasparente a piena pagina ma con
+           pointer-events:none, dentro cui galleggia SOLO il pannello vero
+           (.doppioni-pannello-corpo, pointer-events:auto) — così il resto
+           dello schermo (la visuale sotto) resta pienamente cliccabile/
+           visibile attorno al pannello. */
+        #doppioniBoxVisualContainer {
             display: none;
             position: fixed;
             inset: 0;
@@ -3575,46 +3572,74 @@
             z-index: 1000;
             -webkit-backdrop-filter: blur(4px);
             backdrop-filter: blur(4px);
-        }
-        #doppioniBoxVisualContainer { flex-direction: column; }
-        #doppioniControlliContainer { flex-direction: column; background: var(--card-bg); }
-        /* Schermo orizzontale (Claudio: "tienili affiancati") — metà e metà,
-           in colonna: visuale a sinistra, controlli a destra. */
-        @media (orientation: landscape) {
-            #immagineModal.doppioni-affiancato,
-            #doppioniBoxVisualContainer.doppioni-affiancato {
-                inset: 0 50% 0 0;
-            }
-            #doppioniControlliContainer.doppioni-affiancato {
-                inset: 0 0 0 50%;
-                border-left: 1px solid var(--border-color);
-            }
-        }
-        /* Schermo verticale (Claudio: "sopra i comandi e sotto l'anteprima")
-           — metà e metà, in riga: controlli sopra, visuale sotto. */
-        @media (orientation: portrait) {
-            #immagineModal.doppioni-affiancato,
-            #doppioniBoxVisualContainer.doppioni-affiancato {
-                inset: 50% 0 0 0;
-            }
-            #doppioniControlliContainer.doppioni-affiancato {
-                inset: 0 0 50% 0;
-                border-bottom: 1px solid var(--border-color);
-            }
-        }
-        #doppioniBoxVisualContainer {
+            align-items: center;
+            justify-content: center;
             padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
-            position: fixed;
         }
-        .doppioni-box-visual { padding: 1.5rem; overflow-y: auto; }
-        .doppioni-box-visual img { width: 100%; border-radius: 12px; box-shadow: 0 4px 16px rgba(0,0,0,0.2); }
-        .doppioni-controlli-corpo, .doppioni-controlli-loading {
-            padding: 1.5rem;
-            padding-top: calc(1.5rem + env(safe-area-inset-top));
+        .doppioni-box-visual {
+            width: min(560px, 92vw);
+            max-height: calc(100vh - 3rem);
             overflow-y: auto;
-            color: var(--text-dark);
+            padding: 1.5rem;
+            position: relative;
         }
-        .doppioni-controlli-loading { text-align: center; color: var(--text-muted); }
+        .doppioni-box-visual img { width: 100%; border-radius: 14px; box-shadow: 0 10px 30px rgba(0,0,0,0.35); }
+
+        #doppioniControlliContainer {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 1001; /* sopra il modale della visuale (1000), sotto niente altro */
+            pointer-events: none; /* solo il pannello vero dentro intercetta i click */
+        }
+        .doppioni-pannello-corpo {
+            pointer-events: auto;
+            background: var(--card-bg);
+            color: var(--text-dark);
+            border: 1px solid var(--border-color);
+            border-radius: 18px;
+            box-shadow: 0 12px 40px rgba(0,0,0,0.4);
+            overflow-y: auto;
+            padding: 1.2rem;
+            position: relative;
+        }
+        /* Schermo orizzontale: pannello compatto ancorato a destra,
+           centrato verticalmente — non divide più lo schermo, la visuale
+           resta piena dietro. */
+        @media (orientation: landscape) {
+            #doppioniControlliContainer {
+                align-items: center;
+                justify-content: flex-end;
+                padding: 1.5rem;
+                padding-right: max(1.5rem, env(safe-area-inset-right));
+            }
+            .doppioni-pannello-corpo { width: min(360px, 90vw); max-height: min(80vh, 640px); }
+        }
+        /* Schermo verticale: pannello "a foglio" ancorato in basso, largo
+           quanto serve ma non tutto lo schermo — la visuale resta piena
+           sopra/dietro. */
+        @media (orientation: portrait) {
+            #doppioniControlliContainer {
+                align-items: flex-end;
+                justify-content: center;
+                padding: 1rem;
+                padding-bottom: max(1rem, env(safe-area-inset-bottom));
+            }
+            .doppioni-pannello-corpo { width: min(480px, 94vw); max-height: min(58vh, 520px); border-radius: 20px 20px 18px 18px; }
+        }
+        /* Il display (none/flex) resta governato SOLO da JS
+           (controlli.style.display) — le media query sopra impostano solo
+           l'allineamento del contenuto quando il pannello è visibile,
+           nessuna delle due imposta display da sola. */
+        .doppioni-controlli-loading {
+            pointer-events: auto;
+            background: var(--card-bg);
+            color: var(--text-muted);
+            border-radius: 18px;
+            padding: 1.2rem 1.6rem;
+            text-align: center;
+            box-shadow: 0 12px 40px rgba(0,0,0,0.4);
+        }
 
         /* ── Righe stile "card-row" — Fase 4, Step 3 (2026-09-13) ──────────
            Riusate dalla pagina Richieste (ui/richieste-scambio.ui.js), CSS
