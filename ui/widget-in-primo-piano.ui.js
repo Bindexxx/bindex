@@ -36,15 +36,20 @@
 //      categoria. Il click sul resto del tile resta quello di prima: apre
 //      la carta di valore più alto nel flip-modal.
 //
-// COSA SIGNIFICA "OSCILLAZIONE" QUI (da non confondere): variazioneNumerica
-// (ui/cards.ui.js) = prezzo − prezzo_precedente, cioè rispetto all'ULTIMO
-// AGGIORNAMENTO DEL PREZZO di quella carta, in euro assoluti. NON è
-// "dall'ultimo login": Claudio lo vuole (2026-09-19, "va fatta") ma serve
-// un lavoro a parte (baseline dall'accesso precedente in activity_log +
-// prezzo a quella data da storico_prezzi, verosimilmente con una RPC lato
-// DB da verificare prima — Regola d'Oro #3). La pagina lo dichiara.
-// I box non hanno oscillazione (nessun prezzo_precedente mappato in
-// caricaProdottiSealedReali).
+// COSA SIGNIFICA "OSCILLAZIONE" QUI (aggiornato il 2026-09-19, sql/64):
+// variazione in euro DALL'ULTIMA VISITA. La baseline la decide il DB
+// (registra_visita: una nuova visita comincia dopo PRIMO_PIANO_PAUSA_
+// VISITA_ORE di pausa, e un ricaricamento a breve distanza NON la sposta);
+// il prezzo di ogni oggetto alla baseline arriva da leggi_variazioni_da()
+// (data/visite.repository.js), che legge lo storico prezzi e restituisce
+// solo gli oggetti cambiati. La variazione e' prezzo_ora - prezzo_base;
+// un oggetto tornato al prezzo di partenza non oscilla.
+// RIPIEGO (prima visita in assoluto, RPC assenti o in errore): la vecchia
+// definizione, variazioneNumerica (ui/cards.ui.js) = prezzo -
+// prezzo_precedente, cioe' rispetto all'ULTIMO AGGIORNAMENTO del prezzo di
+// quella carta. La nota della pagina dice sempre quale delle due e' attiva,
+// cosi' il sito funziona anche PRIMA di eseguire sql/64.
+// I box non hanno oscillazione nel widget (categoria solo per valore).
 //
 // DOVE VIVE IL RESTO: il corpo grafico della tessera è _primoPianoCorpo()
 // qui sotto, richiamato da _ballCORPI.primo_piano (ui/widget-render-
@@ -63,6 +68,11 @@
 // mostra solo quante ne stanno) e quante ne mostra la pagina.
 const PRIMO_PIANO_MAX_TILE = 16;
 const PRIMO_PIANO_MAX_PAGINA = 10;
+// Ore di pausa che separano due "visite" (passate a registra_visita) e ogni
+// quanto si rilegge il prezzo alla baseline durante la sessione, cosi' un
+// controllo prezzi fatto mentre il sito e' aperto compare senza ricaricare.
+const PRIMO_PIANO_PAUSA_VISITA_ORE = 4;
+const PRIMO_PIANO_RINFRESCO_VARIAZIONI_MS = 60000;
 
 // Origini registrate dalle missioni quando la carta si apre da qui (le
 // stesse di prima della riscrittura, vedi ui/flip-card-detail.ui.js).
@@ -100,6 +110,73 @@ function _ppChiaveBox(p) {
     return [p.name, p.codice, p.setEspansione, p.lingua, p.integrita].join('||');
 }
 
+// ── BASELINE "ULTIMA VISITA" ──────────────────────────────────────────
+// pronta: true = RPC risposta (anche con da=null alla prima visita);
+// da: baseline (ISO) o null; mappa: 'carte:<id>' -> prezzo alla baseline,
+// SOLO per gli oggetti cambiati da allora (gli altri non hanno variazione).
+let _ppBaseline = { pronta: false, da: null, mappa: new Map() };
+let _ppBaselineAvviata = false;
+let _ppRinfrescoAttivo = false;
+
+async function _ppRicaricaVariazioni() {
+    if (!_ppBaseline.pronta || !_ppBaseline.da) return;
+    const { data, error } = await variazioniPrezziDa(_ppBaseline.da);
+    if (error) { console.error('[primo piano] rilettura variazioni:', error.message); return; }
+    const mappa = new Map();
+    (data || []).forEach(r => mappa.set(r.tabella + ':' + r.oggetto_id, Number(r.prezzo_base)));
+    _ppBaseline = { pronta: true, da: _ppBaseline.da, mappa };
+}
+
+// Chiamata UNA volta per caricamento del sito, da _avviaSitoDopoAccesso()
+// (ui/auth.ui.js), fire-and-forget: se sql/64 non e' ancora stata eseguita
+// o qualcosa fallisce, il widget ripiega sulla vecchia definizione.
+async function primoPianoCaricaBaseline() {
+    if (_ppBaselineAvviata) return;
+    _ppBaselineAvviata = true;
+    try {
+        const { data: da, error } = await visitaRegistra(PRIMO_PIANO_PAUSA_VISITA_ORE);
+        if (error) throw error;
+        _ppBaseline = { pronta: true, da: da || null, mappa: new Map() };
+        await _ppRicaricaVariazioni();
+        if (_ppBaseline.da && !_ppRinfrescoAttivo) {
+            _ppRinfrescoAttivo = true;
+            setInterval(() => { if (!document.hidden) _ppRicaricaVariazioni(); }, PRIMO_PIANO_RINFRESCO_VARIAZIONI_MS);
+        }
+    } catch (e) {
+        console.error('[primo piano] baseline ultima visita:', e && e.message ? e.message : e);
+        _ppBaseline = { pronta: false, da: null, mappa: new Map() };
+        _ppBaselineAvviata = false; // permette un nuovo tentativo alla prossima chiamata
+    } finally {
+        // Stesse condizioni del polling della Home: mai ridisegnare sotto un
+        // dettaglio aperto o in modifica; ci pensa il giro successivo.
+        if (typeof renderWidgetHome === 'function' && !document.body.classList.contains('phone-detail-open') && !(typeof _editModeWidget !== 'undefined' && _editModeWidget)) {
+            renderWidgetHome();
+        }
+    }
+}
+
+// Variazione in euro di una riga di carteReali: dall'ultima visita se c'e'
+// una baseline, altrimenti (ripiego) dall'ultimo aggiornamento del prezzo.
+function _ppVariazione(r) {
+    if (!(_ppBaseline.pronta && _ppBaseline.da)) {
+        return r.variazioneNumerica != null ? r.variazioneNumerica : null;
+    }
+    const base = _ppBaseline.mappa.get('carte:' + r.id);
+    if (base == null) return null; // nessuna variazione registrata dalla baseline
+    const d = (Number(r.price) || 0) - base;
+    return Math.abs(d) < 0.005 ? null : d; // tornato al prezzo di partenza
+}
+
+// Testo sotto l'elenco delle due categorie di oscillazione.
+function _ppNotaOscillazione() {
+    if (_ppBaseline.pronta && _ppBaseline.da) {
+        const quando = new Date(_ppBaseline.da).toLocaleString('it-IT', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+        return `Variazione in euro rispetto all'ultima visita (${quando}).`;
+    }
+    const base = 'Variazione in euro rispetto all\'ultimo aggiornamento del prezzo di ciascuna carta.';
+    return _ppBaseline.pronta ? base + ' Dalla prossima visita si confronta con l\'ultimo accesso.' : base;
+}
+
 // ── CALCOLO DELLE CATEGORIE ───────────────────────────────────────────
 // Tutto da carteReali / prodottiSealedReali, già in memoria: ZERO query
 // nuove, si può rivalutare a ogni giro di polling senza costo.
@@ -122,7 +199,7 @@ function _ppCategorie(max) {
 
     const voceCarta = (g, r) => ({
         id: r.id, nome: r.name || '—', prezzo: Number(r.price) || 0,
-        varia: r.variazioneNumerica != null ? r.variazioneNumerica : null,
+        varia: _ppVariazione(r),
         immagine: r.immagine || null, copie: g.copie, tipo: 'carta',
     });
     // Sceglie nel gruppo la riga con il valore più estremo secondo 'punteggio'
@@ -147,8 +224,8 @@ function _ppCategorie(max) {
     // Oscillazione +: variazione positiva più alta. Oscillazione −: la
     // negativa più profonda (punteggio invertito, così l'ordinamento è
     // sempre "dal più grande").
-    const su = classifica(r => (r.variazioneNumerica != null && r.variazioneNumerica > 0) ? r.variazioneNumerica : null);
-    const giu = classifica(r => (r.variazioneNumerica != null && r.variazioneNumerica < 0) ? -r.variazioneNumerica : null);
+    const su = classifica(r => { const v = _ppVariazione(r); return (v != null && v > 0) ? v : null; });
+    const giu = classifica(r => { const v = _ppVariazione(r); return (v != null && v < 0) ? -v : null; });
 
     // Box: dominio separato (prodottiSealedReali). Solo prezzo, nessuna
     // variazione disponibile.
@@ -327,9 +404,12 @@ async function renderPaginaPrimoPiano() {
     if (typeof caricaProdottiSealedReali === 'function') {
         try {
             await caricaProdottiSealedReali();
-            _ppRenderElencoPagina();
         } catch (e) { console.error('[primo piano] ricarico box:', e); }
     }
+    // E il prezzo alla baseline, cosi' la pagina e' aggiornata anche se il
+    // giro di rinfresco non e' ancora passato.
+    try { await _ppRicaricaVariazioni(); } catch (e) { console.error('[primo piano] rileggo variazioni:', e); }
+    _ppRenderElencoPagina();
 }
 
 function _ppImpostaCategoriaPagina(cat) {
@@ -350,10 +430,10 @@ function _ppRenderElencoPagina() {
     const oscillazione = def.id === 'su' || def.id === 'giu';
 
     if (nota) {
-        // L'oscillazione NON è "dall'ultimo accesso": va detto, altrimenti
-        // il numero si legge come una cosa che non è.
+        // Dice sempre quale definizione di oscillazione è attiva (ultima
+        // visita oppure ripiego sull'ultimo aggiornamento del prezzo).
         nota.innerHTML = oscillazione
-            ? '<p style="text-align:center; color:var(--text-muted); font-size:0.72rem; padding:0.6rem 0;">Variazione in euro rispetto all\'ultimo aggiornamento del prezzo di ciascuna carta.</p>'
+            ? `<p style="text-align:center; color:var(--text-muted); font-size:0.72rem; padding:0.6rem 0;">${_ppEsc(_ppNotaOscillazione())}</p>`
             : '';
     }
 

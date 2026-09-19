@@ -285,6 +285,17 @@
                 } catch (e) { console.error('[missioni] registrazione accesso:', e); }
             })();
 
+            // In primo piano (2026-09-19, sql/64): registra la visita e carica la
+            // baseline dell'oscillazione "dall'ultimo accesso". Fire-and-forget:
+            // se sql/64 non e' ancora stata eseguita o qualcosa fallisce, il
+            // widget ripiega da solo sulla vecchia definizione. Funzione definita
+            // in ui/widget-in-primo-piano.ui.js (risolta a runtime).
+            (async () => {
+                try {
+                    if (typeof primoPianoCaricaBaseline === 'function') await primoPianoCaricaBaseline();
+                } catch (e) { console.error('[primo piano] avvio baseline:', e); }
+            })();
+
 
             // Ripristina l'ultima scheda visitata; se non c'è (prima visita
             // su questo dispositivo, o storage svuotato), usa la sezione
