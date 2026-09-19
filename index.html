@@ -3603,9 +3603,24 @@
             padding: 1.2rem;
             position: relative;
         }
+        /* FIX (segnalato da Claudio con screenshot da telefono, 2026-09-18):
+           la visuale (carta o box) si centra di default su TUTTO lo
+           schermo — il pannello, ancorato a un bordo, finiva quindi
+           SOPRA alla metà inferiore/destra della visuale invece che nello
+           spazio libero accanto. Stessa misura del pannello (var qui
+           sotto) riservata come padding sulla visuale, cosicché si centri
+           da sola nello spazio che REALMENTE resta libero. Per le carte,
+           applicata con una classe aggiunta/rimossa via JS su
+           #immagineModal (mai una riga del file condiviso toccata); per
+           i box, diretta su #doppioniBoxVisualContainer (di mia
+           proprietà, nessun problema a farlo qui). */
+        :root {
+            --doppioni-pannello-landscape: min(380px, 92vw);
+            --doppioni-pannello-portrait: min(62vh, 600px);
+        }
         /* Schermo orizzontale: pannello compatto ancorato a destra,
            centrato verticalmente — non divide più lo schermo, la visuale
-           resta piena dietro. */
+           resta piena dietro, ma ora con lo spazio a destra riservato. */
         @media (orientation: landscape) {
             #doppioniControlliContainer {
                 align-items: center;
@@ -3613,11 +3628,15 @@
                 padding: 1.5rem;
                 padding-right: max(1.5rem, env(safe-area-inset-right));
             }
-            .doppioni-pannello-corpo { width: min(360px, 90vw); max-height: min(80vh, 640px); }
+            .doppioni-pannello-corpo { width: var(--doppioni-pannello-landscape); max-height: min(82vh, 660px); }
+            #immagineModal.doppioni-spazio-riservato,
+            #doppioniBoxVisualContainer {
+                padding-right: calc(var(--doppioni-pannello-landscape) + 1.5rem + env(safe-area-inset-right));
+            }
         }
         /* Schermo verticale: pannello "a foglio" ancorato in basso, largo
-           quanto serve ma non tutto lo schermo — la visuale resta piena
-           sopra/dietro. */
+           quanto serve ma non tutto lo schermo — stesso principio, spazio
+           in basso riservato alla visuale. */
         @media (orientation: portrait) {
             #doppioniControlliContainer {
                 align-items: flex-end;
@@ -3625,7 +3644,11 @@
                 padding: 1rem;
                 padding-bottom: max(1rem, env(safe-area-inset-bottom));
             }
-            .doppioni-pannello-corpo { width: min(480px, 94vw); max-height: min(58vh, 520px); border-radius: 20px 20px 18px 18px; }
+            .doppioni-pannello-corpo { width: min(480px, 94vw); max-height: var(--doppioni-pannello-portrait); border-radius: 20px 20px 18px 18px; }
+            #immagineModal.doppioni-spazio-riservato,
+            #doppioniBoxVisualContainer {
+                padding-bottom: calc(var(--doppioni-pannello-portrait) + 1rem + env(safe-area-inset-bottom));
+            }
         }
         /* Il display (none/flex) resta governato SOLO da JS
            (controlli.style.display) — le media query sopra impostano solo
