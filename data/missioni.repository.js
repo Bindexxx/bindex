@@ -334,9 +334,38 @@ async function missioniAccessoOggi(userId) {
     return { data: (count || 0) > 0, error: null };
 }
 
+// Giorno LOCALE in formato YYYY-MM-DD (stessa logica di _giornoLocaleISO in
+// data/storico-valore.repository.js, duplicata di proposito: nessun
+// accoppiamento fra repository). NON toISOString().slice(0,10): converte in
+// UTC e, in Italia (UTC+1/+2), sposta di un giorno tutto cio' che sta tra
+// mezzanotte e le 1-2 di notte, e soprattutto sfasa il confronto con una
+// data costruita da setHours(0,0,0,0) (vedi missioniGiorniConsecutivi).
+function _missioniGiornoLocale(d) {
+    const mese = String(d.getMonth() + 1).padStart(2, '0');
+    const giorno = String(d.getDate()).padStart(2, '0');
+    return `${d.getFullYear()}-${mese}-${giorno}`;
+}
+
+// ACCESSI TOTALI = GIORNI DISTINTI con almeno un accesso, non righe
+// (2026-09-19). Il dedup "1 accesso al giorno" di missioniAccessoRegistraOggi
+// (data/missioni-scrittura.repository.js) e' un SELECT-poi-INSERT: non e'
+// un vincolo del DB e, finche' activity_log non aveva la policy SELECT per il
+// proprietario, vedeva sempre 0 righe e inseriva a ogni ricaricamento (200
+// righe 'accesso' per 16 giorni reali). Contare le righe gonfierebbe i
+// traguardi t_accessi (soglie 1/3/7/30/100...). Contare i giorni distinti
+// e' corretto sia con righe duplicate sia senza, quindi resta giusto anche
+// con client vecchi in cache.
+// Forma di ritorno: { count, error } — raccogliDati la legge con
+// v(accessiTotali, 'count') (ui/missioni.ui.js).
 async function missioniAccessiTotali(userId) {
-    return supabaseClient.from('activity_log').select('id', { count: 'exact', head: true })
-        .eq('user_id', userId).eq('action', 'accesso');
+    const { data, error } = await _selectTuttePagine(
+        supabaseClient.from('activity_log').select('created_at')
+            .eq('user_id', userId).eq('action', 'accesso')
+            .order('created_at', { ascending: false })
+    );
+    if (error) return { count: 0, error };
+    const giorni = new Set((data || []).map(r => _missioniGiornoLocale(new Date(r.created_at))));
+    return { count: giorni.size, error: null };
 }
 
 // Streak di giorni consecutivi CON accesso, fino a includere oggi (se non
@@ -345,19 +374,33 @@ async function missioniAccessiTotali(userId) {
 // "Costanza" che parlano di giorni consecutivi passati/in corso, non
 // necessariamente concluso oggi).
 async function missioniGiorniConsecutivi(userId) {
-    const { data, error } = await supabaseClient.from('activity_log')
-        .select('created_at').eq('user_id', userId).eq('action', 'accesso')
-        .order('created_at', { ascending: false });
+    // Paginato: senza .range() PostgREST si ferma a 1000 righe e con righe
+    // duplicate per ricaricamento (vedi missioniAccessiTotali) si arrivava
+    // presto a troncare lo storico.
+    const { data, error } = await _selectTuttePagine(
+        supabaseClient.from('activity_log')
+            .select('created_at').eq('user_id', userId).eq('action', 'accesso')
+            .order('created_at', { ascending: false })
+    );
     if (error) return { data: 0, error };
 
-    const giorniUnici = new Set((data || []).map(r => new Date(r.created_at).toISOString().slice(0, 10)));
+    // FIX (2026-09-19): prima sia le righe sia il cursore venivano chiavi-ficati
+    // con toISOString().slice(0, 10), cioe' in UTC. Il cursore parte da
+    // setHours(0,0,0,0) = mezzanotte LOCALE, che in Italia in UTC e' ancora il
+    // giorno prima (22:00/23:00): oggi non risultava mai "presente" e lo
+    // streak veniva sottostimato di un giorno (solo oggi -> 0, ieri+oggi -> 1,
+    // tre giorni di fila -> 2; provato con TZ=Europe/Rome). Ora righe e
+    // cursore usano lo stesso giorno LOCALE. Non si vedeva prima perche',
+    // senza la policy SELECT su activity_log, per gli utenti non admin le
+    // righe non arrivavano proprio.
+    const giorniUnici = new Set((data || []).map(r => _missioniGiornoLocale(new Date(r.created_at))));
     let cursore = new Date(); cursore.setHours(0, 0, 0, 0);
     // Se manca oggi, prova a partire da ieri (streak "in corso" fino a ieri).
-    if (!giorniUnici.has(cursore.toISOString().slice(0, 10))) {
+    if (!giorniUnici.has(_missioniGiornoLocale(cursore))) {
         cursore.setDate(cursore.getDate() - 1);
     }
     let streak = 0;
-    while (giorniUnici.has(cursore.toISOString().slice(0, 10))) {
+    while (giorniUnici.has(_missioniGiornoLocale(cursore))) {
         streak++;
         cursore.setDate(cursore.getDate() - 1);
     }
