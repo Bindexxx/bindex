@@ -32,9 +32,12 @@
 //      già: lo Scambio è un tag su binder_carte, non uno stato, quindi
 //      le righe sono comunque in carteReali.
 //   5. Il titolo di ogni categoria è cliccabile e apre la pagina "In
-//      primo piano" (view-section #primopiano) con la top 10 di quella
-//      categoria. Il click sul resto del tile resta quello di prima: apre
-//      la carta di valore più alto nel flip-modal.
+//      primo piano" (view-section #primopiano) con TUTTE le voci di quella
+//      categoria, in ordine, come griglia di tessere alla maniera di
+//      Doppioni (stessa formula e stesso slider dei Binder, classi
+//      dedicate pp-pag-* in index.html). Il click sul resto del tile
+//      resta quello di prima: apre la carta di valore più alto nel
+//      flip-modal.
 //
 // COSA SIGNIFICA "OSCILLAZIONE" QUI (aggiornato il 2026-09-19, sql/64):
 // variazione in euro DALL'ULTIMA VISITA. La baseline la decide il DB
@@ -65,9 +68,9 @@
 // ───────────────────────────────────────────────────────────────────────
 
 // Quante carte per categoria vengono preparate per il tile (il CSS ne
-// mostra solo quante ne stanno) e quante ne mostra la pagina.
+// mostra solo quante ne stanno). La pagina invece mostra TUTTE le voci
+// della categoria, in ordine (nessun tetto).
 const PRIMO_PIANO_MAX_TILE = 16;
-const PRIMO_PIANO_MAX_PAGINA = 10;
 // Ore di pausa che separano due "visite" (passate a registra_visita) e ogni
 // quanto si rilegge il prezzo alla baseline durante la sessione, cosi' un
 // controllo prezzi fatto mentre il sito e' aperto compare senza ricaricare.
@@ -368,14 +371,15 @@ function _ppApriPagina(cat, evt) {
 
 // ── PAGINA "IN PRIMO PIANO" (view-section #primopiano) ────────────────
 // Registrata in ui/paginainiziale-dettaglio.ui.js (whitelist + dispatch).
-// Stesse classi pg-* delle altre pagine: nessun CSS nuovo per la pagina.
+// Testata e pillole con le classi pg-* delle altre pagine; l'elenco e' una
+// griglia di tessere come quella di Doppioni (classi pp-pag-* in index.html).
 let _ppCategoriaPagina = 'valore';
 
 const _PP_CATEGORIE_PAGINA = [
-    { id: 'valore', etichetta: 'Valore', vuoto: 'Ancora nessuna carta in collezione.' },
-    { id: 'su', etichetta: 'Oscillazione +', vuoto: 'Nessuna carta è salita di prezzo.' },
-    { id: 'giu', etichetta: 'Oscillazione −', vuoto: 'Nessuna carta è scesa di prezzo.' },
-    { id: 'box', etichetta: 'Box', vuoto: 'Nessun box in collezione.' },
+    { id: 'valore', etichetta: 'Valore', ordine: 'ordinate per valore', unita: ['carta', 'carte'], vuoto: 'Ancora nessuna carta in collezione.' },
+    { id: 'su', etichetta: 'Oscillazione +', ordine: 'ordinate per aumento maggiore', unita: ['carta', 'carte'], vuoto: 'Nessuna carta è salita di prezzo.' },
+    { id: 'giu', etichetta: 'Oscillazione −', ordine: 'ordinate per calo maggiore', unita: ['carta', 'carte'], vuoto: 'Nessuna carta è scesa di prezzo.' },
+    { id: 'box', etichetta: 'Box', ordine: 'ordinati per valore', unita: ['box', 'box'], vuoto: 'Nessun box in collezione.' },
 ];
 const _PP_CAMPO_DATI = { valore: 'perValore', su: 'su', giu: 'giu', box: 'box' };
 
@@ -392,7 +396,8 @@ async function renderPaginaPrimoPiano() {
         </div>
         <div class="pg-pagina">
             <div class="pg-filtri">${filtri}</div>
-            <div class="pg-elenco" id="primopianoElenco"></div>
+            <div class="pp-pag-conteggio" id="primopianoConteggio"></div>
+            <div class="pp-pag-griglia" id="primopianoElenco"></div>
             <div id="primopianoNota"></div>
         </div>
     `;
@@ -423,10 +428,12 @@ function _ppImpostaCategoriaPagina(cat) {
 function _ppRenderElencoPagina() {
     const elenco = document.getElementById('primopianoElenco');
     const nota = document.getElementById('primopianoNota');
+    const conteggio = document.getElementById('primopianoConteggio');
     if (!elenco) return;
 
     const def = _PP_CATEGORIE_PAGINA.find(c => c.id === _ppCategoriaPagina) || _PP_CATEGORIE_PAGINA[0];
-    const voci = _ppCategorie(PRIMO_PIANO_MAX_PAGINA)[_PP_CAMPO_DATI[def.id]] || [];
+    // TUTTE le voci della categoria, gia' in ordine (nessun tetto).
+    const voci = _ppCategorie(Infinity)[_PP_CAMPO_DATI[def.id]] || [];
     const oscillazione = def.id === 'su' || def.id === 'giu';
 
     if (nota) {
@@ -436,29 +443,34 @@ function _ppRenderElencoPagina() {
             ? `<p style="text-align:center; color:var(--text-muted); font-size:0.72rem; padding:0.6rem 0;">${_ppEsc(_ppNotaOscillazione())}</p>`
             : '';
     }
+    if (conteggio) {
+        conteggio.textContent = voci.length ? `${voci.length} ${def.unita[voci.length === 1 ? 0 : 1]} · ${def.ordine}` : '';
+    }
 
     if (!voci.length) {
-        elenco.innerHTML = `<p style="text-align:center; color:var(--text-muted); font-size:0.82rem; padding:1.2rem 0;">${def.vuoto}</p>`;
+        elenco.innerHTML = `<p style="text-align:center; color:var(--text-muted); font-size:0.82rem; padding:1.2rem 0; grid-column:1/-1;">${def.vuoto}</p>`;
         return;
     }
 
+    // Tessera alla maniera di Doppioni: copertina, moltiplicatore in alto a
+    // destra (solo se le copie sono piu' di una), nome, valori. Il click e'
+    // lo stesso delle miniature del widget: carta -> flip, box -> modifica.
     elenco.innerHTML = voci.map(v => {
-        const src = (v.immagine && typeof _urlImmagineVisualizzabile === 'function') ? (_urlImmagineVisualizzabile(v.immagine, 96) || '') : '';
+        const src = (v.immagine && typeof _urlImmagineVisualizzabile === 'function') ? (_urlImmagineVisualizzabile(v.immagine, 200) || '') : '';
+        // loading="lazy": la categoria Valore puo' avere centinaia di tessere.
         const fig = src
-            ? `<img class="pg-fig" src="${_ppEsc(src)}" alt="" onerror="this.style.display='none';">`
-            : '<div class="pg-fig"></div>';
-        const copie = v.copie > 1 ? `×${v.copie}` : '';
-        let destra;
-        if (oscillazione) {
-            destra = `<b class="pp-var-testo ${v.varia > 0 ? 'pp-su' : 'pp-giu'}">${_ppFmtVar(v.varia)}</b>ora ${_ppEur(v.prezzo)}`;
-        } else {
-            destra = `<b>${_ppEur(v.prezzo)}</b>cad.`;
-        }
+            ? `<img class="pp-pag-cover" src="${_ppEsc(src)}" alt="" loading="lazy" onerror="this.style.display='none';">`
+            : `<div class="pp-pag-cover pp-pag-cover-vuota"><i class="fa-solid ${v.tipo === 'box' ? 'fa-box-archive' : 'fa-image'}"></i></div>`;
+        const copie = v.copie > 1 ? `<div class="pp-pag-copie">×${v.copie}</div>` : '';
+        const valori = oscillazione
+            ? `<b class="pp-var-testo ${v.varia > 0 ? 'pp-su' : 'pp-giu'}">${_ppFmtVar(v.varia)}</b><span>ora ${_ppEur(v.prezzo)}</span>`
+            : `<b>${_ppEur(v.prezzo)}</b><span>cad.</span>`;
         return `
-            <div class="pg-riga" data-tocca data-id="${_ppEsc(v.id)}" data-tipo="${v.tipo}" data-cat="${def.id}" onclick="_ppClicMini(event, this)">
+            <div class="pp-pag-tile" data-id="${_ppEsc(v.id)}" data-tipo="${v.tipo}" data-cat="${def.id}" onclick="_ppClicMini(event, this)">
                 ${fig}
-                <div class="pg-testo"><b>${_ppEsc(v.nome)}</b><span>${copie}</span></div>
-                <div class="pg-destra">${destra}</div>
+                ${copie}
+                <div class="pp-pag-nome">${_ppEsc(v.nome)}</div>
+                <div class="pp-pag-valori">${valori}</div>
             </div>`;
     }).join('');
 }
