@@ -35,12 +35,12 @@
 //      primo piano" (view-section #primopiano) con le voci di quella
 //      categoria, in ordine, come griglia di tessere alla maniera di
 //      Doppioni (stessa formula e stesso slider dei Binder, classi
-//      dedicate pp-pag-* in index.html). Oscillazione + / − e Box le
-//      mostrano TUTTE (liste corte). La pagina VALORE no: Claudio non vuole
-//      scrolling ("massimo N carte"), quindi mostra tante tessere quante ne
-//      stanno nello spazio della pagina, misurato dal vivo sul contenitore
-//      (_ppAdattaGrigliaAlloSpazio), con tetto PRIMO_PIANO_MAX_PAGINA_VALORE.
-//      Quali categorie: PRIMO_PIANO_CATEGORIE_SENZA_SCROLL.
+//      dedicate pp-pag-* in index.html). Nessuna categoria scrolla (Claudio:
+//      "massimo N carte, non voglio scrolling"; prima solo Valore, poi
+//      estesa a tutte): la pagina mostra tante tessere quante ne stanno nello
+//      spazio, misurato dal vivo sul contenitore (_ppAdattaGrigliaAlloSpazio),
+//      con tetto PRIMO_PIANO_MAX_PAGINA. Quali categorie:
+//      PRIMO_PIANO_CATEGORIE_SENZA_SCROLL.
 //      Il click sul resto del tile resta quello di prima: apre la carta di
 //      valore più alto nel flip-modal.
 //
@@ -76,14 +76,14 @@
 // mostra solo quante ne stanno). La pagina invece mostra TUTTE le voci
 // della categoria, in ordine (nessun tetto).
 const PRIMO_PIANO_MAX_TILE = 16;
-// Pagina VALORE: tetto di tessere disegnate. Quante se ne VEDONO lo decide lo
-// spazio disponibile (righe x colonne senza scrolling); questo numero e' il
-// massimo assoluto. Per un N fisso basta metterlo qui (es. 12).
-const PRIMO_PIANO_MAX_PAGINA_VALORE = 80;
+// Pagina delle categorie: tetto di tessere disegnate. Quante se ne VEDONO lo
+// decide lo spazio disponibile (righe x colonne senza scrolling); questo
+// numero e' il massimo assoluto. Per un N fisso basta metterlo qui (es. 12).
+const PRIMO_PIANO_MAX_PAGINA = 80;
 // Categorie della pagina che devono stare SENZA scrolling (mostrano solo
-// quante tessere ci stanno). Le altre mostrano tutte le voci. Per estendere
-// il taglio: ['valore', 'su', 'giu', 'box'].
-const PRIMO_PIANO_CATEGORIE_SENZA_SCROLL = ['valore'];
+// quante tessere ci stanno). Estese a tutte il 2026-09-20 (Claudio: "estendiamo
+// il senza scrolling"); le categorie non elencate mostrerebbero tutte le voci.
+const PRIMO_PIANO_CATEGORIE_SENZA_SCROLL = ['valore', 'su', 'giu', 'box'];
 // Ore di pausa che separano due "visite" (passate a registra_visita) e ogni
 // quanto si rilegge il prezzo alla baseline durante la sessione, cosi' un
 // controllo prezzi fatto mentre il sito e' aperto compare senza ricaricare.
@@ -438,7 +438,7 @@ function _ppImpostaCategoriaPagina(cat) {
     _ppRenderElencoPagina();
 }
 
-// Testo sopra la griglia. Con il taglio (pagina Valore) dice "N di TOT".
+// Testo sopra la griglia. Con il taglio (senza scrolling) dice "N di TOT".
 function _ppTestoConteggio(def, mostrate, totale) {
     if (!totale) return '';
     const unita = def.unita[totale === 1 ? 0 : 1];
@@ -446,7 +446,7 @@ function _ppTestoConteggio(def, mostrate, totale) {
     return `${quante} ${unita} · ${def.ordine}`;
 }
 
-// ── PAGINA VALORE: tante tessere quante ne stanno, senza scrolling ─────
+// ── PAGINE CATEGORIA: tante tessere quante ne stanno, senza scrolling ──
 // Misura il contenitore delle pagine (.container, la cornice) e nasconde le
 // tessere che non entrano: righe = spazio sotto la testata / altezza tessera,
 // colonne = quelle che la griglia ha davvero (auto-fill sullo slider dei
@@ -531,10 +531,10 @@ function _ppRenderElencoPagina() {
     const def = _PP_CATEGORIE_PAGINA.find(c => c.id === _ppCategoriaPagina) || _PP_CATEGORIE_PAGINA[0];
     const tutte = _ppCategorie(Infinity)[_PP_CAMPO_DATI[def.id]] || [];
     const oscillazione = def.id === 'su' || def.id === 'giu';
-    // Categorie senza scrolling (Valore) -> si disegna un massimo e il resto lo
+    // Categorie senza scrolling (ora tutte) -> si disegna un massimo e il resto lo
     // decide lo spazio (vedi _ppAdattaGrigliaAlloSpazio). Le altre: tutte.
     const conTaglio = PRIMO_PIANO_CATEGORIE_SENZA_SCROLL.includes(def.id);
-    const voci = conTaglio ? tutte.slice(0, PRIMO_PIANO_MAX_PAGINA_VALORE) : tutte;
+    const voci = conTaglio ? tutte.slice(0, PRIMO_PIANO_MAX_PAGINA) : tutte;
     elenco.dataset.fit = conTaglio ? '1' : '';
     elenco.dataset.cat = def.id;
     elenco.dataset.totale = String(tutte.length);
