@@ -1847,6 +1847,106 @@
             font-size: 0.62rem; font-weight: 600; color: var(--text-muted);
         }
 
+        /* ── "IN PRIMO PIANO": CARTE CHE RIEMPIONO LO SPAZIO (2026-09-19) ──
+           Richiesta di Claudio: il numero di carte varia con la taglia del
+           widget, le piu' possibili senza scrollare, misurando sempre la
+           CORNICE e mai la finestra. La carta ha una misura FISSA
+           (--pp-w) e il numero riempie la fila.
+           Tutto in CSS, zero JavaScript, quindi si adatta da solo a
+           qualunque taglia, diametro e orientamento senza ricalcoli:
+             - .pp-wrap e' un contenitore di dimensione (container-type:
+               size) posato in assoluto dentro .ball-slot-blocco, cosi' la
+               sua altezza e' quella reale dello spazio sotto la sfera;
+             - le COLONNE di categorie sono auto-fit (min --pp-gmin): larga
+               = affiancate, stretta = impilate;
+             - le RIGHE sono auto-fit con altezza minima "titolo + una fila
+               di carte": le righe senza categoria collassano e lo spazio va
+               a quelle occupate; le categorie che non ci stanno finiscono
+               in righe implicite ad altezza 0 e spariscono (ordine di
+               priorita' = ordine nel DOM);
+             - dentro ogni categoria la .pp-fila e' una griglia auto-fill
+               con celle grandi quanto UNA carta: le carte oltre l'ultima
+               cella entrano in righe implicite ad altezza 0 e non si vedono
+               mai a meta';
+             - sotto l'altezza minima (una categoria con una fila) il corpo
+               sparisce del tutto: resta solo la testata con la sfera.
+           Non usa .ball-gruppi/.ball-strip di proposito: cosi'
+           _potaContenutoFuoriTessera() e le regole .wf-largo qui sopra non
+           lo toccano. Verificato in Chromium headless con questo stesso CSS
+           su 6x2, 6x3, 6x4, 6x8, 4x6, 8x6 e 12x3 a diametro 90 e 64.
+           NON verificabile da qui: Safari iOS e Firefox. */
+        .ball-ui {
+            --pp-w: 56px;
+            --pp-h: calc(var(--pp-w) * 63 / 46);
+            --pp-gap: 7px;
+            --pp-gmin: 200px;
+            --pp-tit: 20px;
+            --pp-sotto: 10px;
+        }
+        .ball-ui .ball-slot-blocco:has(> .pp-wrap) { position: relative; }
+        /* 6x2 (largo e basso): il corpo sta a destra della testata invece di
+           essere tagliato a 34px come per gli altri widget. */
+        .ball-ui .wf-largo .ball-slot-blocco:has(> .pp-wrap) {
+            flex: 1 1 0; min-width: 0; max-height: none; align-self: stretch; margin: 0;
+        }
+        .ball-ui .wf-largo:has(.pp-wrap) .ball-testa { width: auto; flex: 0 0 auto; }
+        .ball-ui .pp-wrap {
+            position: absolute; inset: 0 0 calc(var(--pp-sotto) * -1) 0;
+            container-type: size; container-name: pp;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(var(--pp-gmin), 1fr));
+            grid-template-rows: repeat(auto-fit, minmax(calc(var(--pp-tit) + var(--pp-h) + var(--pp-sotto)), 1fr));
+            grid-auto-rows: 0;
+            gap: 0 14px;
+            overflow: hidden;
+        }
+        .ball-ui .pp-gruppo {
+            display: grid; grid-template-rows: auto minmax(0, 1fr);
+            min-height: 0; min-width: 0; overflow: hidden;
+            padding-bottom: var(--pp-sotto);
+        }
+        .ball-ui .pp-titolo {
+            display: flex; align-items: center; gap: 4px;
+            height: var(--pp-tit); font-size: 11px; color: var(--text-muted);
+            cursor: pointer; -webkit-tap-highlight-color: transparent;
+        }
+        .ball-ui .pp-titolo span { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .ball-ui .pp-titolo i { font-size: 9px; opacity: .55; }
+        .ball-ui .pp-titolo:active { opacity: .6; }
+        .ball-ui .pp-fila {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, var(--pp-w));
+            grid-template-rows: repeat(auto-fill, var(--pp-h));
+            grid-auto-rows: 0;
+            gap: var(--pp-gap);
+            justify-content: start; align-content: start;
+            overflow: hidden; min-height: 0;
+        }
+        /* Specificita' 0,4,0: batte le misure per taglia (.wf-alto/.wf-grande
+           .ball-mini) e la clamp() a cqw definita sopra. align-self:stretch
+           con altezza auto fa si' che la carta prenda l'altezza della cella:
+           una cella di riga implicita e' alta 0, quindi la carta sparisce. */
+        .ball-ui .pp-fila .ball-mini {
+            width: var(--pp-w); height: auto; aspect-ratio: auto;
+            align-self: stretch; min-height: 0;
+        }
+        .ball-ui .pp-copie {
+            position: absolute; left: 2px; top: 2px; z-index: 1;
+            background: rgba(0,0,0,.68); color: #fff;
+            font-size: 0.55rem; font-weight: 700; line-height: 1.3;
+            padding: 1px 4px; border-radius: 4px;
+        }
+        .ball-ui .ball-mini-badge.pp-var { max-width: calc(100% - 4px); overflow: hidden; white-space: nowrap; }
+        .ball-ui .ball-mini-badge.pp-su { color: #6be59a; }
+        .ball-ui .ball-mini-badge.pp-giu { color: #ff8a80; }
+        /* Stessa altezza minima di --pp-tit + --pp-h + --pp-sotto (20 + 76,7
+           + 10): var() non e' ammessa nelle condizioni di @container, il
+           numero va tenuto allineato a mano. */
+        @container pp (max-height: 106px) { .pp-gruppo { display: none; } }
+        /* Pagina "In primo piano": variazione colorata accanto al prezzo. */
+        .pp-var-testo.pp-su { color: var(--success); }
+        .pp-var-testo.pp-giu { color: var(--danger); }
+
         /* Overlay dettaglio: .container viene agganciata al rettangolo
            schermo della cornice — non spostata nel DOM (zero rischio sui
            selettori esistenti). Geometria (top/left/width/height/border-
@@ -5787,6 +5887,16 @@
                  #location. Contenuto riempito da renderPaginaDoppioni() in
                  ui/widget-doppioni.ui.js. -->
             <div id="doppioniContenuto"></div>
+        </div>
+
+        <div id="primopiano" class="view-section">
+            <!-- Pagina "In primo piano" (2026-09-19) — top 10 di una categoria
+                 (valore, oscillazione +/-, box), aperta dal titolo di
+                 ciascuna categoria nel widget. Stesso pattern di #doppioni/
+                 #sealed. Contenuto riempito da renderPaginaPrimoPiano() in
+                 ui/widget-in-primo-piano.ui.js; registrata in
+                 ui/paginainiziale-dettaglio.ui.js. -->
+            <div id="primopianoContenuto"></div>
         </div>
 
         <div id="sealed" class="view-section">
