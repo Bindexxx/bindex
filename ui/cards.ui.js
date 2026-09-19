@@ -117,6 +117,17 @@
                 qty: r.qty || 1,
                 lang: r.lingua || 'IT',
                 cond: r.condizione || 'NM',
+                // AGGIUNTO (sessione widget Doppioni, 2026-09-18): prima non
+                // portati in carteReali — nessun consumer esistente li usava,
+                // aggiunta puramente additiva (2 chiavi in più su un oggetto
+                // già esistente, nessun campo tolto/rinominato). Servono per
+                // distinguere varianti reverse holo / prima edizione nel
+                // raggruppamento "stessa carta, più righe" della pagina
+                // Doppioni — prima venivano trattate come identiche a parità
+                // di nome/codice/lingua/condizione, come succedeva già
+                // ovunque nel sito prima di questa aggiunta.
+                reverseHolo: !!r.reverse_holo,
+                firstEd: !!r.first_ed,
                 sigillataOriginale: !!r.sigillata_originale,
                 price: r.prezzo != null ? Number(r.prezzo) : 0,
                 variation: _mappaVariazione(r),
@@ -431,5 +442,3 @@
                 </div>
             `;
         }
-
-

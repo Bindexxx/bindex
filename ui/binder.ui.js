@@ -874,6 +874,16 @@ function renderBinderLibro() {
         binderId: _binderAttivo,
         binder,
         permettiRimozione: !!(binder && binder.tipo === 'extra'),
+        // FIX (sessione widget Doppioni, 2026-09-18): mancava del tutto qui
+        // — la vecchia renderBinderGrigliaImmagini() (mai più referenziata,
+        // vedi commento sopra renderBinderContenuto) calcolava eScambio al
+        // volo e lo usava sia per il badge (Offerte: N invece di ×qty) sia
+        // per l'onclick (apriModaleQuantitaScambio invece del flip). Quando
+        // il libro sfogliabile l'ha sostituita, questo pezzo non è stato
+        // portato: risultato, nel binder Scambio si vedeva sempre la qty
+        // totale della carta invece della quantità offerta, e cliccare la
+        // carta apriva il flip invece di poter correggere la quantità.
+        eScambio: !!(binder && binder.tipo === 'scambio'),
         carte,
         cols: layout.cols,
         rows: layout.rows,
@@ -1176,7 +1186,9 @@ function _libroHtmlPagina(indicePagina) {
                 ${_libro.permettiRimozione ? `<button type="button" class="binder-slot-remove-btn" title="Rimuovi dal Binder" aria-label="Rimuovi dal Binder" onclick="event.stopPropagation(); rimuoviDalBinderExtra('${idAttr}')"><i class="fa-solid fa-xmark"></i></button>` : ''}
                 <div class="binder-slot-fallback"><i class="fa-solid fa-image"></i><span>${nomeAttr}</span></div>
                 ${immagineSrc ? `<img src="${immagineSrc}" alt="${nomeAttr}" loading="lazy" draggable="false" onerror="this.remove();">` : ''}
-                ${card.qty > 1 ? `<span class="binder-slot-qty-badge" title="Hai ${card.qty} copie di questa carta — occupano un solo slot">×${card.qty}</span>` : ''}
+                ${_libro.eScambio
+                    ? `<span class="binder-slot-qty-badge" title="Quantità offerta in Scambio">Offerte: ${card.quantitaOfferta ?? 0}</span>`
+                    : (card.qty > 1 ? `<span class="binder-slot-qty-badge" title="Hai ${card.qty} copie di questa carta — occupano un solo slot">×${card.qty}</span>` : '')}
             </div>`;
     }
 
@@ -1192,6 +1204,13 @@ function _libroHtmlPagina(indicePagina) {
 // realtà trascinando per girare pagina.
 function _libroClickCarta(id) {
     if (_libro && _libro.dragMosso) { _libro.dragMosso = false; return; }
+    // FIX (sessione widget Doppioni, 2026-09-18): stesso branch che aveva
+    // la vecchia renderBinderGrigliaImmagini (eScambio ? apriModaleQuantita
+    // Scambio : apriImmagineIngrandita) — mai portato qui quando il libro
+    // sfogliabile l'ha sostituita. Senza questo, dentro il binder Scambio
+    // aperto non c'era modo di correggere la quantità offerta cliccando la
+    // carta (si apriva solo il flip, che non ha alcun controllo quantità).
+    if (_libro && _libro.eScambio) { apriModaleQuantitaScambio(id); return; }
     apriFlipCardHome(id, { binderId: _binderAttivo, nascondiVaiAlBinder: true });
 }
 
