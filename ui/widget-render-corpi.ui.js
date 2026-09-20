@@ -238,36 +238,46 @@ const _ballCORPI = {
         return { inline, blocco };
     },
 
+    // RISCRITTO (2026-09-20, restyle widget SET): stessi mattoni di prima
+    // (_ballRigaBarra, _ballPill, classi ball-k-*), cambia cosa c'è scritto.
+    // Dati da CATALOGO_WIDGET.set_completamento.preview() (ui/widget-set.ui.js):
+    // il set in corso più vicino al completamento e, se c'è una soglia
+    // appena raggiunta e non ancora vista, quella al posto del testo
+    // normale (stessa pill "acceso" che usa il widget Match).
     set_completamento: (d) => {
         if (!d) return { inline: '', blocco: '' };
-        if (!d.voci || !d.voci.length) {
+        const esc = (t) => (typeof escapeHtml === 'function' ? escapeHtml(t) : String(t));
+        const apri = "_ballAzioneRiga(event,'tab','set')";
+
+        if (d.vuoto) {
             return {
-                inline: '<p class="ball-k-tit">Set</p><div class="ball-k-mid">—</div>' +
-                        `<span class="ball-k-lab">${d.riconosciute ? 'nessuna espansione' : 'codici non riconosciuti'}</span>`,
+                inline: '<p class="ball-k-tit">Set</p><div class="ball-k-mid">—</div><span class="ball-k-lab">libreria set vuota</span>',
                 blocco: ''
             };
         }
-        const prima = d.voci[0];
 
-        // Con il set in libreria si mostra l'avanzamento; senza, si mostra
-        // quante carte hai — mai una percentuale su un totale ignoto.
-        const inline =
-            '<p class="ball-k-tit">Set</p>' +
-            ((prima.totale && prima.perc != null)
-                ? `<div class="ball-k-big ball-k-mono">${Math.round(prima.perc)}%</div>` +
-                  `<span class="ball-k-lab">${prima.nome} · ${prima.totale - prima.hai} alla fine</span>`
-                : `<div class="ball-k-big ball-k-mono">${d.voci.length}</div>` +
-                  `<span class="ball-k-lab">espansioni · ${prima.nome} in testa</span>`);
+        let inline;
+        if (d.notifica) {
+            inline =
+                '<p class="ball-k-tit">Set</p>' +
+                `<div class="ball-k-big ball-k-mono su">${d.notifica.soglia}%</div>` +
+                `<span class="ball-k-lab">${esc(d.notifica.nome)}</span>` +
+                _ballPill('nuova soglia', true);
+        } else if (d.prima) {
+            inline =
+                '<p class="ball-k-tit">Set</p>' +
+                `<div class="ball-k-big ball-k-mono">${Math.floor(d.prima.perc)}%</div>` +
+                `<span class="ball-k-lab">${esc(d.prima.nome)} · ${d.prima.mancanti} alla fine</span>`;
+        } else {
+            inline =
+                '<p class="ball-k-tit">Set</p><div class="ball-k-mid">—</div>' +
+                `<span class="ball-k-lab">${d.nCompletati ? d.nCompletati + ' completati' : 'nessun set in corso'}</span>`;
+        }
 
-        const blocco = d.voci.slice(0, 4).map(v => (v.totale && v.perc != null)
-            ? _ballRigaBarra(v.nome, `${v.hai}/${v.totale}`, v.perc, `_ballAzioneRiga(event,'tab','visualizzazione')`)
-            : `<div class="ball-riga ball-clic" onclick="_ballAzioneRiga(event,'tab','visualizzazione')">
-                   <span class="ball-nome">${v.nome}</span><span class="ball-dato">${v.hai} carte</span>
-               </div>`
+        const blocco = (d.top || []).map(v =>
+            _ballRigaBarra(esc(v.nome), `${v.hai}/${v.totale}`, v.perc, apri)
         ).join('') +
-        // Se nessun set è in libreria è giusto dirlo, invece di lasciare
-        // pensare che l'avanzamento non esista.
-        (d.inLibreria === 0 ? '<span class="ball-k-lab ball-attesa">Avanzamento non disponibile: libreria set da compilare</span>' : '');
+            (d.senzaCatalogo ? '<span class="ball-k-lab ball-attesa">Catalogo per carta da caricare: avanzamento sul set base</span>' : '');
 
         return { inline, blocco };
     },

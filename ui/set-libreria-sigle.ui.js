@@ -102,6 +102,13 @@ async function _ballCaricaLibreriaDaDb() {
         renderWidgetHome();
     } catch (e) {
         console.error('Libreria set da DB:', e);
+    } finally {
+        // 2026-09-20 (restyle widget SET): a libreria caricata — o rimasta
+        // quella del file statico se la tabella non risponde — parte il
+        // motore Set (ui/set-motore.ui.js: catalogo, soglie, notifiche).
+        // Nel 'finally' apposta: deve partire anche se la tabella
+        // set_espansioni è vuota o dà errore. Idempotente.
+        if (typeof setAvviaMotore === 'function') setAvviaMotore();
     }
 }
 

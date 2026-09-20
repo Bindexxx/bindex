@@ -1,161 +1,385 @@
 // ═══════════════════════════════════════════════════════════════════════
 // WIDGET-SET.UI.JS — voce di catalogo + pagina "Set" (CardSync Pro)
 // ═══════════════════════════════════════════════════════════════════════
-// STEP separato dal piano "riduzione accoppiamento" concordato con Claudio
-// il 2026-09-11 (secondo giro di taglio). La "LIBRERIA DEI SET"
-// (_ballLIBRERIA_MANUALE, _ballLIBRERIA_SET, _ballCaricaLibreriaDaDb,
-// _ballSetBase, _ballALIAS_TESTA, _ballSetBaseConAlias, _ballLeggiCodice —
-// dato/logica pura di parsing sigle) è stata spostata in
-// ui/set-libreria-sigle.ui.js. NESSUNA riscrittura del codice esistente in
-// nessuna delle due parti: solo spostamento, zero cambi di comportamento.
+// RISCRITTO (2026-09-20, restyle widget SET + masterset). Prima: elenco dei
+// soli set di cui si possedeva una carta, ordinato per %, sola
+// consultazione. Ora:
+//   - TUTTE le espansioni esistenti, ordinate per carte mancanti
+//     (crescente), divise in quattro schede: In corso (default) /
+//     Completati / Non iniziati / Nascosti.
+//   - Modalità "Modifica": si nascondono/mostrano i set. I nascosti
+//     notificano solo al 99% e al 100%.
+//   - Dettaglio di un set: tutte le carte del catalogo (una per variante),
+//     quelle che mancano in scala di grigi + segnalino "Manca", quelle
+//     possedute con "C'è". In modalità "Ignora carte" si escludono a mano
+//     le carte che non si vogliono nel masterset (es. promo Pokémon Center).
+//   - Pallina in home: set più vicino al completamento; quando scatta una
+//     soglia (25/50/75/90/99/100%) mostra quella notifica finché non si
+//     apre la pagina o ne arriva una più recente.
 //
-// CATEGORIA A: pagina propria di sola consultazione (nessun click sulle
-// righe, nessuna ricerca — scelta di Claudio), ordinamento fisso per
-// percentuale.
+// DOVE STA LA LOGICA: calcolo, catalogo, soglie e notifiche sono in
+// ui/set-motore.ui.js (nessun DOM). Qui solo voce di catalogo e pagina.
+// Dati: data/sets.repository.js. Parser sigle: ui/set-libreria-sigle.ui.js.
 //
-// Usa cross-file _ballLIBRERIA_SET/_ballLeggiCodice (ui/set-libreria-
-// sigle.ui.js).
-//
-// COSA RESTA FUORI (non spostato qui, invariato):
-// - apriDettaglioWidget (ui/paginainiziale-render.ui.js) continua a
-//   chiamare renderPaginaSet() per tabId === 'set' — motore home, dispatch
-//   generico, non toccato in questo step.
-// - _ballCORPI.set_completamento / _ballASPETTO.set_completamento /
-//   _ballTITOLI_BREVI.set_completamento (ui/widget-render-corpi.ui.js) —
-//   motore visivo, non toccato.
-// - escapeHtml, setEspansioniLeggiTutte, renderWidgetHome
-//   (ui/paginainiziale*.ui.js): esterne/cross-file, non toccate.
+// COSA RESTA FUORI (invariato):
+// - apriDettaglioWidget (ui/paginainiziale-dettaglio.ui.js) chiama
+//   renderPaginaSet() per tabId === 'set'.
+// - _ballCORPI.set_completamento (ui/widget-render-corpi.ui.js): aggiornato
+//   solo il corpo di questo widget, con gli stessi mattoni di sempre
+//   (_ballRigaBarra/_ballPill). _ballASPETTO/_ballTITOLI_BREVI invariati.
+// - Nessun collegamento con il widget Match.
 // ───────────────────────────────────────────────────────────────────────
 
 // ── VOCE DI CATALOGO ──────────────────────────────────────────────────
-    // ── SET / ESPANSIONI ─────────────────────────────────────────────────
-    // Avanzamento verso il set completo, dedotto dal CODICE della carta.
-    //
-    // ATTENZIONE, LIMITE DICHIARATO: il formato di 'codice' non è definito
-    // da nessuna parte nel sito — nessun placeholder d'esempio, nessuna
-    // validazione, nessuna regex: arriva grezzo dalla colonna. Quello che
-    // segue riconosce i formati più diffusi (vedi _ballLeggiCodice) e, se
-    // non riconosce nulla, il widget dice "codici non riconosciuti" invece
-    // di mostrare percentuali inventate. Da tarare su codici reali.
 CATALOGO_WIDGET.set_completamento = {
-        titolo: 'Set', icona: 'fa-layer-group',
-        preview: () => {
-            const coll = carteReali.filter(c => c.stato === 'collezione' && c.tabella === 'carte');
-            const set = {};
-            let riconosciute = 0;
-            coll.forEach(c => {
-                const letto = _ballLeggiCodice(c.code);
-                if (!letto) return;
-                riconosciute++;
-                if (!set[letto.set]) set[letto.set] = { numeri: new Set(), senzaNumero: 0 };
-                // Le carte con numero si contano per numeri DISTINTI: la
-                // stessa carta posseduta in versione normale e Poké Ball
-                // vale uno solo ai fini del set completo.
-                if (letto.numero != null) set[letto.set].numeri.add(letto.numero);
-                else set[letto.set].senzaNumero++;
-            });
+    titolo: 'Set', icona: 'fa-layer-group',
+    preview: () => {
+        const r = setMCalcolaTutti();
+        // Set con catalogo di cui servono le righe per contare bene: si
+        // caricano in background e la Home si ridisegna SOLO se sono
+        // davvero arrivate (altrimenti loop preview → ridisegno → preview).
+        if (r.daCaricare.length) {
+            setMCaricaRighe(r.daCaricare)
+                .then(caricate => { if (caricate) setMRidisegnaHome(); })
+                .catch(e => console.error('Set — caricamento righe:', e));
+        }
 
-            const voci = Object.entries(set).map(([sigla, conteggio]) => {
-                const info = _ballLIBRERIA_SET[sigla];
-                const hai = conteggio.numeri.size + conteggio.senzaNumero;
-                return {
-                    sigla,
-                    nome: info ? info.nome : sigla,
-                    hai,
-                    // Un set senza numerazione (MFB) non ha avanzamento
-                    // possibile: si mostra solo quante carte hai.
-                    senzaNumerazione: conteggio.numeri.size === 0 && conteggio.senzaNumero > 0,
-                    // Il totale c'è solo se il set è in libreria: senza,
-                    // niente percentuale (mai un avanzamento su un totale
-                    // che non conosciamo).
-                    totale: info ? info.totale : null,
-                    perc: info && info.totale && conteggio.numeri.size > 0
-                        ? Math.min(100, (conteggio.numeri.size / info.totale) * 100)
-                        : null
-                };
-            }).sort((a, b) => (b.perc ?? -1) - (a.perc ?? -1) || b.hai - a.hai);
+        const g = setMSuddividi(r.voci);
+        const prima = g.inCorso[0] || null;
+        const nv = setMNotificaNonVista();
 
-            if (voci.length === 0) {
-                return { righe: [riconosciute === 0 ? 'Codici non riconosciuti' : 'Nessun set'], dati: { voci: [], riconosciute, inLibreria: 0 } };
+        let riga;
+        if (nv) riga = `${nv.nome}: ${nv.soglia}%`;
+        else if (prima) riga = `${prima.nome}: ${prima.mancanti} alla fine`;
+        else riga = r.voci.length ? 'Nessun set in corso' : 'Libreria set vuota';
+
+        return {
+            righe: [riga],
+            // Badge: '!' se c'è una notifica non vista, altrimenti le carte
+            // che mancano al set in testa (prima era il primo numero pescato
+            // dal testo, che con nomi tipo "151" dava il numero sbagliato).
+            badge: nv ? '!' : (prima ? prima.mancanti : false),
+            dati: {
+                prima,
+                top: g.inCorso.slice(0, 4),
+                nInCorso: g.inCorso.length,
+                nCompletati: g.completati.length,
+                nNonIniziati: g.nonIniziati.length,
+                nNascosti: g.nascosti.length,
+                notifica: nv,
+                senzaCatalogo: _setM.conteggi.size === 0,
+                vuoto: r.voci.length === 0
             }
-            const inLibreria = voci.filter(v => v.totale).length;
-            const prima = voci[0];
-            return {
-                righe: [prima.totale ? `${prima.nome}: ${prima.hai}/${prima.totale}` : `${voci.length} espansioni`],
-                dati: { voci, riconosciute, inLibreria }
-            };
-        },
-        // MODIFICATO (2026-08-30): prima apriva semplicemente
-        // Visualizzazione generica (tab:'visualizzazione') — ora ha una
-        // pagina propria (#set in index.html, renderPaginaSet() sotto).
-        // Nessun click sulle righe (deciso da Claudio): la pagina è solo
-        // di consultazione.
-        tab: 'set',
+        };
+    },
+    tab: 'set',
 };
 
-// ── PAGINA "SET" (2026-08-30) ───────────────────────────────────────────
-// Sesto widget con pagina di dettaglio propria. Riusa
-// CATALOGO_WIDGET.set_completamento.preview() per intero (dati.voci: già
-// TUTTE le espansioni, non solo le prime 4 del ball — nessun taglio da
-// togliere qui, a differenza delle altre pagine). Sola consultazione:
-// nessun click sulle righe, nessuna ricerca, ordinamento fisso per
-// percentuale (deciso da Claudio) — stesso ordine già dato dal preview.
+// ── PAGINA "SET" ─────────────────────────────────────────────────────────
+const _SET_SCHEDE = [
+    { id: 'incorso',     etichetta: 'In corso',     chiave: 'inCorso',     vuoto: 'Nessun set in corso: aggiungi una carta di un set per iniziare.' },
+    { id: 'completati',  etichetta: 'Completati',   chiave: 'completati',  vuoto: 'Nessun set completato, per ora.' },
+    { id: 'noniniziati', etichetta: 'Non iniziati', chiave: 'nonIniziati', vuoto: 'Hai già almeno una carta di ogni set.' },
+    { id: 'nascosti',    etichetta: 'Nascosti',     chiave: 'nascosti',    vuoto: 'Nessun set nascosto. Con "Modifica" puoi nascondere quelli che non ti interessano.' }
+];
+
+const _setUi = {
+    tab: 'incorso',
+    modifica: false,        // elenco: nascondi/mostra set
+    dett: null,             // sigla del set aperto, null = elenco
+    filtro: 'tutte',        // dettaglio: tutte | mancano | ce_l_ho
+    modificaDett: false,    // dettaglio: ignora/riattiva carte
+    msg: '',
+    token: 0
+};
+
+function _setUiAttr(s) {
+    return String(s == null ? '' : s)
+        .replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;')
+        .replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
 async function renderPaginaSet() {
     const container = document.getElementById('setContenuto');
     if (!container) return;
 
-    const def = CATALOGO_WIDGET.set_completamento;
-    let dati;
+    _setUi.tab = 'incorso';
+    _setUi.modifica = false;
+    _setUi.filtro = 'tutte';
+    _setUi.modificaDett = false;
+    _setUi.msg = '';
+    _setUi.dett = null;
+
+    // Se c'è una notifica non vista, la pagina si apre direttamente sul set
+    // giusto (vale sia dal clic sulla notifica in tendina sia dalla pallina).
+    let nv = null;
+    try { nv = setMNotificaNonVista(); } catch (_) { nv = null; }
+    if (nv) _setUi.dett = nv.sigla;
+
+    await _setUiRender();
+
+    // Aperta la pagina = vista. La pallina si aggiorna alla chiusura (la
+    // Home si ridisegna da sola).
+    if (nv) await setMSegnaViste();
+
+    // Stato non ancora letto (pagina aperta appena dopo l'avvio): un
+    // tentativo e ridisegno.
+    if (!_setM.baseOk && !_setM.occupato) {
+        await setMotoreAggiorna({ render: false });
+        await _setUiRender();
+    }
+}
+
+function _setUiErrore(container, testo) {
+    container.innerHTML = `
+        <div class="page-header"><span class="page-title">Set</span></div>
+        <p style="text-align:center; color:var(--text-muted); font-size:0.85rem; padding:2rem 0;">${_setUiAttr(testo)}</p>`;
+}
+
+async function _setUiRender() {
+    const container = document.getElementById('setContenuto');
+    if (!container) return;
     try {
-        dati = def.preview().dati;
+        if (_setUi.dett) await _setUiRenderDettaglio(container);
+        else _setUiRenderLista(container);
     } catch (e) {
         console.error('renderPaginaSet:', e);
-        container.innerHTML = '<p style="text-align:center; color:var(--text-muted); font-size:0.85rem; padding:1rem 0;">Errore nel caricamento.</p>';
-        return;
+        _setUiErrore(container, 'Errore nel caricamento.');
     }
+}
 
-    const voci = (dati && dati.voci) || [];
-    if (voci.length === 0) {
-        container.innerHTML = `
-            <div class="page-header">
-                <span class="page-title">Set</span>
-            </div>
-            <p style="text-align:center; color:var(--text-muted); font-size:0.85rem; padding:2rem 0;">Nessuna espansione trovata.</p>
-        `;
-        return;
+// ── ELENCO ───────────────────────────────────────────────────────────────
+function _setUiRigaHtml(v) {
+    const perc = v.completo ? 100 : Math.floor(v.perc);
+    const sub = (v.completo ? 'Completo' : `${v.mancanti} ${v.mancanti === 1 ? 'mancante' : 'mancanti'}`)
+        + ' · ' + (v.catalogo ? 'masterset' : 'set base');
+    const occhio = _setUi.modifica
+        ? `<i class="fa-solid ${v.nascosto ? 'fa-eye' : 'fa-eye-slash'} set-riga-occhio" title="${v.nascosto ? 'Mostra' : 'Nascondi'}"></i>`
+        : '';
+    return `<div class="pg-riga-set set-riga${v.nascosto ? ' nascosto' : ''}" data-sigla="${_setUiAttr(v.sigla)}" onclick="_setUiClickRiga(this.dataset.sigla)">
+        <div class="pg-riga-set-testa"><b>${_setUiAttr(v.nome)}</b><span>${v.hai}/${v.totale} · ${perc}%${occhio}</span></div>
+        <div class="pg-barra-track"><div class="pg-barra-fill" style="width:${perc}%"></div></div>
+        <div class="set-riga-sub">${sub}</div>
+    </div>`;
+}
+
+function _setUiRenderLista(container) {
+    const r = setMCalcolaTutti();
+    if (r.daCaricare.length) {
+        setMCaricaRighe(r.daCaricare)
+            .then(caricate => { if (caricate && !_setUi.dett) _setUiRender(); })
+            .catch(e => console.error('Set — caricamento righe:', e));
     }
+    const g = setMSuddividi(r.voci);
+    const scheda = _SET_SCHEDE.find(s => s.id === _setUi.tab) || _SET_SCHEDE[0];
+    const elenco = g[scheda.chiave];
 
-    const totale = voci.length;
-    const inLibreria = dati.inLibreria || 0;
-    const riconosciute = dati.riconosciute || 0;
-    const prima = voci[0];
+    const schede = _SET_SCHEDE.map(s =>
+        `<span class="pg-filtro${s.id === scheda.id ? ' attivo' : ''}" onclick="_setUiImpostaScheda('${s.id}')">${s.etichetta} (${g[s.chiave].length})</span>`
+    ).join('');
 
-    const righe = voci.map(v => {
-        const haBarra = v.totale && v.perc != null;
-        const testa = haBarra
-            ? `<b>${escapeHtml(v.nome)}</b><span>${v.hai}/${v.totale} · ${Math.round(v.perc)}%</span>`
-            : `<b>${escapeHtml(v.nome)}</b><span>${v.hai} cart${v.hai === 1 ? 'a' : 'e'}</span>`;
-        const barra = haBarra
-            ? `<div class="pg-barra-track"><div class="pg-barra-fill" style="width:${v.perc}%"></div></div>`
-            : '<span style="font-size:0.7rem; color:var(--text-muted);">Avanzamento non disponibile — libreria set da compilare</span>';
-        return `<div class="pg-riga-set"><div class="pg-riga-set-testa">${testa}</div>${barra}</div>`;
-    }).join('');
+    const visibili = r.voci.length - g.nascosti.length;
+    const riepilogo = `${visibili} espansioni · ${g.completati.length} completate`;
+
+    const nSco = r.sconosciute.length;
+    const avvisoSconosciute = nSco
+        ? `<div class="set-nota"><i class="fa-solid fa-triangle-exclamation"></i> ${nSco === 1 ? '1 sigla' : nSco + ' sigle'} in collezione non ${nSco === 1 ? 'è' : 'sono'} in libreria (espansione nuova?): ${
+            r.sconosciute.slice(0, 8).map(s => `${_setUiAttr(s.sigla)} (${s.carte})`).join(', ')}${nSco > 8 ? '…' : ''}. Vanno aggiunte alla libreria.</div>`
+        : '';
+    const avvisoStato = (_setM.tentato && !_setM.baseOk)
+        ? '<div class="set-nota">Preferenze Set non disponibili al momento: nascondi/ignora e notifiche sono disattivati.</div>'
+        : '';
+    const notaModifica = _setUi.modifica
+        ? '<div class="set-nota">Tocca un set per nasconderlo o farlo tornare visibile. I set nascosti notificano solo al 99% e al 100%.</div>'
+        : '';
 
     container.innerHTML = `
         <div class="page-header">
             <span class="page-title">Set</span>
+            <span class="page-azione${_setUi.modifica ? ' attiva' : ''}" onclick="_setUiToggleModifica()">${_setUi.modifica ? 'Fine' : 'Modifica'}</span>
         </div>
         <div class="pg-pagina">
+            <div class="pg-sotto">${riepilogo}</div>
+            ${avvisoStato}${avvisoSconosciute}${notaModifica}
+            <div class="pg-filtri">${schede}</div>
+            <div class="set-msg">${_setUiAttr(_setUi.msg)}</div>
+            <div class="pg-elenco">${elenco.length
+                ? elenco.map(_setUiRigaHtml).join('')
+                : `<p style="text-align:center; color:var(--text-muted); font-size:0.85rem; padding:1.5rem 0;">${_setUiAttr(scheda.vuoto)}</p>`}</div>
+        </div>`;
+}
+
+function _setUiImpostaScheda(id) {
+    _setUi.tab = id;
+    _setUi.msg = '';
+    _setUiRender();
+}
+
+function _setUiToggleModifica() {
+    _setUi.modifica = !_setUi.modifica;
+    _setUi.msg = '';
+    _setUiRender();
+}
+
+function _setUiClickRiga(sigla) {
+    if (!sigla) return;
+    if (_setUi.modifica) return _setUiToggleNascosto(sigla);
+    _setUiApriDettaglio(sigla);
+}
+
+async function _setUiToggleNascosto(sigla) {
+    const userId = await authGetUserId();
+    if (!userId) return;
+    const eraNascosto = _setM.nascosti.has(sigla);
+    _setUi.msg = '';
+    if (eraNascosto) _setM.nascosti.delete(sigla); else _setM.nascosti.add(sigla);
+    _setUiRender();
+
+    const { error } = await setNascostoImposta(userId, sigla, !eraNascosto);
+    if (error) {
+        console.error('Set — nascondi/mostra:', error.message || error);
+        if (eraNascosto) _setM.nascosti.add(sigla); else _setM.nascosti.delete(sigla);
+        _setUi.msg = 'Non sono riuscito a salvare la modifica. Riprova.';
+        _setUiRender();
+        return;
+    }
+    setMotoreAggiorna({ render: false });
+}
+
+// ── DETTAGLIO DI UN SET ──────────────────────────────────────────────────
+function _setUiApriDettaglio(sigla) {
+    _setUi.dett = sigla;
+    _setUi.filtro = 'tutte';
+    _setUi.modificaDett = false;
+    _setUi.msg = '';
+    _setUiRender();
+    const cont = document.querySelector('.container');
+    if (cont && typeof cont.scrollTo === 'function') cont.scrollTo(0, 0);
+}
+
+function _setUiChiudiDettaglio() {
+    _setUi.dett = null;
+    _setUi.modificaDett = false;
+    _setUi.msg = '';
+    _setUiRender();
+}
+
+function _setUiImpostaFiltro(f) {
+    _setUi.filtro = f;
+    _setUiRender();
+}
+
+function _setUiToggleModificaDett() {
+    _setUi.modificaDett = !_setUi.modificaDett;
+    _setUi.msg = '';
+    _setUiRender();
+}
+
+async function _setUiRenderDettaglio(container) {
+    const sigla = _setUi.dett;
+    const token = ++_setUi.token;
+    const lib = (typeof _ballLIBRERIA_SET !== 'undefined' && _ballLIBRERIA_SET) ? _ballLIBRERIA_SET : {};
+    const nome = (lib[sigla] && lib[sigla].nome) || sigla;
+
+    const intestazione = (azione) => `
+        <div class="page-header">
+            <span class="page-azione attiva" onclick="_setUiChiudiDettaglio()"><i class="fa-solid fa-chevron-left"></i> Set</span>
+            <span class="page-title">${_setUiAttr(nome)}</span>
+            ${azione || ''}
+        </div>`;
+
+    let dati = setMVociSet(sigla);
+    if (!dati) {
+        container.innerHTML = intestazione('') +
+            '<p style="text-align:center; color:var(--text-muted); font-size:0.85rem; padding:2rem 0;">Caricamento…</p>';
+        await setMCaricaRighe([sigla]);
+        if (token !== _setUi.token || _setUi.dett !== sigla) return;   // nel frattempo l'utente ha cambiato schermata
+        dati = setMVociSet(sigla);
+        if (!dati) {
+            container.innerHTML = intestazione('') +
+                '<p style="text-align:center; color:var(--danger); font-size:0.85rem; padding:2rem 0;">Non riesco a leggere le carte di questo set. Riprova tra poco.</p>';
+            return;
+        }
+    }
+
+    const voci = dati.voci;
+    let totale = 0, hai = 0;
+    voci.forEach(v => { if (!v.ignorata) { totale++; if (v.posseduta) hai++; } });
+    const mancanti = totale - hai;
+    const perc = totale > 0 ? (hai / totale) * 100 : 0;
+    const percTesto = (totale > 0 && hai === totale) ? 100 : Math.floor(perc);
+
+    const filtri = [
+        ['tutte', 'Tutte'],
+        ['mancano', `Mancano (${mancanti})`],
+        ['ce_l_ho', `Ce l'ho (${hai})`]
+    ].map(([id, et]) => `<span class="pg-filtro${_setUi.filtro === id ? ' attivo' : ''}" onclick="_setUiImpostaFiltro('${id}')">${et}</span>`).join('');
+
+    const visibili = voci.filter(v => {
+        if (_setUi.filtro === 'mancano') return !v.posseduta && !v.ignorata;
+        if (_setUi.filtro === 'ce_l_ho') return v.posseduta && !v.ignorata;
+        return true;
+    });
+
+    const carte = visibili.map(v => {
+        const src = (typeof _urlImmagineVisualizzabile === 'function') ? _urlImmagineVisualizzabile(v.immagine, 200) : null;
+        const stato = v.ignorata ? 'Ignorata' : (v.posseduta ? "C'è" : 'Manca');
+        const classe = v.ignorata ? 'ignorata' : (v.posseduta ? 'ce-l-ho' : 'manca');
+        return `<div class="set-carta ${classe}" data-n="${v.numero}" data-v="${_setUiAttr(v.variante)}" onclick="_setUiClickCarta(this)">
+            <span class="set-carta-badge">${stato}</span>
+            <div class="set-carta-img">${src ? `<img loading="lazy" src="${src}" alt="" onerror="this.remove()">` : ''}<span class="set-carta-num">${v.numero}</span></div>
+            <div class="set-carta-nome">${_setUiAttr(v.nome)}</div>
+            ${v.variante !== 'normale' ? `<div class="set-carta-var">${_setUiAttr(v.variante)}</div>` : ''}
+        </div>`;
+    }).join('');
+
+    const notaModifica = _setUi.modificaDett
+        ? '<div class="set-nota">Tocca una carta per ignorarla o riattivarla. Le carte ignorate non contano nel completamento (es. promo Pokémon Center che non vuoi nel masterset).</div>'
+        : '';
+
+    container.innerHTML = intestazione(
+        `<span class="page-azione${_setUi.modificaDett ? ' attiva' : ''}" onclick="_setUiToggleModificaDett()">${_setUi.modificaDett ? 'Fine' : 'Ignora carte'}</span>`) + `
+        <div class="pg-pagina${_setUi.modificaDett ? ' set-modifica' : ''}">
             <div class="pg-intro">
-                <div class="pg-grande">${totale}</div>
-                <div class="pg-sotto">${prima.totale && prima.perc != null ? `${prima.nome}: ${Math.round(prima.perc)}% completo` : `${prima.nome} in testa`}</div>
+                <div class="pg-grande">${percTesto}%</div>
+                <div class="pg-sotto">${hai}/${totale} · ${mancanti === 0 && totale > 0 ? 'completo' : mancanti + ' mancanti'} · ${dati.catalogo ? 'masterset' : 'set base (catalogo per carta da caricare)'}</div>
             </div>
-            <div class="pg-stat">
-                <div><b>${totale}</b><span>Espansioni</span></div>
-                <div><b>${inLibreria}</b><span>In libreria</span></div>
-                <div><b>${riconosciute}</b><span>Carte riconosciute</span></div>
-            </div>
-            <div class="pg-elenco">${righe}</div>
-        </div>
-    `;
+            <div class="pg-barra-track"><div class="pg-barra-fill" style="width:${percTesto}%"></div></div>
+            ${notaModifica}
+            <div class="pg-filtri">${filtri}</div>
+            <div class="set-msg">${_setUiAttr(_setUi.msg)}</div>
+            ${carte
+                ? `<div class="set-griglia">${carte}</div>`
+                : '<p style="text-align:center; color:var(--text-muted); font-size:0.85rem; padding:1.5rem 0;">Nessuna carta in questa vista.</p>'}
+        </div>`;
+}
+
+function _setUiClickCarta(el) {
+    if (!_setUi.modificaDett || !el) return;
+    const numero = parseInt(el.dataset.n, 10);
+    const variante = el.dataset.v;
+    if (!Number.isFinite(numero) || !variante) return;
+    return _setUiToggleIgnora(numero, variante);
+}
+
+async function _setUiToggleIgnora(numero, variante) {
+    const userId = await authGetUserId();
+    const sigla = _setUi.dett;
+    if (!userId || !sigla) return;
+    const chiave = setMChiaveIgnorata(sigla, numero, variante);
+    const eraIgnorata = _setM.ignorate.has(chiave);
+    _setUi.msg = '';
+    if (eraIgnorata) _setM.ignorate.delete(chiave); else _setM.ignorate.add(chiave);
+    _setUiRender();
+
+    const { error } = await setIgnorataImposta(userId, sigla, numero, variante, !eraIgnorata);
+    if (error) {
+        console.error('Set — ignora carta:', error.message || error);
+        if (eraIgnorata) _setM.ignorate.add(chiave); else _setM.ignorate.delete(chiave);
+        _setUi.msg = 'Non sono riuscito a salvare la modifica. Riprova.';
+        _setUiRender();
+        return;
+    }
+    // Ignorare/riattivare una carta cambia la percentuale: rivaluta le soglie.
+    setMotoreAggiorna({ render: false });
 }
