@@ -404,7 +404,8 @@ function setMEtichettaVariante(v) {
 // coerenti, NON dimostrata): 'Vn' nel link Cardmarket degli Additionals =
 // n-esimo prodotto per ID Cardmarket crescente tra le varianti con foil
 // speciale della carta (nel catalogo: nome con '-', es. reverse-energy).
-// Senza versione nel link ma con UNA sola variante speciale: quella.
+// Senza versione nel link ma con UNA sola variante speciale: quella (anche
+// con un link di ricerca).
 // Negli altri casi nessuna proposta (si sceglie a mano).
 // Richiede le righe del catalogo già caricate.
 function setMDaClassificare() {
@@ -429,8 +430,12 @@ function setMDaClassificare() {
             const k = parseInt(mv[1], 10);
             if (speciali[k - 1]) { proposta = speciali[k - 1].variante; metodo = 'dal link (V' + k + ')'; }
             else metodo = 'V' + k + ' non trovata nel catalogo';
-        } else if (!mv && /\/Products\/Singles\//.test(link) && speciali.length === 1) {
-            proposta = speciali[0].variante; metodo = 'stampa unica';
+        } else if (!mv && speciali.length === 1) {
+            // Una carta X è per definizione una stampa speciale: se la carta
+            // ne ha UNA sola, è quella, qualunque sia il link (anche una
+            // ricerca Cardmarket).
+            proposta = speciali[0].variante;
+            metodo = /\/Products\/Singles\//.test(link) ? 'stampa unica' : 'unica possibile';
         } else if (mv) {
             metodo = 'link non degli Additionals';
         }
