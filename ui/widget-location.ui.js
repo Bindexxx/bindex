@@ -24,10 +24,13 @@
 // - authGetUserId, locationsList, locationExists, locationInsert,
 //   locationDelete, escapeHtml: esterne, non toccate.
 //
-// AGGIORNAMENTO 2026-09-20 (sessione widget Location): il tasto "+ Aggiungi"
-// dell'header è sostituito da "Gestisci" — modalità gestione con
-// aggiungi / rinomina / elimina / sposta le carte, singolo o su selezione
-// multipla. Il "✕" per riga della vecchia pagina è confluito lì. La voce
+// AGGIORNAMENTO 2026-09-20 (sessione widget Location): pagina rifatta a
+// TESSERE con anteprima del binder-location (copertina reale, icona di
+// ripiego), stessa griglia e stesso spirito di ui/widget-condividi.ui.js —
+// ma il tap sulla tessera GESTISCE la location invece di condividerla:
+// vedi carte / rinomina / sposta tutte le carte / elimina (solo se vuota).
+// Spunta in alto a destra sulla tessera = selezione multipla (sposta /
+// elimina in blocco). "Più piena" → "Più valore". La voce
 // CATALOGO_WIDGET.location qui sotto e la firma renderPaginaLocation()
 // (chiamata senza argomenti da paginainiziale-dettaglio.ui.js) sono
 // INVARIATE. Rinomina = RPC atomica sql/65 (data/locations.repository.js:
@@ -36,6 +39,8 @@
 // il client invia la richiesta admin già esistente (creaRichiestaPendente
 // 'binder_nome'). Chi vuole mostrare il nuovo nome in attesa legge
 // binders.nome_in_attesa (colonna generata, NULL = nessuna proposta).
+// CSS della pagina e modale "Gestisci": iniettati da questo file
+// (_locAssicuraStile) — index.html NON toccato.
 // ───────────────────────────────────────────────────────────────────────
 
 // ── VOCE DI CATALOGO ──────────────────────────────────────────────────
@@ -62,60 +67,78 @@ CATALOGO_WIDGET.location = {
 };
 
 // ── PAGINA "LOCATION" ────────────────────────────────────────────────────
-// Due fonti unite (invariato dal 2026-08-30):
-//   1) CATALOGO_WIDGET.location.preview() → dati.voci: location USATE da
-//      almeno una carta, con conteggio (da carteReali, nessuna query nuova).
+// Fonti unite:
+//   1) carteReali (stato 'collezione', già in memoria, nessuna query):
+//      per ogni location numero di carte (righe, come nel widget Binder) e
+//      VALORE = Σ prezzo × qty (stessa formula di widget-valore-collezione).
 //   2) locationsList(userId) → TUTTE le location della tabella 'location',
 //      comprese quelle senza ancora nessuna carta.
-// Click su una riga (fuori dalla modalità Gestisci) → RIUSA
-// _ballAzioneRiga(evt,'location',nome): apre Visualizzazione filtrata.
+//   3) bindersQueryTutti(userId) → il binder-location di ogni location:
+//      copertina (via _risolviCopertinaBinder, ui/binder.ui.js, stessa
+//      cache di Binder e Condividi) e nome in attesa (nome_in_attesa).
 //
-// MODALITÀ "GESTISCI" (2026-09-20). Stato tenuto qui sotto (prefisso _loc,
-// verificato senza collisioni con gli altri file):
-//   _locDati      → ultima lettura (voci + binder-location per nome): i tap
-//                   di selezione ridisegnano da qui, senza nuove query.
-//   _locGestione  → modalità attiva. Si azzera a ogni apertura "fresca"
-//                   della pagina (renderPaginaLocation() senza argomenti);
-//                   le operazioni interne ricaricano con { mantieni:true }.
-//   _locSelezione → nomi selezionati (azioni massive).
-//   _locPannello  → pannello inline "Sposta carte" (inline, non overlay:
-//                   niente position:fixed dentro la cornice).
+// TESSERE (2026-09-20): tap sulla tessera → modale "Gestisci" a schermo
+// intero DENTRO la cornice (stesso meccanismo di #condividiShareModal:
+// _rettangoloSchermoCornice + resize). Il modale è creato da JS, non c'è
+// markup in index.html.
+//
+// Stato tenuto qui sotto (prefisso _loc, verificato senza collisioni):
+//   _locDati      → { voci:[{nome,n,valore}], binder:{nome→riga binders},
+//                     copertine:{nome→url} }: le tessere si ridisegnano da
+//                   qui, senza nuove query.
+//   _locSelezione → nomi spuntati (azioni multiple).
+//   _locModale    → null | {tipo:'gestisci', nome} | {tipo:'sposta', sorgenti}
+//   _locOccupato  → blocca i doppi tap durante un'operazione.
+// Si esce da selezione/modale a ogni apertura "fresca" della pagina
+// (renderPaginaLocation() senza argomenti); le operazioni interne
+// ricaricano con { mantieni:true }.
 //
 // CONTENITORI DI SISTEMA — '?', 'SCAMBIO', 'WISHLIST' (decisione di
 // Claudio): ci sono funzioni del sito che si basano su questi nomi, quindi
-// qui sono BLOCCATI del tutto: niente rinomina, elimina, selezione, "sposta
-// carte" da lì; mai come nome nuovo né destinazione. Unica eccezione: '?'
-// (fallback "in attesa di una location", vedi widget-dafare) resta valida
-// come DESTINAZIONE dello spostamento. Le carte dentro si sistemano come
-// sempre (modifica carta / widget Da fare).
-// '—' = carte senza location (preview() le raggruppa così): se compare è
-// una riga inerte, nessuna azione.
+// BLOCCATI: niente rinomina, elimina, selezione, "sposta carte" da lì; mai
+// come nome nuovo né destinazione. Eccezione: '?' (fallback "in attesa di
+// una location", vedi widget-dafare) resta valida come DESTINAZIONE. Dal
+// modale si possono comunque VEDERE le loro carte.
+// '—' = carte senza location (se mai comparisse): tessera inerte.
 //
 // LOCATION VUOTE: MAI cancellate in automatico — né dopo uno spostamento
-// né altrove. Si eliminano solo se l'utente lo chiede (🗑 / "Elimina (n)").
-// Sono rese molto evidenti (badge VUOTA + riga rossa) in entrambe le viste.
+// né altrove. Si eliminano solo su richiesta esplicita dell'utente. Sono
+// rese molto evidenti (tessera rossa, fascia VUOTA, riquadro "Vuote").
 // I conteggi che decidono se eliminare/spostare sono RICALCOLATI da
 // carteReali al momento dell'azione (mai dalla cache di disegno: una carta
 // arrivata dall'estensione nel frattempo non deve sparire nel nulla).
 const _LOC_SISTEMA = ['?', 'SCAMBIO', 'WISHLIST'];
-let _locDati = { voci: [], binder: {} };
-let _locGestione = false;
+let _locDati = { voci: [], binder: {}, copertine: {} };
 let _locSelezione = new Set();
-let _locPannello = null;
+let _locModale = null;
 let _locOccupato = false;
+let _locModaleResizeHandler = null;
 
 function _locSistema(nome) { return _LOC_SISTEMA.includes(String(nome).trim().toUpperCase()); }
-// Riga senza nome vero (carte senza location): nessuna azione.
+// Tessera senza nome vero (carte senza location): nessuna azione.
 function _locInerte(nome) { return nome === '—'; }
-// Su queste righe si può selezionare/rinominare/spostare/eliminare.
+// Su queste si può selezionare/rinominare/spostare/eliminare.
 function _locModificabile(nome) { return !_locSistema(nome) && !_locInerte(nome); }
 // Nomi che non si possono creare né usare come nome nuovo.
 function _locRiservata(nome) { return _locSistema(nome) || _locInerte(String(nome).trim()); }
 function _locConteggioLive(nome) {
     return carteReali.filter(c => c.stato === 'collezione' && (c.location || '—') === nome).length;
 }
+function _locVoce(nome) { return _locDati.voci.find(v => v.nome === nome) || null; }
 function _locAttr(s) { return escapeHtml(s).replace(/"/g, '&quot;'); }
 function _locCarte(n) { return `${n} cart${n === 1 ? 'a' : 'e'}`; }
+function _locEur(v) {
+    const n = Number(v) || 0;
+    return '€ ' + n.toLocaleString('it-IT', { minimumFractionDigits: n >= 100 ? 0 : 2, maximumFractionDigits: n >= 100 ? 0 : 2 });
+}
+function _locIconaFallback(nome) {
+    const u = String(nome).trim().toUpperCase();
+    if (u === '?') return 'fa-circle-question';
+    if (u === 'SCAMBIO') return 'fa-right-left';
+    if (u === 'WISHLIST') return 'fa-heart';
+    if (nome === '—') return 'fa-circle-question';
+    return 'fa-box-open'; // come _iconaFallbackBinder() per i binder-location
+}
 
 // Dopo QUALUNQUE modifica alle location: le liste cache usate da altre
 // pagine (tendina Inserimento, checkbox Prezzi, tendina modifica inline)
@@ -130,8 +153,186 @@ async function _locDopoModificaCarte() {
     _locInvalidaCache();
     if (typeof caricaCarteReali === 'function') await caricaCarteReali();
     _locSelezione.clear();
-    _locPannello = null;
     await renderPaginaLocation({ mantieni: true });
+}
+
+// ── CSS (iniettato una volta sola) ──────────────────────────────────────
+// Stessa geometria di .condividi-* (colonne da --ball-misura-binder,
+// copertina 58.2% con proporzione 63:88) con classi proprie: non si
+// aggiunge un consumer alle classi di Condividi (Regola d'Oro #1).
+function _locAssicuraStile() {
+    if (document.getElementById('locStileWidget')) return;
+    const st = document.createElement('style');
+    st.id = 'locStileWidget';
+    st.textContent = `
+        .loc-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(max(var(--ball-misura-binder, 90px), 110px), 1fr)); gap:0.8rem; margin-top:0.4rem; }
+        .loc-tile { cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:0.3rem; padding:0.55rem 0.4rem 0.6rem; border-radius:12px; border:1px solid transparent; transition:background-color .15s ease; min-width:0; }
+        .loc-tile:hover { background-color:var(--bg-color); }
+        .loc-tile.loc-sel { background:var(--primary-light); border-color:var(--primary); }
+        .loc-tile.loc-vuota { background:rgba(211,47,47,.09); border-color:rgba(211,47,47,.55); }
+        .loc-cover { position:relative; width:58.2%; margin:0 auto; aspect-ratio:63 / 88; border-radius:10px; background:var(--border-color); display:flex; align-items:center; justify-content:center; overflow:hidden; box-shadow:0 2px 8px rgba(0,0,0,.12); }
+        .loc-cover img { width:100%; height:100%; object-fit:cover; }
+        .loc-cover > i.loc-ico { font-size:1.6rem; color:var(--text-muted); }
+        .loc-tile.loc-vuota .loc-cover img, .loc-tile.loc-vuota .loc-cover > i.loc-ico { opacity:.45; }
+        .loc-check { position:absolute; top:4px; right:4px; width:22px; height:22px; border-radius:50%; background:color-mix(in srgb, var(--card-bg) 88%, transparent); border:1px solid var(--border-color); display:flex; align-items:center; justify-content:center; cursor:pointer; z-index:2; }
+        .loc-check input { width:14px; height:14px; margin:0; cursor:pointer; accent-color:var(--primary); }
+        .loc-lock { position:absolute; top:4px; right:4px; width:22px; height:22px; border-radius:50%; background:color-mix(in srgb, var(--card-bg) 88%, transparent); display:flex; align-items:center; justify-content:center; font-size:.7rem; color:var(--text-muted); z-index:2; }
+        .loc-attesa { position:absolute; top:4px; left:4px; width:22px; height:22px; border-radius:50%; background:#b8860b; color:#fff; display:flex; align-items:center; justify-content:center; font-size:.68rem; z-index:2; }
+        .loc-badge-vuota { position:absolute; left:0; right:0; bottom:0; background:var(--danger); color:#fff; font-size:.7rem; font-weight:800; letter-spacing:.08em; text-align:center; padding:3px 0; z-index:2; }
+        .loc-nome { font-size:.8rem; font-weight:700; color:var(--text-dark); text-align:center; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:100%; }
+        .loc-meta { font-size:.68rem; color:var(--text-muted); text-align:center; line-height:1.25; }
+        .loc-meta b { color:var(--text-dark); font-weight:650; }
+        #locGestisciModal.modal-overlay { align-items:stretch; justify-content:stretch; padding:0; }
+        #locGestisciModal .modal-content { max-width:none; width:100%; height:100%; max-height:none; }
+        #locGestisciModal .loc-mcover { width:120px; margin:0 auto 0.8rem; aspect-ratio:63 / 88; border-radius:12px; background:var(--border-color); display:flex; align-items:center; justify-content:center; overflow:hidden; box-shadow:0 4px 14px rgba(0,0,0,.2); position:relative; }
+        #locGestisciModal .loc-mcover img { width:100%; height:100%; object-fit:cover; }
+        #locGestisciModal .loc-mcover i { font-size:2.2rem; color:var(--text-muted); }
+        #locGestisciModal .loc-mbtn { width:100%; margin-top:0.55rem; }
+        #locGestisciModal .loc-mbadge-vuota { display:inline-block; font-size:.78rem; font-weight:800; letter-spacing:.08em; padding:4px 12px; border-radius:999px; background:var(--danger); color:#fff; }
+    `;
+    document.head.appendChild(st);
+}
+
+// ── Modale "Gestisci" ───────────────────────────────────────────────────
+// Mirror di _condividiSharePosiziona()/apriCondividiPannelloShare()
+// (ui/widget-condividi.ui.js): duplicazione intenzionale, stessa tecnica.
+function _locModalePosiziona() {
+    const modal = document.getElementById('locGestisciModal');
+    const r = (typeof _rettangoloSchermoCornice === 'function') ? _rettangoloSchermoCornice() : null;
+    if (!modal || !r) return;
+    modal.style.top = r.top + 'px';
+    modal.style.left = r.left + 'px';
+    modal.style.width = r.width + 'px';
+    modal.style.height = r.height + 'px';
+    modal.style.borderRadius = r.borderRadius;
+    const contenuto = modal.querySelector('.modal-content');
+    if (contenuto) contenuto.style.borderRadius = r.borderRadius;
+}
+
+function _locAssicuraModale() {
+    _locAssicuraStile();
+    let m = document.getElementById('locGestisciModal');
+    if (m) return m;
+    m = document.createElement('div');
+    m.id = 'locGestisciModal';
+    m.className = 'modal-overlay';
+    m.setAttribute('onclick', '_locChiudiModale()');
+    m.innerHTML = `
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <button class="close-modal-btn" onclick="_locChiudiModale()"><i class="fa-solid fa-xmark"></i></button>
+            <div id="locModaleCorpo" style="max-width:380px; margin:0 auto;"></div>
+        </div>`;
+    document.body.appendChild(m);
+    return m;
+}
+
+function _locApriModale(stato) {
+    _locModale = stato;
+    const modal = _locAssicuraModale();
+    _locModaleDisegna();
+    modal.style.display = 'flex';
+    _locModalePosiziona();
+    if (!_locModaleResizeHandler) {
+        _locModaleResizeHandler = () => _locModalePosiziona();
+        window.addEventListener('resize', _locModaleResizeHandler);
+    }
+}
+
+function _locChiudiModale() {
+    _locModale = null;
+    const modal = document.getElementById('locGestisciModal');
+    if (modal) modal.style.display = 'none';
+    if (_locModaleResizeHandler) {
+        window.removeEventListener('resize', _locModaleResizeHandler);
+        _locModaleResizeHandler = null;
+    }
+}
+
+function _locModaleDisegna() {
+    const corpo = document.getElementById('locModaleCorpo');
+    if (!corpo || !_locModale) return;
+
+    // ── Sposta: scelta destinazione ─────────────────────────────────────
+    if (_locModale.tipo === 'sposta') {
+        const sorgenti = _locModale.sorgenti;
+        const totale = sorgenti.reduce((somma, nome) => somma + _locConteggioLive(nome), 0);
+        const opzioni = _locDati.voci
+            .map(v => v.nome)
+            .filter(n => (_locModificabile(n) || n === '?') && !sorgenti.includes(n))
+            .map(n => `<option value="${_locAttr(n)}">${escapeHtml(n)}</option>`).join('');
+        corpo.innerHTML = `
+            <h3 style="font-weight:800; margin-bottom:0.4rem;"><i class="fa-solid fa-arrow-right" style="color:var(--primary);"></i> Sposta le carte</h3>
+            <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:1rem;">${_locCarte(totale)} da ${sorgenti.map(n => `<b style="color:var(--text-dark);">${escapeHtml(n)}</b>`).join(', ')} in:</p>
+            <select id="locDestSelect" class="pg-cerca">
+                <option value="">— scegli una location —</option>${opzioni}
+            </select>
+            <input id="locDestNuova" class="pg-cerca" type="text" style="margin-top:0.55rem;" placeholder="oppure scrivi il nome di una nuova location" onkeydown="if(event.key==='Enter'){event.preventDefault(); _locConfermaSposta();}">
+            <p style="font-size:0.72rem; color:var(--text-muted); margin-top:0.6rem;">Le location di partenza NON vengono eliminate: restano, vuote e ben evidenziate.</p>
+            <button type="button" class="btn-main loc-mbtn" onclick="_locConfermaSposta()">Sposta</button>
+            <button type="button" class="btn-secondary loc-mbtn" onclick="_locChiudiModale()">Annulla</button>`;
+        return;
+    }
+
+    // ── Gestisci: menu della singola location ───────────────────────────
+    const nome = _locModale.nome;
+    const v = _locVoce(nome);
+    if (!v) { corpo.innerHTML = '<p style="color:var(--text-muted);">Location non trovata.</p>'; return; }
+    const b = _locDati.binder[nome];
+    const url = _locDati.copertine[nome];
+    const vuota = v.n === 0 && _locModificabile(nome);
+    const cover = url
+        ? `<img src="${_locAttr(url)}" alt="${_locAttr(nome)}" onerror="this.remove();">`
+        : `<i class="fa-solid ${_locIconaFallback(nome)}"></i>`;
+    const meta = vuota
+        ? '<span class="loc-mbadge-vuota">VUOTA</span>'
+        : `<b style="color:var(--text-dark);">${_locCarte(v.n)}</b> · ${_locEur(v.valore)}`;
+    const inAttesa = (b && b.nome_in_attesa)
+        ? `<p style="font-size:0.78rem; color:#b8860b; font-weight:600; margin-top:0.6rem;">⏳ Binder: ${escapeHtml(b.nome)} (${escapeHtml(b.nome_in_attesa)} — in attesa di approvazione)</p>` : '';
+    const modificabile = _locModificabile(nome);
+    const nota = modificabile ? '' : `<p style="font-size:0.78rem; color:var(--text-muted); margin-top:0.6rem;">${
+        nome === '?' ? 'Fallback: qui finiscono le carte in attesa di una location. Non si rinomina né si elimina.'
+        : _locInerte(nome) ? 'Carte senza location.'
+        : 'Contenitore di sistema: ci sono funzioni del sito che si basano su questo nome. Non modificabile.'}</p>`;
+
+    let azioni = '';
+    if (v.n > 0) azioni += `<button type="button" class="btn-main loc-mbtn" onclick="_locVediCarte()"><i class="fa-solid fa-eye"></i> Vedi le carte</button>`;
+    if (modificabile) {
+        azioni += `<button type="button" class="btn-secondary loc-mbtn" onclick="_locRinominaModale()"><i class="fa-solid fa-pen"></i> Rinomina</button>`;
+        if (v.n > 0) azioni += `<button type="button" class="btn-secondary loc-mbtn" onclick="_locSpostaModale()"><i class="fa-solid fa-arrow-right"></i> Sposta tutte le carte in un'altra location</button>`;
+        if (v.n === 0) azioni += `<button type="button" class="btn-secondary loc-mbtn" style="color:var(--danger);" onclick="_locEliminaModale()"><i class="fa-solid fa-trash"></i> Elimina questa location (è vuota)</button>`;
+    }
+
+    corpo.innerHTML = `
+        <div class="loc-mcover">${cover}</div>
+        <h3 style="font-weight:800; margin-bottom:0.3rem; word-break:break-word;">${escapeHtml(nome)}</h3>
+        <div style="font-size:0.85rem; color:var(--text-muted);">${meta}</div>
+        ${inAttesa}${nota}
+        <div style="margin-top:0.8rem;">${azioni}</div>`;
+}
+
+// Tap su una tessera.
+function _locApriGestione(i) {
+    if (_locOccupato) return;
+    const v = _locDati.voci[i];
+    if (v) _locApriModale({ tipo: 'gestisci', nome: v.nome });
+}
+function _locVediCarte() {
+    if (!_locModale || _locModale.tipo !== 'gestisci') return;
+    const nome = _locModale.nome;
+    _locChiudiModale();
+    _ballAzioneRiga(null, 'location', nome);
+}
+async function _locRinominaModale() {
+    if (!_locModale || _locModale.tipo !== 'gestisci') return;
+    await _locRinomina(_locModale.nome);
+}
+function _locSpostaModale() {
+    if (!_locModale || _locModale.tipo !== 'gestisci') return;
+    _locApriSposta([_locModale.nome]);
+}
+async function _locEliminaModale() {
+    if (!_locModale || _locModale.tipo !== 'gestisci') return;
+    await _locElimina([_locModale.nome]);
 }
 
 // ── Aggiungi ────────────────────────────────────────────────────────────
@@ -140,8 +341,8 @@ async function _locAggiungi() {
     const nome = (prompt('Nome della nuova location:') || '').trim();
     if (!nome) return;
     if (_locRiservata(nome)) { alert(`"${nome}" è un nome di sistema (già esistente e non modificabile): scegline un altro.`); return; }
-    const uguale = _locDati.voci.find(([n]) => String(n).toLowerCase() === nome.toLowerCase());
-    if (uguale) { alert(`"${uguale[0]}" esiste già.`); return; }
+    const uguale = _locDati.voci.find(v => String(v.nome).toLowerCase() === nome.toLowerCase());
+    if (uguale) { alert(`"${uguale.nome}" esiste già.`); return; }
 
     _locOccupato = true;
     try {
@@ -158,11 +359,9 @@ async function _locAggiungi() {
 }
 
 // ── Rinomina ────────────────────────────────────────────────────────────
-async function _locRinomina(i) {
+async function _locRinomina(nome) {
     if (_locOccupato) return;
-    const riga = _locDati.voci[i];
-    if (!riga) return;
-    const nome = riga[0];
+    if (!_locVoce(nome)) return;
     if (!_locModificabile(nome)) { alert(`"${nome}" è un contenitore di sistema: non si può rinominare.`); return; }
 
     const input = prompt(`Nuovo nome per "${nome}":`, nome);
@@ -170,8 +369,8 @@ async function _locRinomina(i) {
     const nuovo = input.trim();
     if (!nuovo || nuovo === nome) return;
     if (_locRiservata(nuovo)) { alert(`"${nuovo}" è un nome di sistema: scegline un altro.`); return; }
-    const uguale = _locDati.voci.find(([n]) => n !== nome && String(n).toLowerCase() === nuovo.toLowerCase());
-    if (uguale) { alert(`"${uguale[0]}" esiste già. Scegli un altro nome (oppure usa "Sposta carte" per unirle).`); return; }
+    const uguale = _locDati.voci.find(v => v.nome !== nome && String(v.nome).toLowerCase() === nuovo.toLowerCase());
+    if (uguale) { alert(`"${uguale.nome}" esiste già. Scegli un altro nome (oppure usa "Sposta tutte le carte" per unirle).`); return; }
 
     const n = _locConteggioLive(nome);
     if (!confirm(`Rinominare "${nome}" in "${nuovo}"?\n\nSi aggiornano anche le ${_locCarte(n)} di questa location. Il nome del binder collegato cambierà solo dopo l'approvazione di un admin.`)) return;
@@ -193,6 +392,7 @@ async function _locRinomina(i) {
                 avviso = `Location rinominata. Il nuovo nome del binder è in attesa, ma la richiesta all'admin non è partita (${errRichiesta.message}). Riproponilo dal pannello Design del binder.`;
             }
         }
+        _locChiudiModale();
         await _locDopoModificaCarte();
         if (avviso) alert(avviso);
     } finally { _locOccupato = false; }
@@ -210,7 +410,7 @@ async function _locElimina(nomi) {
         else eliminabili.push(nome);
     });
     if (eliminabili.length === 0) {
-        alert(`Nessuna location eliminabile:\n- ${saltate.join('\n- ')}\n\nSi eliminano solo le location VUOTE. Sposta prima le carte con "Sposta carte".`);
+        alert(`Nessuna location eliminabile:\n- ${saltate.join('\n- ')}\n\nSi eliminano solo le location VUOTE. Sposta prima le carte.`);
         return;
     }
     let msg = eliminabili.length === 1
@@ -227,28 +427,26 @@ async function _locElimina(nomi) {
         if (error) { alert('Errore nella cancellazione: ' + error.message); return; }
         _locInvalidaCache();
         _locSelezione.clear();
+        _locChiudiModale();
         await renderPaginaLocation({ mantieni: true });
     } finally { _locOccupato = false; }
 }
 function _locEliminaSelezionate() { _locElimina([..._locSelezione]); }
-function _locEliminaRiga(i) { const r = _locDati.voci[i]; if (r) _locElimina([r[0]]); }
 
 // ── Sposta le carte (singola o selezione) ───────────────────────────────
-function _locApriPannelloSposta(i) {
+function _locApriSposta(nomi) {
     if (_locOccupato) return;
-    const nomi = (i === null || i === undefined) ? [..._locSelezione] : [(_locDati.voci[i] || [])[0]].filter(Boolean);
-    const sorgenti = nomi.filter(nome => _locModificabile(nome) && _locConteggioLive(nome) > 0);
+    const sorgenti = (nomi || []).filter(nome => _locModificabile(nome) && _locConteggioLive(nome) > 0);
     if (sorgenti.length === 0) { alert('Nessuna carta da spostare: le location scelte sono vuote.'); return; }
-    _locPannello = { sorgenti };
-    _locDisegna();
+    _locApriModale({ tipo: 'sposta', sorgenti });
     const sel = document.getElementById('locDestSelect');
     if (sel) sel.focus();
 }
-function _locChiudiPannello() { _locPannello = null; _locDisegna(); }
+function _locSpostaSelezionate() { _locApriSposta([..._locSelezione]); }
 
 async function _locConfermaSposta() {
-    if (_locOccupato || !_locPannello) return;
-    const sorgenti = _locPannello.sorgenti;
+    if (_locOccupato || !_locModale || _locModale.tipo !== 'sposta') return;
+    const sorgenti = _locModale.sorgenti;
     const nuovaTesto = ((document.getElementById('locDestNuova') || {}).value || '').trim();
     const scelta = (document.getElementById('locDestSelect') || {}).value || '';
 
@@ -256,8 +454,8 @@ async function _locConfermaSposta() {
     let daCreare = false;
     if (nuovaTesto) {
         if (_locRiservata(nuovaTesto)) { alert(`"${nuovaTesto}" è un nome di sistema: per "?" usa la tendina, gli altri non sono validi come destinazione.`); return; }
-        const uguale = _locDati.voci.find(([n]) => String(n).toLowerCase() === nuovaTesto.toLowerCase());
-        destinazione = uguale ? uguale[0] : nuovaTesto;
+        const uguale = _locDati.voci.find(v => String(v.nome).toLowerCase() === nuovaTesto.toLowerCase());
+        destinazione = uguale ? uguale.nome : nuovaTesto;
         daCreare = !uguale;
     }
     if (!destinazione) { alert('Scegli una location di destinazione oppure scrivine una nuova.'); return; }
@@ -282,44 +480,54 @@ async function _locConfermaSposta() {
         }
         const { error } = await locationSpostaCarte(userId, sorgenti, destinazione);
         if (error) { alert('Errore nello spostamento: ' + error.message); return; }
+        _locChiudiModale();
         await _locDopoModificaCarte();
     } finally { _locOccupato = false; }
 }
 
-// ── Selezione / modalità ────────────────────────────────────────────────
-function _locToggleGestione() {
-    _locGestione = !_locGestione;
-    _locSelezione.clear();
-    _locPannello = null;
-    _locDisegna();
-}
+// ── Selezione multipla (spunte sulle tessere) ───────────────────────────
+// Aggiorna solo classi/spunte e barra, senza ridisegnare la griglia.
 function _locToggleSel(i) {
-    if (_locPannello) return;
-    const riga = _locDati.voci[i];
-    if (!riga || !_locModificabile(riga[0])) return;
-    if (_locSelezione.has(riga[0])) _locSelezione.delete(riga[0]); else _locSelezione.add(riga[0]);
-    _locDisegna();
+    const v = _locDati.voci[i];
+    if (!v || !_locModificabile(v.nome)) return;
+    if (_locSelezione.has(v.nome)) _locSelezione.delete(v.nome); else _locSelezione.add(v.nome);
+    _locAggiornaSelezioneUI();
 }
 function _locSelezionaTutte() {
-    if (_locPannello) return;
-    const scelte = _locDati.voci.map(([n]) => n).filter(_locModificabile);
+    const scelte = _locDati.voci.map(v => v.nome).filter(_locModificabile);
     if (scelte.length > 0 && scelte.every(n => _locSelezione.has(n))) _locSelezione.clear();
     else scelte.forEach(n => _locSelezione.add(n));
-    _locDisegna();
+    _locAggiornaSelezioneUI();
 }
-function _locApriFiltro(evt, i) {
-    const riga = _locDati.voci[i];
-    if (riga) _ballAzioneRiga(evt, 'location', riga[0]);
+function _locAnnullaSelezione() { _locSelezione.clear(); _locAggiornaSelezioneUI(); }
+
+function _locAggiornaSelezioneUI() {
+    document.querySelectorAll('#locationContenuto .loc-tile[data-i]').forEach(el => {
+        const v = _locDati.voci[Number(el.dataset.i)];
+        if (!v) return;
+        const sel = _locSelezione.has(v.nome);
+        el.classList.toggle('loc-sel', sel);
+        const cb = el.querySelector('.loc-check input');
+        if (cb) cb.checked = sel;
+    });
+    const barra = document.getElementById('locBarra');
+    if (!barra) return;
+    const nSel = _locSelezione.size;
+    const scelte = _locDati.voci.filter(v => _locModificabile(v.nome));
+    const tutteSel = scelte.length > 0 && scelte.every(v => _locSelezione.has(v.nome));
+    barra.innerHTML = `
+        <button onclick="_locSelezionaTutte()">${tutteSel ? 'Deseleziona tutte' : 'Seleziona tutte'}</button>
+        ${nSel > 0 ? `
+        <button onclick="_locSpostaSelezionate()"><i class="fa-solid fa-arrow-right"></i> Sposta carte (${nSel})</button>
+        <button onclick="_locEliminaSelezionate()" style="color:var(--danger);"><i class="fa-solid fa-trash"></i> Elimina (${nSel})</button>
+        <button onclick="_locAnnullaSelezione()">Annulla</button>` : ''}`;
 }
 
 // ── Disegno (sincrono, da _locDati) ─────────────────────────────────────
-// Stile "location vuota": molto evidente, in entrambe le viste.
-const _LOC_STILE_VUOTA = 'background:rgba(211,47,47,.09); border-left:4px solid var(--danger); border-radius:8px; padding-left:8px;';
-const _LOC_BADGE_VUOTA = '<span style="display:inline-block; font-size:0.72rem; font-weight:800; letter-spacing:.06em; padding:4px 10px; border-radius:999px; background:var(--danger); color:#fff;">VUOTA</span>';
-
 function _locDisegna() {
     const container = document.getElementById('locationContenuto');
     if (!container) return;
+    _locAssicuraStile();
     const voci = _locDati.voci;
 
     if (voci.length === 0) {
@@ -335,196 +543,146 @@ function _locDisegna() {
         return;
     }
 
-    const bloccato = !!_locPannello; // pannello Sposta aperto: righe in sola lettura
+    const nVuote = voci.filter(v => v.n === 0 && _locModificabile(v.nome)).length;
+    // "Più valore": la location col valore più alto (nessuna se tutte a 0).
+    const top = voci.reduce((m, v) => (v.valore > (m ? m.valore : 0) ? v : m), null);
 
-    const righe = voci.map(([nome, n], i) => {
-        const sistema = _locSistema(nome);
-        const vuota = n === 0 && _locModificabile(nome); // '?' vuoto è normale: nessun allarme
-        const b = _locDati.binder[nome];
-
-        // Sotto il nome: binder in attesa di nuovo nome / etichetta sistema.
-        let sub = '';
-        if (b && b.nome_in_attesa) {
-            sub = `<span>Binder: ${escapeHtml(b.nome)} (${escapeHtml(b.nome_in_attesa)} — in attesa di approvazione)</span>`;
-        } else if (nome === '?') {
-            sub = '<span>Fallback: carte in attesa di una location</span>';
-        } else if (sistema) {
-            sub = '<span>Contenitore di sistema — non modificabile</span>';
-        } else if (_locInerte(nome)) {
-            sub = '<span>Carte senza location</span>';
-        }
-        const testo = `<div class="pg-testo"><b>${escapeHtml(nome)}</b>${sub}</div>`;
-        const conteggio = vuota
-            ? `<div class="pg-destra">${_LOC_BADGE_VUOTA}</div>`
-            : `<div class="pg-destra"><b>${n}</b>${n === 1 ? 'carta' : 'carte'}</div>`;
-
-        if (!_locGestione) {
-            const stileN = vuota ? ` style="${_LOC_STILE_VUOTA}"` : '';
-            return `<div class="pg-riga" data-tocca${stileN} onclick="_locApriFiltro(event, ${i})">${testo}${conteggio}</div>`;
-        }
-
+    const tessere = voci.map((v, i) => {
+        const { nome, n, valore } = v;
         const modificabile = _locModificabile(nome);
+        const sistema = _locSistema(nome);
+        const vuota = n === 0 && modificabile; // '?' vuoto è normale: nessun allarme
+        const b = _locDati.binder[nome];
+        const url = _locDati.copertine[nome];
         const sel = _locSelezione.has(nome);
-        let casella = `<span style="width:18px; flex:0 0 auto;"></span>`;
-        if (modificabile) {
-            casella = `<input type="checkbox" ${sel ? 'checked' : ''} ${bloccato ? 'disabled' : ''} onclick="event.stopPropagation(); _locToggleSel(${i})" style="accent-color:var(--primary); width:18px; height:18px; flex:0 0 auto; margin:0;">`;
-        } else if (sistema) {
-            casella = `<i class="fa-solid fa-lock" title="Contenitore di sistema" style="width:18px; flex:0 0 auto; color:var(--text-muted); font-size:0.8rem; text-align:center;"></i>`;
-        }
-        const pill = 'padding:5px 9px; flex:0 0 auto;';
-        let icone = '';
-        if (modificabile && !bloccato) {
-            icone += `<span class="pg-filtro" style="${pill}" title="Rinomina" onclick="event.stopPropagation(); _locRinomina(${i})"><i class="fa-solid fa-pen"></i></span>`;
-            if (n > 0) icone += `<span class="pg-filtro" style="${pill}" title="Sposta le carte in un'altra location" onclick="event.stopPropagation(); _locApriPannelloSposta(${i})"><i class="fa-solid fa-arrow-right"></i></span>`;
-            if (n === 0) icone += `<span class="pg-filtro" style="${pill} color:var(--danger);" title="Elimina (è vuota)" onclick="event.stopPropagation(); _locEliminaRiga(${i})"><i class="fa-solid fa-trash"></i></span>`;
-        }
-        let stile = 'gap:8px;';
-        if (vuota) stile += ' ' + _LOC_STILE_VUOTA;
-        if (sel) stile += ' background:var(--primary-light);';
-        const tocca = (modificabile && !bloccato) ? `data-tocca onclick="_locToggleSel(${i})"` : '';
-        return `<div class="pg-riga" ${tocca} style="${stile}">${casella}${testo}${conteggio}${icone}</div>`;
+        const cover = url
+            ? `<img src="${_locAttr(url)}" alt="${_locAttr(nome)}" loading="lazy" onerror="this.remove();">`
+            : `<i class="fa-solid ${_locIconaFallback(nome)} loc-ico"></i>`;
+        const check = modificabile
+            ? `<label class="loc-check" title="Seleziona" onclick="event.stopPropagation();"><input type="checkbox" ${sel ? 'checked' : ''} onclick="event.stopPropagation(); _locToggleSel(${i})"></label>`
+            : (sistema ? '<span class="loc-lock" title="Contenitore di sistema"><i class="fa-solid fa-lock"></i></span>' : '');
+        const attesa = (b && b.nome_in_attesa)
+            ? `<span class="loc-attesa" title="${_locAttr(`Binder: ${b.nome} (${b.nome_in_attesa} — in attesa di approvazione)`)}"><i class="fa-solid fa-hourglass-half"></i></span>` : '';
+        const badge = vuota ? '<span class="loc-badge-vuota">VUOTA</span>' : '';
+        const meta = vuota
+            ? '<div class="loc-meta">0 carte</div>'
+            : `<div class="loc-meta"><b>${n}</b> ${n === 1 ? 'carta' : 'carte'}<br>${_locEur(valore)}</div>`;
+        return `
+            <div class="loc-tile${vuota ? ' loc-vuota' : ''}${sel ? ' loc-sel' : ''}" data-i="${i}" title="${_locAttr(nome)}" onclick="_locApriGestione(${i})">
+                <div class="loc-cover">${cover}${check}${attesa}${badge}</div>
+                <div class="loc-nome">${escapeHtml(nome)}</div>
+                ${meta}
+            </div>`;
     }).join('');
 
-    const nVuote = voci.filter(([nome, n]) => n === 0 && _locModificabile(nome)).length;
-
-    // ── Modalità normale ────────────────────────────────────────────────
-    if (!_locGestione) {
-        const totale = voci.length;
-        const [nomePiuPiena, conteggioPiuPieno] = voci[0];
-        const tileVuote = nVuote > 0
-            ? `<div style="background:rgba(211,47,47,.12);"><b style="color:var(--danger);">${nVuote}</b><span>Vuote</span></div>` : '';
-        container.innerHTML = `
-            <div class="page-header">
-                <span class="page-title">Location</span>
-                <span class="page-azione attiva" onclick="_locToggleGestione()">Gestisci</span>
-            </div>
-            <div class="pg-pagina">
-                <div class="pg-intro">
-                    <div class="pg-grande">${totale}</div>
-                    <div class="pg-sotto">più piena: ${escapeHtml(nomePiuPiena)} (${conteggioPiuPieno} carte)</div>
-                </div>
-                <div class="pg-stat">
-                    <div><b>${totale}</b><span>Location totali</span></div>
-                    <div><b>${escapeHtml(nomePiuPiena)}</b><span>Più piena (${conteggioPiuPieno})</span></div>
-                    ${tileVuote}
-                </div>
-                <div class="pg-elenco">${righe}</div>
-            </div>
-        `;
-        return;
-    }
-
-    // ── Modalità Gestisci ───────────────────────────────────────────────
-    const nSel = _locSelezione.size;
-    const scelte = voci.filter(([n]) => _locModificabile(n));
-    const tutteSel = scelte.length > 0 && scelte.every(([n]) => _locSelezione.has(n));
-
-    let pannello = '';
-    if (_locPannello) {
-        const sorgenti = _locPannello.sorgenti;
-        const totale = sorgenti.reduce((somma, nome) => somma + _locConteggioLive(nome), 0);
-        const opzioni = voci
-            .map(([n]) => n)
-            .filter(n => (_locModificabile(n) || n === '?') && !sorgenti.includes(n))
-            .map(n => `<option value="${_locAttr(n)}">${escapeHtml(n)}</option>`).join('');
-        pannello = `
-            <div style="display:flex; flex-direction:column; gap:8px; padding:12px; border-radius:12px; background:var(--primary-light);">
-                <div class="pg-testo">
-                    <b style="white-space:normal;">Sposta ${_locCarte(totale)} da ${sorgenti.map(n => escapeHtml(n)).join(', ')} in:</b>
-                </div>
-                <select id="locDestSelect" class="pg-cerca">
-                    <option value="">— scegli una location —</option>${opzioni}
-                </select>
-                <input id="locDestNuova" class="pg-cerca" type="text" placeholder="oppure scrivi il nome di una nuova location" onkeydown="if(event.key==='Enter'){event.preventDefault(); _locConfermaSposta();}">
-                <div class="pg-bottoni">
-                    <button class="primario" onclick="_locConfermaSposta()">Sposta</button>
-                    <button onclick="_locChiudiPannello()">Annulla</button>
-                </div>
-            </div>`;
-    }
-
-    const barraSelezione = (nSel > 0 && !bloccato) ? `
-        <div class="pg-bottoni">
-            <button onclick="_locApriPannelloSposta(null)"><i class="fa-solid fa-arrow-right"></i> Sposta carte (${nSel})</button>
-            <button onclick="_locEliminaSelezionate()" style="color:var(--danger);"><i class="fa-solid fa-trash"></i> Elimina (${nSel})</button>
-        </div>` : '';
-
+    const tileVuote = nVuote > 0
+        ? `<div style="background:rgba(211,47,47,.12);"><b style="color:var(--danger);">${nVuote}</b><span>Vuote</span></div>` : '';
     container.innerHTML = `
         <div class="page-header">
-            <span class="page-title">Gestisci location</span>
-            <span class="page-azione attiva" onclick="_locToggleGestione()">Fine</span>
+            <span class="page-title">Location</span>
+            <span class="page-azione attiva" onclick="_locAggiungi()">+ Nuova location</span>
         </div>
         <div class="pg-pagina">
-            <div class="pg-bottoni">
-                <button class="primario" ${bloccato ? 'disabled' : ''} onclick="_locAggiungi()">+ Nuova location</button>
-                <button ${bloccato ? 'disabled' : ''} onclick="_locSelezionaTutte()">${tutteSel ? 'Deseleziona tutte' : 'Seleziona tutte'}</button>
+            <div class="pg-intro">
+                <div class="pg-grande">${voci.length}</div>
+                <div class="pg-sotto">${top ? `più valore: ${escapeHtml(top.nome)} (${_locEur(top.valore)})` : 'nessuna location con un valore'}</div>
             </div>
-            ${barraSelezione}
-            ${pannello}
-            <div class="pg-sotto">Tocca le righe per selezionarle. Icone: ✎ rinomina, → sposta le carte, cestino solo sulle location vuote (nessuna viene eliminata da sola).${nVuote > 0 ? ` <b style="color:var(--danger);">${nVuote} vuote.</b>` : ''}</div>
-            <div class="pg-elenco">${righe}</div>
+            <div class="pg-stat">
+                <div><b>${voci.length}</b><span>Location totali</span></div>
+                <div><b>${top ? escapeHtml(top.nome) : '—'}</b><span>Più valore${top ? ` (${_locEur(top.valore)})` : ''}</span></div>
+                ${tileVuote}
+            </div>
+            <div class="pg-sotto">Tocca una tessera per gestirla. Con le spunte scegli più location e le sposti o le elimini in blocco.</div>
+            <div class="pg-bottoni" id="locBarra"></div>
+            <div class="loc-grid">${tessere}</div>
         </div>
     `;
+    _locAggiornaSelezioneUI();
 }
 
 // ── Ingresso: lettura dati + disegno ────────────────────────────────────
 // Chiamata SENZA argomenti dal dispatch di apriDettaglioWidget → apertura
-// fresca (esce dalla modalità Gestisci). Le operazioni di questo file la
-// richiamano con { mantieni: true } per restare dove si era.
+// fresca (azzera selezione e modale). Le operazioni di questo file la
+// richiamano con { mantieni: true }.
 async function renderPaginaLocation(opzioni) {
     const container = document.getElementById('locationContenuto');
     if (!container) return;
+    _locAssicuraStile();
 
-    if (!(opzioni && opzioni.mantieni === true)) {
-        _locGestione = false;
+    const mantieni = !!(opzioni && opzioni.mantieni === true);
+    if (!mantieni) {
         _locSelezione.clear();
-        _locPannello = null;
+        _locChiudiModale();
+        container.innerHTML = '<p style="text-align:center; color:var(--text-muted); font-size:0.85rem; padding:1rem 0;">Caricamento…</p>';
     }
 
-    const def = CATALOGO_WIDGET.location;
-    let voci;
+    // 1) Carte in collezione → conteggio (righe) e valore (prezzo × qty)
+    const agg = {};
     try {
-        const anteprima = def.preview();
-        voci = (anteprima.dati && anteprima.dati.voci) || [];
+        carteReali.filter(c => c.stato === 'collezione').forEach(c => {
+            const k = c.location || '—';
+            const a = agg[k] || (agg[k] = { nome: k, n: 0, valore: 0 });
+            a.n += 1;
+            a.valore += (Number(c.price) || 0) * (Number(c.qty) || 1);
+        });
     } catch (e) {
         console.error('renderPaginaLocation:', e);
         container.innerHTML = '<p style="text-align:center; color:var(--text-muted); font-size:0.85rem; padding:1rem 0;">Errore nel caricamento.</p>';
         return;
     }
+    const voci = Object.values(agg);
 
-    // Unione con le location senza ancora nessuna carta. Un fallimento qui
-    // non deve mai nascondere le location che hanno già delle carte.
+    // 2) Location senza ancora nessuna carta + 3) binder-location.
+    // Un fallimento qui non deve mai nascondere le location che hanno già
+    // delle carte.
     const binder = {};
+    const copertine = {};
     const userId = await authGetUserId();
     if (userId) {
         try {
             const { data: tutte, error } = await locationsList(userId);
             if (error) throw error;
-            const nomiConCarte = new Set(voci.map(([nome]) => nome));
+            const nomiConCarte = new Set(voci.map(v => v.nome));
             (tutte || []).forEach(r => {
-                if (r.nome && !nomiConCarte.has(r.nome)) voci.push([r.nome, 0]);
+                if (r.nome && !nomiConCarte.has(r.nome)) voci.push({ nome: r.nome, n: 0, valore: 0 });
             });
         } catch (e) {
             console.error('renderPaginaLocation (locationsList):', e);
         }
-        // Binder-location, solo per mostrare il nome in attesa di
-        // approvazione (binders.nome_in_attesa). Non bloccante.
         try {
             const { data: binders, error } = await bindersQueryTutti(userId);
             if (error) throw error;
             (binders || []).filter(b => b.tipo === 'location' && b.location_valore).forEach(b => { binder[b.location_valore] = b; });
+            // Copertine: stessa funzione/cache di Binder e Condividi.
+            if (typeof _risolviCopertinaBinder === 'function') {
+                await Promise.all(voci.map(async v => {
+                    const b = binder[v.nome];
+                    if (!b) return;
+                    try { copertine[v.nome] = await _risolviCopertinaBinder(userId, b); }
+                    catch (e) { console.error('renderPaginaLocation (copertina):', e); }
+                }));
+            }
         } catch (e) {
             console.error('renderPaginaLocation (binders):', e);
         }
     }
-    // Conteggio discendente, a parità alfabetico: le location vuote in fondo.
-    voci.sort((a, b) => b[1] - a[1] || String(a[0]).localeCompare(String(b[0])));
 
-    _locDati = { voci, binder };
-    // Selezione/pannello riferiti a nomi che non esistono più: via.
-    const nomi = new Set(voci.map(([n]) => n));
+    // Ordine: prima le location con carte, per VALORE decrescente (poi
+    // numero di carte, poi nome); in fondo le vuote, in ordine alfabetico.
+    voci.sort((a, b) => (b.n > 0) - (a.n > 0)
+        || b.valore - a.valore
+        || b.n - a.n
+        || String(a.nome).localeCompare(String(b.nome)));
+
+    _locDati = { voci, binder, copertine };
+    // Selezione riferita a nomi che non esistono più: via.
+    const nomi = new Set(voci.map(v => v.nome));
     _locSelezione = new Set([..._locSelezione].filter(n => nomi.has(n)));
-    if (_locPannello && !_locPannello.sorgenti.every(n => nomi.has(n))) _locPannello = null;
+    // Modale aperto su una location sparita/cambiata: chiuso.
+    if (_locModale) {
+        const ok = _locModale.tipo === 'gestisci' ? nomi.has(_locModale.nome) : _locModale.sorgenti.every(n => nomi.has(n));
+        if (!ok) _locChiudiModale(); else _locModaleDisegna();
+    }
 
     _locDisegna();
 }
