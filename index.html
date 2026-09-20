@@ -4767,6 +4767,60 @@
         .pg-barra-track { height: 8px; border-radius: 999px; background: var(--primary-light); overflow: hidden; }
         .pg-barra-fill { height: 100%; border-radius: 999px; background: var(--primary); }
 
+        /* ── WIDGET SET — restyle + masterset (2026-09-20) ─────────────────
+           Solo classi NUOVE con prefisso .set-*; riusa .pg-filtro (schede),
+           .page-azione, .pg-riga-set e .pg-barra-* già esistenti sopra.
+           Nessuna regola esistente modificata. */
+        .set-riga { cursor: pointer; }
+        .set-riga:active { background: var(--row-hover); }
+        .set-riga.nascosto { opacity: .55; }
+        .set-riga-sub { margin-top: 5px; font-size: 0.7rem; color: var(--text-muted); }
+        .set-riga-occhio { margin-left: 8px; color: var(--primary); }
+        .set-nota {
+            font-size: 0.72rem; line-height: 1.35; color: var(--text-muted);
+            background: var(--primary-light); border-radius: 10px; padding: 8px 10px;
+        }
+        .set-msg { font-size: 0.75rem; color: var(--danger); }
+        .set-msg:empty { display: none; }
+
+        .set-griglia {
+            display: grid; gap: 10px;
+            grid-template-columns: repeat(auto-fill, minmax(76px, 1fr));
+        }
+        .set-carta { position: relative; display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+        .set-modifica .set-carta { cursor: pointer; }
+        .set-carta-img {
+            position: relative; aspect-ratio: 5 / 7; border-radius: 8px; overflow: hidden;
+            background: var(--primary-light);
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 2px 6px rgba(0,0,0,.15);
+        }
+        .set-carta-img img {
+            position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover;
+        }
+        .set-carta-num {
+            position: relative; font-size: 0.95rem; font-weight: 700;
+            color: var(--text-muted); font-variant-numeric: tabular-nums;
+        }
+        /* Carta che manca: in scala di grigi (il segnalino "Manca" resta
+           comunque, anche dove non c'è immagine da ingrigire). */
+        .set-carta.manca .set-carta-img { filter: grayscale(1) opacity(.5); }
+        .set-carta-badge {
+            position: absolute; top: 4px; right: 4px; z-index: 2;
+            font-size: 0.56rem; font-weight: 700; letter-spacing: .2px;
+            padding: 2px 6px; border-radius: 999px;
+            background: var(--success); color: #fff;
+        }
+        .set-carta.manca .set-carta-badge { background: var(--text-muted); }
+        .set-carta.ignorata { opacity: .45; }
+        .set-carta.ignorata .set-carta-badge { background: var(--danger); }
+        .set-carta.ignorata .set-carta-img { outline: 2px dashed var(--border-color); outline-offset: -2px; }
+        .set-carta-nome {
+            font-size: 0.66rem; color: var(--text-dark);
+            overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+        }
+        .set-carta-var { font-size: 0.58rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: .3px; }
+
         /* ═══════════════════════════════════════════════════════════════
            WIDGET BUSTINA — CUTSCENE + APERTURA (2026-09-09, ristrutturato
            2026-09-10: schermata countdown, tap-to-consume sulla pokéball,
@@ -5957,11 +6011,12 @@
         </div>
 
         <div id="set" class="view-section">
-            <!-- Pagina di dettaglio "Set" (2026-08-30) — prima apriva
-                 semplicemente Visualizzazione generica (tab:'visualizzazione');
-                 ora pagina propria. Solo consultazione, nessun click sulle
-                 righe (deciso da Claudio). Contenuto riempito da
-                 renderPaginaSet() in ui/widget-set.ui.js. -->
+            <!-- Pagina "Set" (2026-08-30; riscritta 2026-09-20): elenco di
+                 tutte le espansioni in 4 schede (In corso/Completati/Non
+                 iniziati/Nascosti) + dettaglio del set con le carte c'è/
+                 manca e "Ignora carte" per il masterset. Contenuto
+                 riempito da renderPaginaSet() in ui/widget-set.ui.js;
+                 logica in ui/set-motore.ui.js. -->
             <div id="setContenuto"></div>
         </div>
 
@@ -7839,6 +7894,10 @@
     <script src="ui/widget-richieste.ui.js"></script>
     <script src="ui/widget-scaffali.ui.js"></script>
     <script src="ui/widget-sealed.ui.js"></script>
+    <!-- ui/set-motore.ui.js (2026-09-20, restyle widget SET + masterset):
+         calcolo completamento/soglie/notifiche, solo logica. Va PRIMA di
+         ui/widget-set.ui.js (che lo usa) e dopo data/sets.repository.js. -->
+    <script src="ui/set-motore.ui.js"></script>
     <script src="ui/widget-set.ui.js"></script>
     <script src="ui/set-libreria-sigle.ui.js"></script>
     <script src="ui/widget-valore-collezione.ui.js"></script>
