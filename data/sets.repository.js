@@ -86,7 +86,7 @@ async function setCatalogoRigheLeggi(sigle) {
         const blocco = sigle.slice(i, i + 40);
         const { data, error } = await _setLeggiPaginato(() =>
             supabaseClient.from('set_carte')
-                .select('sigla, numero, variante, nome, rarita, immagine')
+                .select('sigla, numero, variante, nome, rarita, immagine, cardmarket_id')
                 .in('sigla', blocco)
                 .order('sigla').order('numero').order('variante'));
         if (error) return { data: null, error };
@@ -165,4 +165,18 @@ async function setSoglieSegnaViste(userId, vistaIl) {
     return supabaseClient.from('set_soglie_notificate')
         .update({ vista_il: vistaIl })
         .eq('owner_id', userId).is('vista_il', null);
+}
+
+
+// ── Variante posseduta (colonna carte.variante, sql/67) ──────────────────
+// Imposta la variante su più carte della collezione (una sola variante per
+// chiamata, a blocchi). Vale la RLS "propria collezione" di 'carte': si
+// toccano solo le righe dell'utente. Scrive SOLO la colonna 'variante'.
+async function setCarteVarianteImposta(ids, variante) {
+    for (let i = 0; i < ids.length; i += 100) {
+        const { error } = await supabaseClient.from('carte')
+            .update({ variante }).in('id', ids.slice(i, i + 100));
+        if (error) return { error };
+    }
+    return { error: null };
 }
