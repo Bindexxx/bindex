@@ -64,9 +64,21 @@ async function binderLocationMaterializza(userId, locationValore) {
 async function binderLocationMaterializzaBatch(userId, nomiLocation) {
     if (!nomiLocation || nomiLocation.length === 0) return { data: [], error: null };
     const righe = nomiLocation.map(nome => ({ owner_id: userId, tipo: 'location', location_valore: nome, nome }));
+    // FIX 2026-09-20 (widget Location): ignoreDuplicates:true = ON CONFLICT
+    // DO NOTHING. Prima era DO UPDATE, che su un binder GIÀ esistente
+    // riscriveva `nome` con il nome della location: dopo sql/26 (trigger
+    // _binders_blocca_rinomina_diretta) questo lancia un'eccezione ogni
+    // volta che binders.nome è diverso da location_valore (nome
+    // personalizzato approvato, oppure location rinominata con nome binder
+    // in attesa di approvazione), e l'errore faceva fallire l'INTERO batch
+    // — nessun binder nuovo materializzato — loggato soltanto in
+    // _garantisciTuttiIBinder. Con DO NOTHING i binder esistenti non
+    // vengono più toccati (nome personalizzato al sicuro). .select()
+    // restituisce ora solo le righe NUOVE: l'unico chiamante
+    // (_garantisciTuttiIBinder, ui/binder.ui.js) legge solo `error`.
     return supabaseClient
         .from('binders')
-        .upsert(righe, { onConflict: 'owner_id,tipo,location_valore' })
+        .upsert(righe, { onConflict: 'owner_id,tipo,location_valore', ignoreDuplicates: true })
         .select();
 }
 
