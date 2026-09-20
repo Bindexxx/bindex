@@ -89,6 +89,7 @@ const _setUi = {
     dett: null,             // sigla del set aperto, null = elenco
     filtro: 'tutte',        // dettaglio: tutte | mancano | ce_l_ho
     modificaDett: false,    // dettaglio: ignora/riattiva carte
+    classifica: false,      // schermata "carte X da classificare"
     msg: '',
     token: 0
 };
@@ -107,6 +108,7 @@ async function renderPaginaSet() {
     _setUi.modifica = false;
     _setUi.filtro = 'tutte';
     _setUi.modificaDett = false;
+    _setUi.classifica = false;
     _setUi.msg = '';
     _setUi.dett = null;
 
@@ -141,6 +143,7 @@ async function _setUiRender() {
     if (!container) return;
     try {
         if (_setUi.dett) await _setUiRenderDettaglio(container);
+        else if (_setUi.classifica) _setUiRenderClassifica(container);
         else _setUiRenderLista(container);
     } catch (e) {
         console.error('renderPaginaSet:', e);
@@ -186,6 +189,10 @@ function _setUiRenderLista(container) {
         ? `<div class="set-nota"><i class="fa-solid fa-triangle-exclamation"></i> ${nSco === 1 ? '1 sigla' : nSco + ' sigle'} in collezione non ${nSco === 1 ? 'è' : 'sono'} in libreria (espansione nuova?): ${
             r.sconosciute.slice(0, 8).map(s => `${_setUiAttr(s.sigla)} (${s.carte})`).join(', ')}${nSco > 8 ? '…' : ''}. Vanno aggiunte alla libreria.</div>`
         : '';
+    const daClass = setMDaClassificare();
+    const avvisoClass = daClass.length
+        ? `<div class="set-nota"><i class="fa-solid fa-tags"></i> ${daClass.length} ${daClass.length === 1 ? 'carta X non ha' : 'carte X non hanno'} ancora la variante (Poké Ball, Energy...) e ${daClass.length === 1 ? 'non conta' : 'non contano'} nel masterset. <span class="page-azione attiva" onclick="_setUiApriClassifica()">Classifica</span></div>`
+        : '';
     const avvisoStato = (_setM.tentato && !_setM.baseOk)
         ? '<div class="set-nota">Preferenze Set non disponibili al momento: nascondi/ignora e notifiche sono disattivati.</div>'
         : '';
@@ -200,7 +207,7 @@ function _setUiRenderLista(container) {
         </div>
         <div class="pg-pagina">
             <div class="pg-sotto">${riepilogo}</div>
-            ${avvisoStato}${avvisoSconosciute}${notaModifica}
+            ${avvisoStato}${avvisoClass}${avvisoSconosciute}${notaModifica}
             <div class="pg-filtri">${schede}</div>
             <div class="set-msg">${_setUiAttr(_setUi.msg)}</div>
             <div class="pg-elenco">${elenco.length
@@ -329,7 +336,7 @@ async function _setUiRenderDettaglio(container) {
             <span class="set-carta-badge">${stato}</span>
             <div class="set-carta-img">${src ? `<img loading="lazy" src="${src}" alt="" onerror="this.remove()">` : ''}<span class="set-carta-num">${v.numero}</span></div>
             <div class="set-carta-nome">${_setUiAttr(v.nome)}</div>
-            ${v.variante !== 'normale' ? `<div class="set-carta-var">${_setUiAttr(v.variante)}</div>` : ''}
+            ${v.variante !== 'normale' ? `<div class="set-carta-var">${_setUiAttr(setMEtichettaVariante(v.variante))}</div>` : ''}
         </div>`;
     }).join('');
 
@@ -381,5 +388,105 @@ async function _setUiToggleIgnora(numero, variante) {
         return;
     }
     // Ignorare/riattivare una carta cambia la percentuale: rivaluta le soglie.
+    setMotoreAggiorna({ render: false });
+}
+
+
+// ── CLASSIFICAZIONE DELLE CARTE X ────────────────────────────────────────
+// Le carte X (reverse a motivo) non dicono da sole QUALE motivo hanno. Qui
+// si assegna la variante (colonna carte.variante): il sito propone quella
+// ricavata dal link Cardmarket (regola in setMDaClassificare) e si conferma
+// tutto insieme, oppure si sceglie a mano riga per riga. Ogni scelta vale
+// subito nel masterset e si può correggere in seguito da qui.
+function _setUiApriClassifica() {
+    _setUi.classifica = true;
+    _setUi.msg = '';
+    _setUiRender();
+}
+
+function _setUiChiudiClassifica() {
+    _setUi.classifica = false;
+    _setUi.msg = '';
+    _setUiRender();
+}
+
+function _setUiRenderClassifica(container) {
+    // Le righe del catalogo servono per proporre: se mancano (pagina aperta
+    // subito dopo l'avvio) si caricano e si ridisegna.
+    const r = setMCalcolaTutti();
+    if (r.daCaricare.length) {
+        setMCaricaRighe(r.daCaricare)
+            .then(caricate => { if (caricate && _setUi.classifica) _setUiRender(); })
+            .catch(e => console.error('Set — caricamento righe:', e));
+    }
+    const lista = setMDaClassificare();
+    const conProposta = lista.filter(x => x.proposta);
+
+    let corpo = '';
+    let setCorrente = null;
+    lista.forEach(x => {
+        if (x.sigla !== setCorrente) {
+            setCorrente = x.sigla;
+            const lib = (typeof _ballLIBRERIA_SET !== 'undefined' && _ballLIBRERIA_SET) ? _ballLIBRERIA_SET : {};
+            corpo += `<div class="pg-titoletto">${_setUiAttr((lib[x.sigla] && lib[x.sigla].nome) || x.sigla)}</div>`;
+        }
+        const opzioni = x.opzioni.map(v =>
+            `<option value="${_setUiAttr(v)}"${v === x.proposta ? ' selected' : ''}>${_setUiAttr(setMEtichettaVariante(v) || 'Normale')}</option>`).join('');
+        corpo += `<div class="pg-riga set-cl-riga">
+            <div class="pg-testo"><b>${_setUiAttr(x.carta.name)}</b><span>${_setUiAttr(x.carta.code)} · ${_setUiAttr(x.metodo)}</span></div>
+            <select class="set-cl-select" data-id="${_setUiAttr(x.carta.id)}" onchange="_setUiClassificaUna(this)">
+                <option value="">— scegli —</option>${opzioni}
+            </select>
+        </div>`;
+    });
+
+    container.innerHTML = `
+        <div class="page-header">
+            <span class="page-azione attiva" onclick="_setUiChiudiClassifica()"><i class="fa-solid fa-chevron-left"></i> Set</span>
+            <span class="page-title">Da classificare</span>
+        </div>
+        <div class="pg-pagina">
+            <div class="set-nota">Queste carte X non hanno ancora la variante. Le proposte vengono dal link Cardmarket della carta: controllale e conferma. Puoi cambiare scelta riga per riga.</div>
+            ${conProposta.length ? `<div class="pg-bottoni"><button type="button" class="primario" onclick="_setUiConfermaProposte()">Conferma le ${conProposta.length} proposte</button></div>` : ''}
+            <div class="set-msg">${_setUiAttr(_setUi.msg)}</div>
+            <div class="pg-elenco">${lista.length ? corpo
+                : '<p style="text-align:center; color:var(--text-muted); font-size:0.85rem; padding:1.5rem 0;">Nessuna carta da classificare.</p>'}</div>
+        </div>`;
+}
+
+async function _setUiClassificaUna(sel) {
+    if (!sel || !sel.value) return;
+    await _setUiSalvaVarianti([{ id: sel.dataset.id, variante: sel.value }]);
+}
+
+async function _setUiConfermaProposte() {
+    const voci = setMDaClassificare().filter(x => x.proposta).map(x => ({ id: x.carta.id, variante: x.proposta }));
+    await _setUiSalvaVarianti(voci);
+}
+
+// Salva le varianti raggruppate per valore: una chiamata per variante, non
+// una per carta. Optimistic: se un gruppo fallisce si annulla SOLO quello.
+async function _setUiSalvaVarianti(voci) {
+    if (!voci.length) return;
+    const gruppi = new Map();
+    voci.forEach(v => {
+        const carta = carteReali.find(c => String(c.id) === String(v.id));
+        if (!carta) return;
+        if (!gruppi.has(v.variante)) gruppi.set(v.variante, []);
+        gruppi.get(v.variante).push(carta);
+    });
+    _setUi.msg = '';
+    for (const [variante, carte] of gruppi) {
+        carte.forEach(c => { c.variante = variante; });
+        const { error } = await setCarteVarianteImposta(carte.map(c => c.id), variante);
+        if (error) {
+            console.error('Set — salvataggio variante:', error.message || error);
+            carte.forEach(c => { c.variante = null; });
+            _setUi.msg = 'Non sono riuscito a salvare alcune varianti. Riprova.';
+            break;
+        }
+    }
+    _setUiRender();
+    // Il masterset è cambiato: rivaluta le soglie.
     setMotoreAggiorna({ render: false });
 }

@@ -106,6 +106,9 @@ function _setMOrdineVariante(v) {
 // Varianti del catalogo che una carta posseduta soddisfa. 'letto' è il
 // risultato di _ballLeggiCodice, 'c' la riga di carteReali.
 function setMVariantiPossedute(letto, c) {
+    // Variante scelta esplicitamente (carte.variante, sql/67): vale solo
+    // quella. Altrimenti si ricava come sempre da codice e reverse_holo.
+    if (c && c.variante) return [setMNormVariante(c.variante)];
     if (letto.variante === 'ball') return ['ball'];
     if (letto.variante === 'stampata') return ['normale', 'stampata'];
     if (letto.variante === 'halloween') return ['normale', 'halloween'];
@@ -363,7 +366,8 @@ async function setMCaricaRighe(sigle) {
                 variante: setMNormVariante(r.variante),
                 nome: r.nome || '',
                 rarita: r.rarita || '',
-                immagine: r.immagine || ''
+                immagine: r.immagine || '',
+                cardmarketId: r.cardmarket_id != null ? Number(r.cardmarket_id) : null
             });
         });
         gruppi.forEach((righe, sigla) => {
@@ -377,6 +381,68 @@ async function setMCaricaRighe(sigle) {
     } finally {
         da.forEach(s => _setM.righeInCaricamento.delete(s));
     }
+}
+
+// ── VARIANTI: etichette e carte da classificare ────────────────────────
+const _SET_ETICHETTE_VARIANTI = {
+    normale: '', reverse: 'Reverse', ball: 'Ball (generica)',
+    'reverse-energy': 'Reverse Energy', 'reverse-pokeball': 'Reverse Poké Ball',
+    'reverse-masterball': 'Reverse Master Ball', 'reverse-duskball': 'Reverse Dusk Ball',
+    'reverse-loveball': 'Reverse Love Ball', 'reverse-friendball': 'Reverse Friend Ball',
+    'reverse-quickball': 'Reverse Quick Ball', 'reverse-team-rocket': 'Reverse Team Rocket',
+    'reverse-cosmos': 'Reverse Cosmos', holo: 'Holo', 'holo-cosmos': 'Holo Cosmos',
+    'holo-gold': 'Holo Oro', 'holo-tinsel': 'Holo Tinsel'
+};
+function setMEtichettaVariante(v) {
+    if (v in _SET_ETICHETTE_VARIANTI) return _SET_ETICHETTE_VARIANTI[v];
+    return String(v).replace(/-/g, ' ').replace(/^./, ch => ch.toUpperCase());
+}
+
+// Carte X (reverse a motivo) della collezione di cui non si sa quale
+// stampa sia, in set con catalogo per carta. Per ognuna propone la variante
+// con la regola verificata sui dati di Claudio (199 righe su 206
+// coerenti, NON dimostrata): 'Vn' nel link Cardmarket degli Additionals =
+// n-esimo prodotto per ID Cardmarket crescente tra le varianti con foil
+// speciale della carta (nel catalogo: nome con '-', es. reverse-energy).
+// Senza versione nel link ma con UNA sola variante speciale: quella.
+// Negli altri casi nessuna proposta (si sceglie a mano).
+// Richiede le righe del catalogo già caricate.
+function setMDaClassificare() {
+    const coll = (typeof carteReali !== 'undefined' && Array.isArray(carteReali)) ? carteReali : [];
+    const out = [];
+    coll.forEach(c => {
+        if (c.stato !== 'collezione' || c.tabella !== 'carte' || c.variante) return;
+        const letto = _ballLeggiCodice(c.code);
+        if (!letto || letto.variante !== 'ball' || letto.numero == null) return;
+        const righe = _setM.righe.get(letto.set);
+        if (!righe) return;
+        const delNumero = righe.filter(r => r.numero === letto.numero);
+        const speciali = delNumero
+            .filter(r => r.variante.indexOf('-') > 0 && r.cardmarketId)
+            .sort((a, b) => a.cardmarketId - b.cardmarketId);
+        if (!speciali.length) return;
+
+        const link = String(c.link || '');
+        const mv = /-V(\d+)-/.exec(link);
+        let proposta = null, metodo = 'scegli a mano';
+        if (mv && /Additionals/.test(link)) {
+            const k = parseInt(mv[1], 10);
+            if (speciali[k - 1]) { proposta = speciali[k - 1].variante; metodo = 'dal link (V' + k + ')'; }
+            else metodo = 'V' + k + ' non trovata nel catalogo';
+        } else if (!mv && /\/Products\/Singles\//.test(link) && speciali.length === 1) {
+            proposta = speciali[0].variante; metodo = 'stampa unica';
+        } else if (mv) {
+            metodo = 'link non degli Additionals';
+        }
+        const altre = delNumero.filter(r => !speciali.includes(r))
+            .sort((a, b) => _setMOrdineVariante(a.variante) - _setMOrdineVariante(b.variante));
+        out.push({
+            carta: c, sigla: letto.set, numero: letto.numero, proposta, metodo,
+            opzioni: [...speciali, ...altre].map(r => r.variante)
+        });
+    });
+    out.sort((a, b) => a.sigla.localeCompare(b.sigla) || a.numero - b.numero || String(a.carta.name).localeCompare(String(b.carta.name)));
+    return out;
 }
 
 // ── SOGLIE ───────────────────────────────────────────────────────────────

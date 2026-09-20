@@ -128,6 +128,10 @@
                 // ovunque nel sito prima di questa aggiunta.
                 reverseHolo: !!r.reverse_holo,
                 firstEd: !!r.first_ed,
+                // 2026-09-20 (widget Set, sql/67): stampa posseduta scelta
+                // (es. 'reverse-pokeball'). null = non specificata. Solo
+                // il widget Set la legge; nessun consumer esistente cambia.
+                variante: r.variante || null,
                 sigillataOriginale: !!r.sigillata_originale,
                 price: r.prezzo != null ? Number(r.prezzo) : 0,
                 variation: _mappaVariazione(r),
