@@ -8,34 +8,27 @@
 // L'avanzamento va calcolato su 'totale', mai su 'base': una carta
 // "ASC 123/217" appartiene a un set che ne ha 295.
 //
-// 192 espansioni. Caricare PRIMA di ui/phone.ui.js in index.html.
+// 182 espansioni (192 generate - 7 di Pokémon TCG Pocket, il gioco per
+// cellulare: TCGdex le include ma non sono carte fisiche — tolte a mano
+// il 2026-09-20 su richiesta di Claudio: A1, A1A, A2, A2A, A2B, A3, A4A).
+// Caricare PRIMA di ui/phone.ui.js in index.html.
 const CARDSYNC_SET_LIBRARY = {
     PBL: { nome: "Buio Pesto", base: 84, totale: 120 },
     CRI: { nome: "Caos Nascente", base: 86, totale: 122 },
     POR: { nome: "Equilibrio Perfetto", base: 88, totale: 124 },
-    B2A: { nome: "Paldean Wonders", base: 93, totale: 129 },
     ASC: { nome: "Ascesa Eroica", base: 217, totale: 295 },
     B2: { nome: "Parata Fantasmagorica", base: 155, totale: 155 },
-    B1A: { nome: "Fiamme Cremisi", base: 69, totale: 69 },
     PFL: { nome: "Fiamme Spettrali", base: 94, totale: 130 },
     MEG: { nome: "Megaevoluzione", base: 132, totale: 188 },
     MEP: { nome: "MEP Black Star Promos", base: null, totale: 88 },
     MEE: { nome: "Megaevoluzione Energia", base: 8, totale: 8 },
-    A4A: { nome: "Sorgenti Recondite", base: 71, totale: 71 },
     WHT: { nome: "Fuoco Bianco", base: 86, totale: 173 },
     BLK: { nome: "Luce Nera", base: 86, totale: 172 },
     DRI: { nome: "Rivali Predestinati", base: 182, totale: 244 },
-    A3: { nome: "Guardiani Astrali", base: 155, totale: 239 },
     JTG: { nome: "Avventure Insieme", base: 159, totale: 190 },
-    A2B: { nome: "Tripudio Splendente", base: 72, totale: 111 },
-    A2A: { nome: "Luce Trionfale", base: 75, totale: 96 },
-    A2: { nome: "Scontro Spaziotemporale", base: 140, totale: 207 },
     PRE: { nome: "Evoluzioni Prismatiche", base: 131, totale: 180 },
-    A1A: { nome: "L'Isola Misteriosa", base: 68, totale: 86 },
     MCD24: { nome: "McDonald's Collection 2024", base: 15, totale: 15 },
     SSP: { nome: "Scintille Folgoranti", base: 191, totale: 252 },
-    A1: { nome: "Geni Supremi", base: 226, totale: 286 },
-    'P-A': { nome: "Promo-A", base: null, totale: 73 },
     SCR: { nome: "Corona Astrale", base: 142, totale: 175 },
     SFA: { nome: "Segreto Fiabesco", base: 64, totale: 99 },
     TWM: { nome: "Crepuscolo Mascherato", base: 167, totale: 226 },
