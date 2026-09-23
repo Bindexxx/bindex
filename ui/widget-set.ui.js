@@ -349,8 +349,9 @@ async function _setUiRenderDettaglio(container) {
         <div class="pg-pagina${_setUi.modificaDett ? ' set-modifica' : ''}">
             <div class="pg-intro">
                 <div class="pg-grande">${percTesto}%</div>
-                <div class="pg-sotto">${hai}/${totale} · ${mancanti === 0 && totale > 0 ? 'completo' : mancanti + ' mancanti'} · ${dati.catalogo ? 'masterset' : 'set base (catalogo per carta da caricare)'}</div>
+                <div class="pg-sotto">${hai}/${totale} · ${mancanti === 0 && totale > 0 ? 'completo' : mancanti + ' mancanti'} · ${dati.catalogo ? 'masterset' : (setMSenzaDatiVarianti(sigla) ? 'set base' : 'set base (catalogo per carta da caricare)')}</div>
             </div>
+            ${(!dati.catalogo && setMSenzaDatiVarianti(sigla)) ? '<div class="set-nota">Il database esterno da cui generiamo il catalogo non distingue ancora le varianti (normale/reverse/holo...) per questo set: qui conta solo il numero, come per tutti gli altri. Verrà aggiornato con le varianti appena i dati saranno disponibili.</div>' : ''}
             <div class="pg-barra-track"><div class="pg-barra-fill" style="width:${percTesto}%"></div></div>
             ${notaModifica}
             <div class="pg-filtri">${filtri}</div>

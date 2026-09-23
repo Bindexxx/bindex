@@ -48,6 +48,55 @@
 // authGetUserId, data/sets.repository.js, CSBar/_beep (opzionali).
 // ═══════════════════════════════════════════════════════════════════════
 
+// Set per cui TCGdex non ha (ancora) i dati per distinguere le varianti
+// (normale/reverse/holo...): il catalogo per questi set non si può generare
+// finché la fonte non li compila. Elenco verificato il 2026-09-20 leggendo
+// l'archivio di TCGdex (github.com/tcgdex/cards-database), DOPO aver incluso
+// nel generatore anche errori di stampa/promo/copyright (che prima
+// "riempivano" artificialmente qualche set): 56 sigle. Da ricontrollare ogni
+// tanto: TCGdex potrebbe compilarli in futuro (tools/genera_catalogo_
+// tcgdex.py li riprova da solo, basta rilanciarlo).
+const SET_SENZA_DATI_VARIANTI = new Set([
+    'BWP','KSS',
+    'TK6N','TK6S','TK7A','TK7B','TK8A','TK8O','TK9P','TK9S','XYP'
+]);
+// Tolti in quest'ultimo blocco: CEC, CES, CIN, DRM, GRI, HIF, LOT, SLG,
+// SUM, UPR (regola derivata standard) e DET (Detective Pikachu, versione
+// inglese 18 carte: SOLO 'normale', ogni carta è già holo di suo — nessuna
+// prova di Reverse Holo trovata per la versione inglese, a differenza
+// della versione giapponese che non ci riguarda).
+// RESTANO DEFINITIVAMENTE SENZA (non un rinvio, un accertamento):
+// BWP e XYP (promo, nessuna Reverse Holo in nessuna serie promo
+// controllata), KSS e gli 8 Trainer Kit (mazzi pre-costruiti per
+// principianti — stesso prodotto tipo, stesso esito verificato: nessuna
+// prova di Reverse Holo per nessuno di questi).
+// Tolti in questo blocco: SSH, CPA (regola derivata) — e, con un fix vero
+// e proprio (non la regola): ASR-TG, BRS-TG, LOR-TG, SIT-TG, CRZ-GG,
+// CEL-CC, SHF-SV, DPP, HGSSP, SMP, SWSHP. Questi 11 sembravano vuoti solo
+// per un bug del generatore (i loro file TCGdex si chiamano "TG01.ts",
+// "SV001.ts" ecc., non "1.ts" — il pattern non li vedeva). Corretto:
+// TCGdex HA i dati per questi 11, sono catalogo diretto come tutti gli
+// altri, non derivato dalla regola. ATTENZIONE Shiny Vault (SHF-SV):
+// TCGdex dichiara una sola stampa per molte carte che nella realtà ne
+// hanno due (es. Rillaboom Holo + Reverse Holo, verificato su vendite
+// reali) — la fonte stessa è incompleta qui, non un problema del sito.
+// Tolti in questo terzo blocco: AOR, BKP, BKT, EVO, FCO, FFI, FLF, GEN, PHF,
+// PRC, ROS, STS, XY — serie XY, stessa regola derivata (vedi sopra), verificata
+// per ognuno su Bulbapedia. KSS (Kalos Starter Set, prodotto per principianti,
+// rarità 'None' in TCGdex) e XYP (promo) restano SENZA: nessuna prova di
+// Reverse Holo trovata per questi due, a differenza degli altri.
+// Tolti da questa lista (2026-09-20, secondo blocco): BCR, BLW, DRV, DRX, EP,
+// NXD, PLF, PLS — serie Black & White. Non hanno catalogo da TCGdex (fonte
+// diretta), ma un catalogo DERIVATO dalla regola "ogni Common/Uncommon/Rare
+// ha anche la sua Reverse Holo, tranne Ultra Rare/Secret Rare", verificata
+// su Bulbapedia set per set (vedi compilato). Il catalogo derivato usa la
+// stessa tabella set_carte: il sito non li distingue dai set con dati
+// diretti — la distinzione sta solo nella provenienza, documentata qui e
+// nel compilato, non in un flag nel database.
+function setMSenzaDatiVarianti(sigla) {
+    return SET_SENZA_DATI_VARIANTI.has(sigla);
+}
+
 const SET_SOGLIE = [25, 50, 75, 90, 99, 100];
 const SET_SOGLIE_NASCOSTI = [99, 100];
 const SET_INTERVALLO_MS = 30000;
