@@ -77,6 +77,24 @@ function _ballAzioneRiga(evt, tipo, valore, origine) {
             apriDettaglioWidget(valore, evt);
             break;
 
+        // AGGIUNTO (2026-09-24, giro di migliorie widget Chat): apre
+        // l'inbox (stessa animazione/container di ogni altro widget con
+        // pagina propria) E POI la conversazione specifica sopra, invece
+        // di fermarsi alla sola lista. 'valore' = ownerAltro,
+        // 'origine' (già esistente nella firma, riusato qui per il
+        // nome/nickname) = label da mostrare nel titolo del modale.
+        // Stesso identico pattern già verificato in
+        // onNotificationClick (ui/paginainiziale-polling-avvio.ui.js):
+        // il ritardo aspetta la fine dell'animazione "a Pokéball"
+        // (DURATA_ANIMAZIONE_DETTAGLIO_MS, ui/paginainiziale-
+        // dettaglio.ui.js) prima di aprire il modale sopra.
+        case 'chat-conversazione':
+            apriDettaglioWidget('chat', evt);
+            if (typeof apriChat === 'function' && typeof DURATA_ANIMAZIONE_DETTAGLIO_MS !== 'undefined') {
+                setTimeout(() => apriChat(valore, origine || 'Utente'), DURATA_ANIMAZIONE_DETTAGLIO_MS + 50);
+            }
+            break;
+
         // Elenco completo delle carte con prezzo da aggiornare: esiste già
         // come modale nel sito, con nomi, codici e data dell'ultimo
         // controllo. Non apriamo la sezione Prezzi: la modale dice di più

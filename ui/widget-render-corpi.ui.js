@@ -558,15 +558,24 @@ const _ballCORPI = {
     // prodotto da CATALOGO_WIDGET.chat.preview() (ui/widget-chat.ui.js),
     // popolato da _aggiornaBadgeChat() — zero query qui, tutto già in
     // memoria, stesso principio degli altri corpi.
-    // Il click sulla riga apre solo l'inbox (tab 'chat'), non la
-    // conversazione specifica — _ballAzioneRiga non supporta un
-    // parametro extra per quello, punto aperto invariato da
-    // nuovo+widget-chat.txt (serve prima leggere
-    // ui/widget-render-tessere-grandi.ui.js per _ballAzioneRiga, già
-    // fatto in questa sessione — ma estenderla è fuori scope, tocca un
-    // file condiviso usato da più widget).
+    // Il click sulla riga apre AVVIA il flusso "apri inbox poi apri
+    // questa conversazione" (case 'chat-conversazione' in
+    // _ballAzioneRiga, ui/widget-render-tessere-grandi.ui.js) — non più
+    // solo la lista, vedi commento lì. label passata come 'origine'
+    // (4° parametro), escaping apostrofi come altrove nel progetto.
     chat: (d) => {
         if (!d) return { inline: '', blocco: '' };
+        // AGGIUNTO (2026-09-24): tessera "spenta" per chi è nella lista
+        // vietati (widget-chat.ui.js, _CHAT_EMAIL_VIETATE) — senza
+        // questo caso mostrerebbe comunque "0, nessun messaggio non
+        // letto", che implica che la funzione sia disponibile e solo
+        // vuota, non negata.
+        if (d.vietato) {
+            return {
+                inline: '<p class="ball-k-tit">Chat</p><span class="ball-k-lab">Non disponibile</span>',
+                blocco: '',
+            };
+        }
         const totale = d.totale || 0;
         const conversazioni = d.conversazioni || [];
         const inline =
@@ -575,9 +584,11 @@ const _ballCORPI = {
             `<span class="ball-k-lab">${totale === 0 ? 'nessun messaggio' : (totale === 1 ? 'messaggio non letto' : 'messaggi non letti')}</span>` +
             (totale > 0 ? _ballPill(`${totale} nuov${totale === 1 ? 'o' : 'i'}`, true) : '');
 
-        const blocco = conversazioni.map(c =>
-            `<div class="ball-riga ball-clic" onclick="_ballAzioneRiga(event,'tab','chat')"><span class="ball-nome">${(typeof escapeHtml === 'function' ? escapeHtml(c.label) : c.label)}</span><span class="ball-dato">${c.count}</span></div>`
-        ).join('');
+        const blocco = conversazioni.map(c => {
+            const label = (typeof escapeHtml === 'function' ? escapeHtml(c.label) : c.label);
+            const labelAttr = String(label).replace(/'/g, "\\'");
+            return `<div class="ball-riga ball-clic" onclick="_ballAzioneRiga(event,'chat-conversazione','${c.ownerAltro}','${labelAttr}')"><span class="ball-nome">${label}</span><span class="ball-dato">${c.count}</span></div>`;
+        }).join('');
         return { inline, blocco };
     },
 
