@@ -7749,10 +7749,18 @@
                 </div>
             </div>
             <div id="chatMessaggi" style="flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:0.4rem; padding:0.5rem 0; min-height:220px;"></div>
-            <div style="display:flex; gap:0.5rem; margin-top:0.5rem;">
-                <input type="text" id="chatInput" maxlength="2000" placeholder="Scrivi un messaggio…" style="flex:1;" onkeydown="if(event.key==='Enter'){_chatInviaMessaggioClick();}">
-                <button class="btn-main" onclick="_chatInviaMessaggioClick()"><i class="fa-solid fa-paper-plane"></i></button>
+            <!-- AGGIUNTO 2026-09-24 (giro di migliorie): bottone invio
+                 disabilitato a campo vuoto + contatore caratteri
+                 (maxlength 2000) — _chatSuInputCambiato() in
+                 ui/widget-chat.ui.js, chiamata anche da apriChat() per
+                 partire già nello stato corretto (campo vuoto = bottone
+                 disabilitato) invece di lasciarlo abilitato finché
+                 l'utente non tocca l'input. -->
+            <div style="display:flex; gap:0.5rem; margin-top:0.5rem; align-items:flex-end;">
+                <input type="text" id="chatInput" maxlength="2000" placeholder="Scrivi un messaggio…" style="flex:1;" oninput="_chatSuInputCambiato()" onkeydown="if(event.key==='Enter'){_chatInviaMessaggioClick();}">
+                <button class="btn-main" id="chatInviaBtn" onclick="_chatInviaMessaggioClick()" disabled><i class="fa-solid fa-paper-plane"></i></button>
             </div>
+            <div id="chatContatore" style="text-align:right; font-size:0.66rem; color:var(--text-muted); margin-top:0.15rem;"></div>
         </div>
     </div>
 
