@@ -222,3 +222,55 @@ function _ballPulsante(testo, azione) {
     return `<button type="button" class="ball-azione" onclick="${azione}">${testo}</button>`;
 }
 
+
+// ── CORPO "FOTO CARTA" — blocco grande con la foto reale a piena larghezza ──
+// AGGIUNTO (Claudio, sessione bugfix widget Vetrina — vedi chat). Riusabile
+// per qualunque widget con foto nel blocco grande: oggi solo 'ultima_carta'
+// (Vetrina, vedi ui/widget-render-corpi.ui.js), pensata fin da subito per
+// un eventuale futuro "Carta del giorno" — gemello citato nei commenti di
+// ui/widget-vetrina.ui.js — senza dover duplicare questo markup.
+//
+// Stile INLINE, NESSUNA classe CSS nuova in index.html: stesso approccio
+// già usato da _ballMiniCarta qui sopra per il suo gradiente di ripiego —
+// sfondo e testo sono dati per-carta/dinamici, non temabili da CSS
+// statico. La classe '.ball-foto-carta' sul contenitore esiste solo per
+// farla riconoscere da _potaContenutoFuoriTessera()
+// (ui/paginainiziale-render.ui.js, aggiornata nella stessa sessione), non
+// ha nessuna regola CSS propria.
+//
+// d: { nome, codice, prezzo, variazione, variazioneNumerica, immagine, id }
+// — formato prodotto da CATALOGO_WIDGET.ultima_carta.preview() dentro
+// ui/widget-vetrina.ui.js, letto da carteReali senza query nuove.
+// Ritorna '' se manca l'immagine: chi chiama (_ballCORPI.ultima_carta)
+// ricade cosi' sul corpo generico, stesso comportamento di sempre per una
+// carta scelta ma senza foto (resta la ball, non un blocco foto rotto).
+//
+// NESSUN onclick qui dentro: il tap sull'intera tessera apre gia' la carta
+// (CATALOGO_WIDGET.ultima_carta.azione, chiamata da _eseguiAzioneWidget) —
+// aggiungerne uno duplicherebbe l'apertura, diverso dal caso di
+// _ballAzioneRiga usato da _ballMiniCarta/_ballElencoRighe per righe
+// cliccabili DIVERSE dall'azione di default della tessera.
+function _ballCorpoFotoCarta(d) {
+    if (!d || !d.immagine) return '';
+    const url = _urlImmagineVisualizzabile(d.immagine, 300) || '';
+    if (!url) return '';
+
+    const esc = (t) => (typeof escapeHtml === 'function' ? escapeHtml(t) : String(t));
+    const eur = (v) => '€ ' + Number(v || 0).toFixed(2);
+    const coloreVar = d.variazioneNumerica > 0 ? 'var(--success)'
+        : (d.variazioneNumerica < 0 ? 'var(--danger)' : 'var(--text-muted)');
+
+    return `
+        <div class="ball-foto-carta" style="position:relative; width:100%; aspect-ratio:3/4; max-height:220px; border-radius:12px; overflow:hidden; background:#000;">
+            <img src="${url}" alt="" style="position:absolute; inset:0; width:100%; height:100%; object-fit:cover;" onerror="this.style.display='none';">
+            <div style="position:absolute; inset:0; background:linear-gradient(180deg, transparent 45%, rgba(0,0,0,.85) 100%);"></div>
+            <div style="position:absolute; left:0; right:0; bottom:0; padding:0.6rem 0.7rem; color:#fff;">
+                <div style="font-weight:800; font-size:0.85rem; text-shadow:0 1px 3px rgba(0,0,0,.6);">${esc(d.nome || '')}</div>
+                ${d.codice ? `<div style="font-size:0.68rem; opacity:.85; margin-top:0.05rem; text-shadow:0 1px 3px rgba(0,0,0,.6);">${esc(d.codice)}</div>` : ''}
+                <div style="display:flex; align-items:baseline; gap:0.5rem; margin-top:0.25rem;">
+                    ${d.prezzo != null ? `<span style="font-weight:700; font-size:0.85rem; text-shadow:0 1px 3px rgba(0,0,0,.6);">${eur(d.prezzo)}</span>` : ''}
+                    ${d.variazione ? `<span style="font-size:0.72rem; font-weight:700; color:${coloreVar}; text-shadow:0 1px 3px rgba(0,0,0,.6);">${esc(d.variazione)}</span>` : ''}
+                </div>
+            </div>
+        </div>`;
+}

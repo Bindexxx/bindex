@@ -33,6 +33,29 @@
 //   globali, non toccate.
 // - _layoutWidget, _salvaLayoutWidget, renderWidgetHome
 //   (ui/paginainiziale.ui.js): cross-file, non toccate.
+//
+// FIX 1 (Claudio, sessione bugfix — vedi chat): _renderRicercaCartaVetrina
+// inseriva nome/codice carta e id in innerHTML senza escaping HTML
+// completo (idAttr escapava solo l'apice singolo, nomeAttr solo il
+// doppio apice, il nome dentro lo <span> non era escapato affatto).
+// Aggiunta _escapeHtmlVetrina() e applicata a tutti e tre i punti.
+// Nessun cambio di comportamento per nomi/codici senza caratteri HTML
+// speciali. Nessun'altra riga toccata — in particolare NON è stato
+// modificato lo stato "cartaId orfano" (dati.vuoto è già true sia per
+// "Scegli una carta" sia per "Carta non più disponibile", quindi il tap
+// riapre già la ricerca in entrambi i casi: nessuna correzione
+// necessaria lì, verificato in sessione).
+//
+// FIX 2 (stessa sessione): la tessera in taglia grande mostrava solo la
+// piccola miniatura in fondo (nessun corpo dedicato per 'ultima_carta' in
+// _ballCORPI), con la stella al posto della ball e uno spazio vuoto enorme
+// in mezzo — vedi screenshot di Claudio. preview() ora aggiunge anche
+// 'dati' (nome/codice/prezzo/variazione/immagine/id) per alimentare il
+// nuovo corpo a foto piena. Tocca anche ui/widget-render-corpi.ui.js
+// (nuovo caso 'ultima_carta'), ui/widget-render-tessere-grandi.ui.js
+// (nuova funzione riusabile _ballCorpoFotoCarta) e
+// ui/paginainiziale-render.ui.js (niente più miniatura doppia sulla
+// tessera grande + la nuova classe riconosciuta dalla potatura contenuto).
 // ───────────────────────────────────────────────────────────────────────
 
 // ── VOCE DI CATALOGO ──────────────────────────────────────────────────
@@ -51,7 +74,24 @@ CATALOGO_WIDGET.ultima_carta = {
             if (!w || w.cartaId == null) return { righe: ['Scegli una carta'], dati: { vuoto: true } };
             const carta = carteReali.find(c => String(c.id) === String(w.cartaId));
             if (!carta) return { righe: ['Carta non più disponibile'], dati: { vuoto: true } };
-            return { righe: [carta.name || ''], immagine: carta.immagine, cardId: carta.id, rarita: carta.rarita };
+            return {
+                righe: [carta.name || ''], immagine: carta.immagine, cardId: carta.id, rarita: carta.rarita,
+                // AGGIUNTO (bugfix sessione corrente): dati per il corpo grande
+                // a foto — vedi _ballCORPI.ultima_carta in
+                // ui/widget-render-corpi.ui.js e _ballCorpoFotoCarta in
+                // ui/widget-render-tessere-grandi.ui.js. Tutti campi già
+                // presenti su ogni carta di carteReali (verificato in
+                // cards.ui.js/cards-filtro.ui.js: name/code/price/variation/
+                // variazioneNumerica), nessuna query nuova. 'rarita'
+                // deliberatamente ESCLUSO da qui (Claudio, sessione corrente):
+                // mai popolato nello schema oggi, verificato non comparire nel
+                // mapping reale di carteReali in cards.ui.js.
+                dati: {
+                    nome: carta.name, codice: carta.code, prezzo: carta.price,
+                    variazione: carta.variation, variazioneNumerica: carta.variazioneNumerica,
+                    immagine: carta.immagine, id: carta.id,
+                },
+            };
         },
         // Stato vuoto (mai scelta, o cancellata nel frattempo): il tap
         // apre la ricerca invece del flip-modal. 'w' è il terzo parametro
@@ -72,9 +112,21 @@ CATALOGO_WIDGET.ultima_carta = {
 //
 // Ambito: TUTTA carteReali (collezione + wishlist), non solo la
 // collezione — "una carta da tenere d'occhio" può ragionevolmente essere
-// anche una che non possiedi ancora. Dimmi se preferisci restringerlo
-// alla sola collezione.
+// anche una che non possiedi ancora. Confermato in sessione: resta così.
 let _vetrinaRicercaInstanceId = null;
+
+// Escape HTML minimale, locale a questo file (Regola d'Oro #1 — nessuna
+// utility condivisa toccata/aggiunta per un fix isolato a un widget).
+// Usato per nome/codice carta e per l'id nell'attributo onclick, prima
+// erano inseriti in innerHTML senza sanificazione completa.
+function _escapeHtmlVetrina(str) {
+    return String(str || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
 
 function _apriRicercaCartaVetrina(instanceId) {
     _vetrinaRicercaInstanceId = instanceId;
@@ -116,8 +168,8 @@ function _renderRicercaCartaVetrina(valore) {
     }
 
     container.innerHTML = risultati.map(c => {
-        const idAttr = String(c.id).replace(/'/g, "\\'");
-        const nomeAttr = (c.name || '').replace(/"/g, '&quot;');
+        const idAttr = _escapeHtmlVetrina(c.id).replace(/'/g, "\\'");
+        const nomeAttr = _escapeHtmlVetrina(c.name || '');
         const url = c.immagine ? (_urlImmagineVisualizzabile(c.immagine, 64) || '') : '';
         const thumb = url
             ? `<img src="${url}" alt="" style="width:32px; height:44px; object-fit:cover; border-radius:4px; flex-shrink:0;" onerror="this.style.display='none';">`
@@ -125,8 +177,8 @@ function _renderRicercaCartaVetrina(valore) {
         return `
             <div class="widget-picker-riga" onclick="_selezionaCartaVetrina('${idAttr}')" title="${nomeAttr}">
                 ${thumb}
-                <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${c.name || ''}
-                    <span style="color:var(--text-muted); font-weight:400; font-size:0.78rem;">${c.code ? ' · ' + c.code : ''}</span>
+                <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${_escapeHtmlVetrina(c.name || '')}
+                    <span style="color:var(--text-muted); font-weight:400; font-size:0.78rem;">${c.code ? ' · ' + _escapeHtmlVetrina(c.code) : ''}</span>
                 </span>
             </div>`;
     }).join('');

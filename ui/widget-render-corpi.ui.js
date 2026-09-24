@@ -542,7 +542,27 @@ const _ballCORPI = {
             '</div>' +
             (totale > 0 ? _ballPulsante('Apri Binders', `_ballAzioneRiga(event,'tab','binder')`) : '');
         return { inline, blocco };
-    }
+    },
+
+    // ── VETRINA (id catalogo 'ultima_carta') ─────────────────────────────
+    // AGGIUNTO (Claudio, sessione bugfix widget Vetrina — vedi chat). Prima
+    // non c'era nessun caso qui: la tessera grande ricadeva su
+    // _ballCorpoGenerico, lasciando un blocco vuoto sotto stella+titolo e
+    // solo la vecchia miniatura piccola in fondo (vedi screenshot). Foto a
+    // piena larghezza costruita da _ballCorpoFotoCarta
+    // (ui/widget-render-tessere-grandi.ui.js). Se la carta non è ancora
+    // stata scelta (d.vuoto, da widget-vetrina.ui.js) o non ha una foto,
+    // torna vuoto: _ballCorpoWidget ricade sul corpo generico, che per lo
+    // stato "Scegli una carta" tiene la ball/icona classica — comportamento
+    // voluto (Claudio, sessione corrente), non toccato.
+    // NIENTE ball-k-tit nell'inline: il titolo "Vetrina" lo stampa già
+    // renderWidgetHome (widget-tile-titolo), stesso motivo già documentato
+    // sopra per 'primo_piano' — evita la duplicazione vista in uno
+    // screenshot di Claudio il 2026-09-03 su quel widget.
+    ultima_carta: (d) => {
+        if (!d || d.vuoto) return { inline: '', blocco: '' };
+        return { inline: '', blocco: _ballCorpoFotoCarta(d) };
+    },
 };
 
 // Ripiego per gli undici widget non ancora convertiti: le righe di testo di

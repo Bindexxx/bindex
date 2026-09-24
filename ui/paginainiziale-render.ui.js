@@ -230,8 +230,18 @@ async function renderWidgetHome() {
                         ${c.inline}
                     </div>
                 </div>
-                ${c.blocco ? `<div class="ball-slot-blocco">${c.blocco}</div>` : ''}
-                ${rigaImmagine}`;
+                ${c.blocco ? `<div class="ball-slot-blocco">${c.blocco}</div>` : ''}`;
+            // AGGIUNTO (Claudio, sessione bugfix widget Vetrina — vedi chat):
+            // 'rigaImmagine' qui NON c'è più. Prima era sempre appesa in
+            // fondo alla tessera grande, anche quando esisteva già un corpo
+            // dedicato — per 'ultima_carta' (unico widget con 'immagine' a
+            // livello radice oggi, vedi widget-render-condiviso.ui.js) questo
+            // significava la miniatura piccola duplicata sotto la nuova foto
+            // a piena larghezza (_ballCorpoFotoCarta). Nessun altro widget
+            // imposta 'anteprima.immagine', quindi 'rigaImmagine' era
+            // comunque stringa vuota per tutti loro: questa riga non cambia
+            // niente per nessun altro widget. Resta invariata sulla tessera
+            // PICCOLA (ramo else sotto), dove non c'è nessun corpo dedicato.
         } else {
             corpo = `
                 ${visuale}
@@ -371,7 +381,15 @@ function _potaContenutoFuoriTessera() {
         // barra + didascalia della percentuale, che vanno nascoste
         // INSIEME. Nessun altro widget usa questa classe, quindi la
         // riga non cambia il comportamento di nulla di esistente.
-        blocco.querySelectorAll(':scope > .ball-riga, :scope > .ball-gruppi > .ball-gruppo, :scope > .ball-spark, :scope > .ball-strip, :scope > .ball-quota').forEach(pezzo => {
+        // .ball-foto-carta aggiunta (Claudio, sessione bugfix widget
+        // Vetrina — vedi chat): senza, la foto a piena larghezza del nuovo
+        // corpo 'ultima_carta' (_ballCorpoFotoCarta) non sarebbe mai
+        // riconosciuta da questa potatura e potrebbe sporgere dal fondo
+        // della tessera su combinazioni di taglia strette senza che nulla
+        // la nasconda — stesso ragionamento di .ball-quota sopra, nessun
+        // altro widget usa questa classe quindi nessun comportamento
+        // esistente cambia.
+        blocco.querySelectorAll(':scope > .ball-riga, :scope > .ball-gruppi > .ball-gruppo, :scope > .ball-spark, :scope > .ball-strip, :scope > .ball-quota, :scope > .ball-foto-carta').forEach(pezzo => {
             // Sempre ripristinato prima di misurare: la tessera puo' essere
             // stata ingrandita dall'ultimo giro e cio' che prima non ci
             // stava ora ci sta.
