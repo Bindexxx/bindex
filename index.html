@@ -6576,6 +6576,20 @@
                         <i class="fa-solid fa-eye-slash" style="color: var(--primary);"></i> Privacy — Match automatico
                     </h3>
                     <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 1rem;">Il resto del gruppo non vedrà le tue carte in questa/e sezione/i quando cerca corrispondenze — restano visibili solo a te, in tutto il resto del sito.</p>
+
+                    <!-- AGGIUNTO 2026-09-24: nickname (sql/71) — prima la
+                         lista Match mostrava la parte iniziale della tua
+                         email a tutto il gruppo, ora è sostituibile con un
+                         nome a scelta. Facoltativo: se vuoto resta il
+                         comportamento di prima. salvaNicknameMatch()/
+                         _nicknameMatchCaricaSeVuoto() in
+                         ui/widget-match.ui.js. -->
+                    <label style="display:block; font-size: 0.72rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.3rem;">NOME MOSTRATO NEL MATCH (facoltativo)</label>
+                    <div style="display:flex; gap:0.5rem; margin-bottom: 1rem;">
+                        <input type="text" id="nicknameMatchInput" maxlength="30" placeholder="Se vuoto, si vede solo la parte iniziale della tua email" onfocus="_nicknameMatchCaricaSeVuoto()" style="flex:1;">
+                        <button class="btn-secondary" onclick="salvaNicknameMatch()"><i class="fa-solid fa-floppy-disk"></i></button>
+                    </div>
+
                     <div style="display:flex; flex-direction:column; gap:0.7rem;">
                         <label style="display:flex; align-items:center; gap:0.6rem; font-size:0.85rem; cursor:pointer;">
                             <input type="checkbox" id="nascondiScambioCheck" style="width:auto;" onchange="salvaPreferenzePrivacy()"> Nascondi i miei Scambi dal match automatico
@@ -7697,6 +7711,28 @@
 
     <!-- FASE 11 (2026-09-13): modale di blocco Work in Progress —
          _wipMostraBlocco()/_wipChiudiModale() in ui/wip.ui.js. -->
+    <!-- CHAT MATCH — apriChatMatch()/chiudiChatMatch() in
+         ui/widget-match.ui.js (sql/70_chat_match.sql). Apertura/chiusura
+         via style.display, stesso meccanismo di ogni altro modale qui
+         sotto (.modal-overlay ha display:none di base). -->
+    <div id="chatMatchModal" class="modal-overlay">
+        <div class="modal-content" style="display:flex; flex-direction:column; max-height:85vh; text-align:left;">
+            <button class="close-modal-btn" onclick="chiudiChatMatch()"><i class="fa-solid fa-xmark"></i></button>
+            <div style="display:flex; align-items:center; justify-content:space-between; gap:0.5rem; margin-bottom:0.6rem; padding-right:1.8rem;">
+                <h3 id="chatMatchTitolo" style="margin:0; font-size:1rem;"><i class="fa-solid fa-comment"></i> Chat</h3>
+                <div style="display:flex; gap:0.4rem; flex-shrink:0;">
+                    <button type="button" class="btn-secondary" style="font-size:0.7rem; padding:0.3rem 0.5rem;" onclick="_chatSegnalaClick()" title="Segnala conversazione"><i class="fa-solid fa-flag"></i></button>
+                    <button type="button" class="btn-secondary" style="font-size:0.7rem; padding:0.3rem 0.5rem;" onclick="_chatBloccaUtenteClick()" title="Blocca utente"><i class="fa-solid fa-ban"></i></button>
+                </div>
+            </div>
+            <div id="chatMatchMessaggi" style="flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:0.4rem; padding:0.5rem 0; min-height:220px;"></div>
+            <div style="display:flex; gap:0.5rem; margin-top:0.5rem;">
+                <input type="text" id="chatMatchInput" maxlength="2000" placeholder="Scrivi un messaggio…" style="flex:1;" onkeydown="if(event.key==='Enter'){_chatInviaMessaggioClick();}">
+                <button class="btn-main" onclick="_chatInviaMessaggioClick()"><i class="fa-solid fa-paper-plane"></i></button>
+            </div>
+        </div>
+    </div>
+
     <div id="wipModal" class="modal-overlay" style="display:none;">
         <div class="modal-content" style="max-width: 340px; text-align: center;" onclick="event.stopPropagation()">
             <div style="font-size: 2.4rem; margin-bottom: 0.6rem;">🚧</div>
@@ -7778,6 +7814,10 @@
     <script src="data/wip.repository.js"></script>
     <!-- data/richieste-scambio.repository.js: Fase 4, Step 3 (2026-09-13). -->
     <script src="data/richieste-scambio.repository.js"></script>
+    <!-- AGGIUNTO 2026-09-24: chat in-app del widget Match (sql/70, sql/71) —
+         deve caricare prima di ui/widget-match.ui.js (che la usa), dopo
+         config/supabase.js come tutti i repository. -->
+    <script src="data/chat.repository.js"></script>
     <!-- data/bustina.repository.js: usata da renderPaginaBustina()/motore
          cutscene in ui/widget-bustina.ui.js (widget "Bustina"). I bottoni
          diagnostici admin che stavano in #impostazioni sono stati tolti
