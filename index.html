@@ -4696,6 +4696,52 @@
         .pg-riga[data-tocca] { cursor: pointer; }
         .pg-riga[data-tocca]:active { background: var(--row-hover); }
 
+        /* MATCH — restyle "tab + card per persona" (2026-09-24, mockup
+           Artifact approvato da Claudio). SCOPED a #match: nessuna classe
+           .pg-*/.btn-* condivisa toccata, stesso principio già seguito per
+           #chatModal (vedi Compilato_2026-09-24_widget-chat-server.txt).
+           Vive qui e non in un file a sé perché tutto il resto del CSS
+           di pagina (.pg-*, .btn-*) è già in questo blocco unico. */
+        #match .match-tabs { display: flex; gap: 8px; margin: 4px 0 14px; }
+        #match .match-tabbtn {
+            flex: 1; text-align: center; padding: 10px 6px; border-radius: 11px;
+            font-weight: 800; font-size: 0.78rem; cursor: pointer; border: none;
+            font-family: inherit; background: var(--primary-light); color: var(--primary);
+        }
+        #match .match-tabbtn.attivo { background: var(--primary); color: #fff; }
+
+        #match .match-persona { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 16px; overflow: hidden; margin-bottom: 12px; }
+        #match .match-persona-head { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-bottom: 1px solid var(--border-color); }
+        #match .match-avatar {
+            width: 36px; height: 36px; border-radius: 50%; flex: 0 0 auto;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: #fff; font-weight: 800; display: flex; align-items: center; justify-content: center; font-size: 0.9rem;
+        }
+        #match .match-persona-nome { font-weight: 800; font-size: 0.86rem; color: var(--text-dark); }
+        #match .match-persona-sotto { font-size: 0.66rem; color: var(--text-muted); }
+        #match .match-riga { display: flex; align-items: center; gap: 10px; padding: 11px 14px; position: relative; }
+        #match .match-riga + .match-riga { border-top: 1px solid var(--border-color); }
+        #match .match-riga-testo { flex: 1; min-width: 0; font-size: 0.8rem; color: var(--text-dark); line-height: 1.35; }
+        #match .match-icobtn {
+            width: 34px; height: 34px; border-radius: 9px; flex: 0 0 auto;
+            background: var(--primary-light); color: var(--primary); border: none;
+            display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 0.85rem;
+        }
+        #match .match-persona-head .match-icobtn { margin-left: auto; }
+        #match .match-menu {
+            position: absolute; top: 44px; right: 14px; z-index: 20;
+            background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.18); overflow: hidden; min-width: 170px; display: none;
+        }
+        #match .match-menu.aperto { display: block; }
+        #match .match-menu button {
+            width: 100%; text-align: left; padding: 10px 14px; border: none; background: none;
+            color: var(--text-dark); font-size: 0.78rem; font-family: inherit; cursor: pointer;
+            display: flex; align-items: center; gap: 8px;
+        }
+        #match .match-menu button:hover { background: var(--primary-light); }
+        #match .match-vuoto { text-align: center; color: var(--text-muted); font-size: 0.9rem; padding: 2rem 0; }
+
         .pg-fig {
             width: 34px; height: 47px; border-radius: 6px; flex: 0 0 auto;
             object-fit: cover;
@@ -5182,119 +5228,6 @@
            DIRETTAMENTE su th/td (selettore combinato, specificità 0-1-1,
            batte il bare "td" 0-0-1 della regola globale). */
         .bs-summary-table td, .bs-summary-table th { color: #000 !important; }
-
-        /* ══════════════════════════════════════════════════════════════
-           CHAT — restyle stile WhatsApp/Messenger (2026-09-24, giro di
-           migliorie grafiche su richiesta esplicita di Claudio). SCOPERTO
-           prima di scrivere: .modal-overlay/.modal-content sono CONDIVISI
-           da OGNI modale del sito (righe ~2776-2809) — qui uso SOLO
-           override scoped a #chatModal (stesso pattern già in uso per
-           #ricercaGlobaleModal, vedi @media max-width:768px sopra), zero
-           modifiche alle classi condivise: nessun altro modale è toccato
-           da queste regole. Markup corrispondente più sotto (#chatModal).
-           ══════════════════════════════════════════════════════════════ */
-        #chatModal .modal-content {
-            display: flex; flex-direction: column;
-            max-width: 480px; width: 94%;
-            height: 78vh; max-height: 78vh;
-            padding: 0; border-radius: 20px; overflow: hidden;
-            text-align: left;
-        }
-        @media (max-width: 768px) {
-            /* Schermo intero su mobile — richiesto esplicitamente. */
-            #chatModal.modal-overlay { padding: 0; align-items: stretch; justify-content: stretch; }
-            #chatModal .modal-content { width: 100%; height: 100%; max-width: 100%; max-height: 100%; border-radius: 0; }
-        }
-
-        .chat-header {
-            display: flex; align-items: center; gap: 0.6rem;
-            padding: 0.7rem 0.9rem;
-            border-bottom: 1px solid var(--border-color);
-            background: var(--card-bg);
-            flex-shrink: 0;
-        }
-        .chat-avatar {
-            width: 38px; height: 38px; border-radius: 50%; flex-shrink: 0;
-            background: var(--primary-light); color: var(--primary);
-            display: flex; align-items: center; justify-content: center;
-            font-weight: 800; font-size: 0.95rem;
-        }
-        .chat-avatar.piccolo { width: 34px; height: 34px; font-size: 0.8rem; }
-        .chat-header-info { flex: 1; min-width: 0; }
-        .chat-header-info .chat-nome {
-            font-weight: 700; font-size: 0.92rem; color: var(--text-dark);
-            overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-        }
-        .chat-menu-wrap { position: relative; flex-shrink: 0; }
-        .chat-menu-btn {
-            background: none; border: none; color: var(--text-muted); font-size: 1.1rem;
-            cursor: pointer; padding: 0.4rem 0.5rem; border-radius: 8px;
-        }
-        .chat-menu-btn:active { background: var(--row-hover); }
-        .chat-menu-dropdown {
-            display: none; position: absolute; top: 115%; right: 0; z-index: 30;
-            background: var(--card-bg); border: 1px solid var(--border-color);
-            border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.18);
-            min-width: 175px; overflow: hidden;
-        }
-        .chat-menu-dropdown.aperto { display: block; }
-        .chat-menu-dropdown button {
-            display: flex; align-items: center; gap: 0.5rem; width: 100%;
-            background: none; border: none; text-align: left;
-            padding: 0.65rem 0.8rem; font-size: 0.82rem; color: var(--text-dark);
-            cursor: pointer;
-        }
-        .chat-menu-dropdown button:active { background: var(--row-hover); }
-        .chat-menu-dropdown button.danger { color: var(--danger); }
-
-        .chat-body {
-            flex: 1; overflow-y: auto; display: flex; flex-direction: column;
-            padding: 0.6rem 0.7rem; gap: 2px;
-            background: var(--bg-color);
-        }
-        .chat-date-sep {
-            align-self: center; background: var(--primary-light); color: var(--text-muted);
-            font-size: 0.66rem; font-weight: 700; padding: 3px 11px; border-radius: 10px;
-            margin: 10px 0 6px;
-        }
-        .chat-bubble-wrap { display: flex; flex-direction: column; max-width: 78%; }
-        .chat-bubble-wrap.mio { align-self: flex-end; align-items: flex-end; }
-        .chat-bubble-wrap.altro { align-self: flex-start; align-items: flex-start; }
-        .chat-bubble {
-            padding: 0.5rem 0.7rem; font-size: 0.83rem; word-break: break-word;
-            white-space: pre-wrap; line-height: 1.35;
-            display: flex; align-items: flex-end; gap: 6px; flex-wrap: wrap;
-        }
-        .chat-bubble.mio { background: var(--primary); color: #fff; }
-        .chat-bubble.altro { background: var(--card-bg); color: var(--text-dark); border: 1px solid var(--border-color); }
-        /* Animazione SOLO sui messaggi genuinamente nuovi (attributo
-           data-nuovo impostato da JS) — se fosse sulla classe .chat-bubble
-           direttamente, ripartirebbe ad ogni giro di polling (6s) per
-           TUTTI i messaggi già presenti, ricreati ogni volta da
-           box.innerHTML: un fastidioso sfarfallio, non un effetto. */
-        .chat-bubble[data-nuovo] { animation: chatBubbleIn 0.18s ease; }
-        @keyframes chatBubbleIn {
-            from { opacity: 0; transform: translateY(4px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        .chat-ora { font-size: 0.62rem; opacity: 0.75; white-space: nowrap; margin-left: auto; align-self: flex-end; }
-        .chat-spunta { font-size: 0.62rem; margin-left: 2px; opacity: 0.8; }
-        .chat-spunta.letto { color: #4fc3f7; opacity: 1; }
-
-        .chat-input-bar {
-            display: flex; align-items: center; gap: 0.5rem;
-            padding: 0.6rem 0.7rem;
-            border-top: 1px solid var(--border-color);
-            background: var(--card-bg);
-            flex-shrink: 0;
-        }
-        .chat-input-campo {
-            flex: 1; border-radius: 999px; border: 1px solid var(--border-color);
-            padding: 0.55rem 0.9rem; font-size: 0.85rem; background: var(--bg-color);
-            color: var(--text-dark);
-        }
-        .chat-input-campo:focus { outline: none; border-color: var(--primary); }
-        .chat-invia-btn { width: 40px; height: 40px; border-radius: 50%; flex-shrink: 0; padding: 0; }
     </style>
 </head>
 <body>
@@ -6017,22 +5950,6 @@
             </div>
         </div>
 
-        <!-- AGGIUNTA 2026-09-24 (estrazione widget Chat) — inbox: elenca
-             TUTTE le conversazioni dell'utente, non solo quelle
-             raggiungibili da un match ancora attivo. renderPaginaChat()
-             in ui/widget-chat.ui.js. Click su una riga apre il modale
-             #chatModal qui sotto (apriChat), stesso meccanismo del
-             bottone "Contatta" di Match. -->
-        <div id="chat" class="view-section">
-            <div class="page-header">
-                <span class="page-title">Chat</span>
-            </div>
-            <div class="pg-pagina">
-                <p class="pg-sotto" style="margin:-6px 0 2px;">Le tue conversazioni con il gruppo.</p>
-                <div id="chatInboxLista"></div>
-            </div>
-        </div>
-
         <div id="condividi" class="view-section">
             <!-- Restilizzata (2026-08-30), stesso principio di #match sopra
                  — logica di renderPaginaCondividi() invariata. -->
@@ -6705,23 +6622,6 @@
                         <i class="fa-solid fa-eye-slash" style="color: var(--primary);"></i> Privacy — Match automatico
                     </h3>
                     <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 1rem;">Il resto del gruppo non vedrà le tue carte in questa/e sezione/i quando cerca corrispondenze — restano visibili solo a te, in tutto il resto del sito.</p>
-
-                    <!-- AGGIUNTO 2026-09-24: nickname (sql/71) — prima la
-                         lista Match mostrava la parte iniziale della tua
-                         email a tutto il gruppo, ora è sostituibile con un
-                         nome a scelta. Facoltativo: se vuoto resta il
-                         comportamento di prima. RINOMINATO 2026-09-24
-                         (estrazione widget Chat): salvaNickname()/
-                         _nicknameCaricaSeVuoto() ora vivono in
-                         ui/widget-chat.ui.js (erano salvaNicknameMatch()/
-                         _nicknameMatchCaricaSeVuoto() in
-                         ui/widget-match.ui.js). -->
-                    <label style="display:block; font-size: 0.72rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.3rem;">NOME MOSTRATO NEL MATCH E IN CHAT (facoltativo)</label>
-                    <div style="display:flex; gap:0.5rem; margin-bottom: 1rem;">
-                        <input type="text" id="nicknameInput" maxlength="30" placeholder="Se vuoto, si vede solo la parte iniziale della tua email" onfocus="_nicknameCaricaSeVuoto()" style="flex:1;">
-                        <button class="btn-secondary" onclick="salvaNickname()"><i class="fa-solid fa-floppy-disk"></i></button>
-                    </div>
-
                     <div style="display:flex; flex-direction:column; gap:0.7rem;">
                         <label style="display:flex; align-items:center; gap:0.6rem; font-size:0.85rem; cursor:pointer;">
                             <input type="checkbox" id="nascondiScambioCheck" style="width:auto;" onchange="salvaPreferenzePrivacy()"> Nascondi i miei Scambi dal match automatico
@@ -7843,59 +7743,6 @@
 
     <!-- FASE 11 (2026-09-13): modale di blocco Work in Progress —
          _wipMostraBlocco()/_wipChiudiModale() in ui/wip.ui.js. -->
-    <!-- CHAT — apriChat()/chiudiChat() in ui/widget-chat.ui.js
-         (sql/70_chat_match.sql). Apertura/chiusura via style.display,
-         stesso meccanismo di ogni altro modale qui sotto (.modal-overlay
-         ha display:none di base). RINOMINATO 2026-09-24 (estrazione
-         widget Chat): era #chatMatchModal/chatMatchTitolo/
-         chatMatchMessaggi/chatMatchInput/chiudiChatMatch() — la chat non
-         è più specifica al widget Match, apre dalla tessera Chat, dalla
-         sua inbox, o dal bottone "Contatta" di Match. -->
-    <div id="chatModal" class="modal-overlay">
-        <div class="modal-content">
-            <!-- RISTRUTTURATO 2026-09-24 (giro di migliorie grafiche —
-                 stile WhatsApp/Messenger): header con avatar+menu ⋮
-                 (prima due bottoni fissi Segnala/Blocca), corpo messaggi
-                 con bolle raggruppate/orario/spunte (vedi
-                 ui/widget-chat.ui.js, _chatBubbleHtml), input a pillola.
-                 CSS dedicato in cima al file (#chatModal .modal-content e
-                 classi .chat-*), zero modifiche a .modal-content/
-                 .modal-overlay condivisi dagli altri modali. -->
-            <div class="chat-header">
-                <div class="chat-avatar" id="chatAvatar">?</div>
-                <div class="chat-header-info">
-                    <div class="chat-nome" id="chatTitolo">Chat</div>
-                </div>
-                <div class="chat-menu-wrap">
-                    <button type="button" class="chat-menu-btn" onclick="_chatToggleMenu(event)" title="Altre azioni"><i class="fa-solid fa-ellipsis-vertical"></i></button>
-                    <div class="chat-menu-dropdown" id="chatMenuDropdown">
-                        <button type="button" onclick="_chatSegnalaClick()"><i class="fa-solid fa-flag"></i> Segnala conversazione</button>
-                        <button type="button" class="danger" onclick="_chatBloccaUtenteClick()"><i class="fa-solid fa-ban"></i> Blocca utente</button>
-                    </div>
-                </div>
-                <button class="close-modal-btn" onclick="chiudiChat()" style="position:static;"><i class="fa-solid fa-xmark"></i></button>
-            </div>
-            <div id="chatMessaggi" class="chat-body"></div>
-            <!-- AGGIUNTO 2026-09-24 (giro di migliorie): bottone invio
-                 disabilitato a campo vuoto + contatore caratteri
-                 (maxlength 2000) — _chatSuInputCambiato() in
-                 ui/widget-chat.ui.js, chiamata anche da apriChat() per
-                 partire già nello stato corretto (campo vuoto = bottone
-                 disabilitato) invece di lasciarlo abilitato finché
-                 l'utente non tocca l'input. -->
-            <div class="chat-input-bar">
-                <input type="text" id="chatInput" class="chat-input-campo" maxlength="2000" placeholder="Scrivi un messaggio…" oninput="_chatSuInputCambiato()" onkeydown="if(event.key==='Enter'){_chatInviaMessaggioClick();}">
-                <button class="btn-main chat-invia-btn" id="chatInviaBtn" onclick="_chatInviaMessaggioClick()" disabled><i class="fa-solid fa-paper-plane"></i></button>
-            </div>
-            <div id="chatContatore" style="text-align:right; font-size:0.66rem; color:var(--text-muted); padding:0 0.9rem;"></div>
-            <!-- AGGIUNTO 2026-09-24: avviso filtri di moderazione
-                 (parolacce/link esterni — client E server da sql/72),
-                 mostrato da _chatInviaMessaggioClick() quando blocca
-                 l'invio. -->
-            <div id="chatAvviso" style="display:none; font-size:0.72rem; color:var(--danger); padding:0.3rem 0.9rem 0.5rem; text-align:center;"></div>
-        </div>
-    </div>
-
     <div id="wipModal" class="modal-overlay" style="display:none;">
         <div class="modal-content" style="max-width: 340px; text-align: center;" onclick="event.stopPropagation()">
             <div style="font-size: 2.4rem; margin-bottom: 0.6rem;">🚧</div>
@@ -7977,10 +7824,6 @@
     <script src="data/wip.repository.js"></script>
     <!-- data/richieste-scambio.repository.js: Fase 4, Step 3 (2026-09-13). -->
     <script src="data/richieste-scambio.repository.js"></script>
-    <!-- AGGIUNTO 2026-09-24: chat in-app del widget Match (sql/70, sql/71) —
-         deve caricare prima di ui/widget-match.ui.js (che la usa), dopo
-         config/supabase.js come tutti i repository. -->
-    <script src="data/chat.repository.js"></script>
     <!-- data/bustina.repository.js: usata da renderPaginaBustina()/motore
          cutscene in ui/widget-bustina.ui.js (widget "Bustina"). I bottoni
          diagnostici admin che stavano in #impostazioni sono stati tolti
@@ -8115,13 +7958,6 @@
     <script src="ui/widget-inserimento.ui.js"></script>
     <script src="ui/widget-location.ui.js"></script>
     <script src="ui/widget-match.ui.js"></script>
-    <!-- ui/widget-chat.ui.js: ESTRATTO 2026-09-24 da widget-match.ui.js
-         (chat in-app + inbox). Usa data/chat.repository.js (già caricato
-         sopra) e authGetUserId/userSettingsGet/escapeHtml (auth/user-
-         settings.repository.js, già caricati sopra). Ordine rispetto
-         agli altri ui/widget-*.ui.js indifferente, come documentato per
-         gli altri file widget-render-*.ui.js. -->
-    <script src="ui/widget-chat.ui.js"></script>
     <script src="ui/widget-missioni.ui.js"></script>
     <script src="ui/widget-polvere.ui.js"></script>
     <script src="ui/widget-prezzi.ui.js"></script>
