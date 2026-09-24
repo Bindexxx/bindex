@@ -5904,6 +5904,22 @@
             </div>
         </div>
 
+        <!-- AGGIUNTA 2026-09-24 (estrazione widget Chat) — inbox: elenca
+             TUTTE le conversazioni dell'utente, non solo quelle
+             raggiungibili da un match ancora attivo. renderPaginaChat()
+             in ui/widget-chat.ui.js. Click su una riga apre il modale
+             #chatModal qui sotto (apriChat), stesso meccanismo del
+             bottone "Contatta" di Match. -->
+        <div id="chat" class="view-section">
+            <div class="page-header">
+                <span class="page-title">Chat</span>
+            </div>
+            <div class="pg-pagina">
+                <p class="pg-sotto" style="margin:-6px 0 2px;">Le tue conversazioni con il gruppo.</p>
+                <div id="chatInboxLista"></div>
+            </div>
+        </div>
+
         <div id="condividi" class="view-section">
             <!-- Restilizzata (2026-08-30), stesso principio di #match sopra
                  — logica di renderPaginaCondividi() invariata. -->
@@ -6581,13 +6597,16 @@
                          lista Match mostrava la parte iniziale della tua
                          email a tutto il gruppo, ora è sostituibile con un
                          nome a scelta. Facoltativo: se vuoto resta il
-                         comportamento di prima. salvaNicknameMatch()/
+                         comportamento di prima. RINOMINATO 2026-09-24
+                         (estrazione widget Chat): salvaNickname()/
+                         _nicknameCaricaSeVuoto() ora vivono in
+                         ui/widget-chat.ui.js (erano salvaNicknameMatch()/
                          _nicknameMatchCaricaSeVuoto() in
-                         ui/widget-match.ui.js. -->
-                    <label style="display:block; font-size: 0.72rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.3rem;">NOME MOSTRATO NEL MATCH (facoltativo)</label>
+                         ui/widget-match.ui.js). -->
+                    <label style="display:block; font-size: 0.72rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.3rem;">NOME MOSTRATO NEL MATCH E IN CHAT (facoltativo)</label>
                     <div style="display:flex; gap:0.5rem; margin-bottom: 1rem;">
-                        <input type="text" id="nicknameMatchInput" maxlength="30" placeholder="Se vuoto, si vede solo la parte iniziale della tua email" onfocus="_nicknameMatchCaricaSeVuoto()" style="flex:1;">
-                        <button class="btn-secondary" onclick="salvaNicknameMatch()"><i class="fa-solid fa-floppy-disk"></i></button>
+                        <input type="text" id="nicknameInput" maxlength="30" placeholder="Se vuoto, si vede solo la parte iniziale della tua email" onfocus="_nicknameCaricaSeVuoto()" style="flex:1;">
+                        <button class="btn-secondary" onclick="salvaNickname()"><i class="fa-solid fa-floppy-disk"></i></button>
                     </div>
 
                     <div style="display:flex; flex-direction:column; gap:0.7rem;">
@@ -7711,23 +7730,27 @@
 
     <!-- FASE 11 (2026-09-13): modale di blocco Work in Progress —
          _wipMostraBlocco()/_wipChiudiModale() in ui/wip.ui.js. -->
-    <!-- CHAT MATCH — apriChatMatch()/chiudiChatMatch() in
-         ui/widget-match.ui.js (sql/70_chat_match.sql). Apertura/chiusura
-         via style.display, stesso meccanismo di ogni altro modale qui
-         sotto (.modal-overlay ha display:none di base). -->
-    <div id="chatMatchModal" class="modal-overlay">
+    <!-- CHAT — apriChat()/chiudiChat() in ui/widget-chat.ui.js
+         (sql/70_chat_match.sql). Apertura/chiusura via style.display,
+         stesso meccanismo di ogni altro modale qui sotto (.modal-overlay
+         ha display:none di base). RINOMINATO 2026-09-24 (estrazione
+         widget Chat): era #chatMatchModal/chatMatchTitolo/
+         chatMatchMessaggi/chatMatchInput/chiudiChatMatch() — la chat non
+         è più specifica al widget Match, apre dalla tessera Chat, dalla
+         sua inbox, o dal bottone "Contatta" di Match. -->
+    <div id="chatModal" class="modal-overlay">
         <div class="modal-content" style="display:flex; flex-direction:column; max-height:85vh; text-align:left;">
-            <button class="close-modal-btn" onclick="chiudiChatMatch()"><i class="fa-solid fa-xmark"></i></button>
+            <button class="close-modal-btn" onclick="chiudiChat()"><i class="fa-solid fa-xmark"></i></button>
             <div style="display:flex; align-items:center; justify-content:space-between; gap:0.5rem; margin-bottom:0.6rem; padding-right:1.8rem;">
-                <h3 id="chatMatchTitolo" style="margin:0; font-size:1rem;"><i class="fa-solid fa-comment"></i> Chat</h3>
+                <h3 id="chatTitolo" style="margin:0; font-size:1rem;"><i class="fa-solid fa-comment"></i> Chat</h3>
                 <div style="display:flex; gap:0.4rem; flex-shrink:0;">
                     <button type="button" class="btn-secondary" style="font-size:0.7rem; padding:0.3rem 0.5rem;" onclick="_chatSegnalaClick()" title="Segnala conversazione"><i class="fa-solid fa-flag"></i></button>
                     <button type="button" class="btn-secondary" style="font-size:0.7rem; padding:0.3rem 0.5rem;" onclick="_chatBloccaUtenteClick()" title="Blocca utente"><i class="fa-solid fa-ban"></i></button>
                 </div>
             </div>
-            <div id="chatMatchMessaggi" style="flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:0.4rem; padding:0.5rem 0; min-height:220px;"></div>
+            <div id="chatMessaggi" style="flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:0.4rem; padding:0.5rem 0; min-height:220px;"></div>
             <div style="display:flex; gap:0.5rem; margin-top:0.5rem;">
-                <input type="text" id="chatMatchInput" maxlength="2000" placeholder="Scrivi un messaggio…" style="flex:1;" onkeydown="if(event.key==='Enter'){_chatInviaMessaggioClick();}">
+                <input type="text" id="chatInput" maxlength="2000" placeholder="Scrivi un messaggio…" style="flex:1;" onkeydown="if(event.key==='Enter'){_chatInviaMessaggioClick();}">
                 <button class="btn-main" onclick="_chatInviaMessaggioClick()"><i class="fa-solid fa-paper-plane"></i></button>
             </div>
         </div>
@@ -7952,6 +7975,13 @@
     <script src="ui/widget-inserimento.ui.js"></script>
     <script src="ui/widget-location.ui.js"></script>
     <script src="ui/widget-match.ui.js"></script>
+    <!-- ui/widget-chat.ui.js: ESTRATTO 2026-09-24 da widget-match.ui.js
+         (chat in-app + inbox). Usa data/chat.repository.js (già caricato
+         sopra) e authGetUserId/userSettingsGet/escapeHtml (auth/user-
+         settings.repository.js, già caricati sopra). Ordine rispetto
+         agli altri ui/widget-*.ui.js indifferente, come documentato per
+         gli altri file widget-render-*.ui.js. -->
+    <script src="ui/widget-chat.ui.js"></script>
     <script src="ui/widget-missioni.ui.js"></script>
     <script src="ui/widget-polvere.ui.js"></script>
     <script src="ui/widget-prezzi.ui.js"></script>
