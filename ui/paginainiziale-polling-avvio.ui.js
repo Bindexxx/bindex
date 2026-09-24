@@ -54,6 +54,11 @@ function avviaPollingWidgetHome() {
             // "la cosa più semplice e affidabile quando avremo anche più
             // utenti" — niente query extra sul ciclo veloce a 15s).
             await aggiornaBadgeMatch();
+            // AGGIUNTA (2026-09-24): stesso ciclo, stesso principio — badge
+            // "messaggi non letti" della chat Match (widget-match.ui.js,
+            // _aggiornaBadgeChatMatch). Non una query nuova ogni 15s, un
+            // giro in più su quello lento già esistente.
+            await _aggiornaBadgeChatMatch();
             await _controllaNotifichePush();
         } catch (e) { console.error('Errore polling avvisi (widget prezzi/inserimento/match):', e); }
         _impostaSyncAttivo(false);
@@ -269,6 +274,15 @@ async function initPhoneShell() {
                     icon: '\u2713', title: 'Prezzo obiettivo raggiunto', text: '',
                     target: '#wishlist', group: 'prezzo-obiettivo', groupLabel: 'obiettivi di prezzo raggiunti',
                     priority: 'high',
+                },
+                // AGGIUNTO (2026-09-24): chat in-app del widget Match
+                // (sql/70). Stesso target '#match' di 'match-trovato' —
+                // apriDettaglioWidget('match', null) gestisce già questa
+                // sezione, nessun caso nuovo da aggiungere lì (stesso
+                // motivo documentato sopra per gli altri tre tipi).
+                'chat-messaggio': {
+                    icon: '\u{1F4AC}', title: 'Nuovo messaggio', text: '',
+                    target: '#match', group: 'chat-match-messaggio', groupLabel: 'messaggi chat',
                 },
             },
 

@@ -455,27 +455,25 @@ async function salvaNicknameMatch() {
 // CSBar per messaggio davvero nuovo (stesso concetto di _giaNotificati
 // in queue.ui.js, ma un Set a sé qui — quello è privato a quel file).
 //
-// NON AGGANCIATA al ciclo di polling automatico: avviaPollingWidgetHome()
-// (ui/paginainiziale.ui.js, MAI letto in questa sessione) è quello che
-// oggi chiama aggiornaBadgeMatch() ogni 60s. Finché non leggo quel file
-// o non aggiungi tu la riga, questa funzione va chiamata a mano (es.
-// dalla console) o non gira mai automaticamente. Riga da aggiungere in
-// ui/paginainiziale.ui.js, ovunque compaia "aggiornaBadgeMatch();" nel
-// ciclo di polling lento:
-//     aggiornaBadgeMatch();
-//     _aggiornaBadgeChatMatch();   // <— AGGIUNTA
+// NON AGGANCIATA al ciclo di polling automatico DA QUESTA VERSIONE del
+// file — ora lo È: ui/paginainiziale-polling-avvio.ui.js (letto in questa
+// sessione) chiama _aggiornaBadgeChatMatch() subito dopo
+// aggiornaBadgeMatch(), stesso ciclo lento a 60s.
 //
-// CSBar.notify() usato DIRETTO (non CSBar.avvisa()): avvisa() richiede un
-// preset già registrato in notificationTypes, passato a CSBar.init() in
-// un file che non ho mai letto in questa sessione — notify() prende
-// l'oggetto già completo, non serve nessun registro da modificare.
+// CSBar.avvisa('chat-messaggio', ...) usato per l'avviso — tipo registrato
+// in notificationTypes dentro CSBar.init() (ui/paginainiziale-polling-
+// avvio.ui.js, letto per intero in questa sessione: prima avevo usato
+// CSBar.notify() grezzo per non toccare un file che non avevo ancora,
+// corretto qui per essere coerente col resto del progetto).
 // target: '#match' — stesso pattern già usato e confermato funzionante
-// per il widget Set (vedi compilato 2026-09-20). Il click sulla tessera
-// nel blocco esteso (_ballAzioneRiga(event,'tab','match'), vedi
+// per il widget Set (vedi compilato 2026-09-20), e ora anche verificato
+// dal vivo: onNotificationClick in quel file fa apriDettaglioWidget(
+// 'match', null) leggendo esattamente questo target. Il click sulla
+// tessera nel blocco esteso (_ballAzioneRiga(event,'tab','match'), vedi
 // ui/widget-render-corpi.ui.js) segue lo stesso pattern già in uso per
 // 'binder' — non ho letto _ballAzioneRiga stessa (vive in
-// ui/widget-render-tessere-grandi.ui.js, mai richiesta), quindi questa
-// parte è un'inferenza dal pattern esistente, da verificare dal vivo.
+// ui/widget-render-tessere-grandi.ui.js, mai richiesta), quindi quella
+// parte resta un'inferenza dal pattern esistente, da verificare dal vivo.
 let _numChatNonLettiMatch = 0;
 const _chatGiaNotificati = new Set();
 
@@ -497,11 +495,14 @@ async function _aggiornaBadgeChatMatch() {
     const nuovi = nonLetti.filter(m => !_chatGiaNotificati.has(m.id));
     if (nuovi.length === 0) return;
     nuovi.forEach(m => _chatGiaNotificati.add(m.id));
-    CSBar.notify({
-        title: 'Nuovo messaggio',
+    // AGGIORNATO (2026-09-24): CSBar.avvisa('chat-messaggio', ...) invece
+    // di CSBar.notify() grezzo — il tipo è ora registrato in
+    // notificationTypes dentro CSBar.init() (ui/paginainiziale-polling-
+    // avvio.ui.js, letto per intero in questa sessione), stesso pattern
+    // di 'match-trovato'/'prezzo-obiettivo'. onNotificationClick lì fa già
+    // apriDettaglioWidget('match', null) per target:'#match' — confermato
+    // dal file reale, non più un'inferenza.
+    CSBar.avvisa('chat-messaggio', {
         text: nuovi.length === 1 ? 'Hai un nuovo messaggio in chat.' : `Hai ${nuovi.length} nuovi messaggi in chat.`,
-        target: '#match',
-        group: 'chat-match-messaggio',
-        groupLabel: 'Messaggi chat',
     });
 }
