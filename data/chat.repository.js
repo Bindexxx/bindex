@@ -61,3 +61,17 @@ async function chatSbloccaUtente(bloccatoId) {
 async function chatSegnalaConversazione(conversazioneId, motivo) {
     return supabaseClient.rpc('segnala_conversazione', { p_conversazione_id: conversazioneId, p_motivo: motivo });
 }
+
+// ── Nickname (sql/71) ─────────────────────────────────────────────────
+// Non in RPC "chat" in senso stretto, ma vive qui perché è nato per
+// rimpiazzare l'email-prefix nella lista Match — stesso motivo per cui
+// non l'ho messo in un file impostazioni/utenti che non ho mai letto in
+// questa sessione (segnalato a Claudio, da valutare se spostarlo).
+
+async function chatImpostaNickname(nickname) {
+    return supabaseClient.rpc('imposta_nickname', { p_nickname: nickname });
+}
+
+async function chatOttieniNicknames(ownerIds) {
+    return supabaseClient.rpc('ottieni_nicknames', { p_owner_ids: ownerIds });
+}
