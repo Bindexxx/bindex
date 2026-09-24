@@ -5182,6 +5182,119 @@
            DIRETTAMENTE su th/td (selettore combinato, specificità 0-1-1,
            batte il bare "td" 0-0-1 della regola globale). */
         .bs-summary-table td, .bs-summary-table th { color: #000 !important; }
+
+        /* ══════════════════════════════════════════════════════════════
+           CHAT — restyle stile WhatsApp/Messenger (2026-09-24, giro di
+           migliorie grafiche su richiesta esplicita di Claudio). SCOPERTO
+           prima di scrivere: .modal-overlay/.modal-content sono CONDIVISI
+           da OGNI modale del sito (righe ~2776-2809) — qui uso SOLO
+           override scoped a #chatModal (stesso pattern già in uso per
+           #ricercaGlobaleModal, vedi @media max-width:768px sopra), zero
+           modifiche alle classi condivise: nessun altro modale è toccato
+           da queste regole. Markup corrispondente più sotto (#chatModal).
+           ══════════════════════════════════════════════════════════════ */
+        #chatModal .modal-content {
+            display: flex; flex-direction: column;
+            max-width: 480px; width: 94%;
+            height: 78vh; max-height: 78vh;
+            padding: 0; border-radius: 20px; overflow: hidden;
+            text-align: left;
+        }
+        @media (max-width: 768px) {
+            /* Schermo intero su mobile — richiesto esplicitamente. */
+            #chatModal.modal-overlay { padding: 0; align-items: stretch; justify-content: stretch; }
+            #chatModal .modal-content { width: 100%; height: 100%; max-width: 100%; max-height: 100%; border-radius: 0; }
+        }
+
+        .chat-header {
+            display: flex; align-items: center; gap: 0.6rem;
+            padding: 0.7rem 0.9rem;
+            border-bottom: 1px solid var(--border-color);
+            background: var(--card-bg);
+            flex-shrink: 0;
+        }
+        .chat-avatar {
+            width: 38px; height: 38px; border-radius: 50%; flex-shrink: 0;
+            background: var(--primary-light); color: var(--primary);
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 800; font-size: 0.95rem;
+        }
+        .chat-avatar.piccolo { width: 34px; height: 34px; font-size: 0.8rem; }
+        .chat-header-info { flex: 1; min-width: 0; }
+        .chat-header-info .chat-nome {
+            font-weight: 700; font-size: 0.92rem; color: var(--text-dark);
+            overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+        }
+        .chat-menu-wrap { position: relative; flex-shrink: 0; }
+        .chat-menu-btn {
+            background: none; border: none; color: var(--text-muted); font-size: 1.1rem;
+            cursor: pointer; padding: 0.4rem 0.5rem; border-radius: 8px;
+        }
+        .chat-menu-btn:active { background: var(--row-hover); }
+        .chat-menu-dropdown {
+            display: none; position: absolute; top: 115%; right: 0; z-index: 30;
+            background: var(--card-bg); border: 1px solid var(--border-color);
+            border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.18);
+            min-width: 175px; overflow: hidden;
+        }
+        .chat-menu-dropdown.aperto { display: block; }
+        .chat-menu-dropdown button {
+            display: flex; align-items: center; gap: 0.5rem; width: 100%;
+            background: none; border: none; text-align: left;
+            padding: 0.65rem 0.8rem; font-size: 0.82rem; color: var(--text-dark);
+            cursor: pointer;
+        }
+        .chat-menu-dropdown button:active { background: var(--row-hover); }
+        .chat-menu-dropdown button.danger { color: var(--danger); }
+
+        .chat-body {
+            flex: 1; overflow-y: auto; display: flex; flex-direction: column;
+            padding: 0.6rem 0.7rem; gap: 2px;
+            background: var(--bg-color);
+        }
+        .chat-date-sep {
+            align-self: center; background: var(--primary-light); color: var(--text-muted);
+            font-size: 0.66rem; font-weight: 700; padding: 3px 11px; border-radius: 10px;
+            margin: 10px 0 6px;
+        }
+        .chat-bubble-wrap { display: flex; flex-direction: column; max-width: 78%; }
+        .chat-bubble-wrap.mio { align-self: flex-end; align-items: flex-end; }
+        .chat-bubble-wrap.altro { align-self: flex-start; align-items: flex-start; }
+        .chat-bubble {
+            padding: 0.5rem 0.7rem; font-size: 0.83rem; word-break: break-word;
+            white-space: pre-wrap; line-height: 1.35;
+            display: flex; align-items: flex-end; gap: 6px; flex-wrap: wrap;
+        }
+        .chat-bubble.mio { background: var(--primary); color: #fff; }
+        .chat-bubble.altro { background: var(--card-bg); color: var(--text-dark); border: 1px solid var(--border-color); }
+        /* Animazione SOLO sui messaggi genuinamente nuovi (attributo
+           data-nuovo impostato da JS) — se fosse sulla classe .chat-bubble
+           direttamente, ripartirebbe ad ogni giro di polling (6s) per
+           TUTTI i messaggi già presenti, ricreati ogni volta da
+           box.innerHTML: un fastidioso sfarfallio, non un effetto. */
+        .chat-bubble[data-nuovo] { animation: chatBubbleIn 0.18s ease; }
+        @keyframes chatBubbleIn {
+            from { opacity: 0; transform: translateY(4px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .chat-ora { font-size: 0.62rem; opacity: 0.75; white-space: nowrap; margin-left: auto; align-self: flex-end; }
+        .chat-spunta { font-size: 0.62rem; margin-left: 2px; opacity: 0.8; }
+        .chat-spunta.letto { color: #4fc3f7; opacity: 1; }
+
+        .chat-input-bar {
+            display: flex; align-items: center; gap: 0.5rem;
+            padding: 0.6rem 0.7rem;
+            border-top: 1px solid var(--border-color);
+            background: var(--card-bg);
+            flex-shrink: 0;
+        }
+        .chat-input-campo {
+            flex: 1; border-radius: 999px; border: 1px solid var(--border-color);
+            padding: 0.55rem 0.9rem; font-size: 0.85rem; background: var(--bg-color);
+            color: var(--text-dark);
+        }
+        .chat-input-campo:focus { outline: none; border-color: var(--primary); }
+        .chat-invia-btn { width: 40px; height: 40px; border-radius: 50%; flex-shrink: 0; padding: 0; }
     </style>
 </head>
 <body>
@@ -7739,16 +7852,30 @@
          è più specifica al widget Match, apre dalla tessera Chat, dalla
          sua inbox, o dal bottone "Contatta" di Match. -->
     <div id="chatModal" class="modal-overlay">
-        <div class="modal-content" style="display:flex; flex-direction:column; max-height:85vh; text-align:left;">
-            <button class="close-modal-btn" onclick="chiudiChat()"><i class="fa-solid fa-xmark"></i></button>
-            <div style="display:flex; align-items:center; justify-content:space-between; gap:0.5rem; margin-bottom:0.6rem; padding-right:1.8rem;">
-                <h3 id="chatTitolo" style="margin:0; font-size:1rem;"><i class="fa-solid fa-comment"></i> Chat</h3>
-                <div style="display:flex; gap:0.4rem; flex-shrink:0;">
-                    <button type="button" class="btn-secondary" style="font-size:0.7rem; padding:0.3rem 0.5rem;" onclick="_chatSegnalaClick()" title="Segnala conversazione"><i class="fa-solid fa-flag"></i></button>
-                    <button type="button" class="btn-secondary" style="font-size:0.7rem; padding:0.3rem 0.5rem;" onclick="_chatBloccaUtenteClick()" title="Blocca utente"><i class="fa-solid fa-ban"></i></button>
+        <div class="modal-content">
+            <!-- RISTRUTTURATO 2026-09-24 (giro di migliorie grafiche —
+                 stile WhatsApp/Messenger): header con avatar+menu ⋮
+                 (prima due bottoni fissi Segnala/Blocca), corpo messaggi
+                 con bolle raggruppate/orario/spunte (vedi
+                 ui/widget-chat.ui.js, _chatBubbleHtml), input a pillola.
+                 CSS dedicato in cima al file (#chatModal .modal-content e
+                 classi .chat-*), zero modifiche a .modal-content/
+                 .modal-overlay condivisi dagli altri modali. -->
+            <div class="chat-header">
+                <div class="chat-avatar" id="chatAvatar">?</div>
+                <div class="chat-header-info">
+                    <div class="chat-nome" id="chatTitolo">Chat</div>
                 </div>
+                <div class="chat-menu-wrap">
+                    <button type="button" class="chat-menu-btn" onclick="_chatToggleMenu(event)" title="Altre azioni"><i class="fa-solid fa-ellipsis-vertical"></i></button>
+                    <div class="chat-menu-dropdown" id="chatMenuDropdown">
+                        <button type="button" onclick="_chatSegnalaClick()"><i class="fa-solid fa-flag"></i> Segnala conversazione</button>
+                        <button type="button" class="danger" onclick="_chatBloccaUtenteClick()"><i class="fa-solid fa-ban"></i> Blocca utente</button>
+                    </div>
+                </div>
+                <button class="close-modal-btn" onclick="chiudiChat()" style="position:static;"><i class="fa-solid fa-xmark"></i></button>
             </div>
-            <div id="chatMessaggi" style="flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:0.4rem; padding:0.5rem 0; min-height:220px;"></div>
+            <div id="chatMessaggi" class="chat-body"></div>
             <!-- AGGIUNTO 2026-09-24 (giro di migliorie): bottone invio
                  disabilitato a campo vuoto + contatore caratteri
                  (maxlength 2000) — _chatSuInputCambiato() in
@@ -7756,16 +7883,16 @@
                  partire già nello stato corretto (campo vuoto = bottone
                  disabilitato) invece di lasciarlo abilitato finché
                  l'utente non tocca l'input. -->
-            <div style="display:flex; gap:0.5rem; margin-top:0.5rem; align-items:flex-end;">
-                <input type="text" id="chatInput" maxlength="2000" placeholder="Scrivi un messaggio…" style="flex:1;" oninput="_chatSuInputCambiato()" onkeydown="if(event.key==='Enter'){_chatInviaMessaggioClick();}">
-                <button class="btn-main" id="chatInviaBtn" onclick="_chatInviaMessaggioClick()" disabled><i class="fa-solid fa-paper-plane"></i></button>
+            <div class="chat-input-bar">
+                <input type="text" id="chatInput" class="chat-input-campo" maxlength="2000" placeholder="Scrivi un messaggio…" oninput="_chatSuInputCambiato()" onkeydown="if(event.key==='Enter'){_chatInviaMessaggioClick();}">
+                <button class="btn-main chat-invia-btn" id="chatInviaBtn" onclick="_chatInviaMessaggioClick()" disabled><i class="fa-solid fa-paper-plane"></i></button>
             </div>
-            <div id="chatContatore" style="text-align:right; font-size:0.66rem; color:var(--text-muted); margin-top:0.15rem;"></div>
+            <div id="chatContatore" style="text-align:right; font-size:0.66rem; color:var(--text-muted); padding:0 0.9rem;"></div>
             <!-- AGGIUNTO 2026-09-24: avviso filtri di moderazione
-                 (parolacce/link esterni, solo lato client — vedi nota in
-                 cima a ui/widget-chat.ui.js), mostrato da
-                 _chatInviaMessaggioClick() quando blocca l'invio. -->
-            <div id="chatAvviso" style="display:none; font-size:0.72rem; color:var(--danger); margin-top:0.3rem; text-align:center;"></div>
+                 (parolacce/link esterni — client E server da sql/72),
+                 mostrato da _chatInviaMessaggioClick() quando blocca
+                 l'invio. -->
+            <div id="chatAvviso" style="display:none; font-size:0.72rem; color:var(--danger); padding:0.3rem 0.9rem 0.5rem; text-align:center;"></div>
         </div>
     </div>
 
