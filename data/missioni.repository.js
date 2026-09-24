@@ -530,8 +530,15 @@ async function missioniCompletateIdPerPeriodi(userId, periodi) {
         .eq('owner_id', userId).in('periodo', periodi);
 }
 
+// AGGIORNATA (2026-09-25, Milestones = Achievement): aggiunta 'riscosso_il'
+// alla select — serve al widget Achievement per il tooltip "sbloccato il"
+// (prima letto da achievement_sbloccati.sbloccato_il, tabella ora
+// abbandonata dal client, vedi data/achievement.repository.js). Nessun
+// consumer esistente rompe: MOTORE_MISSIONI (ui/missioni.ui.js) legge solo
+// 'traguardo_id' dal risultato di questa funzione (dati._traguardiRiscossiIds),
+// una colonna in più non lo tocca.
 async function missioniTraguardiRiscossiIdTotale(userId) {
-    return supabaseClient.from('traguardi_riscossi').select('traguardo_id').eq('owner_id', userId);
+    return supabaseClient.from('traguardi_riscossi').select('traguardo_id, riscosso_il').eq('owner_id', userId);
 }
 
 
