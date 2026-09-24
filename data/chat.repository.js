@@ -40,14 +40,32 @@ async function chatBlocchiSet(userId) {
 // (conversazioni proprie, poi messaggi non letti in quelle), niente RPC:
 // la RLS di 'messaggi' già permette ai due partecipanti di vedersi i
 // propri non letti, la seconda query passa da sola. Usata per il badge
-// (widget-match.ui.js, _aggiornaBadgeChatMatch).
+// (ui/widget-chat.ui.js, _aggiornaBadgeChat — era widget-match.ui.js,
+// _aggiornaBadgeChatMatch, prima dell'estrazione 2026-09-24) e per
+// l'inbox (renderPaginaChat). AGGIUNTO 'creato_il' alla select
+// (2026-09-24, estrazione): serve per ordinare le conversazioni per
+// recency nel blocco esteso della tessera.
 async function chatMessaggiNonLettiList(conversazioneIds, userId) {
     return supabaseClient
         .from('messaggi')
-        .select('id, conversazione_id, mittente_id')
+        .select('id, conversazione_id, mittente_id, creato_il')
         .in('conversazione_id', conversazioneIds)
         .neq('mittente_id', userId)
         .is('letto_il', null);
+}
+
+// AGGIUNTA (2026-09-24, estrazione widget Chat — inbox): ultimo messaggio
+// per conversazione, per l'anteprima nella lista. NESSUNA RPC nuova: stessa
+// tabella/RLS già usata da chatMessaggiList/chatMessaggiNonLettiList sopra
+// (i due partecipanti si vedono i propri messaggi). Ordine decrescente,
+// raggruppamento per conversazione_id fatto lato client (prende il primo
+// per ogni id) — a 5 utenti il volume non giustifica una RPC dedicata.
+async function chatUltimiMessaggiPerConversazioni(conversazioneIds) {
+    return supabaseClient
+        .from('messaggi')
+        .select('id, conversazione_id, mittente_id, testo, creato_il')
+        .in('conversazione_id', conversazioneIds)
+        .order('creato_il', { ascending: false });
 }
 
 // ── Scrittura (via RPC — mai tabelle dirette, RLS le blocca comunque) ────
