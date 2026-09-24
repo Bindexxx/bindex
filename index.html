@@ -4220,6 +4220,64 @@
         .achievement-vetrina-grid .achievement-slot-fallback i { font-size: 2rem; }
         .achievement-vetrina-grid .achievement-slot-fallback span { font-size: 0.8rem; }
 
+        /* ── POPUP SBLOCCO ACHIEVEMENT (2026-09-25) ───────────────────────
+           Vive dentro #phoneScreen (vedi markup), sempre sopra qualunque
+           pagina/widget sotto — stessa z-index-band delle altre notifiche
+           in-app (#phonePushBanner). Rarità colorano bordo/bagliore della
+           card: --text-muted per comune, var(--primary) per rara, oro
+           #F2C230 per leggendaria (stesso oro già usato altrove nel
+           progetto per gli elementi "leggendari"). */
+        .achievement-popup-overlay {
+            position: absolute; inset: 0; z-index: 26;
+            display: flex; align-items: center; justify-content: center;
+            padding: 1rem;
+            pointer-events: none;
+            opacity: 0; visibility: hidden;
+            transition: opacity 0.25s ease;
+        }
+        .achievement-popup-overlay.mostrato {
+            opacity: 1; visibility: visible; pointer-events: auto;
+        }
+        .achievement-popup-card {
+            position: relative; overflow: hidden;
+            background: var(--card-bg); border-radius: 20px;
+            padding: 1.6rem 1.8rem;
+            text-align: center;
+            box-shadow: 0 14px 40px rgba(0,0,0,0.35);
+            border: 3px solid var(--text-muted);
+            max-width: 280px;
+            transform: scale(0.85);
+            transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        .achievement-popup-overlay.mostrato .achievement-popup-card { transform: scale(1); }
+        .achievement-popup-card.rarita-rara { border-color: var(--primary); box-shadow: 0 0 0 4px var(--primary-light), 0 14px 40px rgba(0,0,0,0.35); }
+        .achievement-popup-card.rarita-leggendaria { border-color: #F2C230; box-shadow: 0 0 0 4px rgba(242,194,48,0.3), 0 14px 40px rgba(0,0,0,0.35); }
+        .achievement-popup-trofeo {
+            font-size: 2.2rem; color: var(--text-muted); margin-bottom: 0.5rem;
+        }
+        .achievement-popup-card.rarita-rara .achievement-popup-trofeo { color: var(--primary); }
+        .achievement-popup-card.rarita-leggendaria .achievement-popup-trofeo { color: #F2C230; }
+        .achievement-popup-eyebrow {
+            font-size: 0.68rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;
+            color: var(--text-muted); margin-bottom: 0.3rem;
+        }
+        .achievement-popup-titolo {
+            font-size: 1.05rem; font-weight: 800; color: var(--text-dark);
+        }
+        .achievement-popup-confetti {
+            position: absolute; inset: 0; overflow: hidden; pointer-events: none;
+        }
+        .achievement-popup-confetto {
+            position: absolute; top: -10%; width: 7px; height: 12px; border-radius: 2px;
+            animation: achievementConfettoCade 1.4s ease-in forwards;
+            transform: rotate(var(--rot, 0deg));
+        }
+        @keyframes achievementConfettoCade {
+            0%   { top: -10%; opacity: 1; transform: translateY(0) rotate(var(--rot, 0deg)); }
+            100% { top: 110%; opacity: 0; transform: translateY(0) rotate(calc(var(--rot, 0deg) + 180deg)); }
+        }
+        body.senza-anim-widget .achievement-popup-confetto { display: none; }
+
         /* ═══════════════════════════════════════════════════════════════
            WIDGET CONDIVIDI — griglia uniforme stile Pokédex (2026-09-18).
            ISOLATE da .binders-contenitori-grid/.binder-contenitore-* —
@@ -5491,6 +5549,22 @@
                 </div>
                 <div id="phonePushBanner"><i class="fa-solid fa-bell"></i><span id="phonePushBannerTesto"></span></div>
 
+                <!-- Popup sblocco Achievement (2026-09-25) — badge+confetti,
+                     chiamato da _achievementMostraOverlaySblocco()
+                     (ui/widget-achievement.ui.js) via
+                     _missioniNotificaCompletamenti() (ui/missioni.ui.js).
+                     Vive dentro #phoneScreen come #phonePushBanner qui
+                     sopra: stesso principio, deve restare visibile
+                     qualunque pagina/widget sia aperto sotto. -->
+                <div id="achievementSbloccatoOverlay" class="achievement-popup-overlay">
+                    <div class="achievement-popup-card" id="achievementPopupCard">
+                        <div class="achievement-popup-confetti" id="achievementPopupConfetti"></div>
+                        <div class="achievement-popup-trofeo"><i class="fa-solid fa-trophy"></i></div>
+                        <div class="achievement-popup-eyebrow">Traguardo sbloccato</div>
+                        <div class="achievement-popup-titolo" id="achievementPopupTitolo"></div>
+                    </div>
+                </div>
+
                 <!-- Overlay cutscene/apertura Bustina: NON PIÙ QUI dal
                      2026-09-10. Vive ora come figlio diretto di <body>,
                      subito prima di </body> — vedi commento lì per il
@@ -6103,20 +6177,19 @@
         </div>
 
         <div id="missioni" class="view-section">
-            <!-- Restilizzata (2026-08-30), stesso principio di #match/
-                 #condividi — logica di renderPaginaMissioni() invariata.
-                 Le barre di progresso dei traguardi riusano
-                 .pg-barra-track/.pg-barra-fill già costruite per #set. -->
+            <!-- SEMPLIFICATA (2026-09-25, Milestones = Achievement): la
+                 sezione Traguardi (#missioniListaTraguardi) è stata
+                 rimossa da qui — quei dati vivono ora esclusivamente nel
+                 widget Achievement (ui/widget-achievement.ui.js). Restano
+                 solo le missioni giornaliere/settimanali/mensili/una_tantum,
+                 logica di renderPaginaMissioni() invariata per quella
+                 parte (ui/widget-missioni.ui.js). -->
             <div class="page-header">
                 <span class="page-title">Missioni</span>
             </div>
             <div class="pg-pagina">
                 <p class="pg-sotto" style="margin:-6px 0 2px;">Obiettivi giornalieri, settimanali e mensili — le ricompense si sbloccano da sole quando li completi.</p>
                 <div id="missioniListaOggi"></div>
-
-                <div class="pg-titoletto" style="margin-top:0.6rem;"><i class="fa-solid fa-trophy"></i> Traguardi</div>
-                <p class="pg-sotto" style="margin:-6px 0 2px;">Permanenti — una volta sbloccati restano tuoi per sempre.</p>
-                <div id="missioniListaTraguardi"></div>
             </div>
         </div>
 
