@@ -581,7 +581,7 @@ const MOTORE_MISSIONI = {
     },
 };
 
-// ── NOTIFICA COMPLETAMENTI (avvisi + beep + saldo) ────────────────────────
+// ── NOTIFICA COMPLETAMENTI (avvisi + beep + saldo + popup Achievement) ───
 // STEP 14 ristrutturazione file widget home, 2026-09-11 (vedi
 // Roadmap_Ristrutturazione_Widget_Home_2026-09-11.md). Consolida in
 // un'unica funzione ciò che prima era duplicato quasi identico in due
@@ -603,6 +603,17 @@ const MOTORE_MISSIONI = {
 // alla guardia "solo se è cambiato qualcosa", già presente in entrambi i
 // chiamanti originali e qui preservata identica — Claudio ha chiesto
 // esplicitamente di non aggiungerne altri.
+//
+// ESTESA (2026-09-25, Milestones = Achievement): trigger del popup di
+// sblocco (badge/confetti stile trofeo Xbox) per ogni nuovo traguardo —
+// _achievementNotificaSblocco (ui/widget-achievement.ui.js), fire-and-forget
+// (mai awaited), sfalsati di 3.5s l'uno dall'altro (la durata del popup,
+// vedi _achievementMostraOverlaySblocco in quel file) per non sovrapporli
+// nel caso raro di più sblocchi nello stesso giro. Guardia
+// typeof === 'function' coerente con lo stile già in uso in questa stessa
+// funzione (typeof CSBar !== 'undefined' ecc.) — non deve mai bloccare o
+// rompere il resto (beep/saldo) se widget-achievement.ui.js non fosse
+// caricato in un contesto futuro.
 async function _missioniNotificaCompletamenti(nuoveMissioni, nuoviTraguardi) {
     if (!(nuoveMissioni && nuoveMissioni.length) && !(nuoviTraguardi && nuoviTraguardi.length)) return;
 
@@ -620,5 +631,14 @@ async function _missioniNotificaCompletamenti(nuoveMissioni, nuoviTraguardi) {
             const { data: saldo, error } = await polvereSaldoLeggi();
             if (!error) CSBar.setCurrency({ value: saldo || 0 });
         } catch (e) { console.error('[missioni] aggiornamento saldo polvere:', e); }
+    }
+
+    // NUOVO 2026-09-25: popup badge/confetti per ogni traguardo appena
+    // sbloccato (ui/widget-achievement.ui.js). Non awaited: non deve mai
+    // ritardare/bloccare né questa funzione né chi la chiama.
+    if (nuoviTraguardi && nuoviTraguardi.length && typeof _achievementNotificaSblocco === 'function') {
+        nuoviTraguardi.forEach((t, i) => {
+            setTimeout(() => _achievementNotificaSblocco(t), i * 3500);
+        });
     }
 }

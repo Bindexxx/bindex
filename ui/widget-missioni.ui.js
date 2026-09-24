@@ -5,35 +5,33 @@
 // Roadmap_Ristrutturazione_Widget_Home_2026-09-11.md). Estratto da
 // ui/phone.ui.js il 2026-09-11.
 //
-// CATEGORIA A: pagina propria (missioni giornaliere/settimanali/mensili/
-// una_tantum + traguardi permanenti, unificati). Chiama
-// MOTORE_MISSIONI.valutaEAssegna() (ui/missioni.ui.js) — motore missioni
-// vero, separato da tempo, non toccato da questo step se non per
-// l'aggiunta descritta sotto.
+// SEMPLIFICATA (2026-09-25, Milestones = Achievement — decisione di
+// Claudio in sessione): la sezione Traguardi (containerTraguardi, scale a
+// barra, TRAGUARDI_SINGOLI) è stata RIMOSSA da questa pagina — quei dati
+// vivono ora esclusivamente nel widget Achievement
+// (ui/widget-achievement.ui.js). Questa pagina mostra solo missioni
+// giornaliere/settimanali/mensili/una_tantum. MOTORE_MISSIONI.valutaEAssegna()
+// continua a valutare E scrivere i traguardi esattamente come prima
+// (traguardi_riscossi non cambia): qui cambia solo cosa viene mostrato,
+// non cosa viene calcolato/salvato — il popup di sblocco (dentro
+// _missioniNotificaCompletamenti, ui/missioni.ui.js) continua quindi a
+// scattare anche aprendo questa pagina, non solo dal watcher in
+// background.
 //
-// CONSOLIDAMENTO FATTO IN QUESTO STEP (richiesto dalla roadmap, §6):
-// avvisi CSBar + beep + rilettura saldo polvere per la status bar erano
-// duplicati quasi identici qui e in ui/missioni-watcher.js — CON UN BUG
-// REALE trovato leggendo il codice: i due punti usavano due metodi
-// diversi per il saldo (qui il corretto polvereSaldoLeggi(), il watcher
-// il vecchio ricompenseSaldo() che tronca oltre ~1000 righe). Consolidati
-// in _missioniNotificaCompletamenti(), ora dentro ui/missioni.ui.js (il
-// motore, non questo file: la usa anche missioni-watcher.js, che non ha
-// nulla a che fare col dominio widget-home). Approvato da Claudio dopo
-// verifica diretta del corpo di polvere_saldo() su Supabase (SELECT
-// COALESCE(SUM...), SECURITY DEFINER, nessuna scrittura) — nessun limite
-// aggiuntivo richiesto oltre alla guardia "solo se c'è qualcosa di nuovo"
-// già presente prima, preservata identica.
+// CONSOLIDAMENTO FATTO NELLO STEP 14 (invariato): avvisi CSBar + beep +
+// rilettura saldo polvere sono in _missioniNotificaCompletamenti(), dentro
+// ui/missioni.ui.js (il motore, non questo file: la usa anche
+// missioni-watcher.js).
 //
 // COSA RESTA FUORI (non spostato qui, invariato):
-// - apriDettaglioWidget (ui/paginainiziale.ui.js) continua a chiamare
-//   renderPaginaMissioni() per tabId === 'missioni' — motore home,
-//   dispatch generico, non toccato in questo step.
+// - apriDettaglioWidget (ui/paginainiziale-dettaglio.ui.js) continua a
+//   chiamare renderPaginaMissioni() per tabId === 'missioni' — motore
+//   home, dispatch generico, non toccato in questa sessione.
 // - MOTORE_MISSIONI, CATALOGO_MISSIONI, CATALOGO_TRAGUARDI,
 //   _missioniNotificaCompletamenti (ui/missioni.ui.js) — motore missioni,
-//   non toccato se non per l'aggiunta della funzione condivisa sopra.
-// - _watcherMissioniGiro e tutto il resto di ui/missioni-watcher.js —
-//   aggiornato per usare la funzione condivisa, non spostato qui.
+//   non toccato se non per l'aggiunta del trigger popup (vedi quel file).
+// - _watcherMissioniGiro e tutto il resto di ui/missioni-watcher.js — non
+//   toccato in questa sessione.
 // - authGetUserId, escapeHtml: esterne, non toccate.
 // ───────────────────────────────────────────────────────────────────────
 
@@ -64,18 +62,17 @@ CATALOGO_WIDGET.missioni = {
         },
 };
 
-// ── PAGINA "MISSIONI" (missioni giornaliere/settimanali/mensili/una_tantum
-// + traguardi permanenti, unificati — Claudio 2026-08-29) ────────────────
+// ── PAGINA "MISSIONI" (giornaliere/settimanali/mensili/una_tantum —
+// SEMPLIFICATA 2026-09-25: i traguardi permanenti sono usciti da questa
+// pagina, ora vivono nel widget Achievement) ─────────────────────────────
 // Chiama MOTORE_MISSIONI.valutaEAssegna() (ui/missioni.ui.js), che raccoglie
 // i dati via data/missioni.repository.js, valuta il catalogo Fase 1 e
 // assegna automaticamente le ricompense delle voci appena soddisfatte
 // (Claudio: "automatico, si sblocca da solo" — nessun bottone Riscuoti).
 async function renderPaginaMissioni() {
     const containerMissioni = document.getElementById('missioniListaOggi');
-    const containerTraguardi = document.getElementById('missioniListaTraguardi');
-    if (!containerMissioni || !containerTraguardi) return;
+    if (!containerMissioni) return;
     containerMissioni.innerHTML = '<p style="text-align:center; color:var(--text-muted); font-size:0.85rem; padding:1rem 0;">Caricamento…</p>';
-    containerTraguardi.innerHTML = '';
 
     const userId = await authGetUserId();
     if (!userId) {
@@ -100,11 +97,14 @@ async function renderPaginaMissioni() {
     const idNuove = new Set(nuoveMissioni.map(m => m.id));
 
     // CONSOLIDATO (STEP 14 ristrutturazione, 2026-09-11): avvisi CSBar +
-    // beep + rilettura saldo polvere ora in un'unica funzione condivisa
+    // beep + rilettura saldo polvere in un'unica funzione condivisa
     // (_missioniNotificaCompletamenti, ui/missioni.ui.js), usata anche da
-    // ui/missioni-watcher.js. Non awaited qui, come il refresh del saldo
-    // non lo era nemmeno prima — stesso comportamento fire-and-forget di
-    // sempre, non blocca il render della pagina.
+    // ui/missioni-watcher.js. Dal 2026-09-25 quella funzione include anche
+    // il trigger del popup di sblocco Achievement per ogni nuovo
+    // traguardo — invariato qui, nessuna chiamata in più da aggiungere in
+    // questo file. Non awaited, come il refresh del saldo non lo era
+    // nemmeno prima — stesso comportamento fire-and-forget di sempre, non
+    // blocca il render della pagina.
     _missioniNotificaCompletamenti(nuoveMissioni, nuoviTraguardi);
 
     const righeMissioni = missioniOggiPool.map(m => _righeMissioneHtml(m, dati, idNuove.has(m.id))).join('');
@@ -122,102 +122,6 @@ async function renderPaginaMissioni() {
         <div class="pg-elenco">${righeMissioni}</div>
         ${altreMissioni.length ? `<div class="pg-titoletto" style="margin-top:0.8rem;">Settimanali, mensili &amp; permanenti</div><div class="pg-elenco">${righeAltre}</div>` : ''}
     `;
-
-    // Traguardi: vista compatta per non riversare 65+ righe su mobile — per
-    // ogni scala mostra il prossimo scalino non ancora raggiunto (o "tutti
-    // sbloccati" se completa), più il conteggio totale sbloccati in alto.
-    //
-    // BUG TROVATO E CORRETTO (2026-09-01, segnalato da Claudio: "la pagina
-    // Traguardi non mostra Maestro CardSync/Leggenda CardSync"): la causa
-    // reale non erano le due voci nuove in sé, ma un problema preesistente
-    // più ampio, mai notato prima perché nessuno aveva ancora controllato
-    // a fondo. Questo array 'scale' elencava SOLO 6 scale (carte, valore,
-    // location, wishlist, doppioni, missioni) — le altre 4 già esistenti
-    // (t_accessi_, t_binder_aperture_, aggiunte in sessione 2026-08-30) non
-    // sono MAI comparse in questa pagina, così come i 4 TRAGUARDI_SINGOLI
-    // (t_giorno_impeccabile, t_collezionista_completo, aggiunti in sessioni
-    // precedenti, e t_maestro_cardsync/t_leggenda_cardsync di oggi): non
-    // esisteva alcun blocco di rendering per loro, non solo mancavano dalla
-    // lista. idTraguardiSbloccati sotto era già calcolato ma MAI usato in
-    // questo render (codice morto, lasciato con lo stesso nome per non
-    // introdurre confusione se in futuro serve davvero evidenziare i
-    // "nuovi" — vedi nota su righeSingoli sotto).
-    const idTraguardiSbloccati = new Set(nuoviTraguardi.map(t => t.id));
-    const scale = [
-        { prefisso: 't_carte_', titolo: 'Carte', metrica: 'carte_totali' },
-        { prefisso: 't_valore_', titolo: 'Valore collezione', metrica: 'valore_collezione' },
-        { prefisso: 't_location_', titolo: 'Location', metrica: 'location_distinte' },
-        { prefisso: 't_wishlist_', titolo: 'Wishlist', metrica: 'wishlist_totale' },
-        { prefisso: 't_doppioni_', titolo: 'Doppioni', metrica: 'doppioni_totali' },
-        { prefisso: 't_missioni_', titolo: 'Missioni completate', metrica: 'missioni_completate_totale' },
-        { prefisso: 't_accessi_', titolo: 'Accessi', metrica: 'accessi_totali' },
-        { prefisso: 't_binder_aperture_', titolo: 'Binder aperti dal gruppo', metrica: 'binder_aperture_totale' },
-        { prefisso: 't_match_', titolo: 'Match trovati', metrica: 'match_trovati_totale' },
-        { prefisso: 't_binder_visitati_', titolo: 'Binder visitati', metrica: 'binder_visitati_distinti_totale' },
-    ];
-    const righeScale = scale.map((s, i) => {
-        const voci = CATALOGO_TRAGUARDI.filter(t => t.id.startsWith(s.prefisso)).sort((a, b) => a.valore - b.valore);
-        const valoreAttuale = dati[s.metrica] || 0;
-        const prossima = voci.find(t => valoreAttuale < t.valore);
-        if (!prossima) {
-            return `<div class="pg-riga"><i class="fa-solid fa-trophy" style="color:var(--success);"></i><span style="flex:1;">${s.titolo}: tutti i traguardi sbloccati! 🎉</span></div>`;
-        }
-        const perc = Math.min(100, Math.round((valoreAttuale / prossima.valore) * 100));
-        // Stessa struttura/classi già usate per le barre di avanzamento
-        // della pagina Set (.pg-riga-set/.pg-barra-track/.pg-barra-fill,
-        // vedi renderPaginaSet()) — coerenza visiva, zero CSS nuovo.
-        // Espansione al tap (2026-08-31, stessa richiesta/stesso pattern
-        // già fatto per le missioni): mostra descrizione + ricompensa del
-        // PROSSIMO scalino non ancora raggiunto. Solo qui in questo
-        // render, non tocca la pagina Set che riusa la stessa classe
-        // .pg-riga-set senza onclick (verificato, nessun conflitto).
-        const idBase = 'traguardoScalaDettaglio-' + i;
-        return `
-            <div>
-                <div class="pg-riga-set" style="cursor:pointer;" onclick="_toggleDettaglioMissione('scala-${i}')">
-                    <div class="pg-riga-set-testa"><b>${s.titolo}</b><span>prossimo: ${escapeHtml(prossima.titolo)} (${valoreAttuale}/${prossima.valore}) <i class="fa-solid fa-chevron-down" id="missioneDettaglio-scala-${i}-chevron" style="font-size:0.65rem; transition:transform 0.2s;"></i></span></div>
-                    <div class="pg-barra-track"><div class="pg-barra-fill" style="width:${perc}%"></div></div>
-                </div>
-                <div id="missioneDettaglio-scala-${i}" style="display:none; padding:0.3rem 0.2rem 0.6rem; font-size:0.78rem; color:var(--text-muted); line-height:1.4;">
-                    <div>${escapeHtml(prossima.descrizione || prossima.titolo)}</div>
-                    <div style="margin-top:0.25rem; color:var(--primary); font-weight:600;">${_testoRicompensa(prossima.ricompensa)}</div>
-                </div>
-            </div>`;
-    }).join('');
-
-    // Traguardi "singoli" (non in scala, soglia unica) — MAI renderizzati
-    // prima in questa pagina (vedi nota sopra). Testo di stato diverso a
-    // seconda del tipo di metrica: booleano ('==' → sbloccato/non ancora),
-    // altrimenti valore/soglia (percentuale o conteggio). Sbloccato = la
-    // metrica soddisfa GIA' la condizione ora, stessa semplificazione già
-    // usata sopra per "tutti sbloccati" nelle scale (non interroga
-    // traguardi_riscossi direttamente, ricalcola dal valore corrente —
-    // coerente, non un'invenzione nuova).
-    const _statoSingoloTesto = (t, dati) => {
-        const valore = dati[t.metrica];
-        if (t.operatore === '==') return valore ? 'Sbloccato' : 'Non ancora';
-        const unita = t.metrica === 'percentuale_traguardi_sbloccati' ? '%' : '';
-        return `${valore || 0}${unita} / ${t.valore}${unita}`;
-    };
-    const righeSingoli = TRAGUARDI_SINGOLI.map((t, i) => {
-        const sbloccato = MOTORE_MISSIONI.valuta(t, dati);
-        const idBase = 'singolo-' + i;
-        return `
-            <div>
-                <div class="pg-riga-set" style="cursor:pointer;" onclick="_toggleDettaglioMissione('${idBase}')">
-                    <div class="pg-riga-set-testa">
-                        <b>${escapeHtml(t.titolo)}</b>
-                        <span>${sbloccato ? '<i class="fa-solid fa-trophy" style="color:var(--success);"></i> ' : ''}${_statoSingoloTesto(t, dati)} <i class="fa-solid fa-chevron-down" id="missioneDettaglio-${idBase}-chevron" style="font-size:0.65rem; transition:transform 0.2s;"></i></span>
-                    </div>
-                </div>
-                <div id="missioneDettaglio-${idBase}" style="display:none; padding:0.3rem 0.2rem 0.6rem; font-size:0.78rem; color:var(--text-muted); line-height:1.4;">
-                    <div>${escapeHtml(t.descrizione || t.titolo)}</div>
-                    <div style="margin-top:0.25rem; color:var(--primary); font-weight:600;">${_testoRicompensa(t.ricompensa)}</div>
-                </div>
-            </div>`;
-    }).join('');
-
-    containerTraguardi.innerHTML = `<div class="pg-elenco">${righeScale}${righeSingoli}</div>`;
 }
 
 // Riga singola per una missione (completata o no), usata sia nel blocco
