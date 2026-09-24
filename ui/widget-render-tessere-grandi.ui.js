@@ -261,7 +261,7 @@ function _ballCorpoFotoCarta(d) {
         : (d.variazioneNumerica < 0 ? 'var(--danger)' : 'var(--text-muted)');
 
     return `
-        <div class="ball-foto-carta" style="position:relative; width:100%; aspect-ratio:3/4; max-height:220px; border-radius:12px; overflow:hidden; background:#000;">
+        <div class="ball-foto-carta" style="position:relative; width:100%; height:100%; min-height:120px; border-radius:12px; overflow:hidden; background:#000;">
             <img src="${url}" alt="" style="position:absolute; inset:0; width:100%; height:100%; object-fit:cover;" onerror="this.style.display='none';">
             <div style="position:absolute; inset:0; background:linear-gradient(180deg, transparent 45%, rgba(0,0,0,.85) 100%);"></div>
             <div style="position:absolute; left:0; right:0; bottom:0; padding:0.6rem 0.7rem; color:#fff;">
