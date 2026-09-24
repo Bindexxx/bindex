@@ -23,15 +23,23 @@
 // arriva.
 //
 // AGGIORNATO (Claudio, 2026-09-11): confermato dal vivo che il click
-// ricadeva su Visualizzazione (vedi sopra). Claudio ha chiesto un
-// placeholder esplicito nel frattempo, non una correzione definitiva:
-// aggiunta 'azione' che mostra un semplice alert "work in progress" —
-// FUNZIONALITÀ REALE ANCORA DA IMPLEMENTARE, questo è solo un segnaposto
-// temporaneo finché non si decide cosa deve aprire davvero (pagina
-// dedicata? modale con lo storico contributi? Claudio non ha ancora
-// deciso). Scelto alert() e non una pagina/modale nuova per restare a
-// una sola riga in un solo file, senza toccare index.html o il motore
-// home — il minimo indispensabile per il segnaposto richiesto.
+// ricadeva su Visualizzazione (vedi sopra). Placeholder temporaneo:
+// 'azione' con un semplice alert "work in progress", in attesa di
+// decidere la destinazione vera.
+//
+// RISOLTO (sessione 2026-09-24): tolto l'alert, aggiunta pagina di
+// dettaglio dedicata — stesso pattern già usato da 'valore'/'achievement'/
+// 'primopiano' (tab: 'contributi' nel catalogo, view-section in
+// index.html, whitelist di apriDettaglioWidget() in
+// paginainiziale-dettaglio.ui.js — MAI switchTab(), whitelist diversa).
+// Mostra solo i 3 numeri già letti da _contributiConCache() qui sotto,
+// con più spazio/contesto rispetto alla tessera. NESSUNO storico nel
+// tempo: verificato dal vivo (Regola d'Oro #3) che activity_log con
+// action='aiuto_gruppo' è oggi a ZERO righe in produzione — il test
+// disponibile ha usato un solo account, e la RPC scarta esplicitamente
+// il caso "owner della riga aiutata == chi la lavora" (non è un
+// contributo). Un vero storico richiede prima almeno un test con due
+// account diversi che generi una riga reale — vedi compilato di sessione.
 // _contributiConCache/_cacheContributi/TTL_CONTRIBUTI_MS: verificato che
 // sono usate SOLO dal preview() di questo widget (un solo chiamante) —
 // non qualificano come "funzione condivisa fra più widget", restano qui
@@ -56,14 +64,11 @@ CATALOGO_WIDGET.contributi = {
         // Due numeri affiancati piu' la barra della quota: sotto questa
         // altezza la barra finisce appiccicata ai numeri.
         tagliaDefault: '6x4',
-        // SEGNAPOSTO (Claudio, 2026-09-11): prima non c'era nessuna
-        // 'azione', il click ricadeva su Visualizzazione per un effetto
-        // collaterale di switchTab() (vedi header del file). In attesa di
-        // decidere la destinazione vera, un click qui mostra solo un
-        // avviso — NON è la funzionalità reale, da implementare più avanti.
-        azione: (dati, punto) => {
-            alert('Contributi al gruppo — work in progress. Questa sezione non è ancora stata implementata.');
-        },
+        // Pagina di dettaglio dedicata (sessione 2026-09-24) — vedi
+        // renderPaginaContributi() in fondo a questo file e la
+        // view-section #contributi in index.html. Sostituisce il
+        // placeholder alert() dell'11/09.
+        tab: 'contributi',
         preview: async () => {
             const d = await _contributiConCache();
             // DATO ASSENTE != TRE ZERI. Qui la RPC non ha risposto: non si
@@ -109,4 +114,76 @@ async function _contributiConCache() {
         console.error('[widget contributi]', e);
         return null;
     }
+}
+
+// ── PAGINA DI DETTAGLIO (sessione 2026-09-24) ────────────────────────────
+// Riempita in #contributiContenuto (index.html, view-section #contributi),
+// aperta da apriDettaglioWidget('contributi', ...) via la voce 'tab' nel
+// catalogo qui sopra. RIUSA _contributiConCache(): stessa cache 5 minuti
+// della tessera, nessuna richiesta "sempre fresca" — vedi nota TTL sopra,
+// il dato si muove raramente e il piano Supabase e' free.
+//
+// STESSO VINCOLO INTERMEDIO della tessera: solo 'miei' e 'gruppo', MAI un
+// elenco per persona. 'personeAiutate' e' un conteggio (quante persone
+// diverse), non un elenco di CHI — resta ammesso.
+//
+// NESSUNO STORICO: la RPC leggi_contributi_gruppo() non ha dimensione
+// temporale (somma tutto activity_log da sempre in un numero solo) e in
+// produzione non esiste ancora una riga reale da mostrare (vedi header del
+// file). Quando esistera' un test vero con due account diversi, si potra'
+// valutare una RPC nuova (es. leggi_contributi_gruppo_storico(), raggruppata
+// per data — MAI per persona) senza toccare leggi_contributi_gruppo().
+async function renderPaginaContributi() {
+    const container = document.getElementById('contributiContenuto');
+    if (!container) return;
+
+    let d;
+    try {
+        d = await _contributiConCache();
+    } catch (e) {
+        console.error('renderPaginaContributi:', e);
+        d = null;
+    }
+
+    // DATO ASSENTE — stessa distinzione della tessera: non e' un errore
+    // "zero", e' proprio l'assenza di risposta (RPC caduta, non
+    // autenticato). Stesso testo/stile di errore di renderPaginaValoreCollezione.
+    if (!d) {
+        container.innerHTML = `
+            <div class="page-header">
+                <span class="page-title">Contributi al gruppo</span>
+            </div>
+            <p style="text-align:center; color:var(--text-muted); font-size:0.85rem; padding:1rem 0;">Dati non disponibili al momento.</p>
+        `;
+        return;
+    }
+
+    // Stesso ramo "tre zeri legittimi" della tessera (_ballCORPI.contributi
+    // in widget-render-corpi.ui.js): qui niente calcolo di percentuale,
+    // niente "0% del lavoro del gruppo" che si legge come un rimprovero.
+    const barraHtml = !d.gruppo
+        ? `<div class="pg-barra-track"><div class="pg-barra-fill" style="width:0%"></div></div>
+           <div class="pg-sotto" style="text-align:center; margin-top:6px;">Primi contributi in arrivo.</div>`
+        : (() => {
+            const perc = Math.round((d.miei / d.gruppo) * 100);
+            return `<div class="pg-barra-track"><div class="pg-barra-fill" style="width:${perc}%"></div></div>
+                    <div class="pg-sotto" style="text-align:center; margin-top:6px;">${perc}% del lavoro del gruppo</div>`;
+        })();
+
+    container.innerHTML = `
+        <div class="page-header">
+            <span class="page-title">Contributi al gruppo</span>
+        </div>
+        <div class="pg-pagina">
+            <div class="pg-intro">
+                <div class="pg-sotto">Quando lavori la coda di carte di qualcun altro del gruppo con "Aiuta il gruppo" attivo nell'estensione, conta come contributo qui sotto. Lavorare le tue righe non conta.</div>
+            </div>
+            <div class="pg-stat">
+                <div><b>${d.miei}</b><span>Cart${d.miei === 1 ? 'a' : 'e'} lavorate per altri</span></div>
+                <div><b>${d.personeAiutate}</b><span>Person${d.personeAiutate === 1 ? 'a' : 'e'} aiutate</span></div>
+            </div>
+            <div class="pg-titoletto">Quota sul lavoro del gruppo</div>
+            ${barraHtml}
+        </div>
+    `;
 }
