@@ -58,6 +58,32 @@
 // ui/widget-chat.ui.js (id catalogo 'chat') — vedi quel file per tutto
 // il resto. _contattaPersonaMatch() RESTA qui come ponte verso il
 // widget chat (sotto), unica riga toccata.
+//
+// RESTYLE (2026-09-24, sessione successiva ancora — "tab + card per
+// persona"): mockup su Claude Artifact (canvas "Match — mockup restyle"),
+// 4 alternative mostrate a Claudio, scelta confermata: "A ma con le tab
+// di C" (card per persona di A dentro le due tab di C). renderPaginaMatch()
+// riscritta, CSS nuovo scoped a #match in index.html (vedi commento lì).
+// Cosa cambia per l'utente:
+// - Due TAB in testa ("Lo hai tu" / "Lo cerchi") al posto di un'unica
+//   lista che mescolava righe Scambio (richiedibile:false) e Wishlist
+//   (richiedibile:true) — stesso identico dato (righeScambio/Wishlist/
+//   *Sealed) invariato, solo raggruppato per tab invece che tutto insieme.
+// - "Contatta" ora è UN SOLO bottone in testata della card-persona
+//   (prima era ripetuto identico su ogni riga della stessa persona).
+// - Azioni secondarie (Binder nel tab "Lo cerchi", Nascondi in entrambi)
+//   spostate in un menu "⋯" per riga — stesso pattern (_matchToggleMenu/
+//   _matchChiudiMenuAperto, un solo listener "click fuori" alla volta)
+//   già usato da ui/widget-chat.ui.js per il menu ⋮ dei messaggi — COPIATO
+//   apposta, non fattorizzato in un file condiviso (Regola d'Oro #1): se
+//   cambia uno dei due pattern, va cambiato anche l'altro a mano.
+// - _nascondiMatch(): il selector usato per l'hide ottimistico prima del
+//   salvataggio puntava a '.widget-picker-riga', una classe che non esiste
+//   più nel markup di questa pagina da quando esiste .pg-riga (probabile
+//   refuso ereditato da un altro widget, mai stato funzionante qui —
+//   nessuna prova che fosse mai stato corretto). Corretto per puntare
+//   alla nuova '.match-riga', altrimenti l'hide ottimistico sarebbe
+//   rimasto silenziosamente rotto anche dopo il restyle.
 // ───────────────────────────────────────────────────────────────────────
 
 // ── VOCE DI CATALOGO ──────────────────────────────────────────────────
@@ -70,6 +96,11 @@
     // Claudio: "la cosa più semplice e affidabile quando avremo anche più
     // utenti" — niente interrogazione delle RPC di match ogni 15s per
     // ogni utente col widget attivo.
+// Stato del tab attivo (restyle 2026-09-24) — variabile di modulo, non
+// persistita: si resetta a 'hai' ad ogni refresh di pagina, scelta
+// volutamente semplice per una pura preferenza di vista, non un dato.
+let _matchTabAttivo = 'hai';
+
 CATALOGO_WIDGET.match = {
         titolo: 'Match trovati', icona: 'fa-handshake',
         preview: () => {
@@ -192,29 +223,126 @@ async function renderPaginaMatch() {
         }
     }
 
-    const perPersona = {};
-    tutte.forEach(r => { (perPersona[r.ownerAltro] ||= []).push(r); });
+    // Tab: "hai" (richiedibile:false — è tuo, lo cerca l'altra persona) /
+    // "cerchi" (richiedibile:true — è tuo in Wishlist, ce l'ha l'altro).
+    // Stessa suddivisione dati di prima, solo raggruppata diversamente.
+    const righeHai = tutte.filter(r => !r.richiedibile);
+    const righeCerchi = tutte.filter(r => r.richiedibile);
+    // Se un tab è vuoto e l'altro no, mostra quello con contenuto — non
+    // ha senso aprire su un tab vuoto quando l'altro ha corrispondenze.
+    if (righeHai.length === 0 && righeCerchi.length > 0) _matchTabAttivo = 'cerchi';
+    else if (righeCerchi.length === 0 && righeHai.length > 0) _matchTabAttivo = 'hai';
 
-    container.innerHTML = Object.entries(perPersona).map(([ownerAltro, righe]) => {
-        const label = nicknameMap[ownerAltro] || righe[0].persona;
-        const labelSafe = escapeHtml(label).replace(/'/g, "\\'");
-        return `
-        <div>
-            <div class="pg-titoletto"><i class="fa-solid fa-user"></i> ${escapeHtml(label)}</div>
-            <div class="pg-elenco">
-                ${righe.map(r => `
-                    <div class="pg-riga" style="flex-wrap:wrap; gap:0.5rem;">
-                        <span style="flex:1; min-width:200px; font-size:0.82rem;">${r.testo}</span>
-                        <div style="display:flex; gap:0.4rem; flex-shrink:0;">
-                            ${r.richiedibile ? `<button type="button" class="btn-secondary" style="font-size:0.72rem; padding:0.35rem 0.55rem;" onclick="event.stopPropagation(); apriRichiediMatch('${r.ownerAltro}', '${r.oggettoId}', '${r.tipoRichiesta}', '${String(r.nomeOggetto).replace(/'/g, "\\'")}', '${labelSafe}')" title="Richiedi"><i class="fa-solid fa-paper-plane"></i></button>` : ''}
-                            <button type="button" class="btn-secondary" style="font-size:0.72rem; padding:0.35rem 0.55rem;" onclick="event.stopPropagation(); _apriBinderAltruiMatch('${r.ownerAltro}', '${r.binderAltro || ''}')" title="Vai al binder"><i class="fa-solid fa-layer-group"></i></button>
-                            <button type="button" class="btn-secondary" style="font-size:0.72rem; padding:0.35rem 0.55rem;" onclick="event.stopPropagation(); _contattaPersonaMatch('${r.ownerAltro}', '${labelSafe}')" title="Contatta"><i class="fa-solid fa-comment"></i></button>
-                            <button type="button" class="btn-secondary" style="font-size:0.72rem; padding:0.35rem 0.55rem;" onclick="event.stopPropagation(); _nascondiMatch('${r.chiave}', event)" title="Nascondi"><i class="fa-solid fa-eye-slash"></i></button>
-                        </div>
-                    </div>`).join('')}
-            </div>
+    container.innerHTML = _matchRenderPagina(righeHai, righeCerchi, nicknameMap);
+}
+
+// Raggruppa un elenco di righe match per ownerAltro, risolvendo il nome da
+// mostrare (nickname se impostato, altrimenti fallback email-prefix già
+// presente in r.persona — stessa logica di prima, solo estratta in una
+// funzione a sé perché ora serve due volte, una per tab).
+function _matchRaggruppaPerPersona(righe, nicknameMap) {
+    const perPersona = {};
+    righe.forEach(r => { (perPersona[r.ownerAltro] ||= []).push(r); });
+    return Object.entries(perPersona).map(([ownerAltro, righeOwner]) => {
+        const label = nicknameMap[ownerAltro] || righeOwner[0].persona;
+        return { ownerAltro, label, labelSafe: escapeHtml(label).replace(/'/g, "\\'"), righe: righeOwner };
+    });
+}
+
+// Contatore globale per gli id DOM dei menu "⋯" — un indice progressivo
+// invece della chiave della riga (evita qualunque problema di escaping
+// nell'id, la chiave può contenere uuid con caratteri non garantiti sicuri
+// in un attributo id senza escaping dedicato).
+let _matchMenuIdx = 0;
+
+function _matchRenderPagina(righeHai, righeCerchi, nicknameMap) {
+    _matchMenuIdx = 0;
+    const gruppiHai = _matchRaggruppaPerPersona(righeHai, nicknameMap);
+    const gruppiCerchi = _matchRaggruppaPerPersona(righeCerchi, nicknameMap);
+
+    const tabsHtml = `
+        <div class="match-tabs">
+            <button type="button" class="match-tabbtn ${_matchTabAttivo === 'hai' ? 'attivo' : ''}" onclick="_matchCambiaTab('hai')">Lo hai tu &middot; ${righeHai.length}</button>
+            <button type="button" class="match-tabbtn ${_matchTabAttivo === 'cerchi' ? 'attivo' : ''}" onclick="_matchCambiaTab('cerchi')">Lo cerchi &middot; ${righeCerchi.length}</button>
         </div>`;
-    }).join('');
+
+    const contenutoHai = gruppiHai.length > 0
+        ? gruppiHai.map(g => _matchCardPersonaHtml(g, false)).join('')
+        : '<p class="match-vuoto">Nessuna corrispondenza: nulla di tuo che gli altri stiano cercando al momento.</p>';
+    const contenutoCerchi = gruppiCerchi.length > 0
+        ? gruppiCerchi.map(g => _matchCardPersonaHtml(g, true)).join('')
+        : '<p class="match-vuoto">Nessuna corrispondenza: nessuno ha ancora ciò che cerchi in Wishlist.</p>';
+
+    return tabsHtml + `<div id="matchTabHai" style="${_matchTabAttivo === 'hai' ? '' : 'display:none;'}">${contenutoHai}</div>`
+                     + `<div id="matchTabCerchi" style="${_matchTabAttivo === 'cerchi' ? '' : 'display:none;'}">${contenutoCerchi}</div>`;
+}
+
+function _matchCardPersonaHtml(gruppo, eCerchi) {
+    return `
+        <div class="match-persona">
+            <div class="match-persona-head">
+                <div class="match-avatar">${escapeHtml(gruppo.label.charAt(0).toUpperCase())}</div>
+                <div style="flex:1; min-width:0;">
+                    <div class="match-persona-nome">${escapeHtml(gruppo.label)}</div>
+                    <div class="match-persona-sotto">${gruppo.righe.length} corrispondenz${gruppo.righe.length === 1 ? 'a' : 'e'}</div>
+                </div>
+                <button type="button" class="match-icobtn" onclick="event.stopPropagation(); _contattaPersonaMatch('${gruppo.ownerAltro}', '${gruppo.labelSafe}')" title="Contatta ${gruppo.labelSafe}" aria-label="Contatta ${gruppo.labelSafe}"><i class="fa-solid fa-comment"></i></button>
+            </div>
+            ${gruppo.righe.map(r => _matchRigaHtml(r, eCerchi)).join('')}
+        </div>`;
+}
+
+function _matchRigaHtml(r, eCerchi) {
+    const idx = _matchMenuIdx++;
+    const chiaveSafe = String(r.chiave).replace(/'/g, "\\'");
+    // Tab "Lo cerchi": azione primaria visibile = Richiedi, il resto
+    // (Binder + Nascondi) nel menu "⋯". Tab "Lo hai tu": nulla da
+    // richiedere (è tuo), azione primaria = Binder, "⋯" ha solo Nascondi.
+    const azionePrimaria = eCerchi
+        ? `<button type="button" class="match-icobtn" onclick="event.stopPropagation(); apriRichiediMatch('${r.ownerAltro}', '${r.oggettoId}', '${r.tipoRichiesta}', '${String(r.nomeOggetto).replace(/'/g, "\\'")}', '${String(r.persona).replace(/'/g, "\\'")}')" title="Richiedi" aria-label="Richiedi"><i class="fa-solid fa-paper-plane"></i></button>`
+        : `<button type="button" class="match-icobtn" onclick="event.stopPropagation(); _apriBinderAltruiMatch('${r.ownerAltro}', '${r.binderAltro || ''}')" title="Vai al binder" aria-label="Vai al binder"><i class="fa-solid fa-layer-group"></i></button>`;
+    const voceMenu = eCerchi
+        ? `<button type="button" onclick="_matchChiudiMenuAperto(); _apriBinderAltruiMatch('${r.ownerAltro}', '${r.binderAltro || ''}')"><i class="fa-solid fa-layer-group"></i> Vai al binder</button>
+           <button type="button" onclick="_matchChiudiMenuAperto(); _nascondiMatch('${chiaveSafe}', event)"><i class="fa-solid fa-eye-slash"></i> Nascondi</button>`
+        : `<button type="button" onclick="_matchChiudiMenuAperto(); _nascondiMatch('${chiaveSafe}', event)"><i class="fa-solid fa-eye-slash"></i> Nascondi</button>`;
+
+    return `
+        <div class="match-riga">
+            <span class="match-riga-testo">${r.testo}</span>
+            ${azionePrimaria}
+            <button type="button" class="match-icobtn" onclick="_matchToggleMenu(${idx}, event)" title="Altre azioni" aria-label="Altre azioni"><i class="fa-solid fa-ellipsis-vertical"></i></button>
+            <div class="match-menu" id="matchMenu_${idx}">${voceMenu}</div>
+        </div>`;
+}
+
+// Cambio tab: nessuna nuova query, i dati sono già in memoria — basterebbe
+// mostrare/nascondere #matchTabHai/#matchTabCerchi, ma si ri-renderizza
+// da zero richiamando renderPaginaMatch() per semplicità (stesso costo di
+// 4 RPC già cacheate lato client? No — richiama davvero le RPC. Scelta
+// consapevole: a 5 utenti il costo è trascurabile, ed evita di dover
+// tenere in memoria una copia separata dei dati tra un tab e l'altro).
+function _matchCambiaTab(tab) {
+    _matchTabAttivo = tab;
+    renderPaginaMatch();
+}
+
+// Menu "⋯" per riga — stesso pattern di _chatToggleMenu/
+// _chatChiudiMenuFuori in ui/widget-chat.ui.js (COPIATO, non condiviso,
+// vedi commento di testata). Un solo menu aperto alla volta, chiuso da un
+// singolo listener "click fuori" registrato con { once: true }.
+function _matchToggleMenu(idx, evt) {
+    evt.stopPropagation();
+    const menu = document.getElementById('matchMenu_' + idx);
+    if (!menu) return;
+    const giaAperto = menu.classList.contains('aperto');
+    _matchChiudiMenuAperto();
+    if (!giaAperto) {
+        menu.classList.add('aperto');
+        setTimeout(() => { document.addEventListener('click', _matchChiudiMenuAperto, { once: true }); }, 0);
+    }
+}
+function _matchChiudiMenuAperto() {
+    document.querySelectorAll('#match .match-menu.aperto').forEach(m => m.classList.remove('aperto'));
 }
 
 // Legge preferenze_utente.match_nascosti (migration 30) e lo trasforma
@@ -236,7 +364,14 @@ async function _matchNascostiSet(userId) {
 // salvataggio finisca) e scrive per davvero su preferenze_utente —
 // persistente per-utente, sopravvive a refresh e cambio dispositivo.
 async function _nascondiMatch(chiave, evt) {
-    const tile = evt?.currentTarget?.closest('.widget-picker-riga');
+    // Selector corretto in questa sessione: puntava a '.widget-picker-riga',
+    // classe assente dal markup di questa pagina da quando esiste
+    // .pg-riga (probabile refuso mai stato funzionante qui) — ora
+    // '.match-riga', coerente col restyle "tab + card per persona"
+    // (2026-09-24). evt qui è l'evento del bottone dentro il menu "⋯",
+    // non più direttamente sulla riga: closest() risale comunque fino a
+    // trovare l'antenato .match-riga, quindi funziona identico.
+    const tile = evt?.currentTarget?.closest('.match-riga') || evt?.target?.closest?.('.match-riga');
     if (tile) tile.style.display = 'none';
 
     const userId = await authGetUserId();
