@@ -107,3 +107,12 @@ async function chatImpostaNickname(nickname) {
 async function chatOttieniNicknames(ownerIds) {
     return supabaseClient.rpc('ottieni_nicknames', { p_owner_ids: ownerIds });
 }
+
+// ── Restrizioni d'uso — flag minorenne (sql/72, 2026-09-24) ──────────────
+// Lettura del PROPRIO flag (RLS: chat_restrizioni_select_proprio,
+// auth.uid() = owner_id) — usata da ui/widget-chat.ui.js come primo
+// avviso lato client; la barriera vera è dentro invia_messaggio/
+// ottieni_o_crea_conversazione (sql/72), non questa lettura.
+async function chatRestrizioneUtente(userId) {
+    return supabaseClient.from('chat_restrizioni_utente').select('minorenne').eq('owner_id', userId).maybeSingle();
+}

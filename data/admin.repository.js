@@ -135,3 +135,16 @@ async function adminResetPassword(userId, nuovaPassword) {
 async function adminHardDeleteUtente(userId) {
     return supabaseClient.rpc('admin_hard_delete_user', { p_target: userId });
 }
+
+// ── Restrizioni chat — flag minorenne (sql/72, 2026-09-24) ───────────────
+// Tabella A SÉ (chat_restrizioni_utente), non una colonna su profiles/
+// preferenze_utente — RLS verificata dal vivo prima di scrivere sql/72:
+// scrittura riservata a is_admin(), quindi qui è scrittura DIRETTA (come
+// adminAggiornaAnagrafica sopra), non una RPC — la RLS della tabella è il
+// vero controllo di accesso, non un wrapper SECURITY DEFINER.
+async function adminChatRestrizioneGet(userId) {
+    return supabaseClient.from('chat_restrizioni_utente').select('minorenne').eq('owner_id', userId).maybeSingle();
+}
+async function adminChatImpostaMinorenne(userId, minorenne) {
+    return supabaseClient.from('chat_restrizioni_utente').upsert({ owner_id: userId, minorenne }, { onConflict: 'owner_id' });
+}
