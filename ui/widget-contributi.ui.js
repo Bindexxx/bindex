@@ -161,14 +161,38 @@ async function renderPaginaContributi() {
     // Stesso ramo "tre zeri legittimi" della tessera (_ballCORPI.contributi
     // in widget-render-corpi.ui.js): qui niente calcolo di percentuale,
     // niente "0% del lavoro del gruppo" che si legge come un rimprovero.
+    // AGGIUNTA (mockup approvato da Claudio, sessione 2026-09-24): icona
+    // grande fa-hands-helping al posto dello spazio vuoto sotto la barra
+    // — stessa icona già assegnata al widget nel catalogo qui sopra,
+    // Font Awesome caricato globalmente in index.html (riga 14).
     const barraHtml = !d.gruppo
         ? `<div class="pg-barra-track"><div class="pg-barra-fill" style="width:0%"></div></div>
-           <div class="pg-sotto" style="text-align:center; margin-top:6px;">Primi contributi in arrivo.</div>`
+           <div class="pg-sotto" style="text-align:center; margin-top:6px;">Primi contributi in arrivo.</div>
+           <div style="text-align:center; padding:22px 0 6px;"><i class="fa-solid fa-hands-helping" style="font-size:2.75rem; color:var(--primary-light);"></i></div>`
         : (() => {
             const perc = Math.round((d.miei / d.gruppo) * 100);
+            // AGGIUNTA (mockup approvato): sopra il 50% una frase invece
+            // del numero secco — resta un dato AGGREGATO (miei/gruppo),
+            // non tocca il vincolo INTERMEDIO: nessun nome, nessun
+            // confronto con una persona specifica del gruppo.
+            const etichetta = perc > 50
+                ? 'Stai facendo più della metà del lavoro del gruppo'
+                : `${perc}% del lavoro del gruppo`;
             return `<div class="pg-barra-track"><div class="pg-barra-fill" style="width:${perc}%"></div></div>
-                    <div class="pg-sotto" style="text-align:center; margin-top:6px;">${perc}% del lavoro del gruppo</div>`;
+                    <div class="pg-sotto" style="text-align:center; margin-top:6px;">${etichetta}</div>`;
         })();
+
+    // AGGIUNTA (mockup approvato): tre passi "come funziona" al posto
+    // della sola riga di testo — stesso var(--primary)/var(--primary-light)
+    // del tema, nessuna classe CSS nuova.
+    const passo = (n, testo) => `
+        <div style="display:flex; gap:8px; align-items:flex-start; font-size:0.78rem; color:var(--text-dark); margin-bottom:6px;">
+            <span style="flex-shrink:0; width:18px; height:18px; border-radius:50%; background:var(--primary-light); color:var(--primary-dark); font-size:0.68rem; font-weight:700; display:flex; align-items:center; justify-content:center; margin-top:1px;">${n}</span>
+            <span>${testo}</span>
+        </div>`;
+    const comeFunzionaHtml = passo(1, 'Attiva "Aiuta il gruppo" nell\'estensione')
+        + passo(2, "L'estensione lavora in autonomia la coda di un altro")
+        + passo(3, 'Ogni carta lavorata per un altro conta qui sotto');
 
     container.innerHTML = `
         <div class="page-header">
@@ -178,6 +202,8 @@ async function renderPaginaContributi() {
             <div class="pg-intro">
                 <div class="pg-sotto">Quando lavori la coda di carte di qualcun altro del gruppo con "Aiuta il gruppo" attivo nell'estensione, conta come contributo qui sotto. Lavorare le tue righe non conta.</div>
             </div>
+            <div class="pg-titoletto">Come funziona</div>
+            ${comeFunzionaHtml}
             <div class="pg-stat">
                 <div><b>${d.miei}</b><span>Cart${d.miei === 1 ? 'a' : 'e'} lavorate per altri</span></div>
                 <div><b>${d.personeAiutate}</b><span>Person${d.personeAiutate === 1 ? 'a' : 'e'} aiutate</span></div>
