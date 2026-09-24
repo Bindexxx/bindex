@@ -261,8 +261,8 @@ function _ballCorpoFotoCarta(d) {
         : (d.variazioneNumerica < 0 ? 'var(--danger)' : 'var(--text-muted)');
 
     return `
-        <div class="ball-foto-carta" style="position:relative; width:100%; height:100%; min-height:120px; border-radius:12px; overflow:hidden; background:#000;">
-            <img src="${url}" alt="" style="position:absolute; inset:0; width:100%; height:100%; object-fit:contain;" onerror="this.style.display='none';">
+        <div class="ball-foto-carta" style="position:relative; width:100%; height:100%; min-height:120px; border-radius:12px; overflow:hidden; background:transparent;">
+            <img src="${url}" alt="" style="position:absolute; inset:0; width:100%; height:100%; object-fit:contain;" onerror="this.style.display='none'; this.parentElement.style.background='linear-gradient(150deg, ${_ballTintaDaNome(d.nome)}, rgba(0,0,0,.35))';">
             <div style="position:absolute; inset:0; background:linear-gradient(180deg, transparent 45%, rgba(0,0,0,.85) 100%);"></div>
             <div style="position:absolute; left:0; right:0; bottom:0; padding:0.6rem 0.7rem; color:#fff;">
                 <div style="font-weight:800; font-size:0.85rem; text-shadow:0 1px 3px rgba(0,0,0,.6);">${esc(d.nome || '')}</div>
