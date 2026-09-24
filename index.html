@@ -7761,6 +7761,11 @@
                 <button class="btn-main" id="chatInviaBtn" onclick="_chatInviaMessaggioClick()" disabled><i class="fa-solid fa-paper-plane"></i></button>
             </div>
             <div id="chatContatore" style="text-align:right; font-size:0.66rem; color:var(--text-muted); margin-top:0.15rem;"></div>
+            <!-- AGGIUNTO 2026-09-24: avviso filtri di moderazione
+                 (parolacce/link esterni, solo lato client — vedi nota in
+                 cima a ui/widget-chat.ui.js), mostrato da
+                 _chatInviaMessaggioClick() quando blocca l'invio. -->
+            <div id="chatAvviso" style="display:none; font-size:0.72rem; color:var(--danger); margin-top:0.3rem; text-align:center;"></div>
         </div>
     </div>
 
