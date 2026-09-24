@@ -103,6 +103,40 @@ async function apriModaleUtente(userId) {
       logCont.innerHTML = log.map(l => `<div class="log-line">${l.action} <span class="lmeta">— ${l.source} · ${fmtData(l.created_at)}</span></div>`).join('');
     }
   }
+
+  // AGGIUNTO (2026-09-24, sql/72): checkbox minorenne — renderizzata
+  // disabilitata in renderModaleBody (stato ignoto finché non arriva la
+  // risposta), abilitata e valorizzata qui, stesso pattern del log
+  // attività sopra (mostra la modale subito, riempi dopo).
+  const chatCheck = document.getElementById('chat-minorenne-check');
+  if (chatCheck) {
+    const { data: restrizione, error: errR } = await adminChatRestrizioneGet(userId);
+    if (errR) {
+      console.error('apriModaleUtente: errore lettura restrizione chat:', errR.message);
+    } else {
+      chatCheck.checked = !!(restrizione && restrizione.minorenne);
+      chatCheck.disabled = false;
+      chatCheck.addEventListener('change', async () => {
+        chatCheck.disabled = true;
+        const nuovoValore = chatCheck.checked;
+        const azione = nuovoValore ? 'marcare' : 'togliere il segno da';
+        if (!confirm(`Confermi di voler ${azione} "${u.username}" come minorenne? ${nuovoValore ? 'La chat diventerà non disponibile per questo account (sia in invio che in ricezione).' : 'La chat torna disponibile per questo account.'}`)) {
+          chatCheck.checked = !nuovoValore;
+          chatCheck.disabled = false;
+          return;
+        }
+        const { error } = await adminChatImpostaMinorenne(userId, nuovoValore);
+        if (error) {
+          mostraStatus('Errore: ' + error.message, false);
+          chatCheck.checked = !nuovoValore;
+        } else {
+          await adminRegistraAzione('chat_minorenne_change', userId, { minorenne: nuovoValore });
+          mostraStatus(nuovoValore ? 'Utente marcato come minorenne — chat bloccata.' : 'Segno di minorenne rimosso — chat riabilitata.', true);
+        }
+        chatCheck.disabled = false;
+      });
+    }
+  }
 }
 
 
@@ -131,6 +165,14 @@ function renderModaleBody(u) {
         <input type="text" id="anag-email" value="${escAttr(u.email_contatto)}" placeholder="—">
       </div>
       <button class="btn-small btn-toggle-role" data-act="salva-anagrafica" style="align-self:flex-start;">💾 Salva dati anagrafici</button>
+    </div>
+
+    <div class="section-title">Chat — restrizioni d'uso</div>
+    <div class="action-grid">
+      <label style="display:flex;align-items:center;gap:0.5rem;font-weight:600;cursor:pointer;">
+        <input type="checkbox" id="chat-minorenne-check" style="width:auto;" disabled>
+        Utente minorenne — chat non disponibile
+      </label>
     </div>
 
     <div class="section-title">Ban</div>

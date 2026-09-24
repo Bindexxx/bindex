@@ -92,41 +92,55 @@
 // ui/widget-render-tessere-grandi.ui.js) e quello sulla notifica CSBar
 // aprono entrambi ora la conversazione specifica — risolto in questo
 // giro.
+//
+// GIRO SUCCESSIVO STESSO GIORNO (2026-09-24, "va ricontrollato tutto, va
+// visto il lato server" — sql/72_chat_restrizioni_e_moderazione.sql):
+// tutte e tre le restrizioni sotto (minorenni, parolacce, link esterni)
+// sono ora ANCHE applicate dentro invia_messaggio/
+// ottieni_o_crea_conversazione sul DB — non più scavalcabili chiamando
+// le RPC direttamente. Il flag minorenne non è più un array hardcoded
+// qui: vive in chat_restrizioni_utente (sql/72), scritto SOLO dall'admin
+// via ui/admin-users.ui.js (checkbox nella modale utente) +
+// data/admin.repository.js (adminChatRestrizioneGet/
+// adminChatImpostaMinorenne). Le liste parolacce/link restano duplicate
+// tra qui e sql/72 per scelta esplicita (Regola d'Oro #1) — vanno
+// allineate A MANO se Claudio amplia una delle due, nessun meccanismo le
+// sincronizza.
 // ───────────────────────────────────────────────────────────────────────
 
 // ═══════════════════════════════════════════════════════════════════════
-// RESTRIZIONI D'USO (2026-09-24, richiesta esplicita di Claudio) — SOLO
-// lato client per questo giro, per scelta esplicita ("client ora, server
-// dopo"). QUESTO NON È UNA VERA BARRIERA DI SICUREZZA: chiunque sappia
-// chiamare le RPC direttamente (console del browser, Postman, ecc.) le
-// scavalca tutte e tre. Sono un cancello per l'uso normale dell'app,
-// utile finché il gruppo è quello che è (5 persone conosciute), non una
-// protezione contro un utente malintenzionato. La versione vera (colonna
-// dedicata su preferenze_utente + controllo dentro la RPC
-// invia_messaggio) resta da fare in una sessione con accesso diretto al
-// DB (Regola d'Oro #3 — non si scrive quella SQL per inferenza).
+// RESTRIZIONI D'USO (2026-09-24, richiesta esplicita di Claudio) — DOPO
+// sql/72 (2026-09-24, stesso giorno, giro successivo: "va ricontrollato
+// tutto, va visto il lato server") la barriera VERA è dentro le RPC
+// invia_messaggio/ottieni_o_crea_conversazione sul DB. Quanto sotto resta
+// solo un primo avviso lato client (UX: non far scoprire il blocco solo
+// dopo il tentativo di invio) — chiunque chiami le RPC direttamente
+// (console del browser, Postman) trova comunque il controllo server-side,
+// non più scavalcabile.
 // ═══════════════════════════════════════════════════════════════════════
 
-// ── 1) ACCESSO VIETATO AI MINORENNI — marcato manualmente da Claudio ────
-// Aggiungi/togli un'email qui e ripubblica index.html + questo file per
-// applicare la modifica — non c'è un'interfaccia admin per questo,
-// decisione esplicita di Claudio ("lo marchi tu manualmente"). Email in
-// minuscolo, confronto case-insensitive sotto.
-const _CHAT_EMAIL_VIETATE = [
-    // 'esempio@dominio.it',
-];
-
+// ── 1) ACCESSO VIETATO AI MINORENNI — flag letto da chat_restrizioni_utente
+// (sql/72), marcato manualmente dall'admin nel pannello utenti
+// (ui/admin-users.ui.js, checkbox "Utente minorenne") — non più un array
+// hardcoded qui: da questo giro il flag vive sul DB, scrittura riservata
+// agli admin via RLS (verificata dal vivo prima di sql/72). Wrapper in
+// data/chat.repository.js (chatRestrizioneUtente), mai supabaseClient
+// diretto qui — pattern del progetto (UI -> repository).
 let _chatUtenteVietato = false;
 
 async function _chatVerificaAccessoConsentito() {
     try {
-        const { data } = await supabaseClient.auth.getUser();
-        const email = data && data.user && data.user.email ? data.user.email.toLowerCase() : null;
-        _chatUtenteVietato = !!(email && _CHAT_EMAIL_VIETATE.includes(email));
+        const userId = await authGetUserId();
+        if (!userId) { _chatUtenteVietato = false; return _chatUtenteVietato; }
+        const { data, error } = await chatRestrizioneUtente(userId);
+        if (error) throw error;
+        _chatUtenteVietato = !!(data && data.minorenne);
     } catch (e) {
-        console.error('_chatVerificaAccessoConsentito: errore lettura utente:', e);
-        // In dubbio NON blocca: un errore di rete/sessione non deve
-        // negare l'accesso a chi ha diritto di usarlo.
+        console.error('_chatVerificaAccessoConsentito: errore lettura restrizione:', e);
+        // In dubbio NON blocca lato client: un errore di rete/sessione
+        // qui non nega l'accesso a chi ha diritto di usarlo — resta
+        // comunque coperto dal controllo server-side in sql/72 se il
+        // flag fosse davvero true.
         _chatUtenteVietato = false;
     }
     return _chatUtenteVietato;
