@@ -5975,6 +5975,20 @@
             <div id="achievementContenuto"></div>
         </div>
 
+        <div id="contributi" class="view-section">
+            <!-- Pagina di dettaglio "Contributi al gruppo" (sessione
+                 2026-09-24) — prima il click ricadeva su Visualizzazione
+                 come fallback silenzioso (nessun tab impostato), stesso bug
+                 già noto e già risolto per "Variazione valore". Contenuto
+                 riempito da renderPaginaContributi() in
+                 ui/widget-contributi.ui.js. Nessuno storico per ora: RPC
+                 leggi_contributi_gruppo() non ha filtro temporale e in
+                 produzione activity_log.action='aiuto_gruppo' è oggi a
+                 zero righe (mai testato con più di un account) — vedi
+                 compilato di sessione per il dettaglio. -->
+            <div id="contributiContenuto"></div>
+        </div>
+
         <div id="wishlist" class="view-section">
             <!-- Pagina di dettaglio "Wishlist" (2026-08-30) — prima apriva
                  semplicemente Binder (tab:'binder'); ora pagina propria,
