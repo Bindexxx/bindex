@@ -222,14 +222,25 @@ async function renderWidgetHome() {
         let corpo;
         if (grande) {
             const c = _ballCorpoWidget(w.id, anteprima);
+            // AGGIUNTO (Claudio, sessione bugfix widget Vetrina — vedi chat):
+            // niente più titolo/icona sopra la foto — il nome carta è già
+            // scritto nell'overlay di _ballCorpoFotoCarta, ripeterlo con
+            // "Vetrina" sopra era ridondante. Condizione su
+            // 'anteprima.immagine && c.blocco' (non solo su w.id) apposta:
+            // se in futuro un altro widget fotografico avesse lo stesso
+            // trattamento lo eredita gratis; se _ballCorpoFotoCarta fallisce
+            // (foto irraggiungibile, torna '') si ricade sul corpo generico
+            // E la testa torna visibile, mai un buco vuoto silenzioso.
+            const senzaTesta = !!(anteprima.immagine && c.blocco);
             corpo = `
+                ${senzaTesta ? '' : `
                 <div class="ball-testa">
                     ${visuale}
                     <div class="ball-slot-inline">
                         <div class="widget-tile-titolo">${def.titolo}</div>
                         ${c.inline}
                     </div>
-                </div>
+                </div>`}
                 ${c.blocco ? `<div class="ball-slot-blocco">${c.blocco}</div>` : ''}`;
             // AGGIUNTO (Claudio, sessione bugfix widget Vetrina — vedi chat):
             // 'rigaImmagine' qui NON c'è più. Prima era sempre appesa in
