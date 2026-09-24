@@ -525,31 +525,59 @@ const _ballCORPI = {
 
     // Match: il totale, e i due tipi come riquadri di statistica separati —
     // scambio e wishlist sono due cose diverse.
-    // AGGIORNATO (2026-09-24): terzo dato, chatNonLetti (widget-match.ui.js,
-    // _aggiornaBadgeChatMatch) — messaggi di chat non letti. Riga in più nel
-    // blocco SOLO se > 0, pill in più nell'inline SOLO se > 0: nessuna
-    // rottura per chi non ha ancora messaggi. onclick della nuova riga
-    // segue lo stesso pattern di _ballAzioneRiga già usato qui sotto per
-    // 'binder' — non verificato dal vivo, _ballAzioneRiga non è in questo
-    // file.
+    // RIPULITO (2026-09-24, estrazione widget Chat): il terzo dato
+    // (chatNonLetti) aggiunto nella sessione precedente è tornato al
+    // widget Chat, che ora ha una tessera propria — vedi 'chat' qui
+    // sotto. Questo corpo è tornato esattamente quello di prima di quella
+    // sessione (solo scambio/wishlist).
     match: (d) => {
         if (!d) return { inline: '', blocco: '' };
-        const scambio = d.scambio || 0, wishlist = d.wishlist || 0, chat = d.chatNonLetti || 0;
+        const scambio = d.scambio || 0, wishlist = d.wishlist || 0;
         const totale = scambio + wishlist;
         const inline =
             '<p class="ball-k-tit">Match trovati</p>' +
             `<div class="ball-k-big ball-k-mono${totale > 0 ? ' su' : ''}">${totale}</div>` +
             `<span class="ball-k-lab">${totale === 0 ? 'nessuna novità' : (totale === 1 ? 'corrispondenza' : 'corrispondenze')}</span>` +
-            (totale > 0 ? _ballPill('da vedere', true) : '') +
-            (chat > 0 ? _ballPill(`${chat} messagg${chat === 1 ? 'io' : 'i'}`, true) : '');
+            (totale > 0 ? _ballPill('da vedere', true) : '');
 
         const blocco =
             '<div class="ball-stat-griglia">' +
                 `<div class="ball-stat ball-clic" onclick="_ballAzioneRiga(event,'tab','binder')"><b>${scambio}</b><span>Scambio</span></div>` +
                 `<div class="ball-stat ball-clic" onclick="_ballAzioneRiga(event,'tab','binder')"><b>${wishlist}</b><span>Wishlist</span></div>` +
             '</div>' +
-            (chat > 0 ? `<div class="ball-riga ball-clic" onclick="_ballAzioneRiga(event,'tab','match')"><span class="ball-nome">Messaggi non letti</span><span class="ball-dato">${chat}</span></div>` : '') +
             (totale > 0 ? _ballPulsante('Apri Binders', `_ballAzioneRiga(event,'tab','binder')`) : '');
+        return { inline, blocco };
+    },
+
+    // ── CHAT (id catalogo 'chat') ─────────────────────────────────────
+    // AGGIUNTO (2026-09-24, estrazione da widget-match.ui.js). Opzione B
+    // del mockup approvato da Claudio: totale in grande + le prime 3
+    // conversazioni con non letti nel blocco esteso (nome, puntino,
+    // conteggio) — righe cliccabili, stesso pattern di 'location' qui
+    // sopra. d = { totale, conversazioni: [{ownerAltro, label, count}] },
+    // prodotto da CATALOGO_WIDGET.chat.preview() (ui/widget-chat.ui.js),
+    // popolato da _aggiornaBadgeChat() — zero query qui, tutto già in
+    // memoria, stesso principio degli altri corpi.
+    // Il click sulla riga apre solo l'inbox (tab 'chat'), non la
+    // conversazione specifica — _ballAzioneRiga non supporta un
+    // parametro extra per quello, punto aperto invariato da
+    // nuovo+widget-chat.txt (serve prima leggere
+    // ui/widget-render-tessere-grandi.ui.js per _ballAzioneRiga, già
+    // fatto in questa sessione — ma estenderla è fuori scope, tocca un
+    // file condiviso usato da più widget).
+    chat: (d) => {
+        if (!d) return { inline: '', blocco: '' };
+        const totale = d.totale || 0;
+        const conversazioni = d.conversazioni || [];
+        const inline =
+            '<p class="ball-k-tit">Chat</p>' +
+            `<div class="ball-k-big ball-k-mono">${totale}</div>` +
+            `<span class="ball-k-lab">${totale === 0 ? 'nessun messaggio' : (totale === 1 ? 'messaggio non letto' : 'messaggi non letti')}</span>` +
+            (totale > 0 ? _ballPill(`${totale} nuov${totale === 1 ? 'o' : 'i'}`, true) : '');
+
+        const blocco = conversazioni.map(c =>
+            `<div class="ball-riga ball-clic" onclick="_ballAzioneRiga(event,'tab','chat')"><span class="ball-nome">${(typeof escapeHtml === 'function' ? escapeHtml(c.label) : c.label)}</span><span class="ball-dato">${c.count}</span></div>`
+        ).join('');
         return { inline, blocco };
     },
 

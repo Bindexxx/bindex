@@ -55,10 +55,10 @@ function avviaPollingWidgetHome() {
             // utenti" — niente query extra sul ciclo veloce a 15s).
             await aggiornaBadgeMatch();
             // AGGIUNTA (2026-09-24): stesso ciclo, stesso principio — badge
-            // "messaggi non letti" della chat Match (widget-match.ui.js,
-            // _aggiornaBadgeChatMatch). Non una query nuova ogni 15s, un
-            // giro in più su quello lento già esistente.
-            await _aggiornaBadgeChatMatch();
+            // "messaggi non letti" della chat. RINOMINATA (2026-09-24,
+            // estrazione widget Chat): era _aggiornaBadgeChatMatch(),
+            // ora vive in ui/widget-chat.ui.js come _aggiornaBadgeChat().
+            await _aggiornaBadgeChat();
             await _controllaNotifichePush();
         } catch (e) { console.error('Errore polling avvisi (widget prezzi/inserimento/match):', e); }
         _impostaSyncAttivo(false);
@@ -275,14 +275,19 @@ async function initPhoneShell() {
                     target: '#wishlist', group: 'prezzo-obiettivo', groupLabel: 'obiettivi di prezzo raggiunti',
                     priority: 'high',
                 },
-                // AGGIUNTO (2026-09-24): chat in-app del widget Match
-                // (sql/70). Stesso target '#match' di 'match-trovato' —
-                // apriDettaglioWidget('match', null) gestisce già questa
-                // sezione, nessun caso nuovo da aggiungere lì (stesso
-                // motivo documentato sopra per gli altri tre tipi).
+                // AGGIUNTO (2026-09-24): chat in-app (sql/70). AGGIORNATO
+                // (2026-09-24, estrazione widget Chat): target era '#match'
+                // (unico posto raggiungibile quando la chat viveva dentro
+                // widget-match.ui.js, senza inbox) — ora punta a '#chat',
+                // la pagina dedicata (renderPaginaChat, ui/widget-chat.ui.js,
+                // aggiunta in apriDettaglioWidget). Apre l'inbox, non la
+                // conversazione specifica: n.data (supportato da
+                // CSBar.notify() ma mai usato nel progetto) resta un punto
+                // aperto, non affrontato qui — richiederebbe leggere
+                // statusbar.js per intero, mai fatto in nessuna sessione.
                 'chat-messaggio': {
                     icon: '\u{1F4AC}', title: 'Nuovo messaggio', text: '',
-                    target: '#match', group: 'chat-match-messaggio', groupLabel: 'messaggi chat',
+                    target: '#chat', group: 'chat-match-messaggio', groupLabel: 'messaggi chat',
                 },
             },
 

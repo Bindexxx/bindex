@@ -584,6 +584,12 @@ function _ballAccendiAlone(tile, forte) {
 function _ballChiedeAttenzione(id, anteprima) {
     if (!anteprima) return null;
     if (id === 'match') return (anteprima.stato === 'ok' && /[1-9]/.test(anteprima.righe[0] || '')) ? 'forte' : null;
+    // AGGIUNTO (2026-09-24, estrazione widget Chat): stesso identico
+    // criterio di 'match' sopra — senza questo caso la tessera Chat non
+    // si anima MAI, anche con badge visibile, perché questa funzione non
+    // gestisce widget non elencati esplicitamente (vedi commento in cima
+    // al file).
+    if (id === 'chat') return (anteprima.stato === 'ok' && /[1-9]/.test(anteprima.righe[0] || '')) ? 'forte' : null;
     if (id === 'estensione') return anteprima.rilevata === false ? 'normale' : null;
     if (anteprima.stato !== 'allerta') return null;
     return (id === 'inserimento' || id === 'prezzi') ? 'forte' : 'normale';

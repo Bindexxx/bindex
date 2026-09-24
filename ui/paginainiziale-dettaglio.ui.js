@@ -78,7 +78,12 @@ async function apriDettaglioWidget(tabId, evt) {
     }
 
     const container = document.querySelector('.container');
-    if (tabId === 'dafare' || tabId === 'match' || tabId === 'condividi' || tabId === 'missioni' || tabId === 'valore' || tabId === 'variazione' || tabId === 'wishlist' || tabId === 'location' || tabId === 'doppioni' || tabId === 'sealed' || tabId === 'set' || tabId === 'bustina' || tabId === 'scaffali' || tabId === 'richieste' || tabId === 'achievement' || tabId === 'primopiano' || tabId === 'contributi') {
+    // AGGIUNTO 'chat' (2026-09-24, estrazione widget Chat): inbox della
+    // chat in-app (renderPaginaChat, ui/widget-chat.ui.js), scoperta
+    // durante quella sessione — senza questa voce nella whitelist la
+    // pagina non si apre mai, né dal tap sulla tessera né dal click
+    // sulla notifica CSBar (vedi ui/widget-chat.ui.js per il dettaglio).
+    if (tabId === 'dafare' || tabId === 'match' || tabId === 'chat' || tabId === 'condividi' || tabId === 'missioni' || tabId === 'valore' || tabId === 'variazione' || tabId === 'wishlist' || tabId === 'location' || tabId === 'doppioni' || tabId === 'sealed' || tabId === 'set' || tabId === 'bustina' || tabId === 'scaffali' || tabId === 'richieste' || tabId === 'achievement' || tabId === 'primopiano' || tabId === 'contributi') {
         // MAI switchTab() qui: quella funzione ha una whitelist fissa di 5
         // tab (navigation.ui.js r.199) ed è segnata nella memoria di
         // progetto come "deve restare stabile e intoccata" — un bug reale
@@ -93,6 +98,7 @@ async function apriDettaglioWidget(tabId, evt) {
         document.getElementById(tabId)?.classList.add('active');
         if (tabId === 'dafare') renderPaginaDaFare();
         if (tabId === 'match') renderPaginaMatch();
+        if (tabId === 'chat') renderPaginaChat(); // 2026-09-24, ui/widget-chat.ui.js (estrazione da widget-match.ui.js)
         if (tabId === 'condividi') renderPaginaCondividi();
         if (tabId === 'missioni') renderPaginaMissioni();
         if (tabId === 'valore') renderPaginaValoreCollezione();

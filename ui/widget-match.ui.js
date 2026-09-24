@@ -40,29 +40,24 @@
 //
 // AGGIUNTA (2026-09-24, filone "Contattare senza doxxare" — sql/70 e
 // sql/71, data/chat.repository.js):
-// 1) NICKNAME al posto dell'email-prefix nella lista Match. Prima di
-//    questa sessione ogni riga mostrava (m.altra_email||'').split('@')[0]
-//    — espone potenzialmente l'identità reale. Ora renderPaginaMatch()
-//    recupera in batch i nickname di tutti gli owner distinti presenti
-//    nei risultati (chatOttieniNicknames, RPC SECURITY DEFINER — non ho
-//    verificato le RLS di preferenze_utente in questa sessione, quindi
-//    NON ho aperto una policy di lettura pubblica: la RPC espone solo
-//    la colonna nickname, bypass mirato). Se un utente non ha ancora
-//    impostato un nickname, resta il fallback email-prefix di prima —
-//    zero rottura per chi non lo imposta.
-// 2) CHAT IN-APP. _contattaPersonaMatch() era un placeholder (alert
-//    "in arrivo", confermato da Claudio 2026-08-28). Ora apre il modale
-//    #chatMatchModal (index.html, da aggiungere — vedi consegna) via
-//    apriChatMatch(). Persistente (tabella messaggi, sql/70), niente
-//    realtime: polling 6s SOLO mentre il modale è aperto, stesso
-//    principio "niente interrogazioni continue per ogni utente" già
-//    scelto da Claudio per il badge Match esistente. Blocco e
-//    segnalazione inclusi (sql/70: blocchi_chat, segnalazioni_chat — un
-//    admin vede lo storico di una conversazione SOLO se è stata
-//    segnalata, mai altrimenti).
-// NON INCLUSO qui (serve ui/queue.ui.js + statusbar.js, mai letti in
-// questa sessione — richiesti a Claudio): badge "messaggi non letti"
-// sulla tessera Home, tendina di notifica CSBar per nuovi messaggi.
+// NICKNAME al posto dell'email-prefix nella lista Match. Prima di
+// questa sessione ogni riga mostrava (m.altra_email||'').split('@')[0]
+// — espone potenzialmente l'identità reale. Ora renderPaginaMatch()
+// recupera in batch i nickname di tutti gli owner distinti presenti
+// nei risultati (chatOttieniNicknames, RPC SECURITY DEFINER — non ho
+// verificato le RLS di preferenze_utente in questa sessione, quindi
+// NON ho aperto una policy di lettura pubblica: la RPC espone solo
+// la colonna nickname, bypass mirato). Se un utente non ha ancora
+// impostato un nickname, resta il fallback email-prefix di prima —
+// zero rottura per chi non lo imposta.
+//
+// ESTRATTA (2026-09-24, sessione successiva, "nuovo+widget-chat.txt"):
+// la chat in-app (_contattaPersonaMatch apriva un modale con
+// messaggi/blocco/segnalazione/badge/nickname) viveva qui per necessità
+// della sessione in cui è nata. Ora è un widget a sé,
+// ui/widget-chat.ui.js (id catalogo 'chat') — vedi quel file per tutto
+// il resto. _contattaPersonaMatch() RESTA qui come ponte verso il
+// widget chat (sotto), unica riga toccata.
 // ───────────────────────────────────────────────────────────────────────
 
 // ── VOCE DI CATALOGO ──────────────────────────────────────────────────
@@ -80,19 +75,13 @@ CATALOGO_WIDGET.match = {
         preview: () => {
             const scambio = typeof _numNuoviMatchScambio !== 'undefined' ? _numNuoviMatchScambio : 0;
             const wishlist = typeof _numNuoviMatchWishlist !== 'undefined' ? _numNuoviMatchWishlist : 0;
-            const chat = _numChatNonLettiMatch || 0;
             const totale = scambio + wishlist;
-            const dati = { scambio, wishlist, chatNonLetti: chat };
-            if (totale === 0 && chat === 0) return { righe: ['Nessuna novità'], dati };
-            // AGGIUNTO (2026-09-24): il testo deve contenere una cifra
-            // quando c'è qualcosa da vedere — _ballChiedeAttenzione('match',
-            // ...) in ui/widget-render-condiviso.ui.js legge righe[0] per
-            // decidere se far "scuotere" la tessera, non toccato qui ma
-            // rispettato.
-            const parti = [];
-            if (totale > 0) parti.push(`${totale} nuov${totale === 1 ? 'a' : 'e'} corrispondenz${totale === 1 ? 'a' : 'e'}`);
-            if (chat > 0) parti.push(`${chat} messagg${chat === 1 ? 'io' : 'i'} non lett${chat === 1 ? 'o' : 'i'}`);
-            return { righe: [parti.join(', ')], stato: 'ok', dati };
+            const dati = { scambio, wishlist };
+            if (totale === 0) return { righe: ['Nessuna novità'], dati };
+            // _ballChiedeAttenzione('match', ...) in
+            // ui/widget-render-condiviso.ui.js legge righe[0] per decidere
+            // se far "scuotere" la tessera: deve contenere una cifra.
+            return { righe: [`${totale} nuov${totale === 1 ? 'a' : 'e'} corrispondenz${totale === 1 ? 'a' : 'e'}`], stato: 'ok', dati };
         },
         // Pagina dedicata costruita 2026-08-28 (prima apriva Binders in
         // generale, unico punto disponibile all'epoca).
@@ -289,220 +278,12 @@ function _apriBinderAltruiMatch(ownerAltro, binderAltro) {
 }
 
 // SOSTITUITO (2026-09-24): era un segnaposto ("Funzione di contatto in
-// arrivo", confermato da Claudio 2026-08-28). Ora apre la chat in-app.
+// arrivo", confermato da Claudio 2026-08-28). Ora apre la chat in-app —
+// apriChat() vive in ui/widget-chat.ui.js (ESTRATTO dalla sessione
+// successiva, era apriChatMatch() qui). Questa è l'unica riga toccata
+// da quell'estrazione in questo file: se il nome smette di combaciare
+// con quello nel file chat, il bottone "Contatta" smette di funzionare
+// silenziosamente (nessun errore finché non si prova a cliccarlo).
 function _contattaPersonaMatch(ownerAltro, personaLabel) {
-    apriChatMatch(ownerAltro, personaLabel);
-}
-
-// ═══════════════════════════════════════════════════════════════════════
-// CHAT IN-APP (2026-09-24) — sql/70_chat_match.sql, sql/71 per il
-// nickname, data/chat.repository.js per le RPC. Modale #chatMatchModal
-// (index.html), apertura/chiusura via style.display come TUTTI gli altri
-// modali del sito (verificato sul CSS reale, .modal-overlay { display:
-// none; ...}, nessuna classe .active in nessun foglio stile del
-// progetto — non è un pattern dedotto dal nome delle funzioni).
-// Polling 6s SOLO mentre il modale è aperto (si ferma alla chiusura),
-// niente subscription realtime — coerente con la scelta già fatta da
-// Claudio per il badge Match esistente ("niente interrogazioni continue
-// per ogni utente quando saremo di più").
-// ═══════════════════════════════════════════════════════════════════════
-
-let _chatMatchConversazioneId = null;
-let _chatMatchAltroId = null;
-let _chatMatchUserId = null;
-let _chatMatchPollingHandle = null;
-
-async function apriChatMatch(ownerAltro, personaLabel) {
-    if (!ownerAltro) return;
-    _chatMatchUserId = await authGetUserId();
-    if (!_chatMatchUserId) return;
-
-    const modal = document.getElementById('chatMatchModal');
-    const titolo = document.getElementById('chatMatchTitolo');
-    const box = document.getElementById('chatMatchMessaggi');
-    if (!modal || !box) return; // markup non ancora presente in index.html
-
-    _chatMatchAltroId = ownerAltro;
-    if (titolo) titolo.innerHTML = `<i class="fa-solid fa-comment"></i> ${escapeHtml(personaLabel || 'Utente')}`;
-    box.innerHTML = '<p style="text-align:center; color:var(--text-muted); font-size:0.85rem;"><i class="fa-solid fa-spinner fa-spin"></i> Apro la chat…</p>';
-    modal.style.display = 'flex';
-
-    const { data: convId, error } = await chatOttieniOCreaConversazione(ownerAltro);
-    if (error || !convId) {
-        box.innerHTML = `<p style="text-align:center; color:var(--danger); font-size:0.85rem;">${escapeHtml((error && error.message) || 'Errore apertura chat')}</p>`;
-        return;
-    }
-    _chatMatchConversazioneId = convId;
-    await _chatRenderMessaggi();
-    await chatSegnaLetti(convId);
-    _chatAvviaPolling();
-}
-
-function chiudiChatMatch() {
-    _chatFermaPolling();
-    const modal = document.getElementById('chatMatchModal');
-    if (modal) modal.style.display = 'none';
-    _chatMatchConversazioneId = null;
-    _chatMatchAltroId = null;
-}
-
-function _chatAvviaPolling() {
-    _chatFermaPolling();
-    _chatMatchPollingHandle = setInterval(async () => {
-        if (!_chatMatchConversazioneId) return;
-        await _chatRenderMessaggi();
-        await chatSegnaLetti(_chatMatchConversazioneId);
-    }, 6000);
-}
-
-function _chatFermaPolling() {
-    if (_chatMatchPollingHandle) { clearInterval(_chatMatchPollingHandle); _chatMatchPollingHandle = null; }
-}
-
-function _chatMessaggioHtml(m) {
-    const mio = m.mittente_id === _chatMatchUserId;
-    return `<div style="align-self:${mio ? 'flex-end' : 'flex-start'}; max-width:80%; background:${mio ? 'var(--primary)' : 'var(--primary-light)'}; color:${mio ? '#fff' : 'var(--primary)'}; padding:0.5rem 0.7rem; border-radius:12px; font-size:0.82rem; word-break:break-word; white-space:pre-wrap;">${escapeHtml(m.testo)}</div>`;
-}
-
-async function _chatRenderMessaggi() {
-    if (!_chatMatchConversazioneId) return;
-    const { data, error } = await chatMessaggiList(_chatMatchConversazioneId);
-    const box = document.getElementById('chatMatchMessaggi');
-    if (!box) return;
-    if (error) {
-        box.innerHTML = `<p style="text-align:center; color:var(--danger); font-size:0.85rem;">${escapeHtml(error.message)}</p>`;
-        return;
-    }
-    if (!data || data.length === 0) {
-        box.innerHTML = '<p style="text-align:center; color:var(--text-muted); font-size:0.85rem;">Nessun messaggio ancora — scrivi il primo.</p>';
-        return;
-    }
-    box.innerHTML = data.map(_chatMessaggioHtml).join('');
-    box.scrollTop = box.scrollHeight;
-}
-
-async function _chatInviaMessaggioClick() {
-    const input = document.getElementById('chatMatchInput');
-    if (!input || !_chatMatchConversazioneId) return;
-    const testo = input.value.trim();
-    if (!testo) return;
-    input.value = '';
-    const { error } = await chatInviaMessaggio(_chatMatchConversazioneId, testo);
-    if (error) { alert('Errore invio: ' + error.message); return; }
-    await _chatRenderMessaggi();
-}
-
-// Blocco preventivo (sql/70: blocchi_chat non richiede una conversazione
-// già esistente) — dopo il blocco chiude la chat, coerente con "non
-// potrete più scrivervi" mostrato nella conferma.
-async function _chatBloccaUtenteClick() {
-    if (!_chatMatchAltroId) return;
-    if (!confirm('Bloccare questo utente? Non potrete più scrivervi in chat.')) return;
-    const { error } = await chatBloccaUtente(_chatMatchAltroId);
-    if (error) { alert('Errore: ' + error.message); return; }
-    chiudiChatMatch();
-}
-
-// La segnalazione è ciò che sblocca la visibilità admin sullo storico
-// della conversazione (RLS di sql/70) — non è solo un log, è un evento
-// con effetto reale sui permessi.
-async function _chatSegnalaClick() {
-    if (!_chatMatchConversazioneId) return;
-    const motivo = prompt('Motivo della segnalazione (facoltativo):') || null;
-    const { error } = await chatSegnalaConversazione(_chatMatchConversazioneId, motivo);
-    if (error) { alert('Errore: ' + error.message); return; }
-    alert('Segnalazione inviata.');
-}
-
-// ── Nickname (impostazioni, sql/71) ───────────────────────────────────
-// Chiamata da index.html, sezione "Dati e Privacy" (#impostazioniPagina-
-// dati) — campo nuovo aggiunto lì in questa consegna. Caricamento pigro
-// al primo focus (onfocus), non agganciato al lifecycle di apertura
-// della pagina impostazioni: non ho mai letto il file che gestisce
-// quell'apertura in questa sessione, quindi non ci ho inventato un
-// aggancio — questo è autosufficiente.
-
-let _nicknameMatchCaricato = false;
-
-async function _nicknameMatchCaricaSeVuoto() {
-    if (_nicknameMatchCaricato) return;
-    _nicknameMatchCaricato = true;
-    const input = document.getElementById('nicknameMatchInput');
-    if (!input) return;
-    const userId = await authGetUserId();
-    if (!userId) return;
-    try {
-        const { data, error } = await userSettingsGet(userId);
-        if (!error && data && data.nickname) input.value = data.nickname;
-    } catch (e) {
-        console.error('_nicknameMatchCaricaSeVuoto: errore lettura:', e);
-    }
-}
-
-async function salvaNicknameMatch() {
-    const input = document.getElementById('nicknameMatchInput');
-    if (!input) return;
-    const { error } = await chatImpostaNickname(input.value.trim() || null);
-    if (error) { alert('Errore salvataggio: ' + error.message); return; }
-    alert('Nome salvato.');
-}
-
-// ═══════════════════════════════════════════════════════════════════════
-// BADGE "MESSAGGI NON LETTI" (2026-09-24) — stesso principio di
-// aggiornaBadgeMatch() in ui/queue.ui.js (letto per intero in questa
-// sessione): un giro ogni 60s, non ad ogni apertura tessera. Aggiorna
-// _numChatNonLettiMatch, letta sopra da preview(), e manda UN avviso
-// CSBar per messaggio davvero nuovo (stesso concetto di _giaNotificati
-// in queue.ui.js, ma un Set a sé qui — quello è privato a quel file).
-//
-// NON AGGANCIATA al ciclo di polling automatico DA QUESTA VERSIONE del
-// file — ora lo È: ui/paginainiziale-polling-avvio.ui.js (letto in questa
-// sessione) chiama _aggiornaBadgeChatMatch() subito dopo
-// aggiornaBadgeMatch(), stesso ciclo lento a 60s.
-//
-// CSBar.avvisa('chat-messaggio', ...) usato per l'avviso — tipo registrato
-// in notificationTypes dentro CSBar.init() (ui/paginainiziale-polling-
-// avvio.ui.js, letto per intero in questa sessione: prima avevo usato
-// CSBar.notify() grezzo per non toccare un file che non avevo ancora,
-// corretto qui per essere coerente col resto del progetto).
-// target: '#match' — stesso pattern già usato e confermato funzionante
-// per il widget Set (vedi compilato 2026-09-20), e ora anche verificato
-// dal vivo: onNotificationClick in quel file fa apriDettaglioWidget(
-// 'match', null) leggendo esattamente questo target. Il click sulla
-// tessera nel blocco esteso (_ballAzioneRiga(event,'tab','match'), vedi
-// ui/widget-render-corpi.ui.js) segue lo stesso pattern già in uso per
-// 'binder' — non ho letto _ballAzioneRiga stessa (vive in
-// ui/widget-render-tessere-grandi.ui.js, mai richiesta), quindi quella
-// parte resta un'inferenza dal pattern esistente, da verificare dal vivo.
-let _numChatNonLettiMatch = 0;
-const _chatGiaNotificati = new Set();
-
-async function _aggiornaBadgeChatMatch() {
-    const userId = await authGetUserId();
-    if (!userId) return;
-
-    const { data: conversazioni, error: errC } = await chatConversazioniList(userId);
-    if (errC) { console.error('_aggiornaBadgeChatMatch: errore conversazioni:', errC.message); return; }
-    if (!conversazioni || conversazioni.length === 0) { _numChatNonLettiMatch = 0; return; }
-
-    const ids = conversazioni.map(c => c.id);
-    const { data: nonLetti, error: errM } = await chatMessaggiNonLettiList(ids, userId);
-    if (errM) { console.error('_aggiornaBadgeChatMatch: errore messaggi:', errM.message); return; }
-
-    _numChatNonLettiMatch = (nonLetti || []).length;
-
-    if (typeof CSBar === 'undefined' || !nonLetti) return;
-    const nuovi = nonLetti.filter(m => !_chatGiaNotificati.has(m.id));
-    if (nuovi.length === 0) return;
-    nuovi.forEach(m => _chatGiaNotificati.add(m.id));
-    // AGGIORNATO (2026-09-24): CSBar.avvisa('chat-messaggio', ...) invece
-    // di CSBar.notify() grezzo — il tipo è ora registrato in
-    // notificationTypes dentro CSBar.init() (ui/paginainiziale-polling-
-    // avvio.ui.js, letto per intero in questa sessione), stesso pattern
-    // di 'match-trovato'/'prezzo-obiettivo'. onNotificationClick lì fa già
-    // apriDettaglioWidget('match', null) per target:'#match' — confermato
-    // dal file reale, non più un'inferenza.
-    CSBar.avvisa('chat-messaggio', {
-        text: nuovi.length === 1 ? 'Hai un nuovo messaggio in chat.' : `Hai ${nuovi.length} nuovi messaggi in chat.`,
-    });
+    apriChat(ownerAltro, personaLabel);
 }
