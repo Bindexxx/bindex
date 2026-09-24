@@ -36,6 +36,20 @@ async function chatBlocchiSet(userId) {
         .eq('blocca_id', userId);
 }
 
+// Messaggi non letti, in TUTTE le conversazioni dell'utente — due query
+// (conversazioni proprie, poi messaggi non letti in quelle), niente RPC:
+// la RLS di 'messaggi' già permette ai due partecipanti di vedersi i
+// propri non letti, la seconda query passa da sola. Usata per il badge
+// (widget-match.ui.js, _aggiornaBadgeChatMatch).
+async function chatMessaggiNonLettiList(conversazioneIds, userId) {
+    return supabaseClient
+        .from('messaggi')
+        .select('id, conversazione_id, mittente_id')
+        .in('conversazione_id', conversazioneIds)
+        .neq('mittente_id', userId)
+        .is('letto_il', null);
+}
+
 // ── Scrittura (via RPC — mai tabelle dirette, RLS le blocca comunque) ────
 
 async function chatOttieniOCreaConversazione(altroId) {
