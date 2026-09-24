@@ -82,7 +82,14 @@
 //   non serve toccarlo") — deviazione minima, segnalata qui.
 // - index.html: script tag, sezione #chat (inbox, nuova), modale
 //   rinominato da #chatMatchModal a #chatModal (con i suoi id interni),
-//   campo nickname aggiornato con gli onclick/onfocus nuovi.
+//   campo nickname aggiornato con gli onclick/onfocus nuovi. RISTRUTTURATO
+//   ULTERIORMENTE (2026-09-24, restyle WhatsApp/Messenger): markup interno
+//   di #chatModal riscritto (header avatar+menu ⋮, corpo .chat-body,
+//   input .chat-input-bar) + ~140 righe di CSS dedicate aggiunte in cima
+//   al file, SCOPED a #chatModal/.chat-* — zero modifiche a
+//   .modal-content/.modal-overlay condivisi da ogni altro modale del
+//   sito (verificato prima di scrivere, stesso pattern già in uso per
+//   #ricercaGlobaleModal).
 //
 // PUNTI ANCORA APERTI (aggiornato — vedi anche i commenti puntuali sopra
 // per quelli risolti in questo giro di migliorie, 2026-09-24): rate
@@ -313,8 +320,13 @@ async function renderPaginaChat() {
         // l'assenza di "sblocca" qui: si sblocca dalla sezione dedicata
         // sotto.
         const rigaAttrs = r.bloccato ? '' : 'data-tocca onclick="apriChat(\'' + r.ownerAltro + '\', \'' + labelSafe + '\')"';
+        // AGGIUNTO (2026-09-24, restyle): stesso avatar circolare
+        // dell'header della conversazione (iniziale del nome) — coerenza
+        // visiva tra inbox e chat aperta.
+        const iniziale = (r.label || '?').trim().charAt(0).toUpperCase() || '?';
         return `
         <div class="pg-riga" ${rigaAttrs} style="${r.bloccato ? 'opacity:.6;' : ''}">
+            <div class="chat-avatar piccolo">${escapeHtml(iniziale)}</div>
             <div style="flex:1; min-width:0;">
                 <div style="font-weight:700; font-size:0.85rem; display:flex; align-items:center; gap:0.4rem;">
                     ${escapeHtml(r.label)}
@@ -391,7 +403,7 @@ async function apriChat(ownerAltro, personaLabel) {
     if (!_chatUserId) return;
 
     // AGGIUNTO (2026-09-24): blocco prima ancora di aprire il modale —
-    // vedi nota in cima al file (solo lato client per ora).
+    // vedi nota in cima al file (ora anche server-side, sql/72).
     if (await _chatVerificaAccessoConsentito()) {
         alert('La chat non è disponibile per questo account.');
         return;
@@ -399,12 +411,26 @@ async function apriChat(ownerAltro, personaLabel) {
 
     const modal = document.getElementById('chatModal');
     const titolo = document.getElementById('chatTitolo');
+    const avatar = document.getElementById('chatAvatar');
     const box = document.getElementById('chatMessaggi');
     if (!modal || !box) return; // markup non ancora presente in index.html
 
     _chatAltroId = ownerAltro;
-    if (titolo) titolo.innerHTML = `<i class="fa-solid fa-comment"></i> ${escapeHtml(personaLabel || 'Utente')}`;
-    box.innerHTML = '<p style="text-align:center; color:var(--text-muted); font-size:0.85rem;"><i class="fa-solid fa-spinner fa-spin"></i> Apro la chat…</p>';
+    const label = personaLabel || 'Utente';
+    if (titolo) titolo.textContent = label;
+    // AGGIUNTO (2026-09-24, restyle): iniziale del nome nell'avatar
+    // circolare dell'header — stesso trattamento visivo delle righe
+    // dell'inbox (_chatRigaAvatarHtml sotto).
+    if (avatar) avatar.textContent = label.trim().charAt(0).toUpperCase() || '?';
+    // Nuova conversazione aperta: azzera la cache dei messaggi già
+    // renderizzati, altrimenti un id di un'altra conversazione potrebbe
+    // (per pura coincidenza di UUID, praticamente impossibile ma comunque
+    // scorretto concettualmente) sopprimere l'animazione "nuovo messaggio"
+    // del primo giro qui.
+    _chatMessaggiRenderatiIds = new Set();
+    // Chiude il menu ⋮ se era rimasto aperto da una chat precedente.
+    _chatChiudiMenuFuori();
+    box.innerHTML = '<p style="text-align:center; color:var(--text-muted); font-size:0.85rem; padding-top:1.5rem;"><i class="fa-solid fa-spinner fa-spin"></i> Apro la chat…</p>';
     modal.style.display = 'flex';
     // AGGIUNTO (2026-09-24, giro di migliorie): svuota l'input e
     // ridisabilita il bottone invio ad ogni apertura — senza questo, un
@@ -428,6 +454,7 @@ async function apriChat(ownerAltro, personaLabel) {
 
 function chiudiChat() {
     _chatFermaPolling();
+    _chatChiudiMenuFuori();
     const modal = document.getElementById('chatModal');
     if (modal) modal.style.display = 'none';
     _chatConversazioneId = null;
@@ -468,9 +495,88 @@ async function _chatSuVisibilitaCambiata() {
     await chatSegnaLetti(_chatConversazioneId);
 }
 
-function _chatMessaggioHtml(m) {
+// ── RENDER MESSAGGI — restyle 2026-09-24 (stile WhatsApp/Messenger):
+// orario per messaggio, separatori di data, raggruppamento visivo dei
+// messaggi consecutivi dello stesso mittente (corner-radius variabile),
+// spunte di lettura sui messaggi propri, link interni Bindex cliccabili,
+// animazione di ingresso SOLO per i messaggi davvero nuovi. Sostituisce
+// _chatMessaggioHtml (bolla singola senza contesto) di prima di questo
+// giro.
+// ═══════════════════════════════════════════════════════════════════════
+
+// Id dei messaggi già disegnati nel giro precedente — usata per capire
+// quali sono "nuovi" (animazione d'ingresso) senza dover tenere un diff
+// vero del DOM: ad ogni _chatRenderMessaggi() il box viene comunque
+// ricostruito per intero (stesso approccio di prima, invariato), quindi
+// qui serve solo per decidere QUALI elementi meritano data-nuovo.
+// Azzerata ad ogni apertura di una nuova conversazione (apriChat sopra).
+let _chatMessaggiRenderatiIds = new Set();
+
+function _chatFormattaOra(iso) {
+    try { return new Date(iso).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }); }
+    catch (e) { return ''; }
+}
+
+function _chatEtichettaGiorno(iso) {
+    const d = new Date(iso);
+    const oggi = new Date();
+    const ieri = new Date(oggi);
+    ieri.setDate(oggi.getDate() - 1);
+    const stessoGiorno = (a, b) => a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+    if (stessoGiorno(d, oggi)) return 'Oggi';
+    if (stessoGiorno(d, ieri)) return 'Ieri';
+    return d.toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: d.getFullYear() !== oggi.getFullYear() ? 'numeric' : undefined });
+}
+
+// Rende cliccabili i link interni Bindex — gli UNICI che possono comparire
+// in un messaggio salvato: sql/72 (server) e il filtro sopra (client)
+// bloccano qualunque altro link prima dell'invio. Opera SEMPRE su testo
+// già passato da escapeHtml(): il pattern non può mai "vedere" un tag,
+// perché il testo escapato non ne contiene — nessun rischio di iniezione
+// HTML riaperto da questa funzione.
+function _chatLinkifyTesto(testoEscaped) {
+    return testoEscaped.replace(/((?:https?:\/\/|www\.)[^\s<]*bindexxx\.github\.io[^\s<]*)/gi, (url) => {
+        const href = /^https?:\/\//i.test(url) ? url : 'https://' + url;
+        return `<a href="${href}" target="_blank" rel="noopener noreferrer" style="color:inherit; text-decoration:underline;">${url}</a>`;
+    });
+}
+
+// Spunta di lettura — SOLO sui messaggi propri (su quelli dell'altro non
+// avrebbe senso, non è WhatsApp con doppia riga per entrambi i lati).
+// Riusa 'letto_il' già selezionato da chatMessaggiList ('select *') e già
+// scritto da chatSegnaLetti — nessuna query/colonna nuova.
+function _chatSpuntaHtml(m) {
+    if (m.mittente_id !== _chatUserId) return '';
+    const letto = !!m.letto_il;
+    return `<span class="chat-spunta ${letto ? 'letto' : ''}" title="${letto ? 'Letto' : 'Inviato'}"><i class="fa-solid ${letto ? 'fa-check-double' : 'fa-check'}"></i></span>`;
+}
+
+// Una singola bolla. isPrimo/isUltimo si riferiscono alla posizione
+// dentro il gruppo di messaggi consecutivi dello stesso mittente (stesso
+// giorno) — determinano quale angolo "esterno" resta arrotondato pieno
+// (16px, agli estremi del gruppo) e quale è appiattito (4px, dove il
+// gruppo si "salda" al messaggio successivo/precedente): stesso algoritmo
+// usato da WhatsApp/Messenger. Il lato esterno è destro per i messaggi
+// propri, sinistro per quelli dell'altro (coerente con l'allineamento
+// .chat-bubble-wrap.mio/.altro in CSS).
+function _chatBubbleHtml(m, isPrimo, isUltimo, isNuovo) {
     const mio = m.mittente_id === _chatUserId;
-    return `<div style="align-self:${mio ? 'flex-end' : 'flex-start'}; max-width:80%; background:${mio ? 'var(--primary)' : 'var(--primary-light)'}; color:${mio ? '#fff' : 'var(--primary)'}; padding:0.5rem 0.7rem; border-radius:12px; font-size:0.82rem; word-break:break-word; white-space:pre-wrap;">${escapeHtml(m.testo)}</div>`;
+    const lato = mio ? 'mio' : 'altro';
+    const rEsternoAlto = isPrimo ? '16px' : '4px';
+    const rEsternoBasso = isUltimo ? '16px' : '4px';
+    const radius = mio
+        ? `16px ${rEsternoAlto} ${rEsternoBasso} 16px`   // tl tr br bl — esterno = destra (tr, br)
+        : `${rEsternoAlto} 16px 16px ${rEsternoBasso}`;  // tl tr br bl — esterno = sinistra (tl, bl)
+    const margine = isPrimo ? '8px' : '2px';
+    const testoHtml = _chatLinkifyTesto(escapeHtml(m.testo));
+    return `
+    <div class="chat-bubble-wrap ${lato}" style="margin-top:${margine};">
+        <div class="chat-bubble ${lato}" style="border-radius:${radius};" ${isNuovo ? 'data-nuovo' : ''}>
+            <span>${testoHtml}</span>
+            <span class="chat-ora">${_chatFormattaOra(m.creato_il)}</span>
+            ${_chatSpuntaHtml(m)}
+        </div>
+    </div>`;
 }
 
 async function _chatRenderMessaggi() {
@@ -483,11 +589,57 @@ async function _chatRenderMessaggi() {
         return;
     }
     if (!data || data.length === 0) {
-        box.innerHTML = '<p style="text-align:center; color:var(--text-muted); font-size:0.85rem;">Nessun messaggio ancora — scrivi il primo.</p>';
+        box.innerHTML = '<p style="text-align:center; color:var(--text-muted); font-size:0.85rem; padding-top:1.5rem;"><i class="fa-regular fa-comment-dots" style="font-size:1.6rem; display:block; margin-bottom:0.4rem; opacity:.5;"></i>Nessun messaggio ancora — scrivi il primo.</p>';
+        _chatMessaggiRenderatiIds = new Set();
         return;
     }
-    box.innerHTML = data.map(_chatMessaggioHtml).join('');
-    box.scrollTop = box.scrollHeight;
+
+    // "Vicino al fondo"? Se sì, lo scroll segue i nuovi messaggi come in
+    // ogni vera chat; se l'utente ha scorso in alto a rileggere lo
+    // storico, un arrivo durante il polling (ogni 6s) non gli strappa via
+    // la lettura sotto i piedi. 60px di margine = tollera un po' di
+    // rimbalzo/inerzia dello scroll touch senza perdere lo stato "in
+    // fondo".
+    const eraVicinoAlFondo = (box.scrollTop + box.clientHeight) >= (box.scrollHeight - 60);
+    const primaApertura = _chatMessaggiRenderatiIds.size === 0;
+
+    let html = '';
+    let giornoCorrente = null;
+    data.forEach((m, i) => {
+        const etichetta = _chatEtichettaGiorno(m.creato_il);
+        if (etichetta !== giornoCorrente) {
+            html += `<div class="chat-date-sep">${etichetta}</div>`;
+            giornoCorrente = etichetta;
+        }
+        const prec = data[i - 1];
+        const succ = data[i + 1];
+        const precStessoGruppo = prec && _chatEtichettaGiorno(prec.creato_il) === etichetta && prec.mittente_id === m.mittente_id;
+        const succStessoGruppo = succ && _chatEtichettaGiorno(succ.creato_il) === etichetta && succ.mittente_id === m.mittente_id;
+        const isNuovo = !_chatMessaggiRenderatiIds.has(m.id);
+        html += _chatBubbleHtml(m, !precStessoGruppo, !succStessoGruppo, isNuovo);
+    });
+    box.innerHTML = html;
+    _chatMessaggiRenderatiIds = new Set(data.map(m => m.id));
+
+    if (primaApertura || eraVicinoAlFondo) box.scrollTop = box.scrollHeight;
+}
+
+// ── Menu azioni (⋮) — sostituisce i due bottoni Segnala/Blocca sempre
+// visibili in header (restyle 2026-09-24, richiesto). Un solo listener
+// "click fuori" alla volta, aggiunto SOLO quando il menu si apre e
+// rimosso automaticamente al primo click ({ once: true }) — mai lasciato
+// appeso quando il menu è già chiuso.
+function _chatToggleMenu(evt) {
+    if (evt) evt.stopPropagation();
+    const dd = document.getElementById('chatMenuDropdown');
+    if (!dd) return;
+    const aperto = dd.classList.toggle('aperto');
+    if (aperto) setTimeout(() => document.addEventListener('click', _chatChiudiMenuFuori, { once: true }), 0);
+}
+
+function _chatChiudiMenuFuori() {
+    const dd = document.getElementById('chatMenuDropdown');
+    if (dd) dd.classList.remove('aperto');
 }
 
 async function _chatInviaMessaggioClick() {
@@ -548,6 +700,7 @@ function _chatSuInputCambiato() {
 // già esistente) — dopo il blocco chiude la chat, coerente con "non
 // potrete più scrivervi" mostrato nella conferma.
 async function _chatBloccaUtenteClick() {
+    _chatChiudiMenuFuori();
     if (!_chatAltroId) return;
     if (!confirm('Bloccare questo utente? Non potrete più scrivervi in chat.')) return;
     const { error } = await chatBloccaUtente(_chatAltroId);
@@ -559,6 +712,7 @@ async function _chatBloccaUtenteClick() {
 // della conversazione (RLS di sql/70) — non è solo un log, è un evento
 // con effetto reale sui permessi.
 async function _chatSegnalaClick() {
+    _chatChiudiMenuFuori();
     if (!_chatConversazioneId) return;
     const motivo = prompt('Motivo della segnalazione (facoltativo):') || null;
     const { error } = await chatSegnalaConversazione(_chatConversazioneId, motivo);
