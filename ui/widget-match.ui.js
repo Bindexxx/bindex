@@ -37,6 +37,33 @@
 //   userSettingsUpsertMatchNascosti, missioniBinderPubblicoVisitatoRegistra,
 //   escapeHtml: esterne, non toccate.
 // ───────────────────────────────────────────────────────────────────────
+//
+// AGGIUNTA (2026-09-24, filone "Contattare senza doxxare" — sql/70 e
+// sql/71, data/chat.repository.js):
+// 1) NICKNAME al posto dell'email-prefix nella lista Match. Prima di
+//    questa sessione ogni riga mostrava (m.altra_email||'').split('@')[0]
+//    — espone potenzialmente l'identità reale. Ora renderPaginaMatch()
+//    recupera in batch i nickname di tutti gli owner distinti presenti
+//    nei risultati (chatOttieniNicknames, RPC SECURITY DEFINER — non ho
+//    verificato le RLS di preferenze_utente in questa sessione, quindi
+//    NON ho aperto una policy di lettura pubblica: la RPC espone solo
+//    la colonna nickname, bypass mirato). Se un utente non ha ancora
+//    impostato un nickname, resta il fallback email-prefix di prima —
+//    zero rottura per chi non lo imposta.
+// 2) CHAT IN-APP. _contattaPersonaMatch() era un placeholder (alert
+//    "in arrivo", confermato da Claudio 2026-08-28). Ora apre il modale
+//    #chatMatchModal (index.html, da aggiungere — vedi consegna) via
+//    apriChatMatch(). Persistente (tabella messaggi, sql/70), niente
+//    realtime: polling 6s SOLO mentre il modale è aperto, stesso
+//    principio "niente interrogazioni continue per ogni utente" già
+//    scelto da Claudio per il badge Match esistente. Blocco e
+//    segnalazione inclusi (sql/70: blocchi_chat, segnalazioni_chat — un
+//    admin vede lo storico di una conversazione SOLO se è stata
+//    segnalata, mai altrimenti).
+// NON INCLUSO qui (serve ui/queue.ui.js + statusbar.js, mai letti in
+// questa sessione — richiesti a Claudio): badge "messaggi non letti"
+// sulla tessera Home, tendina di notifica CSBar per nuovi messaggi.
+// ───────────────────────────────────────────────────────────────────────
 
 // ── VOCE DI CATALOGO ──────────────────────────────────────────────────
     // Sbloccato (Claudio, 2026-08-27): queue.ui.js letto per intero in
@@ -149,25 +176,47 @@ async function renderPaginaMatch() {
         return;
     }
 
-    const perPersona = {};
-    tutte.forEach(r => { (perPersona[r.persona] ||= []).push(r); });
+    // AGGIUNTA (2026-09-24): nickname al posto dell'email-prefix, in
+    // batch per tutti gli owner distinti di questa pagina — una sola
+    // chiamata RPC indipendentemente da quante righe/persone ci sono.
+    // Se la chiamata fallisce (rete, RPC non ancora eseguita sul DB di
+    // produzione, ecc.) si degrada silenziosamente al fallback
+    // email-prefix già presente in r.persona — nessuna riga sparisce.
+    const idsDistinti = [...new Set(tutte.map(r => r.ownerAltro).filter(Boolean))];
+    const nicknameMap = {};
+    if (idsDistinti.length > 0) {
+        try {
+            const { data: nicknamesData, error: errN } = await chatOttieniNicknames(idsDistinti);
+            if (errN) console.error('Errore lettura nickname:', errN.message);
+            else (nicknamesData || []).forEach(n => { if (n.nickname) nicknameMap[n.owner_id] = n.nickname; });
+        } catch (e) {
+            console.error('Errore lettura nickname:', e);
+        }
+    }
 
-    container.innerHTML = Object.entries(perPersona).map(([persona, righe]) => `
+    const perPersona = {};
+    tutte.forEach(r => { (perPersona[r.ownerAltro] ||= []).push(r); });
+
+    container.innerHTML = Object.entries(perPersona).map(([ownerAltro, righe]) => {
+        const label = nicknameMap[ownerAltro] || righe[0].persona;
+        const labelSafe = escapeHtml(label).replace(/'/g, "\\'");
+        return `
         <div>
-            <div class="pg-titoletto"><i class="fa-solid fa-user"></i> ${escapeHtml(persona)}</div>
+            <div class="pg-titoletto"><i class="fa-solid fa-user"></i> ${escapeHtml(label)}</div>
             <div class="pg-elenco">
                 ${righe.map(r => `
                     <div class="pg-riga" style="flex-wrap:wrap; gap:0.5rem;">
                         <span style="flex:1; min-width:200px; font-size:0.82rem;">${r.testo}</span>
                         <div style="display:flex; gap:0.4rem; flex-shrink:0;">
-                            ${r.richiedibile ? `<button type="button" class="btn-secondary" style="font-size:0.72rem; padding:0.35rem 0.55rem;" onclick="event.stopPropagation(); apriRichiediMatch('${r.ownerAltro}', '${r.oggettoId}', '${r.tipoRichiesta}', '${String(r.nomeOggetto).replace(/'/g, "\\'")}', '${escapeHtml(persona).replace(/'/g, "\\'")}')" title="Richiedi"><i class="fa-solid fa-paper-plane"></i></button>` : ''}
+                            ${r.richiedibile ? `<button type="button" class="btn-secondary" style="font-size:0.72rem; padding:0.35rem 0.55rem;" onclick="event.stopPropagation(); apriRichiediMatch('${r.ownerAltro}', '${r.oggettoId}', '${r.tipoRichiesta}', '${String(r.nomeOggetto).replace(/'/g, "\\'")}', '${labelSafe}')" title="Richiedi"><i class="fa-solid fa-paper-plane"></i></button>` : ''}
                             <button type="button" class="btn-secondary" style="font-size:0.72rem; padding:0.35rem 0.55rem;" onclick="event.stopPropagation(); _apriBinderAltruiMatch('${r.ownerAltro}', '${r.binderAltro || ''}')" title="Vai al binder"><i class="fa-solid fa-layer-group"></i></button>
-                            <button type="button" class="btn-secondary" style="font-size:0.72rem; padding:0.35rem 0.55rem;" onclick="event.stopPropagation(); _contattaPersonaMatch('${r.ownerAltro}')" title="Contatta"><i class="fa-solid fa-comment"></i></button>
+                            <button type="button" class="btn-secondary" style="font-size:0.72rem; padding:0.35rem 0.55rem;" onclick="event.stopPropagation(); _contattaPersonaMatch('${r.ownerAltro}', '${labelSafe}')" title="Contatta"><i class="fa-solid fa-comment"></i></button>
                             <button type="button" class="btn-secondary" style="font-size:0.72rem; padding:0.35rem 0.55rem;" onclick="event.stopPropagation(); _nascondiMatch('${r.chiave}', event)" title="Nascondi"><i class="fa-solid fa-eye-slash"></i></button>
                         </div>
                     </div>`).join('')}
             </div>
-        </div>`).join('');
+        </div>`;
+    }).join('');
 }
 
 // Legge preferenze_utente.match_nascosti (migration 30) e lo trasforma
@@ -230,8 +279,161 @@ function _apriBinderAltruiMatch(ownerAltro, binderAltro) {
     window.open(url.href, '_blank');
 }
 
-// Confermato segnaposto da Claudio (2026-08-28, risposta 2): il
-// meccanismo di contatto vero arriverà più avanti.
-function _contattaPersonaMatch(ownerAltro) {
-    alert('Funzione di contatto in arrivo.');
+// SOSTITUITO (2026-09-24): era un segnaposto ("Funzione di contatto in
+// arrivo", confermato da Claudio 2026-08-28). Ora apre la chat in-app.
+function _contattaPersonaMatch(ownerAltro, personaLabel) {
+    apriChatMatch(ownerAltro, personaLabel);
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// CHAT IN-APP (2026-09-24) — sql/70_chat_match.sql, sql/71 per il
+// nickname, data/chat.repository.js per le RPC. Modale #chatMatchModal
+// (index.html), apertura/chiusura via style.display come TUTTI gli altri
+// modali del sito (verificato sul CSS reale, .modal-overlay { display:
+// none; ...}, nessuna classe .active in nessun foglio stile del
+// progetto — non è un pattern dedotto dal nome delle funzioni).
+// Polling 6s SOLO mentre il modale è aperto (si ferma alla chiusura),
+// niente subscription realtime — coerente con la scelta già fatta da
+// Claudio per il badge Match esistente ("niente interrogazioni continue
+// per ogni utente quando saremo di più").
+// ═══════════════════════════════════════════════════════════════════════
+
+let _chatMatchConversazioneId = null;
+let _chatMatchAltroId = null;
+let _chatMatchUserId = null;
+let _chatMatchPollingHandle = null;
+
+async function apriChatMatch(ownerAltro, personaLabel) {
+    if (!ownerAltro) return;
+    _chatMatchUserId = await authGetUserId();
+    if (!_chatMatchUserId) return;
+
+    const modal = document.getElementById('chatMatchModal');
+    const titolo = document.getElementById('chatMatchTitolo');
+    const box = document.getElementById('chatMatchMessaggi');
+    if (!modal || !box) return; // markup non ancora presente in index.html
+
+    _chatMatchAltroId = ownerAltro;
+    if (titolo) titolo.innerHTML = `<i class="fa-solid fa-comment"></i> ${escapeHtml(personaLabel || 'Utente')}`;
+    box.innerHTML = '<p style="text-align:center; color:var(--text-muted); font-size:0.85rem;"><i class="fa-solid fa-spinner fa-spin"></i> Apro la chat…</p>';
+    modal.style.display = 'flex';
+
+    const { data: convId, error } = await chatOttieniOCreaConversazione(ownerAltro);
+    if (error || !convId) {
+        box.innerHTML = `<p style="text-align:center; color:var(--danger); font-size:0.85rem;">${escapeHtml((error && error.message) || 'Errore apertura chat')}</p>`;
+        return;
+    }
+    _chatMatchConversazioneId = convId;
+    await _chatRenderMessaggi();
+    await chatSegnaLetti(convId);
+    _chatAvviaPolling();
+}
+
+function chiudiChatMatch() {
+    _chatFermaPolling();
+    const modal = document.getElementById('chatMatchModal');
+    if (modal) modal.style.display = 'none';
+    _chatMatchConversazioneId = null;
+    _chatMatchAltroId = null;
+}
+
+function _chatAvviaPolling() {
+    _chatFermaPolling();
+    _chatMatchPollingHandle = setInterval(async () => {
+        if (!_chatMatchConversazioneId) return;
+        await _chatRenderMessaggi();
+        await chatSegnaLetti(_chatMatchConversazioneId);
+    }, 6000);
+}
+
+function _chatFermaPolling() {
+    if (_chatMatchPollingHandle) { clearInterval(_chatMatchPollingHandle); _chatMatchPollingHandle = null; }
+}
+
+function _chatMessaggioHtml(m) {
+    const mio = m.mittente_id === _chatMatchUserId;
+    return `<div style="align-self:${mio ? 'flex-end' : 'flex-start'}; max-width:80%; background:${mio ? 'var(--primary)' : 'var(--primary-light)'}; color:${mio ? '#fff' : 'var(--primary)'}; padding:0.5rem 0.7rem; border-radius:12px; font-size:0.82rem; word-break:break-word; white-space:pre-wrap;">${escapeHtml(m.testo)}</div>`;
+}
+
+async function _chatRenderMessaggi() {
+    if (!_chatMatchConversazioneId) return;
+    const { data, error } = await chatMessaggiList(_chatMatchConversazioneId);
+    const box = document.getElementById('chatMatchMessaggi');
+    if (!box) return;
+    if (error) {
+        box.innerHTML = `<p style="text-align:center; color:var(--danger); font-size:0.85rem;">${escapeHtml(error.message)}</p>`;
+        return;
+    }
+    if (!data || data.length === 0) {
+        box.innerHTML = '<p style="text-align:center; color:var(--text-muted); font-size:0.85rem;">Nessun messaggio ancora — scrivi il primo.</p>';
+        return;
+    }
+    box.innerHTML = data.map(_chatMessaggioHtml).join('');
+    box.scrollTop = box.scrollHeight;
+}
+
+async function _chatInviaMessaggioClick() {
+    const input = document.getElementById('chatMatchInput');
+    if (!input || !_chatMatchConversazioneId) return;
+    const testo = input.value.trim();
+    if (!testo) return;
+    input.value = '';
+    const { error } = await chatInviaMessaggio(_chatMatchConversazioneId, testo);
+    if (error) { alert('Errore invio: ' + error.message); return; }
+    await _chatRenderMessaggi();
+}
+
+// Blocco preventivo (sql/70: blocchi_chat non richiede una conversazione
+// già esistente) — dopo il blocco chiude la chat, coerente con "non
+// potrete più scrivervi" mostrato nella conferma.
+async function _chatBloccaUtenteClick() {
+    if (!_chatMatchAltroId) return;
+    if (!confirm('Bloccare questo utente? Non potrete più scrivervi in chat.')) return;
+    const { error } = await chatBloccaUtente(_chatMatchAltroId);
+    if (error) { alert('Errore: ' + error.message); return; }
+    chiudiChatMatch();
+}
+
+// La segnalazione è ciò che sblocca la visibilità admin sullo storico
+// della conversazione (RLS di sql/70) — non è solo un log, è un evento
+// con effetto reale sui permessi.
+async function _chatSegnalaClick() {
+    if (!_chatMatchConversazioneId) return;
+    const motivo = prompt('Motivo della segnalazione (facoltativo):') || null;
+    const { error } = await chatSegnalaConversazione(_chatMatchConversazioneId, motivo);
+    if (error) { alert('Errore: ' + error.message); return; }
+    alert('Segnalazione inviata.');
+}
+
+// ── Nickname (impostazioni, sql/71) ───────────────────────────────────
+// Chiamata da index.html, sezione "Dati e Privacy" (#impostazioniPagina-
+// dati) — campo nuovo aggiunto lì in questa consegna. Caricamento pigro
+// al primo focus (onfocus), non agganciato al lifecycle di apertura
+// della pagina impostazioni: non ho mai letto il file che gestisce
+// quell'apertura in questa sessione, quindi non ci ho inventato un
+// aggancio — questo è autosufficiente.
+
+let _nicknameMatchCaricato = false;
+
+async function _nicknameMatchCaricaSeVuoto() {
+    if (_nicknameMatchCaricato) return;
+    _nicknameMatchCaricato = true;
+    const input = document.getElementById('nicknameMatchInput');
+    if (!input) return;
+    const userId = await authGetUserId();
+    if (!userId) return;
+    try {
+        const { data, error } = await userSettingsGet(userId);
+        if (!error && data && data.nickname) input.value = data.nickname;
+    } catch (e) {
+        console.error('_nicknameMatchCaricaSeVuoto: errore lettura:', e);
+    }
+}
+
+async function salvaNicknameMatch() {
+    const input = document.getElementById('nicknameMatchInput');
+    if (!input) return;
+    const { error } = await chatImpostaNickname(input.value.trim() || null);
+    if (error) { alert('Errore salvataggio: ' + error.message); return; }
+    alert('Nome salvato.');
 }
