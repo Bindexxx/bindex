@@ -28,6 +28,19 @@
         }
 
 
+        // AGGIUNTA (2026-09-24): mancava — ui/richieste-scambio.ui.js la
+        // dava per scontata fin dall'header ("utils condivisi: escapeHtml,
+        // formattaEuro") ma non era mai stata scritta, causava
+        // ReferenceError non appena una riga aveva prezzo_congelato
+        // valorizzato (scoperto solo ora, primo test con un prezzo reale
+        // sulla pagina Richieste). Stessa convenzione già usata inline nel
+        // resto del sito (Number(x).toFixed(2) + ' €') — nessun formato
+        // nuovo inventato, solo resa condivisa.
+        function formattaEuro(v) {
+            return (Number(v) || 0).toFixed(2) + ' €';
+        }
+
+
         function escapeHtml(str) {
             const div = document.createElement('div');
             div.textContent = str == null ? '' : String(str);
