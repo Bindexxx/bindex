@@ -80,10 +80,19 @@ CATALOGO_WIDGET.match = {
         preview: () => {
             const scambio = typeof _numNuoviMatchScambio !== 'undefined' ? _numNuoviMatchScambio : 0;
             const wishlist = typeof _numNuoviMatchWishlist !== 'undefined' ? _numNuoviMatchWishlist : 0;
+            const chat = _numChatNonLettiMatch || 0;
             const totale = scambio + wishlist;
-            const dati = { scambio, wishlist };
-            if (totale === 0) return { righe: ['Nessuna novità'], dati };
-            return { righe: [`${totale} nuov${totale === 1 ? 'a' : 'e'} corrispondenz${totale === 1 ? 'a' : 'e'}`], stato: 'ok', dati };
+            const dati = { scambio, wishlist, chatNonLetti: chat };
+            if (totale === 0 && chat === 0) return { righe: ['Nessuna novità'], dati };
+            // AGGIUNTO (2026-09-24): il testo deve contenere una cifra
+            // quando c'è qualcosa da vedere — _ballChiedeAttenzione('match',
+            // ...) in ui/widget-render-condiviso.ui.js legge righe[0] per
+            // decidere se far "scuotere" la tessera, non toccato qui ma
+            // rispettato.
+            const parti = [];
+            if (totale > 0) parti.push(`${totale} nuov${totale === 1 ? 'a' : 'e'} corrispondenz${totale === 1 ? 'a' : 'e'}`);
+            if (chat > 0) parti.push(`${chat} messagg${chat === 1 ? 'io' : 'i'} non lett${chat === 1 ? 'o' : 'i'}`);
+            return { righe: [parti.join(', ')], stato: 'ok', dati };
         },
         // Pagina dedicata costruita 2026-08-28 (prima apriva Binders in
         // generale, unico punto disponibile all'epoca).
@@ -436,4 +445,63 @@ async function salvaNicknameMatch() {
     const { error } = await chatImpostaNickname(input.value.trim() || null);
     if (error) { alert('Errore salvataggio: ' + error.message); return; }
     alert('Nome salvato.');
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// BADGE "MESSAGGI NON LETTI" (2026-09-24) — stesso principio di
+// aggiornaBadgeMatch() in ui/queue.ui.js (letto per intero in questa
+// sessione): un giro ogni 60s, non ad ogni apertura tessera. Aggiorna
+// _numChatNonLettiMatch, letta sopra da preview(), e manda UN avviso
+// CSBar per messaggio davvero nuovo (stesso concetto di _giaNotificati
+// in queue.ui.js, ma un Set a sé qui — quello è privato a quel file).
+//
+// NON AGGANCIATA al ciclo di polling automatico: avviaPollingWidgetHome()
+// (ui/paginainiziale.ui.js, MAI letto in questa sessione) è quello che
+// oggi chiama aggiornaBadgeMatch() ogni 60s. Finché non leggo quel file
+// o non aggiungi tu la riga, questa funzione va chiamata a mano (es.
+// dalla console) o non gira mai automaticamente. Riga da aggiungere in
+// ui/paginainiziale.ui.js, ovunque compaia "aggiornaBadgeMatch();" nel
+// ciclo di polling lento:
+//     aggiornaBadgeMatch();
+//     _aggiornaBadgeChatMatch();   // <— AGGIUNTA
+//
+// CSBar.notify() usato DIRETTO (non CSBar.avvisa()): avvisa() richiede un
+// preset già registrato in notificationTypes, passato a CSBar.init() in
+// un file che non ho mai letto in questa sessione — notify() prende
+// l'oggetto già completo, non serve nessun registro da modificare.
+// target: '#match' — stesso pattern già usato e confermato funzionante
+// per il widget Set (vedi compilato 2026-09-20). Il click sulla tessera
+// nel blocco esteso (_ballAzioneRiga(event,'tab','match'), vedi
+// ui/widget-render-corpi.ui.js) segue lo stesso pattern già in uso per
+// 'binder' — non ho letto _ballAzioneRiga stessa (vive in
+// ui/widget-render-tessere-grandi.ui.js, mai richiesta), quindi questa
+// parte è un'inferenza dal pattern esistente, da verificare dal vivo.
+let _numChatNonLettiMatch = 0;
+const _chatGiaNotificati = new Set();
+
+async function _aggiornaBadgeChatMatch() {
+    const userId = await authGetUserId();
+    if (!userId) return;
+
+    const { data: conversazioni, error: errC } = await chatConversazioniList(userId);
+    if (errC) { console.error('_aggiornaBadgeChatMatch: errore conversazioni:', errC.message); return; }
+    if (!conversazioni || conversazioni.length === 0) { _numChatNonLettiMatch = 0; return; }
+
+    const ids = conversazioni.map(c => c.id);
+    const { data: nonLetti, error: errM } = await chatMessaggiNonLettiList(ids, userId);
+    if (errM) { console.error('_aggiornaBadgeChatMatch: errore messaggi:', errM.message); return; }
+
+    _numChatNonLettiMatch = (nonLetti || []).length;
+
+    if (typeof CSBar === 'undefined' || !nonLetti) return;
+    const nuovi = nonLetti.filter(m => !_chatGiaNotificati.has(m.id));
+    if (nuovi.length === 0) return;
+    nuovi.forEach(m => _chatGiaNotificati.add(m.id));
+    CSBar.notify({
+        title: 'Nuovo messaggio',
+        text: nuovi.length === 1 ? 'Hai un nuovo messaggio in chat.' : `Hai ${nuovi.length} nuovi messaggi in chat.`,
+        target: '#match',
+        group: 'chat-match-messaggio',
+        groupLabel: 'Messaggi chat',
+    });
 }

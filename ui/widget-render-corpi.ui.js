@@ -525,21 +525,30 @@ const _ballCORPI = {
 
     // Match: il totale, e i due tipi come riquadri di statistica separati —
     // scambio e wishlist sono due cose diverse.
+    // AGGIORNATO (2026-09-24): terzo dato, chatNonLetti (widget-match.ui.js,
+    // _aggiornaBadgeChatMatch) — messaggi di chat non letti. Riga in più nel
+    // blocco SOLO se > 0, pill in più nell'inline SOLO se > 0: nessuna
+    // rottura per chi non ha ancora messaggi. onclick della nuova riga
+    // segue lo stesso pattern di _ballAzioneRiga già usato qui sotto per
+    // 'binder' — non verificato dal vivo, _ballAzioneRiga non è in questo
+    // file.
     match: (d) => {
         if (!d) return { inline: '', blocco: '' };
-        const scambio = d.scambio || 0, wishlist = d.wishlist || 0;
+        const scambio = d.scambio || 0, wishlist = d.wishlist || 0, chat = d.chatNonLetti || 0;
         const totale = scambio + wishlist;
         const inline =
             '<p class="ball-k-tit">Match trovati</p>' +
             `<div class="ball-k-big ball-k-mono${totale > 0 ? ' su' : ''}">${totale}</div>` +
             `<span class="ball-k-lab">${totale === 0 ? 'nessuna novità' : (totale === 1 ? 'corrispondenza' : 'corrispondenze')}</span>` +
-            (totale > 0 ? _ballPill('da vedere', true) : '');
+            (totale > 0 ? _ballPill('da vedere', true) : '') +
+            (chat > 0 ? _ballPill(`${chat} messagg${chat === 1 ? 'io' : 'i'}`, true) : '');
 
         const blocco =
             '<div class="ball-stat-griglia">' +
                 `<div class="ball-stat ball-clic" onclick="_ballAzioneRiga(event,'tab','binder')"><b>${scambio}</b><span>Scambio</span></div>` +
                 `<div class="ball-stat ball-clic" onclick="_ballAzioneRiga(event,'tab','binder')"><b>${wishlist}</b><span>Wishlist</span></div>` +
             '</div>' +
+            (chat > 0 ? `<div class="ball-riga ball-clic" onclick="_ballAzioneRiga(event,'tab','match')"><span class="ball-nome">Messaggi non letti</span><span class="ball-dato">${chat}</span></div>` : '') +
             (totale > 0 ? _ballPulsante('Apri Binders', `_ballAzioneRiga(event,'tab','binder')`) : '');
         return { inline, blocco };
     },
