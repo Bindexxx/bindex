@@ -910,28 +910,51 @@ begin
   if not public.is_admin() then
     raise exception 'Non autorizzato';
   end if;
+  if p_target = auth.uid() then
+    raise exception 'Non puoi eliminare il tuo stesso account';
+  end if;
   perform public.log_admin_action('hard_delete', p_target, null);
 
+  -- 1. Scambi (le righe cadono in cascata dalla richiesta; poi gli avanzi)
+  delete from public.richieste_scambio where proprietario_id = p_target or richiedente_id = p_target;
+  delete from public.richieste_scambio_righe where proprietario_id = p_target or richiedente_id = p_target;
+
+  -- 2. Dati propri (colonne NOT NULL) — figli prima dei padri
+  delete from public.binder_carte where owner_id = p_target;
+  delete from public.scaffale_prodotti where owner_id = p_target;
   delete from public.foto_carte where owner_id = p_target;
   delete from public.user_media where user_id = p_target;
+  delete from public.carte where owner_id = p_target;
+  delete from public.prodotti_sealed where owner_id = p_target;
+  delete from public.wishlist where owner_id = p_target;
+  delete from public.wishlist_sealed where owner_id = p_target;
   delete from public.location where owner_id = p_target;
   delete from public.preferenze_utente where owner_id = p_target;
-  delete from public.wishlist where owner_id = p_target;
-  delete from public.carte where owner_id = p_target;
+  delete from public.missioni_completate where owner_id = p_target;
+  delete from public.traguardi_riscossi where owner_id = p_target;
+  delete from public.inventario_ricompense where owner_id = p_target;
+  delete from public.bustina_carte_possedute where owner_id = p_target;
+  delete from public.achievement_sbloccati where owner_id = p_target;
+  delete from public.segnalazioni_bug where owner_id = p_target;
+  delete from public.activity_log where user_id = p_target;
+  delete from public.worker_presenza where user_id = p_target;
+  delete from public.coda_lavoro where creato_da = p_target;
+  delete from public.coda_wishlist where owner_id = p_target;
 
+  -- 3. Tracce su righe altrui (colonne nullable) — la riga resta
   update public.admin_audit_log set admin_id = null where admin_id = p_target;
-  update public.activity_log set user_id = null where user_id = p_target;
+  update public.chat_restrizioni_utente set impostato_da = null where impostato_da = p_target;
+  update public.coda_lavoro set claimed_by = null where claimed_by = p_target;
+  update public.coda_wishlist set claimed_by = null where claimed_by = p_target;
+  update public.ordini set creato_da = null where creato_da = p_target;
+  update public.ordini set preso_in_carico_da = null where preso_in_carico_da = p_target;
   update public.pending_requests set user_id = null where user_id = p_target;
   update public.pending_requests set reviewed_by = null where reviewed_by = p_target;
   update public.user_media set reviewed_by = null where reviewed_by = p_target;
-  update public.worker_presenza set user_id = null where user_id = p_target;
-  update public.ordini set creato_da = null where creato_da = p_target;
-  update public.ordini set preso_in_carico_da = null where preso_in_carico_da = p_target;
-  update public.coda_wishlist set owner_id = null where owner_id = p_target;
-  update public.coda_wishlist set claimed_by = null where claimed_by = p_target;
-  update public.coda_lavoro set creato_da = null where creato_da = p_target;
-  update public.coda_lavoro set claimed_by = null where claimed_by = p_target;
+  update public.work_in_progress set attivato_da = null where attivato_da = p_target;
 
+  -- 4. Profilo e utente (il resto va in cascata)
+  delete from public.profiles where id = p_target;
   delete from auth.users where id = p_target;
 end;
 $function$
