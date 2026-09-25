@@ -4872,6 +4872,33 @@
         .pg-barra-track { height: 8px; border-radius: 999px; background: var(--primary-light); overflow: hidden; }
         .pg-barra-fill { height: 100%; border-radius: 999px; background: var(--primary); }
 
+        /* ── WIDGET MISSIONI — restyle (2026-09-25, Variante C scelta da
+           Claudio dopo revisione mockup). Solo classi NUOVE con prefisso
+           .msn-*; riusa .binder-modalita-toggle/-btn, .pg-elenco, .pg-riga
+           già esistenti sopra. Nessuna regola esistente modificata. */
+        .msn-riepilogo { display: flex; align-items: center; gap: 1rem; }
+        .msn-ring { position: relative; width: 54px; height: 54px; flex: 0 0 auto; }
+        .msn-ring svg { transform: rotate(-90deg); }
+        .msn-ring circle { transition: stroke-dashoffset 0.4s ease; }
+        .msn-ring-testo { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 0.78rem; font-weight: 800; color: var(--text-dark); }
+        .msn-riepilogo-titolo { font-weight: 800; color: var(--text-dark); font-size: 0.95rem; }
+        .msn-streak { display: flex; align-items: center; gap: 6px; font-size: 0.78rem; color: var(--text-muted); margin-top: 2px; }
+        .msn-streak i { color: #f5a524; }
+        .msn-tab-pallino {
+            position: absolute; top: -4px; right: -2px; width: 8px; height: 8px;
+            border-radius: 50%; background: var(--danger);
+        }
+        .msn-check {
+            width: 26px; height: 26px; border-radius: 50%; border: 2px solid var(--border-color);
+            flex: 0 0 auto; display: flex; align-items: center; justify-content: center;
+            font-size: 0.75rem; color: transparent; transition: background-color 0.2s, border-color 0.2s;
+        }
+        .msn-check.fatta { border-color: var(--success); background: var(--success); color: #fff; }
+        .msn-riga-testo-riga1 { color: var(--text-dark); font-weight: 700; }
+        .msn-riga-testo-riga1.fatta { opacity: 0.6; font-weight: 600; }
+        .msn-riga-testo-riga2 { font-size: 0.68rem; color: var(--text-muted); margin-top: 1px; }
+        .msn-vuoto { text-align: center; color: var(--text-muted); font-size: 0.82rem; padding: 1.2rem 0; }
+
         /* ── WIDGET SET — restyle + masterset (2026-09-20) ─────────────────
            Solo classi NUOVE con prefisso .set-*; riusa .pg-filtro (schede),
            .page-azione, .pg-riga-set e .pg-barra-* già esistenti sopra.
@@ -6181,14 +6208,17 @@
                  sezione Traguardi (#missioniListaTraguardi) è stata
                  rimossa da qui — quei dati vivono ora esclusivamente nel
                  widget Achievement (ui/widget-achievement.ui.js). Restano
-                 solo le missioni giornaliere/settimanali/mensili/una_tantum,
-                 logica di renderPaginaMissioni() invariata per quella
-                 parte (ui/widget-missioni.ui.js). -->
+                 solo le missioni giornaliere/settimanali/mensili/una_tantum.
+                 RESTYLE (2026-09-25, Variante C scelta da Claudio dopo
+                 mockup): il sottotitolo statico è stato sostituito dal
+                 riepilogo dinamico (anello + streak) generato da
+                 renderPaginaMissioni() — tutto il contenuto di questa pagina
+                 (riepilogo, tab, elenco) è costruito via JS dentro
+                 #missioniListaOggi, nessun altro markup fisso necessario. -->
             <div class="page-header">
                 <span class="page-title">Missioni</span>
             </div>
             <div class="pg-pagina">
-                <p class="pg-sotto" style="margin:-6px 0 2px;">Obiettivi giornalieri, settimanali e mensili — le ricompense si sbloccano da sole quando li completi.</p>
                 <div id="missioniListaOggi"></div>
             </div>
         </div>
