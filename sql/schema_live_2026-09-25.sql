@@ -1,16 +1,16 @@
 -- ============================================================================
--- CARDSYNC PRO — SNAPSHOT SCHEMA DEL DATABASE LIVE (2026-09-25)
+-- CARDSYNC PRO — SNAPSHOT SCHEMA DEL DATABASE LIVE (2026-09-25, sera)
 -- Generato da sql/esporta_schema_live.sql eseguita sul progetto Supabase
--- xpfibrzsffurdlypxnrw. È la FONTE DI VERITÀ documentale dello schema: i
--- file numerati di questa cartella (05…66) sono lo STORICO delle migrazioni,
+-- xpfibrzsffurdlypxnrw DOPO l'applicazione delle migrazioni 76 e 77
+-- (sicurezza). È la FONTE DI VERITÀ documentale dello schema: i file
+-- numerati di questa cartella (05…77) sono lo STORICO delle migrazioni,
 -- incompleto e in parte superato — consultarli solo per capire il perché
 -- di una scelta, mai per sapere com'è fatto il DB oggi.
--- Contenuto: 51 tabella, 95 funzione, 1 vista, 174 vincolo, 30 indice, 51 rls, 99 policy, 11 trigger, 9 bucket, 20 policy storage, 95 permessi funzione
+-- Contenuto: 51 tabella, 95 funzione, 1 vista, 174 vincolo, 30 indice, 51 rls, 99 policy, 11 trigger, 9 bucket, 21 policy storage, 95 permessi funzione
 -- NON contiene dati. NON va eseguito sul DB esistente (è documentazione,
 -- tutto esiste già); servirebbe solo a ricreare lo schema su un progetto
 -- vuoto, e in quel caso va rivisto a mano (ruoli, estensioni, auth).
--- Per aggiornarlo: rieseguire sql/esporta_schema_live.sql, scaricare il
--- risultato e rigenerare questo file.
+-- Per aggiornarlo: rieseguire sql/esporta_schema_live.sql e rigenerare.
 -- ============================================================================
 
 
@@ -610,6 +610,7 @@ create table public.worker_presenza (
 CREATE OR REPLACE FUNCTION public._binders_blocca_rinomina_diretta()
  RETURNS trigger
  LANGUAGE plpgsql
+ SET search_path TO 'public'
 AS $function$
 begin
     if new.nome is distinct from old.nome
@@ -625,6 +626,7 @@ $function$
 CREATE OR REPLACE FUNCTION public._binders_forza_condivisione()
  RETURNS trigger
  LANGUAGE plpgsql
+ SET search_path TO 'public'
 AS $function$
 begin
     if new.tipo = 'wishlist'
@@ -664,6 +666,7 @@ $function$
 CREATE OR REPLACE FUNCTION public._cardsync_traccia_prezzo_precedente()
  RETURNS trigger
  LANGUAGE plpgsql
+ SET search_path TO 'public'
 AS $function$
 begin
   if new.prezzo is distinct from old.prezzo then
@@ -679,6 +682,7 @@ CREATE OR REPLACE FUNCTION public._chat_ha_link_esterno(p_testo text)
  RETURNS boolean
  LANGUAGE sql
  IMMUTABLE
+ SET search_path TO 'public'
 AS $function$
     select (p_testo ~* '(https?://|www\.)\S+')
        and (p_testo !~* 'bindexxx\.github\.io');
@@ -690,6 +694,7 @@ CREATE OR REPLACE FUNCTION public._chat_ha_parolacce(p_testo text)
  RETURNS boolean
  LANGUAGE sql
  IMMUTABLE
+ SET search_path TO 'public'
 AS $function$
     select p_testo ~* '\y(cazzo|cazzata|cazzone|stronzo|stronza|puttana|troia|merda|merdoso|vaffanculo|bastardo|bastarda|coglione|cogliona|porco dio|porca madonna|zoccola|figlio di puttana)\y';
 $function$
@@ -699,6 +704,7 @@ $function$
 CREATE OR REPLACE FUNCTION public._chat_restrizioni_traccia_modifica()
  RETURNS trigger
  LANGUAGE plpgsql
+ SET search_path TO 'public'
 AS $function$
 begin
     new.impostato_da := auth.uid();
@@ -772,6 +778,7 @@ CREATE OR REPLACE FUNCTION public._coda_carte_view_update()
  RETURNS trigger
  LANGUAGE plpgsql
  SECURITY DEFINER
+ SET search_path TO 'public'
 AS $function$
 begin
   update coda_lavoro set
@@ -796,6 +803,7 @@ CREATE OR REPLACE FUNCTION public._rank_condizione(p_condizione text)
  RETURNS integer
  LANGUAGE sql
  IMMUTABLE
+ SET search_path TO 'public'
 AS $function$
     select case p_condizione
         when 'MT' then 7 when 'NM' then 6 when 'EX' then 5 when 'GD' then 4
@@ -810,6 +818,7 @@ CREATE OR REPLACE FUNCTION public._rank_integrita(p_integrita text)
  RETURNS integer
  LANGUAGE sql
  IMMUTABLE
+ SET search_path TO 'public'
 AS $function$
     select case p_integrita
         when 'sigillato_integro' then 4 when 'sigillo_danneggiato' then 3
@@ -1262,6 +1271,7 @@ $function$
 CREATE OR REPLACE FUNCTION public.aggiorna_updated_at()
  RETURNS trigger
  LANGUAGE plpgsql
+ SET search_path TO 'public'
 AS $function$
 begin
   new.updated_at = now();
@@ -1595,6 +1605,7 @@ CREATE OR REPLACE FUNCTION public.completa_lavoro(p_id bigint, p_esito jsonb DEF
  RETURNS void
  LANGUAGE sql
  SECURITY DEFINER
+ SET search_path TO 'public'
 AS $function$
   update coda_lavoro
   set stato = case when p_errore_msg is null then 'completato' else 'errore' end,
@@ -1774,6 +1785,7 @@ CREATE OR REPLACE FUNCTION public.conta_lavoro_pendente(p_user_id uuid, p_aiuta_
  RETURNS integer
  LANGUAGE sql
  SECURITY DEFINER
+ SET search_path TO 'public'
 AS $function$
   select count(*)::int from coda_lavoro
   where stato = 'pending'
@@ -2606,6 +2618,7 @@ CREATE OR REPLACE FUNCTION public.reclama_lavoro(p_user_id uuid, p_dispositivo t
  RETURNS SETOF coda_lavoro
  LANGUAGE plpgsql
  SECURITY DEFINER
+ SET search_path TO 'public'
 AS $function$
 declare
   v_soglia_stallo timestamptz := now() - interval '10 minutes';
@@ -4250,17 +4263,15 @@ insert into storage.buckets (id, name, public) values ('user-media', 'user-media
 -- POLICY STORAGE (storage.objects)
 -- ============================================================================
 
-create policy "Allow anon and auth full access to bustina-immagini" on storage.objects as PERMISSIVE for ALL to anon, authenticated using ((bucket_id = 'bustina-immagini'::text)) with check ((bucket_id = 'bustina-immagini'::text));
-
-create policy "Allow anon and auth full access to bustina-testi" on storage.objects as PERMISSIVE for ALL to anon, authenticated using ((bucket_id = 'bustina-testi'::text)) with check ((bucket_id = 'bustina-testi'::text));
-
-create policy "Authenticated update bustina-assets" on storage.objects as PERMISSIVE for UPDATE to authenticated using ((bucket_id = 'bustina-assets'::text)) with check ((bucket_id = 'bustina-assets'::text));
-
-create policy "Authenticated write bustina-assets" on storage.objects as PERMISSIVE for INSERT to authenticated with check ((bucket_id = 'bustina-assets'::text));
-
 create policy "Public read bustina-assets" on storage.objects as PERMISSIVE for SELECT to public using ((bucket_id = 'bustina-assets'::text));
 
+create policy "admin elimina file bustina" on storage.objects as PERMISSIVE for DELETE to authenticated using (((bucket_id = ANY (ARRAY['bustina-immagini'::text, 'bustina-testi'::text, 'bustina-assets'::text])) AND is_admin()));
+
 create policy "admin legge tutti i file" on storage.objects as PERMISSIVE for SELECT to public using (((bucket_id = 'user-media'::text) AND is_admin()));
+
+create policy "admin modifica file bustina" on storage.objects as PERMISSIVE for UPDATE to authenticated using (((bucket_id = ANY (ARRAY['bustina-immagini'::text, 'bustina-testi'::text, 'bustina-assets'::text])) AND is_admin())) with check (((bucket_id = ANY (ARRAY['bustina-immagini'::text, 'bustina-testi'::text, 'bustina-assets'::text])) AND is_admin()));
+
+create policy "admin scrive file bustina" on storage.objects as PERMISSIVE for INSERT to authenticated with check (((bucket_id = ANY (ARRAY['bustina-immagini'::text, 'bustina-testi'::text, 'bustina-assets'::text])) AND is_admin()));
 
 create policy "admin scrive immaginivisibili" on storage.objects as PERMISSIVE for INSERT to public with check (((bucket_id = 'immaginivisibili'::text) AND is_admin()));
 
@@ -4269,6 +4280,10 @@ create policy "admin sovrascrive immaginivisibili" on storage.objects as PERMISS
 create policy "chiunque legge le immagini carte (bucket pubblico)" on storage.objects as PERMISSIVE for SELECT to public using ((bucket_id = 'immagini-carte'::text));
 
 create policy "chiunque puo vedere le foto dettaglio (bucket pubblico)" on storage.objects as PERMISSIVE for SELECT to public using ((bucket_id = 'foto-carte'::text));
+
+create policy "lettura pubblica bustina-immagini" on storage.objects as PERMISSIVE for SELECT to anon, authenticated using ((bucket_id = 'bustina-immagini'::text));
+
+create policy "lettura pubblica bustina-testi" on storage.objects as PERMISSIVE for SELECT to anon, authenticated using ((bucket_id = 'bustina-testi'::text));
 
 create policy "lettura pubblica default-assets" on storage.objects as PERMISSIVE for SELECT to public using ((bucket_id = 'default-assets'::text));
 
@@ -4301,7 +4316,7 @@ create policy "utenti eliminano le proprie foto dettaglio" on storage.objects as
 
 -- _binders_forza_condivisione() → =X/postgres, postgres=X/postgres, anon=X/postgres, authenticated=X/postgres
 
--- _cardsync_registra_storico_prezzo() → =X/postgres, postgres=X/postgres, anon=X/postgres, authenticated=X/postgres
+-- _cardsync_registra_storico_prezzo() → postgres=X/postgres, authenticated=X/postgres, service_role=X/postgres
 
 -- _cardsync_traccia_prezzo_precedente() → =X/postgres, postgres=X/postgres, anon=X/postgres, authenticated=X/postgres
 
@@ -4313,65 +4328,65 @@ create policy "utenti eliminano le proprie foto dettaglio" on storage.objects as
 
 -- _chat_utente_vietato(p_uid uuid) → postgres=X/postgres
 
--- _coda_carte_view_delete() → =X/postgres, postgres=X/postgres, anon=X/postgres, authenticated=X/postgres
+-- _coda_carte_view_delete() → postgres=X/postgres, authenticated=X/postgres, service_role=X/postgres
 
--- _coda_carte_view_insert() → =X/postgres, postgres=X/postgres, anon=X/postgres, authenticated=X/postgres
+-- _coda_carte_view_insert() → postgres=X/postgres, authenticated=X/postgres, service_role=X/postgres
 
--- _coda_carte_view_update() → =X/postgres, postgres=X/postgres, anon=X/postgres, authenticated=X/postgres
+-- _coda_carte_view_update() → postgres=X/postgres, authenticated=X/postgres, service_role=X/postgres
 
 -- _rank_condizione(p_condizione text) → =X/postgres, postgres=X/postgres, anon=X/postgres, authenticated=X/postgres
 
 -- _rank_integrita(p_integrita text) → =X/postgres, postgres=X/postgres, anon=X/postgres, authenticated=X/postgres
 
--- accetta_riga_richiesta(p_riga_id uuid) → =X/postgres, postgres=X/postgres, anon=X/postgres, authenticated=X/postgres
+-- accetta_riga_richiesta(p_riga_id uuid) → postgres=X/postgres, authenticated=X/postgres, service_role=X/postgres
 
--- admin_ban_user(p_target uuid, p_until timestamp with time zone, p_reason text) → =X/postgres, postgres=X/postgres, anon=X/postgres, authenticated=X/postgres
+-- admin_ban_user(p_target uuid, p_until timestamp with time zone, p_reason text) → postgres=X/postgres, authenticated=X/postgres, service_role=X/postgres
 
--- admin_hard_delete_user(p_target uuid) → =X/postgres, postgres=X/postgres, anon=X/postgres, authenticated=X/postgres
+-- admin_hard_delete_user(p_target uuid) → postgres=X/postgres, authenticated=X/postgres, service_role=X/postgres
 
--- admin_process_pending_request(p_request_id uuid, p_decisione text, p_payload jsonb) → =X/postgres, postgres=X/postgres, anon=X/postgres, authenticated=X/postgres
+-- admin_process_pending_request(p_request_id uuid, p_decisione text, p_payload jsonb) → postgres=X/postgres, authenticated=X/postgres, service_role=X/postgres
 
--- admin_reset_password(p_target uuid, p_new_password text) → =X/postgres, postgres=X/postgres, anon=X/postgres, authenticated=X/postgres
+-- admin_reset_password(p_target uuid, p_new_password text) → postgres=X/postgres, authenticated=X/postgres, service_role=X/postgres
 
--- admin_restore_user(p_target uuid) → =X/postgres, postgres=X/postgres, anon=X/postgres, authenticated=X/postgres
+-- admin_restore_user(p_target uuid) → postgres=X/postgres, authenticated=X/postgres, service_role=X/postgres
 
--- admin_revoke_sessions(p_target uuid) → =X/postgres, postgres=X/postgres, anon=X/postgres, authenticated=X/postgres
+-- admin_revoke_sessions(p_target uuid) → postgres=X/postgres, authenticated=X/postgres, service_role=X/postgres
 
--- admin_soft_delete_user(p_target uuid) → =X/postgres, postgres=X/postgres, anon=X/postgres, authenticated=X/postgres
+-- admin_soft_delete_user(p_target uuid) → postgres=X/postgres, authenticated=X/postgres, service_role=X/postgres
 
--- admin_unban_user(p_target uuid) → =X/postgres, postgres=X/postgres, anon=X/postgres, authenticated=X/postgres
+-- admin_unban_user(p_target uuid) → postgres=X/postgres, authenticated=X/postgres, service_role=X/postgres
 
--- aggiorna_nota_controllo_gruppo(p_id uuid, p_nota text) → =X/postgres, postgres=X/postgres, anon=X/postgres, authenticated=X/postgres
+-- aggiorna_nota_controllo_gruppo(p_id uuid, p_nota text) → postgres=X/postgres, authenticated=X/postgres, service_role=X/postgres
 
--- aggiorna_prezzo_controllo_gruppo(p_id uuid, p_prezzo numeric, p_immagine text) → =X/postgres, postgres=X/postgres, anon=X/postgres, authenticated=X/postgres
+-- aggiorna_prezzo_controllo_gruppo(p_id uuid, p_prezzo numeric, p_immagine text) → postgres=X/postgres, authenticated=X/postgres, service_role=X/postgres
 
--- aggiorna_prezzo_controllo_gruppo_sealed(p_id uuid, p_prezzo numeric, p_immagine text) → =X/postgres, postgres=X/postgres, anon=X/postgres, authenticated=X/postgres
+-- aggiorna_prezzo_controllo_gruppo_sealed(p_id uuid, p_prezzo numeric, p_immagine text) → postgres=X/postgres, authenticated=X/postgres, service_role=X/postgres
 
 -- aggiorna_updated_at() → =X/postgres, postgres=X/postgres, anon=X/postgres, authenticated=X/postgres
 
--- aggiorna_url_controllo_gruppo(p_id uuid, p_url text) → =X/postgres, postgres=X/postgres, anon=X/postgres, authenticated=X/postgres
+-- aggiorna_url_controllo_gruppo(p_id uuid, p_url text) → postgres=X/postgres, authenticated=X/postgres, service_role=X/postgres
 
--- aggiorna_url_controllo_gruppo_sealed(p_id uuid, p_url text) → =X/postgres, postgres=X/postgres, anon=X/postgres, authenticated=X/postgres
+-- aggiorna_url_controllo_gruppo_sealed(p_id uuid, p_url text) → postgres=X/postgres, authenticated=X/postgres, service_role=X/postgres
 
--- annulla_riga_richiesta(p_riga_id uuid, p_motivo text) → =X/postgres, postgres=X/postgres, anon=X/postgres, authenticated=X/postgres
+-- annulla_riga_richiesta(p_riga_id uuid, p_motivo text) → postgres=X/postgres, authenticated=X/postgres, service_role=X/postgres
 
 -- apri_bustina(p_rarita_forzata text) → postgres=X/postgres, authenticated=X/postgres
 
--- blocca_utente(p_bloccato_id uuid) → =X/postgres, postgres=X/postgres, anon=X/postgres, authenticated=X/postgres
+-- blocca_utente(p_bloccato_id uuid) → postgres=X/postgres, authenticated=X/postgres, service_role=X/postgres
 
 -- bustine_stato() → postgres=X/postgres, authenticated=X/postgres
 
--- completa_lavoro(p_id bigint, p_esito jsonb, p_errore_msg text) → =X/postgres, postgres=X/postgres, anon=X/postgres, authenticated=X/postgres
+-- completa_lavoro(p_id bigint, p_esito jsonb, p_errore_msg text) → postgres=X/postgres, authenticated=X/postgres, service_role=X/postgres
 
--- completa_riga_coda_carte(p_riga_coda_id uuid, p_nome text, p_codice text, p_location text, p_qty integer, p_lingua text, p_condizione text, p_url text, p_prezzo numeric, p_note text, p_immagine text, p_tipo text, p_destinazione text, p_prezzo_obiettivo numeric) → =X/postgres, postgres=X/postgres, anon=X/postgres, authenticated=X/postgres
+-- completa_riga_coda_carte(p_riga_coda_id uuid, p_nome text, p_codice text, p_location text, p_qty integer, p_lingua text, p_condizione text, p_url text, p_prezzo numeric, p_note text, p_immagine text, p_tipo text, p_destinazione text, p_prezzo_obiettivo numeric) → postgres=X/postgres, authenticated=X/postgres, service_role=X/postgres
 
--- concludi_riga_richiesta(p_riga_id uuid, p_location_scelta text) → =X/postgres, postgres=X/postgres, anon=X/postgres, authenticated=X/postgres
+-- concludi_riga_richiesta(p_riga_id uuid, p_location_scelta text) → postgres=X/postgres, authenticated=X/postgres, service_role=X/postgres
 
--- conta_carte_da_controllare_gruppo(p_owner_id_richiesto uuid, p_solo_proprie boolean, p_filtro_location text[], p_solo_vecchie boolean, p_giorni_minimi integer) → =X/postgres, postgres=X/postgres, anon=X/postgres, authenticated=X/postgres
+-- conta_carte_da_controllare_gruppo(p_owner_id_richiesto uuid, p_solo_proprie boolean, p_filtro_location text[], p_solo_vecchie boolean, p_giorni_minimi integer) → postgres=X/postgres, authenticated=X/postgres, service_role=X/postgres
 
--- conta_lavoro_pendente(p_user_id uuid, p_aiuta_gruppo boolean, p_tipi text[]) → =X/postgres, postgres=X/postgres, anon=X/postgres, authenticated=X/postgres
+-- conta_lavoro_pendente(p_user_id uuid, p_aiuta_gruppo boolean, p_tipi text[]) → postgres=X/postgres, authenticated=X/postgres, service_role=X/postgres
 
--- conta_prodotti_sealed_da_controllare_gruppo(p_owner_id_richiesto uuid, p_solo_proprie boolean, p_filtro_scaffali uuid[], p_solo_vecchie boolean, p_giorni_minimi integer) → =X/postgres, postgres=X/postgres, anon=X/postgres, authenticated=X/postgres
+-- conta_prodotti_sealed_da_controllare_gruppo(p_owner_id_richiesto uuid, p_solo_proprie boolean, p_filtro_scaffali uuid[], p_solo_vecchie boolean, p_giorni_minimi integer) → postgres=X/postgres, authenticated=X/postgres, service_role=X/postgres
 
 -- handle_new_user() → =X/postgres, postgres=X/postgres, anon=X/postgres, authenticated=X/postgres
 
@@ -4379,11 +4394,11 @@ create policy "utenti eliminano le proprie foto dettaglio" on storage.objects as
 
 -- imposta_colore_cornice(p_principale text, p_secondario text) → postgres=X/postgres, authenticated=X/postgres
 
--- imposta_nickname(p_nickname text) → =X/postgres, postgres=X/postgres, anon=X/postgres, authenticated=X/postgres
+-- imposta_nickname(p_nickname text) → postgres=X/postgres, authenticated=X/postgres, service_role=X/postgres
 
--- invia_messaggio(p_conversazione_id uuid, p_testo text) → =X/postgres, postgres=X/postgres, anon=X/postgres, authenticated=X/postgres
+-- invia_messaggio(p_conversazione_id uuid, p_testo text) → postgres=X/postgres, authenticated=X/postgres, service_role=X/postgres
 
--- invia_richiesta_scambio(p_proprietario_id uuid, p_righe jsonb) → =X/postgres, postgres=X/postgres, anon=X/postgres, authenticated=X/postgres
+-- invia_richiesta_scambio(p_proprietario_id uuid, p_righe jsonb) → postgres=X/postgres, authenticated=X/postgres, service_role=X/postgres
 
 -- is_admin() → =X/postgres, postgres=X/postgres, anon=X/postgres, authenticated=X/postgres
 
@@ -4397,7 +4412,7 @@ create policy "utenti eliminano le proprie foto dettaglio" on storage.objects as
 
 -- leggi_colore_cornice_pubblico(p_owner_id uuid) → =X/postgres, postgres=X/postgres, anon=X/postgres, authenticated=X/postgres
 
--- leggi_contributi_gruppo() → postgres=X/postgres, anon=X/postgres, authenticated=X/postgres
+-- leggi_contributi_gruppo() → postgres=X/postgres, authenticated=X/postgres, service_role=X/postgres
 
 -- leggi_media_binder_pubblico(p_binder_id uuid) → =X/postgres, postgres=X/postgres, anon=X/postgres, authenticated=X/postgres
 
@@ -4405,11 +4420,11 @@ create policy "utenti eliminano le proprie foto dettaglio" on storage.objects as
 
 -- leggi_scaffale_pubblico_info(p_scaffale_id uuid) → =X/postgres, postgres=X/postgres, anon=X/postgres, authenticated=X/postgres
 
--- leggi_scambio_condiviso(p_owner_id uuid) → =X/postgres, postgres=X/postgres, anon=X/postgres, authenticated=X/postgres
+-- leggi_scambio_condiviso(p_owner_id uuid) → postgres=X/postgres, authenticated=X/postgres, service_role=X/postgres
 
 -- leggi_sealed_condiviso(p_owner_id uuid) → =X/postgres, postgres=X/postgres, anon=X/postgres, authenticated=X/postgres
 
--- leggi_stato_claim_gruppo(p_soglia_minuti integer) → =X/postgres, postgres=X/postgres, anon=X/postgres, authenticated=X/postgres
+-- leggi_stato_claim_gruppo(p_soglia_minuti integer) → postgres=X/postgres, authenticated=X/postgres, service_role=X/postgres
 
 -- leggi_variazioni_da(p_da timestamp with time zone) → postgres=X/postgres, authenticated=X/postgres
 
@@ -4417,23 +4432,23 @@ create policy "utenti eliminano le proprie foto dettaglio" on storage.objects as
 
 -- leggi_wishlist_sealed_condivisa(p_owner_id uuid) → =X/postgres, postgres=X/postgres, anon=X/postgres, authenticated=X/postgres
 
--- log_admin_action(p_action text, p_target uuid, p_details jsonb) → =X/postgres, postgres=X/postgres, anon=X/postgres, authenticated=X/postgres
+-- log_admin_action(p_action text, p_target uuid, p_details jsonb) → postgres=X/postgres, authenticated=X/postgres, service_role=X/postgres
 
--- ottieni_nicknames(p_owner_ids uuid[]) → =X/postgres, postgres=X/postgres, anon=X/postgres, authenticated=X/postgres
+-- ottieni_nicknames(p_owner_ids uuid[]) → postgres=X/postgres, authenticated=X/postgres, service_role=X/postgres
 
--- ottieni_o_crea_conversazione(p_altro_id uuid) → =X/postgres, postgres=X/postgres, anon=X/postgres, authenticated=X/postgres
+-- ottieni_o_crea_conversazione(p_altro_id uuid) → postgres=X/postgres, authenticated=X/postgres, service_role=X/postgres
 
 -- polvere_saldo() → postgres=X/postgres, authenticated=X/postgres
 
--- pulisci_storico_prezzi() → =X/postgres, postgres=X/postgres, anon=X/postgres, authenticated=X/postgres
+-- pulisci_storico_prezzi() → postgres=X/postgres, authenticated=X/postgres, service_role=X/postgres
 
--- reclama_carte_per_controllo_prezzi(p_user_id uuid, p_owner_id_richiesto uuid, p_solo_proprie boolean, p_filtro_location text[], p_solo_vecchie boolean, p_giorni_minimi integer, p_lotto_size integer) → =X/postgres, postgres=X/postgres, anon=X/postgres, authenticated=X/postgres
+-- reclama_carte_per_controllo_prezzi(p_user_id uuid, p_owner_id_richiesto uuid, p_solo_proprie boolean, p_filtro_location text[], p_solo_vecchie boolean, p_giorni_minimi integer, p_lotto_size integer) → postgres=X/postgres, authenticated=X/postgres, service_role=X/postgres
 
--- reclama_lavoro(p_user_id uuid, p_dispositivo text, p_aiuta_gruppo boolean, p_lotto_size integer, p_tipi text[]) → =X/postgres, postgres=X/postgres, anon=X/postgres, authenticated=X/postgres
+-- reclama_lavoro(p_user_id uuid, p_dispositivo text, p_aiuta_gruppo boolean, p_lotto_size integer, p_tipi text[]) → postgres=X/postgres, authenticated=X/postgres, service_role=X/postgres
 
--- reclama_prodotti_sealed_per_controllo_prezzi(p_user_id uuid, p_owner_id_richiesto uuid, p_solo_proprie boolean, p_filtro_scaffali uuid[], p_solo_vecchie boolean, p_giorni_minimi integer, p_lotto_size integer) → =X/postgres, postgres=X/postgres, anon=X/postgres, authenticated=X/postgres
+-- reclama_prodotti_sealed_per_controllo_prezzi(p_user_id uuid, p_owner_id_richiesto uuid, p_solo_proprie boolean, p_filtro_scaffali uuid[], p_solo_vecchie boolean, p_giorni_minimi integer, p_lotto_size integer) → postgres=X/postgres, authenticated=X/postgres, service_role=X/postgres
 
--- registra_aiuto_gruppo(p_riga_id text, p_owner_riga uuid, p_tipo text) → postgres=X/postgres, anon=X/postgres, authenticated=X/postgres
+-- registra_aiuto_gruppo(p_riga_id text, p_owner_riga uuid, p_tipo text) → postgres=X/postgres, authenticated=X/postgres, service_role=X/postgres
 
 -- registra_apertura_binder_pubblico(p_binder_id uuid) → =X/postgres, postgres=X/postgres, anon=X/postgres, authenticated=X/postgres
 
@@ -4443,46 +4458,46 @@ create policy "utenti eliminano le proprie foto dettaglio" on storage.objects as
 
 -- request_password_reset(p_username text) → =X/postgres, postgres=X/postgres, anon=X/postgres, authenticated=X/postgres
 
--- rifiuta_riga_richiesta(p_riga_id uuid) → =X/postgres, postgres=X/postgres, anon=X/postgres, authenticated=X/postgres
+-- rifiuta_riga_richiesta(p_riga_id uuid) → postgres=X/postgres, authenticated=X/postgres, service_role=X/postgres
 
--- rilascia_claim_controllo_prezzi(p_dispositivo text) → =X/postgres, postgres=X/postgres, anon=X/postgres, authenticated=X/postgres
+-- rilascia_claim_controllo_prezzi(p_dispositivo text) → postgres=X/postgres, authenticated=X/postgres, service_role=X/postgres
 
--- rilascia_claim_controllo_prezzi_sealed(p_dispositivo text) → =X/postgres, postgres=X/postgres, anon=X/postgres, authenticated=X/postgres
+-- rilascia_claim_controllo_prezzi_sealed(p_dispositivo text) → postgres=X/postgres, authenticated=X/postgres, service_role=X/postgres
 
 -- rinomina_location(p_da text, p_a text) → postgres=X/postgres, authenticated=X/postgres
 
--- riscatta_missione_completata(p_missione_id text, p_finestra text, p_periodo text) → =X/postgres, postgres=X/postgres, anon=X/postgres, authenticated=X/postgres
+-- riscatta_missione_completata(p_missione_id text, p_finestra text, p_periodo text) → postgres=X/postgres, authenticated=X/postgres, service_role=X/postgres
 
--- riscatta_traguardo(p_traguardo_id text) → =X/postgres, postgres=X/postgres, anon=X/postgres, authenticated=X/postgres
+-- riscatta_traguardo(p_traguardo_id text) → postgres=X/postgres, authenticated=X/postgres, service_role=X/postgres
 
 -- rls_auto_enable() → =X/postgres, postgres=X/postgres, anon=X/postgres, authenticated=X/postgres
 
--- sblocca_riga_richiesta(p_riga_id uuid, p_motivo text) → =X/postgres, postgres=X/postgres, anon=X/postgres, authenticated=X/postgres
+-- sblocca_riga_richiesta(p_riga_id uuid, p_motivo text) → postgres=X/postgres, authenticated=X/postgres, service_role=X/postgres
 
--- sblocca_utente(p_bloccato_id uuid) → =X/postgres, postgres=X/postgres, anon=X/postgres, authenticated=X/postgres
+-- sblocca_utente(p_bloccato_id uuid) → postgres=X/postgres, authenticated=X/postgres, service_role=X/postgres
 
--- segna_controllata_gruppo(p_id uuid) → =X/postgres, postgres=X/postgres, anon=X/postgres, authenticated=X/postgres
+-- segna_controllata_gruppo(p_id uuid) → postgres=X/postgres, authenticated=X/postgres, service_role=X/postgres
 
--- segna_controllata_gruppo_sealed(p_id uuid) → =X/postgres, postgres=X/postgres, anon=X/postgres, authenticated=X/postgres
+-- segna_controllata_gruppo_sealed(p_id uuid) → postgres=X/postgres, authenticated=X/postgres, service_role=X/postgres
 
--- segna_letti_conversazione(p_conversazione_id uuid) → =X/postgres, postgres=X/postgres, anon=X/postgres, authenticated=X/postgres
+-- segna_letti_conversazione(p_conversazione_id uuid) → postgres=X/postgres, authenticated=X/postgres, service_role=X/postgres
 
--- segnala_conversazione(p_conversazione_id uuid, p_motivo text) → =X/postgres, postgres=X/postgres, anon=X/postgres, authenticated=X/postgres
+-- segnala_conversazione(p_conversazione_id uuid, p_motivo text) → postgres=X/postgres, authenticated=X/postgres, service_role=X/postgres
 
 -- set_carte_conteggi() → =X/postgres, postgres=X/postgres, anon=X/postgres, authenticated=X/postgres
 
--- sposta_riga_in_correzione_manuale(p_riga_id bigint, p_errore_msg text, p_opzioni jsonb) → =X/postgres, postgres=X/postgres, authenticated=X/postgres, anon=X/postgres
+-- sposta_riga_in_correzione_manuale(p_riga_id bigint, p_errore_msg text, p_opzioni jsonb) → postgres=X/postgres, authenticated=X/postgres, service_role=X/postgres
 
--- tagga_dispositivo_claim_gruppo(p_ids uuid[], p_dispositivo text) → =X/postgres, postgres=X/postgres, anon=X/postgres, authenticated=X/postgres
+-- tagga_dispositivo_claim_gruppo(p_ids uuid[], p_dispositivo text) → postgres=X/postgres, authenticated=X/postgres, service_role=X/postgres
 
--- tagga_dispositivo_claim_gruppo_sealed(p_ids uuid[], p_dispositivo text) → =X/postgres, postgres=X/postgres, anon=X/postgres, authenticated=X/postgres
+-- tagga_dispositivo_claim_gruppo_sealed(p_ids uuid[], p_dispositivo text) → postgres=X/postgres, authenticated=X/postgres, service_role=X/postgres
 
--- trova_match_scambio_wishlist(p_owner_id uuid) → =X/postgres, postgres=X/postgres, anon=X/postgres, authenticated=X/postgres
+-- trova_match_scambio_wishlist(p_owner_id uuid) → postgres=X/postgres, authenticated=X/postgres, service_role=X/postgres
 
--- trova_match_scambio_wishlist_sealed(p_owner_id uuid) → =X/postgres, postgres=X/postgres, anon=X/postgres, authenticated=X/postgres
+-- trova_match_scambio_wishlist_sealed(p_owner_id uuid) → postgres=X/postgres, authenticated=X/postgres, service_role=X/postgres
 
--- trova_match_wishlist_scambio(p_owner_id uuid) → =X/postgres, postgres=X/postgres, anon=X/postgres, authenticated=X/postgres
+-- trova_match_wishlist_scambio(p_owner_id uuid) → postgres=X/postgres, authenticated=X/postgres, service_role=X/postgres
 
--- trova_match_wishlist_scambio_sealed(p_owner_id uuid) → =X/postgres, postgres=X/postgres, anon=X/postgres, authenticated=X/postgres
+-- trova_match_wishlist_scambio_sealed(p_owner_id uuid) → postgres=X/postgres, authenticated=X/postgres, service_role=X/postgres
 
 -- verifica_versione_minima(p_versione_client text) → =X/postgres, postgres=X/postgres, anon=X/postgres, authenticated=X/postgres
