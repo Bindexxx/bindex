@@ -34,7 +34,7 @@
 //   almeno una missione completata" — non esiste nel DB una metrica di
 //   quel secondo tipo (verificato: activity_log non logga un evento
 //   "missione completata", solo eventi di navigazione/apertura widget).
-// - Tab Oggi/Settimana/Mese/Permanenti (riusa .binder-modalita-toggle/-btn,
+// - Tab Oggi/Settimana/Mese (riusa .binder-modalita-toggle/-btn,
 //   stesso pattern di Match/Set/Binder) con pallino di notifica rosso sul
 //   tab se quella finestra ha ancora missioni da fare. Cambio tab NON
 //   rifà query: usa la cache _missioniCache popolata da un solo giro di
@@ -63,12 +63,24 @@
 // - Streak tolto dal riepilogo in cima (era mostrato lì E nella card
 //   "Costanza" — ridondante, segnalato da Claudio). Resta SOLO nella card
 //   in fondo.
-// - Tab "Permanenti" (missioni una_tantum, NON i traguardi — quelli sono
-//   solo in Achievement, invariato): le missioni già completate non
-//   vengono più mostrate in quel tab (una volta fatte restano fatte per
-//   sempre, non serve tenerle in lista) — SOLO quel tab filtra così, gli
-//   altri 3 (Oggi/Settimana/Mese) restano invariati (lì la spunta appena
-//   fatta è il feedback voluto).
+//
+// QUARTO GIRO STESSA SESSIONE (2026-09-25, decisione architetturale di
+// Claudio: "tutte le permanenti le trasformerei in traguardi e le
+// toglierei dalle missioni"): 6 delle 7 missioni una_tantum
+// (m50_missione_compiuta, m54_cacciatore_di_obiettivi, m44_torna_domani,
+// m45_costanza, m46_settimana_attiva, m75_matchmaker) sono state RIMOSSE
+// dal catalogo (ui/missioni-catalogo.ui.js) e convertite in traguardi —
+// vedi quel file per il dettaglio (3 già coperte da traguardi esistenti,
+// 3 sostituite da una nuova scala t_streak_* estesa). Di conseguenza il tab
+// "Permanenti" qui non avrebbe più nulla di stabile da mostrare ed è stato
+// RIMOSSO (Claudio: "Va benissimo, rimuovi la tab") — restano solo
+// Oggi/Settimana/Mese. La settima missione una_tantum,
+// m95_il_tuo_telefono, RESTA nel catalogo missioni per ora (rimandata,
+// metrica non adatta a un traguardo permanente senza lavoro dedicato) — ma
+// non essendoci più un tab "Permanenti" non è più visibile da nessuna
+// parte in questa pagina; MOTORE_MISSIONI continua comunque a valutarla e
+// ad assegnarne la ricompensa in automatico quando soddisfatta (il motore
+// non dipende dalla UI dei tab).
 //
 // CONSOLIDAMENTO FATTO NELLO STEP 14 (invariato): avvisi CSBar + beep +
 // rilettura saldo polvere sono in _missioniNotificaCompletamenti(), dentro
@@ -121,7 +133,7 @@ CATALOGO_WIDGET.missioni = {
 // solo il markup, senza rifare query. Reimpostata ad ogni renderPaginaMissioni().
 let _missioniCache = null;
 let _missioniTabAttiva = 'oggi';
-const _MISSIONI_TAB_LABEL = { oggi: 'Oggi', settimana: 'Settimana', mese: 'Mese', permanenti: 'Permanenti' };
+const _MISSIONI_TAB_LABEL = { oggi: 'Oggi', settimana: 'Settimana', mese: 'Mese' };
 
 // ── PAGINA "MISSIONI" (giornaliere/settimanali/mensili/una_tantum —
 // SEMPLIFICATA 2026-09-25: i traguardi permanenti sono usciti da questa
@@ -168,11 +180,6 @@ async function renderPaginaMissioni() {
     // blocca il render della pagina.
     _missioniNotificaCompletamenti(nuoveMissioni, nuoviTraguardi);
 
-    // Le una_tantum restano sempre tutte visibili (obiettivi permanenti,
-    // nessuna estrazione a sorte) — stesso filtro di sempre, ora è il pool
-    // del tab "Permanenti" invece di finire in coda al pool "oggi".
-    const missioniUnaTantum = CATALOGO_MISSIONI.filter(m => m.finestra === 'una_tantum');
-
     _missioniCache = {
         dati,
         idNuove,
@@ -180,7 +187,6 @@ async function renderPaginaMissioni() {
             oggi: missioniOggiPool,
             settimana: missioniSettimanaPool,
             mese: missioniMesePool,
-            permanenti: missioniUnaTantum,
         },
     };
     _missioniTabAttiva = 'oggi';
@@ -248,7 +254,6 @@ function _missioniRenderPagina() {
         { chiave: 'oggi', pool: gruppi.oggi },
         { chiave: 'settimana', pool: gruppi.settimana },
         { chiave: 'mese', pool: gruppi.mese },
-        { chiave: 'permanenti', pool: gruppi.permanenti },
     ];
     const tabsHtml = tabsDef.map(t => {
         const daFare = t.pool.some(m => !MOTORE_MISSIONI.valuta(m, dati));
@@ -256,22 +261,10 @@ function _missioniRenderPagina() {
         return `<button class="binder-modalita-btn${attiva ? ' active' : ''}" style="position:relative;" onclick="_missioniCambiaTab('${t.chiave}')">${_MISSIONI_TAB_LABEL[t.chiave]}${daFare ? '<span class="msn-tab-pallino"></span>' : ''}</button>`;
     }).join('');
 
-    const poolAttivoGrezzo = (tabsDef.find(t => t.chiave === _missioniTabAttiva) || tabsDef[0]).pool;
-    // Tab "Permanenti" (2026-09-25, Claudio: "non credo debbano essere
-    // visibili quelle già completate" — le missioni una_tantum, una volta
-    // fatte, restano fatte per sempre: tenerle in lista non serve, a
-    // differenza di Oggi/Settimana/Mese dove vedere la spunta appena messa
-    // è il feedback immediato del completamento). SOLO questo tab filtra le
-    // completate — gli altri 3 mostrano ancora tutto, spuntato o no.
-    const poolAttivo = _missioniTabAttiva === 'permanenti'
-        ? poolAttivoGrezzo.filter(m => !MOTORE_MISSIONI.valuta(m, dati))
-        : poolAttivoGrezzo;
-    const testoVuoto = _missioniTabAttiva === 'permanenti' && poolAttivoGrezzo.length > 0
-        ? 'Hai completato tutte le missioni permanenti disponibili!'
-        : 'Nessuna missione in questa categoria al momento.';
+    const poolAttivo = (tabsDef.find(t => t.chiave === _missioniTabAttiva) || tabsDef[0]).pool;
     const righeHtml = poolAttivo.length
         ? poolAttivo.map(m => _righeMissioneHtml(m, dati, idNuove.has(m.id))).join('')
-        : `<div class="msn-vuoto">${testoVuoto}</div>`;
+        : `<div class="msn-vuoto">Nessuna missione in questa categoria al momento.</div>`;
 
     // Due blocchi in fondo alla pagina (2026-09-25, richiesta esplicita di
     // Claudio: "troppo spazio vuoto" sotto una lista corta) — riempiono lo
@@ -360,7 +353,7 @@ function _missioniStreakCardHtml(streak) {
         </div>`;
 }
 
-// Cambio tab (Oggi/Settimana/Mese/Permanenti) — usa la cache, nessuna
+// Cambio tab (Oggi/Settimana/Mese) — usa la cache, nessuna
 // nuova query. Se la pagina non è mai stata renderizzata in questa
 // sessione (cache assente), non fa nulla: non dovrebbe mai accadere dato
 // che i bottoni esistono solo dopo il primo render, difensivo comunque.
@@ -370,8 +363,8 @@ function _missioniCambiaTab(chiave) {
     _missioniRenderPagina();
 }
 
-// Riga singola per una missione (completata o no), usata in tutti e 4 i
-// tab (Oggi/Settimana/Mese/Permanenti). Tap sulla riga (2026-08-31,
+// Riga singola per una missione (completata o no), usata in tutti e 3 i
+// tab (Oggi/Settimana/Mese). Tap sulla riga (2026-08-31,
 // richiesta di Claudio: "cliccando su una missione appaia la descrizione,
 // sennò l'utente non sa cosa fare, e anche la ricompensa collegata") →
 // espande un blocco sotto con la descrizione completa — comportamento

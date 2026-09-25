@@ -259,9 +259,10 @@ const CATALOGO_MISSIONI = [
       finestra: 'giornaliera', metrica: 'apertura_ultima_carta_periodo', operatore: '>=', valore: 1,
       ricompensa: { tipo: 'polvere', quantita: 2 } },
 
-    { id: 'm50_missione_compiuta', titolo: 'Missione compiuta', categoria: 'meta',
-      finestra: 'una_tantum', metrica: 'missioni_completate_totale', operatore: '>=', valore: 1,
-      ricompensa: { tipo: 'polvere', quantita: 3 } },
+    // m50_missione_compiuta: RIMOSSA dal catalogo missioni (decisione
+    // Claudio, 2026-09-25) — duplicato esatto di t_missioni_1 (stessa
+    // metrica missioni_completate_totale, stessa soglia 1). Convertita
+    // in traguardo, ora vive solo in Achievement.
 
     { id: 'm51_inarrestabile', titolo: 'Inarrestabile', categoria: 'meta',
       finestra: 'giornaliera', metrica: 'missioni_completate_periodo', operatore: '>=', valore: 3,
@@ -276,26 +277,17 @@ const CATALOGO_MISSIONI = [
       ricompensa: { tipo: 'polvere', quantita: 15, bonus: 'possibilita_bustina' },
       nota: 'metrica speciale: gestita direttamente dal motore (missioni completate oggi / missioni assegnate oggi), non un conteggio semplice' },
 
-    { id: 'm54_cacciatore_di_obiettivi', titolo: 'Cacciatore di obiettivi', categoria: 'meta',
-      finestra: 'una_tantum', metrica: 'missioni_completate_totale', operatore: '>=', valore: 10,
-      ricompensa: { tipo: 'polvere', quantita: 15 } },
+    // m54_cacciatore_di_obiettivi: RIMOSSA dal catalogo missioni (decisione
+    // Claudio, 2026-09-25) — duplicato esatto di t_missioni_3 (stessa
+    // metrica missioni_completate_totale, stessa soglia 10). Convertita
+    // in traguardo, ora vive solo in Achievement.
 
-    // FASE 2 sbloccate (2026-08-29): streak giorni consecutivi con accesso.
-    // finestra 'una_tantum' (non giornaliera): una volta raggiunta una
-    // soglia di streak la ricompensa va data UNA volta sola, non ogni
-    // giorno per tutta la durata dello streak — stesso ragionamento di
-    // m54 sopra (totale, non periodo).
-    { id: 'm44_torna_domani', titolo: 'Torna domani', categoria: 'costanza',
-      finestra: 'una_tantum', metrica: 'giorni_consecutivi', operatore: '>=', valore: 2,
-      ricompensa: { tipo: 'polvere', quantita: 4 } },
-
-    { id: 'm45_costanza', titolo: 'Costanza', categoria: 'costanza',
-      finestra: 'una_tantum', metrica: 'giorni_consecutivi', operatore: '>=', valore: 3,
-      ricompensa: { tipo: 'polvere', quantita: 7 } },
-
-    { id: 'm46_settimana_attiva', titolo: 'Settimana attiva', categoria: 'costanza',
-      finestra: 'una_tantum', metrica: 'giorni_consecutivi', operatore: '>=', valore: 7,
-      ricompensa: { tipo: 'polvere', quantita: 15 } },
+    // m44_torna_domani / m45_costanza / m46_settimana_attiva: RIMOSSE dal
+    // catalogo missioni (decisione Claudio, 2026-09-25) — tutte e 3 sulla
+    // metrica giorni_consecutivi (streak), sostituite da una nuova scala
+    // di traguardi estesa (t_streak_*, categoria 'costanza') che copre le
+    // stesse soglie 2/3/7 più altre più alte. Vedi SCALA_COSTANZA_STREAK
+    // più sotto.
 
     { id: 'm57_raccoglitore', titolo: 'Raccoglitore', categoria: 'inserimento',
       finestra: 'giornaliera', metrica: 'carte_stessa_espansione_max', operatore: '>=', valore: 2,
@@ -341,10 +333,11 @@ const CATALOGO_MISSIONI = [
       finestra: 'giornaliera', metrica: 'binder_pubblico_visitato_periodo', operatore: '>=', valore: 1,
       ricompensa: { tipo: 'polvere', quantita: 2 } },
 
-    { id: 'm75_matchmaker', titolo: 'Matchmaker', categoria: 'social',
-      finestra: 'una_tantum', metrica: 'match_attivi_totale', operatore: '>=', valore: 1,
-      ricompensa: { tipo: 'polvere', quantita: 4 },
-      nota: 'duplicato concettuale di m24, ma una_tantum invece di giornaliera' },
+    // m75_matchmaker: RIMOSSA dal catalogo missioni (decisione Claudio,
+    // 2026-09-25) — copre lo stesso concetto di t_match_1 (soglia 1),
+    // che usa correttamente match_trovati_totale (cumulativa) invece di
+    // match_attivi_totale (può diminuire, non adatta a un traguardo
+    // permanente). Nessun nuovo traguardo necessario, già coperta.
 
     // FASE 2 sbloccata (2026-08-30): "collezione condivisa O sezione
     // sociale" — OR tra apertura Binders e apertura Match, calcolato in
@@ -617,6 +610,25 @@ const SCALA_ACCESSI = _generaScalaTraguardi('t_accessi', 'accessi_totali', 'cost
     { soglia: 5000, titolo: 'Sempre qui',           ricompensa: { tipo: 'polvere', quantita: 250 } },
 ]);
 
+// Scala traguardi "streak" (decisione Claudio, 2026-09-25): sostituisce le
+// 3 missioni una_tantum m44_torna_domani/m45_costanza/m46_settimana_attiva
+// (rimosse sopra, stesse soglie 2/3/7) con una scala estesa sulla stessa
+// metrica giorni_consecutivi, per dare progressione oltre i 7 giorni. Prime
+// 3 soglie/ricompense identiche alle missioni originali per continuità;
+// soglie 14+ nuove. Titoli scelti evitando conflitti con quelli già in uso
+// nelle altre scale (es. 'Instancabile' è già t_missioni_10).
+const SCALA_COSTANZA_STREAK = _generaScalaTraguardi('t_streak', 'giorni_consecutivi', 'costanza', [
+    { soglia: 2,   titolo: 'Torna domani',          ricompensa: { tipo: 'polvere', quantita: 4 } },
+    { soglia: 3,   titolo: 'Costanza',              ricompensa: { tipo: 'polvere', quantita: 7 } },
+    { soglia: 7,   titolo: 'Settimana attiva',      ricompensa: { tipo: 'polvere', quantita: 15 } },
+    { soglia: 14,  titolo: 'Due settimane di fila', ricompensa: { tipo: 'polvere', quantita: 25 } },
+    { soglia: 30,  titolo: 'Un mese di fila',       ricompensa: { tipo: 'stampino', riferimento: 'costante' } },
+    { soglia: 60,  titolo: 'Due mesi di fila',      ricompensa: { tipo: 'bustina', quantita: 1 } },
+    { soglia: 100, titolo: 'Cento giorni di fila',  ricompensa: { tipo: 'polvere', quantita: 75 } },
+    { soglia: 250, titolo: 'Fedelissimo',           ricompensa: { tipo: 'stampino', riferimento: 'raro' } },
+    { soglia: 365, titolo: 'Un anno intero',        ricompensa: { tipo: 'stampino', riferimento: 'leggendario' } },
+]);
+
 // FASE 2 sbloccata (2026-08-29), TEMA CAMBIATO da "binder visitati" a
 // "binder aperti" — stesso motivo delle missioni #18-20 sopra (nessuna
 // identità visitatore disponibile, evento attribuito al proprietario).
@@ -743,6 +755,7 @@ const CATALOGO_TRAGUARDI = [
     ...SCALA_DOPPIONI,
     ...SCALA_MISSIONI_TOTALI,
     ...SCALA_ACCESSI,
+    ...SCALA_COSTANZA_STREAK,
     ...SCALA_BINDER_APERTURE,
     ...SCALA_MATCH_TROVATI,
     ...SCALA_BINDER_VISITATI,
