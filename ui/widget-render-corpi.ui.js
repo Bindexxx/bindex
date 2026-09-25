@@ -287,7 +287,37 @@ const _ballCORPI = {
     // senza numeri finti e senza pulsanti che non portano da nessuna parte.
     bustina: (d) => _ballCorpoSegnaposto('Bustina', d),
     polvere: (d) => _ballCorpoSegnaposto('Polvere', d),
-    missioni: (d) => _ballCorpoSegnaposto('Missioni', d),
+    // Missioni: tessera vera dal 2026-09-26 (prima segnaposto "In
+    // arrivo"). Dati da CATALOGO_WIDGET.missioni.preview()
+    // (ui/widget-missioni.ui.js): fatte/totali di OGGI + le missioni del
+    // giorno. Sopra il conteggio, sotto una riga per missione (✓ se fatta,
+    // altrimenti il premio); ogni riga apre la pagina Missioni. Se i dati
+    // mancano (non loggato/errore → placeholder) si ricade sul testo.
+    missioni: (d) => {
+        if (!d || d.placeholder || !d.totali) return { inline: '', blocco: '' };
+        const tutte = d.fatte >= d.totali;
+        // Niente ball-k-tit: il titolo "Missioni" lo stampa già
+        // renderWidgetHome (widget-tile-titolo) — stesso motivo di
+        // 'primo_piano' e 'ultima_carta', evita il titolo doppio.
+        const inline =
+            `<div class="ball-k-big ball-k-mono${tutte ? ' su' : ''}">${d.fatte}/${d.totali}</div>` +
+            `<span class="ball-k-lab">${tutte ? 'tutte completate oggi' : 'completate oggi'}</span>` +
+            (tutte ? _ballPill('tutte fatte', true) : '');
+        const premio = (r) => {
+            if (!r) return '';
+            const q = r.quantita || 1;
+            if (r.tipo === 'polvere') return `+${q} polvere`;
+            if (r.tipo === 'bustina') return `+${q} bustin${q === 1 ? 'a' : 'e'}`;
+            if (r.tipo === 'stampino') return '+1 stampino';
+            return '';
+        };
+        const blocco = (d.voci || []).map(v =>
+            `<div class="ball-riga ball-clic" onclick="_ballAzioneRiga(event,'tab','missioni')">` +
+            `<span class="ball-nome">${v.fatta ? '✓ ' : ''}${escapeHtml(v.titolo)}</span>` +
+            `<span class="ball-dato">${v.fatta ? 'fatta' : premio(v.ricompensa)}</span></div>`
+        ).join('');
+        return { inline, blocco };
+    },
 
     // ── I CINQUE WIDGET NUOVI ────────────────────────────────────────────
     valore_collezione: (d) => {

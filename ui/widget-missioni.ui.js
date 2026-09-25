@@ -111,12 +111,21 @@ CATALOGO_WIDGET.missioni = {
                 if (!userId) return { righe: ['Accedi per vedere le missioni'], dati: { placeholder: true } };
                 const oggi = MOTORE_MISSIONI.periodoCorrente('giornaliera');
                 const pool = MOTORE_MISSIONI.missioniDelGiorno(userId, oggi.periodo);
-                const { count, error } = await missioniCompletatePeriodo(userId, oggi.periodo);
+                // AGGIORNATO 2026-09-26 (tessera Home vera, Claudio:
+                // "Facciamolo"): prima era un conteggio di TUTTE le righe
+                // completate oggi (missioniCompletatePeriodo) — contava anche
+                // m94_personalizza, assegnata dal suo aggancio diretto pure
+                // quando non è tra le 4 estratte, quindi poteva dare "5/4".
+                // Ora legge QUALI missioni sono fatte (stessa funzione del
+                // motore, una query) e conta solo quelle del pool di oggi.
+                const { data: righeFatte, error } = await missioniCompletateIdPerPeriodi(userId, [oggi.periodo]);
                 if (error) throw error;
-                const fatte = count || 0;
+                const idFatte = new Set((righeFatte || []).map(r => r.missione_id));
+                const voci = pool.map(m => ({ titolo: m.titolo, fatta: idFatte.has(m.id), ricompensa: m.ricompensa }));
+                const fatte = voci.filter(v => v.fatta).length;
                 return {
                     righe: [`${fatte}/${pool.length} missioni completate oggi`],
-                    dati: { fatte, totali: pool.length },
+                    dati: { fatte, totali: pool.length, voci },
                 };
             } catch (e) {
                 console.error('[missioni widget] preview:', e);
