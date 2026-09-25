@@ -869,6 +869,7 @@ const _FRASI_MISSIONE = {
 const _FRASI_TRAGUARDO = {
     accessi_totali: { frase: v => `${v} ${v === 1 ? 'accesso totale' : 'accessi totali'} al sito` },
     binder_aperture_totale: { frase: v => `${v} ${v === 1 ? 'visita totale' : 'visite totali'} al tuo binder da parte del gruppo` },
+    giorni_consecutivi: { frase: v => `${v} giorni consecutivi di accesso` },
     carte_totali: { frase: v => `${v} ${v === 1 ? 'carta' : 'carte'} in collezione` },
     categorie_traguardi_distinte_totale: { testo: v => `Sblocca almeno un traguardo in ${v} categorie diverse.` },
     percentuale_traguardi_sbloccati: { testo: v => `Sblocca il ${v}% dei traguardi disponibili del catalogo.` },
