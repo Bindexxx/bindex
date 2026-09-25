@@ -51,9 +51,16 @@ html, body {
     #phoneFrameBox { border-radius: 26px; }
 }
 
+/* ALLINEATO a index.html (2026-09-25): le vecchie percentuali spesse
+   (9.2%/17.6%… in verticale, 14.25%/5.43%… in orizzontale) erano rimaste
+   qui dopo che index.html era passato al bordo fisso e sottile. Ora stesso
+   valore e stessa variabile di index.css: se cambia lì, va cambiata anche
+   qui (i due fogli non si condividono). */
+:root { --pokedex-margine-schermo: 16px; }
+
 #phoneScreen {
     position: absolute;
-    top: 9.2%; bottom: 9.3%; left: 17.6%; right: 13.6%; /* stesse percentuali di index.html verticale */
+    inset: var(--pokedex-margine-schermo);
     z-index: 1;
     border-radius: 22px;
     overflow: hidden;
@@ -62,7 +69,6 @@ html, body {
 }
 @media (orientation: landscape) {
     #phoneScreen {
-        top: 14.25%; bottom: 18.39%; left: 5.43%; right: 5.90%; /* stesse percentuali di index.html orizzontale */
         border-radius: 14px;
     }
 }
