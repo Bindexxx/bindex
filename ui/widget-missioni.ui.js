@@ -44,6 +44,20 @@
 //   completa (richiesta originale di Claudio, 2026-08-31) resta invariato,
 //   solo lo stile della riga cambia.
 //
+// AGGIUNTA STESSA SESSIONE (2026-09-25, dopo test di Claudio: "troppo
+// spazio vuoto" sotto una lista corta, #phoneScreen ha altezza fissa e non
+// si adatta al contenuto): 2 card in fondo alla pagina, entrambe lette da
+// 'dati' già raccolto, zero query nuove —
+// - "Prossimo traguardo" (_missioniProssimoTraguardoHtml): il traguardo a
+//   soglia numerica ('>=') NON ancora sbloccato con la percentuale più
+//   alta, con barra di avanzamento, cliccabile → apre il widget Achievement
+//   (apriDettaglioWidget('achievement', event), stessa funzione/tabId già
+//   usata altrove in index.html). Non conta i traguardi booleani a scatto
+//   singolo (operatore '==').
+// - "Costanza" (_missioniStreakCardHtml): stesso streak del riepilogo in
+//   cima, in versione più grande/evidente, con messaggio "Torna domani per
+//   non perdere la serie" — solo informativa, non cliccabile.
+//
 // CONSOLIDAMENTO FATTO NELLO STEP 14 (invariato): avvisi CSBar + beep +
 // rilettura saldo polvere sono in _missioniNotificaCompletamenti(), dentro
 // ui/missioni.ui.js (il motore, non questo file: la usa anche
@@ -182,7 +196,7 @@ function _missioniRenderPagina() {
     const totaleOggi = poolOggi.length;
     const percentOggi = totaleOggi > 0 ? Math.round((completateOggi / totaleOggi) * 100) : 100;
 
-    const RAGGIO_ANELLO = 23;
+    const RAGGIO_ANELLO = 27;
     const CIRCONFERENZA = 2 * Math.PI * RAGGIO_ANELLO;
     const offsetAnello = CIRCONFERENZA * (1 - percentOggi / 100);
 
@@ -205,11 +219,11 @@ function _missioniRenderPagina() {
         : '';
 
     const riepilogoHtml = `
-        <div class="msn-riepilogo" style="margin-bottom:1rem;">
+        <div class="msn-riepilogo" style="margin-bottom:1.1rem;">
             <div class="msn-ring">
-                <svg width="54" height="54">
-                    <circle cx="27" cy="27" r="${RAGGIO_ANELLO}" stroke="var(--primary-light)" stroke-width="6" fill="none"></circle>
-                    <circle cx="27" cy="27" r="${RAGGIO_ANELLO}" stroke="var(--primary)" stroke-width="6" fill="none" stroke-linecap="round" stroke-dasharray="${CIRCONFERENZA.toFixed(1)}" stroke-dashoffset="${offsetAnello.toFixed(1)}"></circle>
+                <svg width="62" height="62">
+                    <circle cx="31" cy="31" r="${RAGGIO_ANELLO}" stroke="var(--primary-light)" stroke-width="6" fill="none"></circle>
+                    <circle cx="31" cy="31" r="${RAGGIO_ANELLO}" stroke="var(--primary)" stroke-width="6" fill="none" stroke-linecap="round" stroke-dasharray="${CIRCONFERENZA.toFixed(1)}" stroke-dashoffset="${offsetAnello.toFixed(1)}"></circle>
                 </svg>
                 <div class="msn-ring-testo">${completateOggi}/${totaleOggi}</div>
             </div>
@@ -236,11 +250,91 @@ function _missioniRenderPagina() {
         ? poolAttivo.map(m => _righeMissioneHtml(m, dati, idNuove.has(m.id))).join('')
         : '<div class="msn-vuoto">Nessuna missione in questa categoria al momento.</div>';
 
+    // Due blocchi in fondo alla pagina (2026-09-25, richiesta esplicita di
+    // Claudio: "troppo spazio vuoto" sotto una lista corta) — riempiono lo
+    // spazio residuo di #phoneScreen (altezza fissa "a schermo", non si
+    // adatta al contenuto) con informazioni utili invece di aria vuota.
+    // Entrambi letti da 'dati', già raccolto da MOTORE_MISSIONI: zero query
+    // in più.
+    const prossimoHtml = _missioniProssimoTraguardoHtml(dati);
+    const streakCardHtml = _missioniStreakCardHtml(streak);
+
     container.innerHTML = `
         ${riepilogoHtml}
         <div class="binder-modalita-toggle">${tabsHtml}</div>
         <div class="pg-elenco">${righeHtml}</div>
+        ${prossimoHtml}
+        ${streakCardHtml}
     `;
+}
+
+// Card "Prossimo traguardo" (2026-09-25): il traguardo NON ancora sbloccato
+// con la percentuale di completamento più alta — rimando cliccabile al
+// widget Achievement (apriDettaglioWidget('achievement', ...), stessa
+// funzione/tabId già usata altrove in index.html per aprire quella pagina,
+// invariata). Considera SOLO i traguardi con operatore '>=' (soglia
+// numerica, es. "100 carte") — esclude i traguardi booleani a scatto
+// singolo (es. t_giorno_impeccabile, operatore '==', valore true), per cui
+// una "percentuale di avvicinamento" non ha senso. CATALOGO_TRAGUARDI è la
+// stessa costante globale già usata da MOTORE_MISSIONI (ui/missioni-catalogo.ui.js),
+// dati._traguardiRiscossiIds è già esposto da raccogliDati() (ui/missioni.ui.js,
+// sessione precedente) — nessuna nuova query.
+function _missioniProssimoTraguardo(dati) {
+    const riscossi = new Set(dati._traguardiRiscossiIds || []);
+    let migliore = null;
+    for (const t of CATALOGO_TRAGUARDI) {
+        if (t.operatore !== '>=' || !t.valore) continue;
+        if (riscossi.has(t.id)) continue;
+        const valoreAttuale = dati[t.metrica];
+        if (valoreAttuale === undefined) continue;
+        // Percentuale mostrata cappata al 99%: se un traguardo è già >=100%
+        // ma non ancora risulta in traguardi_riscossi, è solo questione del
+        // prossimo giro di MOTORE_MISSIONI.valutaEAssegna() (o del prossimo
+        // apertura pagina) — non ha senso proclamarlo "100% ma bloccato".
+        const percent = Math.max(0, Math.min(99, Math.round((valoreAttuale / t.valore) * 100)));
+        if (!migliore || percent > migliore.percent) {
+            migliore = { t, valoreAttuale, percent };
+        }
+    }
+    return migliore;
+}
+
+function _missioniProssimoTraguardoHtml(dati) {
+    const migliore = _missioniProssimoTraguardo(dati);
+    if (!migliore) return ''; // tutti i traguardi a soglia numerica già sbloccati, o dato mancante — nessun blocco, nessun errore
+    const { t, valoreAttuale, percent } = migliore;
+    // Arrotondato SOLO per la visualizzazione (es. valore_collezione è una
+    // somma di prezzi, quasi mai un numero intero) — il calcolo di percent
+    // sopra usa già il valore reale non arrotondato.
+    const valoreVisualizzato = Math.round(valoreAttuale);
+    return `
+        <div class="msn-card msn-card-cliccabile" onclick="apriDettaglioWidget('achievement', event)">
+            <div class="msn-card-titolo"><i class="fa-solid fa-trophy" style="color:#f2c230;"></i> Prossimo traguardo</div>
+            <div style="font-weight:700; color:var(--text-dark); margin:5px 0 7px; font-size:0.9rem;">${escapeHtml(t.titolo)}</div>
+            <div class="pg-barra-track" style="margin-bottom:5px;"><div class="pg-barra-fill" style="width:${percent}%;"></div></div>
+            <div class="msn-card-sotto">${valoreVisualizzato}/${t.valore} — tocca per vedere tutti i traguardi</div>
+        </div>`;
+}
+
+// Card "Costanza" (2026-09-25): versione più grande/evidente dello stesso
+// streak già mostrato nel riepilogo in cima — richiesta esplicita di
+// Claudio per riempire lo spazio in fondo. Stesso dato (streak, calcolato
+// dal chiamante), nessuna query aggiuntiva qui.
+function _missioniStreakCardHtml(streak) {
+    if (streak > 0) {
+        const testo = streak === 1 ? '1 giorno di fila' : `${streak} giorni di fila`;
+        return `
+        <div class="msn-card">
+            <div class="msn-card-titolo"><i class="fa-solid fa-fire" style="color:#f5a524;"></i> Costanza</div>
+            <div class="msn-card-streak-numero">${testo}</div>
+            <div class="msn-card-sotto">Torna domani per non perdere la serie!</div>
+        </div>`;
+    }
+    return `
+        <div class="msn-card">
+            <div class="msn-card-titolo"><i class="fa-solid fa-fire" style="color:var(--text-muted);"></i> Costanza</div>
+            <div class="msn-card-sotto">Accedi ogni giorno per iniziare una nuova serie.</div>
+        </div>`;
 }
 
 // Cambio tab (Oggi/Settimana/Mese/Permanenti) — usa la cache, nessuna
@@ -267,7 +361,7 @@ function _righeMissioneHtml(m, dati, appenaCompletata) {
     const idBase = 'missioneDettaglio-' + m.id;
     return `
         <div>
-            <div class="pg-riga" style="cursor:pointer; padding:12px 6px; gap:12px;" onclick="_toggleDettaglioMissione('${m.id}')">
+            <div class="pg-riga" style="cursor:pointer; padding:14px 6px; gap:13px;" onclick="_toggleDettaglioMissione('${m.id}')">
                 <div class="msn-check${soddisfatta ? ' fatta' : ''}">${soddisfatta ? '<i class="fa-solid fa-check"></i>' : ''}</div>
                 <div style="flex:1; min-width:0;">
                     <div class="msn-riga-testo-riga1${soddisfatta ? ' fatta' : ''}">${escapeHtml(m.titolo)}${badgeNuova}</div>
