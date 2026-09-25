@@ -58,6 +58,18 @@
 //   cima, in versione più grande/evidente, con messaggio "Torna domani per
 //   non perdere la serie" — solo informativa, non cliccabile.
 //
+// TERZO GIRO STESSA SESSIONE (2026-09-25, dopo verifica di Claudio su
+// questa seconda modifica):
+// - Streak tolto dal riepilogo in cima (era mostrato lì E nella card
+//   "Costanza" — ridondante, segnalato da Claudio). Resta SOLO nella card
+//   in fondo.
+// - Tab "Permanenti" (missioni una_tantum, NON i traguardi — quelli sono
+//   solo in Achievement, invariato): le missioni già completate non
+//   vengono più mostrate in quel tab (una volta fatte restano fatte per
+//   sempre, non serve tenerle in lista) — SOLO quel tab filtra così, gli
+//   altri 3 (Oggi/Settimana/Mese) restano invariati (lì la spunta appena
+//   fatta è il feedback voluto).
+//
 // CONSOLIDAMENTO FATTO NELLO STEP 14 (invariato): avvisi CSBar + beep +
 // rilettura saldo polvere sono in _missioniNotificaCompletamenti(), dentro
 // ui/missioni.ui.js (il motore, non questo file: la usa anche
@@ -212,11 +224,11 @@ function _missioniRenderPagina() {
 
     // Streak = giorni consecutivi CON ACCESSO (vedi commento in testa al
     // file) — dati.giorni_consecutivi è già calcolato da raccogliDati(),
-    // nessuna query qui.
+    // nessuna query qui. Mostrato SOLO nella card "Costanza" in fondo
+    // (_missioniStreakCardHtml sotto) — tolto da qui (2026-09-25, Claudio:
+    // "la serie è mostrata due volte, è ridondante") per non duplicarlo nel
+    // riepilogo in cima.
     const streak = dati.giorni_consecutivi || 0;
-    const streakHtml = streak > 0
-        ? `<div class="msn-streak"><i class="fa-solid fa-fire"></i> ${streak === 1 ? '1 giorno consecutivo' : `${streak} giorni consecutivi`}</div>`
-        : '';
 
     const riepilogoHtml = `
         <div class="msn-riepilogo" style="margin-bottom:1.1rem;">
@@ -229,7 +241,6 @@ function _missioniRenderPagina() {
             </div>
             <div>
                 <div class="msn-riepilogo-titolo">${escapeHtml(titoloRiepilogo)}</div>
-                ${streakHtml}
             </div>
         </div>`;
 
@@ -245,10 +256,22 @@ function _missioniRenderPagina() {
         return `<button class="binder-modalita-btn${attiva ? ' active' : ''}" style="position:relative;" onclick="_missioniCambiaTab('${t.chiave}')">${_MISSIONI_TAB_LABEL[t.chiave]}${daFare ? '<span class="msn-tab-pallino"></span>' : ''}</button>`;
     }).join('');
 
-    const poolAttivo = (tabsDef.find(t => t.chiave === _missioniTabAttiva) || tabsDef[0]).pool;
+    const poolAttivoGrezzo = (tabsDef.find(t => t.chiave === _missioniTabAttiva) || tabsDef[0]).pool;
+    // Tab "Permanenti" (2026-09-25, Claudio: "non credo debbano essere
+    // visibili quelle già completate" — le missioni una_tantum, una volta
+    // fatte, restano fatte per sempre: tenerle in lista non serve, a
+    // differenza di Oggi/Settimana/Mese dove vedere la spunta appena messa
+    // è il feedback immediato del completamento). SOLO questo tab filtra le
+    // completate — gli altri 3 mostrano ancora tutto, spuntato o no.
+    const poolAttivo = _missioniTabAttiva === 'permanenti'
+        ? poolAttivoGrezzo.filter(m => !MOTORE_MISSIONI.valuta(m, dati))
+        : poolAttivoGrezzo;
+    const testoVuoto = _missioniTabAttiva === 'permanenti' && poolAttivoGrezzo.length > 0
+        ? 'Hai completato tutte le missioni permanenti disponibili!'
+        : 'Nessuna missione in questa categoria al momento.';
     const righeHtml = poolAttivo.length
         ? poolAttivo.map(m => _righeMissioneHtml(m, dati, idNuove.has(m.id))).join('')
-        : '<div class="msn-vuoto">Nessuna missione in questa categoria al momento.</div>';
+        : `<div class="msn-vuoto">${testoVuoto}</div>`;
 
     // Due blocchi in fondo alla pagina (2026-09-25, richiesta esplicita di
     // Claudio: "troppo spazio vuoto" sotto una lista corta) — riempiono lo
