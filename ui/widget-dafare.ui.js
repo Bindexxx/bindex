@@ -96,11 +96,10 @@ CATALOGO_WIDGET.suggerimento = {
         // preview() (stessa filosofia già in uso per valore_collezione —
         // "un solo posto dove il dato è calcolato"), elementi in "?" legge
         // carteReali già in memoria (nessuna nuova interrogazione).
-        // "Missioni/reward pronti da riscuotere" (anch'esso nella lista
-        // della roadmap) NON incluso in questo giro: servirebbe una nuova
-        // query dedicata (nessun conteggio "completata ma non ancora
-        // riscossa" già esposto da nessuna parte) — rimandato apposta
-        // piuttosto che costruire un numero approssimativo.
+        // "Missioni/reward pronti da riscuotere" (roadmap): superato — i
+        // premi si assegnano da soli al completamento, non c'è niente da
+        // riscuotere. Al suo posto (2026-09-26, Claudio: "sì"): segnale
+        // "missioni ancora da fare oggi", vedi sotto.
         preview: async () => {
             const segnali = [];
             const codaErrori = await _contaCodaErrori();
@@ -129,6 +128,19 @@ CATALOGO_WIDGET.suggerimento = {
                 const totaleMatch = ((matchInfo.dati && matchInfo.dati.scambio) || 0) + ((matchInfo.dati && matchInfo.dati.wishlist) || 0);
                 if (totaleMatch > 0) segnali.push({ id: 'match_trovati', testo: `${totaleMatch} corrispondenz${totaleMatch === 1 ? 'a' : 'e'} nel gruppo`, stato: 'ok', tab: 'match' });
             } catch (e) { console.error('[Centro operativo] match:', e); }
+
+            // Missioni del giorno non ancora fatte (2026-09-26). Riusa
+            // CATALOGO_WIDGET.missioni.preview() (ui/widget-missioni.ui.js),
+            // la stessa della tessera Missioni: conta solo le missioni
+            // estratte per oggi. Priorità normale, apre la pagina Missioni.
+            // Quando le finisci tutte il segnale sparisce e resta barrato
+            // nello storico 24h come gli altri.
+            try {
+                const missioniInfo = await CATALOGO_WIDGET.missioni.preview();
+                const d = missioniInfo && missioniInfo.dati;
+                const mancanti = (d && !d.placeholder && d.totali) ? Math.max(0, d.totali - d.fatte) : 0;
+                if (mancanti > 0) segnali.push({ id: 'missioni_da_fare', testo: mancanti === 1 ? 'Ti manca 1 missione oggi' : `Ti mancano ${mancanti} missioni oggi`, stato: undefined, tab: 'missioni' });
+            } catch (e) { console.error('[Centro operativo] missioni:', e); }
 
             // Elementi ancora in location "?" — solo collezione (mai
             // wishlist, che non ha una location reale).

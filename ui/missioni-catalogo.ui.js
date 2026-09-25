@@ -557,7 +557,7 @@ const SCALA_VALORE = _generaScalaTraguardi('t_valore', 'valore_collezione', 'ins
 const SCALA_LOCATION = _generaScalaTraguardi('t_location', 'location_distinte', 'inserimento', [
     { soglia: 1,   titolo: 'Prima tappa',            ricompensa: { tipo: 'polvere', quantita: 5 } },
     { soglia: 3,   titolo: 'Viaggiatore',            ricompensa: { tipo: 'stampino', riferimento: 'viaggiatore' } },
-    { soglia: 5,   titolo: 'Esploratore',            ricompensa: { tipo: 'polvere', quantita: 15 } },
+    { soglia: 5,   titolo: 'Girovago',               ricompensa: { tipo: 'polvere', quantita: 15 } }, // era 'Esploratore', doppione di t_binder_visitati_6 (rinominato 2026-09-26, Claudio)
     { soglia: 10,  titolo: 'Globetrotter',           ricompensa: { tipo: 'bustina', quantita: 1 } },
     { soglia: 20,  titolo: 'Cartografo',             ricompensa: { tipo: 'stampino', riferimento: 'cartografo' } },
     { soglia: 30,  titolo: 'Viaggiatore esperto',    ricompensa: { tipo: 'polvere', quantita: 30 } },
