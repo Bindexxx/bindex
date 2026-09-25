@@ -684,8 +684,11 @@ CREATE OR REPLACE FUNCTION public._chat_ha_link_esterno(p_testo text)
  IMMUTABLE
  SET search_path TO 'public'
 AS $function$
-    select (p_testo ~* '(https?://|www\.)\S+')
-       and (p_testo !~* 'bindexxx\.github\.io');
+    select exists (
+        select 1
+        from regexp_matches(coalesce(p_testo, ''), '(?:https?://|www\.)\S+', 'gi') as m(arr)
+        where m.arr[1] !~* '^(?:https?://)?(?:www\.)?bindexxx\.github\.io(?:$|[/?#)\],;!]|\.(?:$|[^a-z0-9-]))'
+    );
 $function$
 ;
 
