@@ -6,8 +6,9 @@
 // sessione: "le milestones devono essere quelle che vengono contate nel
 // widget achievement... i traguardi con Achievement a cui mancano gli
 // achievement"). Achievement ora mostra TUTTI i traguardi di
-// CATALOGO_TRAGUARDI (ui/missioni-catalogo.ui.js, 121 voci: 10 scale +
-// TRAGUARDI_SINGOLI) — prima solo i 37 curati a mano in
+// CATALOGO_TRAGUARDI (ui/missioni-catalogo.ui.js, 124 voci: 11 scale +
+// TRAGUARDI_SINGOLI — aggiornato 2026-09-25 con SCALA_COSTANZA_STREAK) —
+// prima solo i 37 curati a mano in
 // achievement_catalogo. Dove esiste una riga curata vince il suo
 // titolo/rarità (37 oggi), altrove titolo dal traguardo + rarità calcolata
 // con la stessa identica regola già in uso nei 37 curati (verificata per

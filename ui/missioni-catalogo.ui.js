@@ -7,7 +7,7 @@
 // da ui/missioni.ui.js. NESSUNA riscrittura del codice esistente: solo
 // spostamento, zero cambi di comportamento per l'utente finale.
 //
-// Contiene: CATALOGO_MISSIONI (58 voci), _generaScalaTraguardi + tutte le
+// Contiene: CATALOGO_MISSIONI (67 voci), _generaScalaTraguardi + tutte le
 // SCALA_* (traguardi a scala generati), TRAGUARDI_SINGOLI, CATALOGO_TRAGUARDI
 // (concatenazione delle scale + singoli), _totaleTraguardiPerPercentuale,
 // _FRASI_MISSIONE/_FRASI_TRAGUARDO, _finestraTesto, _descrizioneMissione/
@@ -56,7 +56,7 @@
 
 
 // ----------------------------------------------------------------------------
-// CATALOGO MISSIONI (Fase 1) — 30 voci
+// CATALOGO MISSIONI (Fase 1) — 67 voci
 // ----------------------------------------------------------------------------
 // finestra: 'giornaliera' | 'settimanale' | 'mensile' | 'una_tantum'
 // metrica: chiave interpretata da MOTORE_MISSIONI._metriche (vedi sotto)
@@ -71,6 +71,21 @@ const CATALOGO_MISSIONI = [
       finestra: 'giornaliera', metrica: 'accesso_oggi', operatore: '==', valore: true,
       ricompensa: { tipo: 'polvere', quantita: 1 },
       nota: 'FASE 2 sbloccata (2026-08-29): richiede activity_log, agganciata in ui/auth.ui.js:_avviaSitoDopoAccesso()' },
+
+    // AGGIUNTA (2026-09-25, Claudio): dopo la rimozione di m44/m45/m46
+    // (una_tantum, convertite in traguardi — vedi sopra), 'costanza' era
+    // rimasta con la sola m01 come missione giornaliera, rendendo m96/m98
+    // (copertura di tutte/5 categorie in una settimana) più dipendenti
+    // dall'estrazione casuale di quell'unica missione. Riusa
+    // giorni_consecutivi (stessa metrica già raccolta da raccogliDati(),
+    // zero query nuove) con soglia bassa e finestra giornaliera — a
+    // differenza dei vecchi m44/m45/m46 (una_tantum, premio una tantum al
+    // raggiungimento), questa è ripetibile ogni giorno finché lo streak
+    // resta >=3, premio piccolo, pensata come rinforzo quotidiano per chi
+    // è già in una serie attiva, non come duplicato dei traguardi t_streak_*.
+    { id: 'm101_in_serie', titolo: 'In serie', categoria: 'costanza',
+      finestra: 'giornaliera', metrica: 'giorni_consecutivi', operatore: '>=', valore: 3,
+      ricompensa: { tipo: 'polvere', quantita: 3 } },
 
     { id: 'm02_una_carta_in_piu', titolo: 'Una carta in più', categoria: 'inserimento',
       finestra: 'giornaliera', metrica: 'carte_aggiunte_periodo', operatore: '>=', valore: 1,
@@ -840,7 +855,11 @@ const _FRASI_MISSIONE = {
     collezione_e_social_oggi: { testo: () => 'Fai qualcosa in Inserimento/Collezione E qualcosa nella sezione sociale (Binder o Match), nello stesso giorno.' },
     errori_coda_vuota: { testo: () => 'Non avere nessuna carta in errore in coda.' },
     esplorazione_sociale_oggi: { testo: () => 'Apri il widget Binders o il widget Match.' },
-    giorni_consecutivi: { frase: v => `Accedi al sito per ${v} giorni consecutivi` },
+    // testo fisso (non frase+_finestraTesto): usata solo da missioni
+    // giornaliere (m101_in_serie) — "frase" avrebbe prodotto "...consecutivi
+    // oggi", ridondante/confuso visto che il concetto è già "una serie", non
+    // un evento di oggi isolato.
+    giorni_consecutivi: { testo: v => `Sei in una serie di accessi di almeno ${v} ${v === 1 ? 'giorno' : 'giorni'} consecutivi.` },
     estensione_aperta_periodo: { frase: () => `Apri il widget Estensione` },
     estensione_funzione_usata_periodo: { frase: () => `Usa davvero una funzione dell'estensione (es. avvia un controllo prezzi)` },
     layout_modificato_periodo: { frase: () => `Modifica il layout della Home (ordine o visibilità dei widget)` },
