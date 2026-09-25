@@ -195,12 +195,20 @@ function _chatContieneParolacce(testo) {
 // permissiva nel riconoscere "è un link" (meglio bloccare un falso
 // positivo raro che lasciar passare un link vero non riconosciuto),
 // rigida sul dominio consentito.
-const _CHAT_DOMINIO_CONSENTITO = 'bindexxx.github.io';
+// CORRETTO (2026-09-26, sql/80): prima bastava che "bindexxx.github.io"
+// comparisse DA QUALCHE PARTE nel link (includes) — passavano
+// "https://sito-esterno.com/bindexxx.github.io" o
+// "http://bindexxx.github.io:pw@sito-esterno.com". Ora il dominio di OGNI
+// link deve essere esattamente bindexxx.github.io (con o senza www.).
+// Regola IDENTICA a _chat_ha_link_esterno sul DB (sql/80), provata sugli
+// stessi 18 casi: se si cambia una, va cambiata anche l'altra.
+const _CHAT_RE_URL = /(?:https?:\/\/|www\.)\S+/gi;
+const _CHAT_RE_URL_INTERNO = /^(?:https?:\/\/)?(?:www\.)?bindexxx\.github\.io(?:$|[\/?#)\],;!]|\.(?:$|[^a-z0-9\-]))/i;
 
 function _chatContieneLinkEsterno(testo) {
-    const trovati = String(testo || '').match(/\b(?:https?:\/\/|www\.)\S+/gi);
+    const trovati = String(testo || '').match(_CHAT_RE_URL);
     if (!trovati) return false;
-    return trovati.some(url => !url.toLowerCase().includes(_CHAT_DOMINIO_CONSENTITO));
+    return trovati.some(url => !_CHAT_RE_URL_INTERNO.test(url));
 }
 
 // ── VOCE DI CATALOGO ──────────────────────────────────────────────────
@@ -546,8 +554,12 @@ function _chatEtichettaGiorno(iso) {
 // già passato da escapeHtml(): il pattern non può mai "vedere" un tag,
 // perché il testo escapato non ne contiene — nessun rischio di iniezione
 // HTML riaperto da questa funzione.
+// 2026-09-26: cliccabile SOLO un link che passa la stessa regola del
+// filtro d'invio (_CHAT_RE_URL_INTERNO); prima bastava che contenesse il
+// dominio in un punto qualsiasi. Gli altri restano testo semplice.
 function _chatLinkifyTesto(testoEscaped) {
-    return testoEscaped.replace(/((?:https?:\/\/|www\.)[^\s<]*bindexxx\.github\.io[^\s<]*)/gi, (url) => {
+    return testoEscaped.replace(/(?:https?:\/\/|www\.)[^\s<]+/gi, (url) => {
+        if (!_CHAT_RE_URL_INTERNO.test(url)) return url;
         const href = /^https?:\/\//i.test(url) ? url : 'https://' + url;
         return `<a href="${href}" target="_blank" rel="noopener noreferrer" style="color:inherit; text-decoration:underline;">${url}</a>`;
     });
