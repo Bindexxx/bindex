@@ -126,14 +126,17 @@ async function _azioneRichiesta(azione, rigaId) {
         risultato = await rifiutaRigaRichiesta(rigaId);
 
     } else if (azione === 'annulla' || azione === 'sblocca') {
-        const motivo = _chiediMotivo();
+        const motivo = await _chiediMotivo(azione);
         if (!motivo) return; // annullato dall'utente
         risultato = azione === 'annulla' ? await annullaRigaRichiesta(rigaId, motivo) : await sbloccaRigaRichiesta(rigaId, motivo);
 
     } else if (azione === 'concludi') {
-        const location = (prompt('Dove il destinatario metterà l\'oggetto ricevuto? (lascia vuoto per "?" — Centro Operativo)') || '').trim();
-        if (!confirm('Concludere lo scambio? L\'oggetto verrà trasferito ora, azione irreversibile.')) return;
-        risultato = await concludiRigaRichiesta(rigaId, location || '?');
+        // Location SEMPRE "?" (Claudio, 2026-09-26): chi conclude non deve
+        // vedere né scegliere le Location dell'altro utente — l'oggetto
+        // arriva in "?" (Centro Operativo) e il destinatario lo sposta
+        // dove vuole. Prima era un prompt() a testo libero.
+        if (!confirm('Concludere lo scambio? L\'oggetto verrà trasferito ora, azione irreversibile.\nIl destinatario lo troverà nella Location "?" e potrà spostarlo dove vuole.')) return;
+        risultato = await concludiRigaRichiesta(rigaId, '?');
     }
 
     if (risultato && risultato.error) {
@@ -146,16 +149,56 @@ async function _azioneRichiesta(azione, rigaId) {
 
 
 // Motivo obbligatorio, uno dei 6 fissi (mai testo libero — coerente con la
-// roadmap, "Motivi consentiti, senza testo libero"). prompt() con numero
-// invece di un select dedicato: più veloce da costruire, coerente con lo
-// stesso livello di rifinitura già usato per altre azioni rapide in questa
-// sessione — un select vero è un miglioramento facile per una sessione
-// futura se Claudio lo preferisce.
-function _chiediMotivo() {
-    const chiavi = Object.keys(MOTIVI_ANNULLAMENTO);
-    const elenco = chiavi.map((k, i) => `${i + 1}. ${MOTIVI_ANNULLAMENTO[k]}`).join('\n');
-    const scelta = prompt(`Motivo (scrivi il numero):\n${elenco}`);
-    const idx = parseInt(scelta, 10) - 1;
-    if (isNaN(idx) || idx < 0 || idx >= chiavi.length) return null;
-    return chiavi[idx];
+// roadmap, "Motivi consentiti, senza testo libero").
+// AGGIORNATO 2026-09-26 (Claudio): prima era un prompt() dove scrivere il
+// numero a mano (un valore sbagliato annullava l'azione in silenzio). Ora
+// è un piccolo riquadro con una tendina. Costruito qui al volo e rimosso
+// alla chiusura: nessun HTML nuovo in index.html, nessun CSS nuovo — solo
+// classi già esistenti (.modal-overlay/.modal-content come #qrModal,
+// .filter-select, .btn-main/.btn-secondary). Agganciato a <body> come
+// #qrModal, quindi sopra tutto il resto (z-index di .modal-overlay).
+// Ritorna una Promise: la chiave del motivo scelto, oppure null se
+// l'utente chiude/annulla (stesso contratto di prima per il chiamante).
+function _chiediMotivo(azione) {
+    return new Promise((risolvi) => {
+        const titolo = azione === 'sblocca' ? 'Sbloccare la richiesta?' : 'Annullare la richiesta?';
+        const opzioni = Object.keys(MOTIVI_ANNULLAMENTO)
+            .map(k => `<option value="${k}">${escapeHtml(MOTIVI_ANNULLAMENTO[k])}</option>`).join('');
+
+        const overlay = document.createElement('div');
+        overlay.className = 'modal-overlay';
+        overlay.style.display = 'flex';
+        overlay.innerHTML = `
+            <div class="modal-content" style="text-align:left;">
+                <div style="font-weight:700; margin-bottom:0.8rem;">${titolo}</div>
+                <label style="display:block; font-size:0.8rem; color:var(--text-muted); margin-bottom:0.3rem;">Motivo</label>
+                <select class="filter-select" style="width:100%;">
+                    <option value="">— Scegli un motivo —</option>
+                    ${opzioni}
+                </select>
+                <div style="display:flex; gap:0.5rem; justify-content:flex-end; margin-top:1rem;">
+                    <button type="button" class="btn-secondary" data-azione="annulla">Indietro</button>
+                    <button type="button" class="btn-main" data-azione="conferma" disabled>Conferma</button>
+                </div>
+            </div>`;
+
+        const tendina = overlay.querySelector('select');
+        const btnConferma = overlay.querySelector('[data-azione="conferma"]');
+
+        function chiudi(valore) {
+            document.removeEventListener('keydown', suTasto);
+            overlay.remove();
+            risolvi(valore);
+        }
+        function suTasto(e) { if (e.key === 'Escape') chiudi(null); }
+
+        tendina.addEventListener('change', () => { btnConferma.disabled = !tendina.value; });
+        btnConferma.addEventListener('click', () => { if (tendina.value) chiudi(tendina.value); });
+        overlay.querySelector('[data-azione="annulla"]').addEventListener('click', () => chiudi(null));
+        overlay.addEventListener('click', (e) => { if (e.target === overlay) chiudi(null); });
+        document.addEventListener('keydown', suTasto);
+
+        document.body.appendChild(overlay);
+        tendina.focus();
+    });
 }
