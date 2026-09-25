@@ -69,7 +69,7 @@
         // chiudeva la sessione su TUTTI i dispositivi. Ora la scelta decide
         // DOVE viene salvata la sessione (sessionStorage = muore da sola
         // alla chiusura della scheda): vedi AUTH_STORAGE_SESSIONE in
-        // data/auth.repository.js e createClient in index.html.
+        // config/supabase.js e createClient in index.html.
 
 
         async function tentaLogin() {

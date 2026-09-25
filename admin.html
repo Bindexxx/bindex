@@ -6,7 +6,7 @@
 <title>CardSync Pro — Admin</title>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.1"></script><!-- versione esatta, audit 2026-09-25 E1: uguale in tutte le pagine -->
-<script src="config/supabase.js"></script>
+<script src="config/supabase.js" data-client="admin"></script>
 <style>
   :root {
     --bg-color: #f3eeff;
@@ -282,7 +282,7 @@
 <script src="ui/admin-wip.ui.js"></script>
 <script>
 // SUPABASE_URL e SUPABASE_ANON_KEY arrivano da config/supabase.js
-const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// supabaseClient ora viene creato in config/supabase.js (data-client="admin"), dal 2026-09-25.
 
 // ── AVVIO ─────────────────────────────────────────────────────
 controllaRuoloEAvvia();

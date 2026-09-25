@@ -186,7 +186,7 @@ function _wishlistRenderElenco() {
     const elenco = document.getElementById('wishlistElenco');
     if (!elenco) return;
 
-    const eur = (v) => '€ ' + Number(v || 0).toLocaleString('it-IT', { maximumFractionDigits: 0 });
+    const eur = (v) => formattaEuro(v); // formato unico "12.345,00 €" (decisione Claudio 2026-09-25)
 
     let righe = _wishlistCarteComputate;
     if (_wishlistFiltroAttivo === 'raggiunte') righe = righe.filter(r => r.raggiunta);
@@ -299,7 +299,7 @@ function _wishlistSealedRenderElenco() {
     const elenco = document.getElementById('wishlistSealedElenco');
     if (!elenco) return;
 
-    const eur = (v) => v != null ? '€ ' + Number(v).toLocaleString('it-IT', { maximumFractionDigits: 0 }) : '—';
+    const eur = (v) => v != null ? formattaEuro(v) : '—'; // formato unico "12.345,00 €" (decisione Claudio 2026-09-25)
 
     let righe = wishlistSealedReali;
     if (_wishlistSealedRicercaTesto) righe = righe.filter(r => r.name.toLowerCase().includes(_wishlistSealedRicercaTesto));

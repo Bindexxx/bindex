@@ -503,9 +503,10 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.1"></script><!-- versione esatta, audit 2026-09-25 E1: uguale in tutte le pagine -->
-    <script src="config/supabase.js"></script>
+    <script src="config/supabase.js" data-client="pubblico"></script>
     <script src="data/sealed.repository.js"></script>
     <script src="state/sealed.state.js"></script>
+    <script src="utils/comuni.js"></script>
     <script src="data/pubblico.repository.js"></script><!-- chiamate DB di shared-public.js, audit 2026-09-25 B8 -->
     <script src="utils/shared-public.js"></script>
     <script src="ui/sealed.ui.js"></script>
@@ -518,9 +519,7 @@
         // condiviso, non segnalato da Claudio: verificare se la pagina ha
         // mai funzionato in questo ambiente di test. config/supabase.js
         // definisce solo URL/chiave, la creazione spetta a ogni pagina.
-        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-            auth: { persistSession: false, autoRefreshToken: false }
-        });
+        // supabaseClient ora viene creato in config/supabase.js (data-client="pubblico"), dal 2026-09-25.
 
         // ── AVVIO ────────────────────────────────────────────────────────
         applicaTemaCondiviso();

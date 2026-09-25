@@ -160,8 +160,10 @@ async function _chatVerificaAccessoConsentito() {
 // (sessione non ancora pronta a tempo di caricamento script) si
 // autocorregge al primo giro utile.
 // FIX (audit 2026-09-25, A4): prima era chiamata direttamente qui, al
-// caricamento di questo file — ma supabaseClient nasce solo nell'ultimo
-// <script> di index.html, quindi ad OGNI caricamento pagina partiva un
+// caricamento di questo file — ma supabaseClient nasceva solo nell'ultimo
+// <script> di index.html (oggi nasce in config/supabase.js, prima di tutti
+// gli script: il problema non si ripresenterebbe, ma 'load' resta il
+// momento giusto perché la sessione sia già pronta), quindi ad OGNI caricamento pagina partiva un
 // "ReferenceError: supabaseClient is not defined" (ingoiato dal catch,
 // ma finito nel log diagnostico). All'evento 'load' tutti gli script,
 // incluso quello che crea supabaseClient, sono già stati eseguiti.

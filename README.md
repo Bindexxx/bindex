@@ -33,8 +33,11 @@ globale**.
   storage, auth, realtime). `data/pubblico.repository.js` contiene quelle
   delle pagine pubbliche.
 - `state/*.state.js` — variabili di stato per dominio.
-- `utils/*.js` — funzioni pure (`formatters.js` per il sito,
-  `shared-public.js` per le pagine pubbliche).
+- `utils/*.js` — funzioni pure: `comuni.js` (escapeHtml, escapeJsAttr,
+  formattaEuro, URL immagini — una sola copia per TUTTE le pagine),
+  `formatters.js` (solo sito), `shared-public.js` (solo pagine pubbliche).
+- `index.css` — stili di `index.html` (le pagine pubbliche hanno ancora il
+  proprio `<style>` interno).
 - `ui/*.ui.js` — DOM, logica, eventi. Home a widget: motore in
   `ui/paginainiziale*.ui.js`, un file per widget in `ui/widget-<nome>.ui.js`
   (28 widget registrati in `CATALOGO_WIDGET`).
@@ -56,19 +59,19 @@ globale**.
 
 1. **Mai `supabaseClient` fuori da `data/*.repository.js`.** La UI raccoglie
    l'input, decide cosa fare e chiama il repository.
-2. **Nessuna chiamata al DB al caricamento di un file.** `supabaseClient`
-   viene creato nell'**ultimo** `<script>` di ogni pagina: il codice che
-   gira mentre gli script si caricano (anche indirettamente, funzione dopo
-   funzione) non lo trova ancora e va in errore. Il lavoro sul DB parte da
-   `window.onload` in poi o da un'azione dell'utente.
+2. **`supabaseClient` nasce in `config/supabase.js`**, il primo script dopo
+   la libreria Supabase, con le opzioni scelte da `data-client` sul tag
+   (`app` per index, `admin`, `pubblico` per le pagine pubbliche). Esiste
+   quindi per tutti gli altri file; resta buona pratica avviare il lavoro sul
+   DB da `window.onload` in poi o da un'azione dell'utente.
 3. **Nomi globali unici per pagina.** Due `let`/`const` con lo stesso nome
    in due file della stessa pagina bloccano l'intera pagina.
 4. **Testo dentro l'HTML sempre protetto:** `escapeHtml()` per testo e
    attributi; `escapeJsAttr()` per il testo passato come argomento stringa
    dentro `onclick="f('…')"`, perché gestisce apostrofi, virgolette e a capo.
-5. **Euro:** sempre `formattaEuro()`, che produce "1.234,50 €". Le copie in
-   `utils/formatters.js` e `utils/shared-public.js` vanno tenute identiche,
-   come quelle di `escapeHtml`.
+5. **Euro:** sempre `formattaEuro()`, che produce "1.234,50 €" (in
+   `utils/comuni.js`, unica copia). Eccezione voluta: le tessere compatte
+   della home (`ui/widget-render-corpi.ui.js`) usano valori arrotondati.
 6. **Librerie esterne a versione esatta.** Oggi è `@supabase/supabase-js@2.117.1`,
    uguale in tutte le pagine: va aggiornata a mano, in tutte insieme.
    Chart.js 4.5.1 viene caricato solo all'apertura del grafico prezzi
@@ -80,7 +83,7 @@ globale**.
 - "Mantieni accesso" decide dove si salva la sessione: in `localStorage`
   (resta tra un'apertura e l'altra) oppure in `sessionStorage` (muore con la
   scheda). Il codice è in `AUTH_STORAGE_SESSIONE`, dentro
-  `data/auth.repository.js`.
+  `config/supabase.js`.
 
 ## Estensione Chrome
 

@@ -101,7 +101,7 @@ async function renderPaginaSealed() {
     _sealedOrdinamento = 'valore';
     _sealedRicercaTesto = '';
     const { totale, valore } = _sealedCalcola();
-    const eur = (v) => '€ ' + Number(v || 0).toLocaleString('it-IT', { maximumFractionDigits: 0 });
+    const eur = (v) => formattaEuro(v); // formato unico "12.345,00 €" (decisione Claudio 2026-09-25)
 
     if (totale === 0) {
         container.innerHTML = `
@@ -155,7 +155,7 @@ function _sealedRenderElenco() {
     const elenco = document.getElementById('sealedElenco');
     if (!elenco) return;
 
-    const eur = (v) => '€ ' + Number(v || 0).toLocaleString('it-IT', { maximumFractionDigits: 0 });
+    const eur = (v) => formattaEuro(v); // formato unico "12.345,00 €" (decisione Claudio 2026-09-25)
 
     let righe = [..._sealedProdottiComputati];
     if (_sealedRicercaTesto) righe = righe.filter(r => r.nome.toLowerCase().includes(_sealedRicercaTesto));

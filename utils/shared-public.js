@@ -10,68 +10,10 @@
 // #conteggioSelezionate / #totaleSelezionate / #btnCopiaRiepilogo, comuni
 // alle 3 pagine.
 
-// Il campo 'immagine' può contenere tre formati diversi, a seconda di
-// quando la carta è stata processata:
-// 1. Link a Supabase Storage (nuovo, leggero — riconoscibile da
-//    "supabase.co") → si usa direttamente.
-// 2. Data URI base64 (vecchio formato, prima che passassimo a Storage) →
-//    si usa direttamente, funziona comunque.
-// 3. URL esterno grezzo di Cardmarket (carte processate PRIMA di qualunque
-//    correzione) → Cardmarket lo blocca se richiesto da un altro dominio,
-//    tentiamo il proxy come ripiego (funziona solo per alcune, meglio di
-//    niente per lo storico).
-// SICUREZZA (2026-09-01): copia identica, per logica e motivazioni, di
-// _urlImmagineVisualizzabile in utils/formatters.js — vedi lì il commento
-// esteso sul perché il valore grezzo non può essere restituito. Qui la
-// correzione è ancora più importante che nel sito privato: su queste
-// pagine i dati appartengono a CHI CONDIVIDE e chi li subisce è il
-// visitatore. Le due copie devono restare allineate: se tocchi una,
-// tocca anche l'altra.
-// La firma accetta ora anche 'larghezza' (prima fissa a 64) così le due
-// versioni sono intercambiabili; chi chiama senza secondo parametro
-// continua a ottenere esattamente 64 come prima.
-function _urlImmagineSicura(url) {
-    return String(url).replace(/"/g, '&quot;');
-}
-
-function _urlImmagineVisualizzabile(immagine, larghezza) {
-    if (!immagine) return null;
-    const valore = String(immagine).trim();
-
-    if (/^data:image\/(png|jpe?g|gif|webp|avif);base64,[A-Za-z0-9+/=\s]+$/i.test(valore)) {
-        return _urlImmagineSicura(valore);
-    }
-
-    let indirizzo;
-    try {
-        indirizzo = new URL(valore);
-    } catch (_) {
-        return null;
-    }
-    if (indirizzo.protocol !== 'http:' && indirizzo.protocol !== 'https:') return null;
-
-    const host = indirizzo.hostname.toLowerCase();
-    if (indirizzo.protocol === 'https:' && (host === 'supabase.co' || host.endsWith('.supabase.co'))) {
-        return _urlImmagineSicura(indirizzo.href);
-    }
-
-    return _urlImmagineSicura(`https://images.weserv.nl/?url=${encodeURIComponent(indirizzo.href)}&w=${larghezza || 64}`);
-}
-
-// Copia IDENTICA di formattaEuro in utils/formatters.js (audit 2026-09-25,
-// C2): prima qui v.toLocaleString senza controllo andava in errore con
-// null/undefined, e senza punto delle migliaia sotto 10.000.
-function formattaEuro(v) {
-    return (Number(v) || 0).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2, useGrouping: 'always' }) + ' €';
-}
-
-// Copia IDENTICA di escapeHtml in utils/formatters.js — vedi il commento
-// lì (audit 2026-09-25, A2: ora escapa anche le virgolette doppie).
-function escapeHtml(str) {
-    const div = document.createElement('div');
-    div.textContent = str == null ? '' : String(str);
-    return div.innerHTML.replace(/"/g, '&quot;');
-}
+// _urlImmagineSicura, _urlImmagineVisualizzabile, formattaEuro, escapeHtml:
+// SPOSTATE in utils/comuni.js il 2026-09-25 (prima erano copie di quelle
+// di utils/formatters.js da tenere allineate a mano; ora una copia sola,
+// caricata prima di questo file).
 
 function toggleSelezione(id, checked) {
     selezioni[id] = checked ? 1 : 0;

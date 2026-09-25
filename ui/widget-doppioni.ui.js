@@ -194,7 +194,7 @@ function _doppioniRenderCorpo() {
     const titoli = gruppi.length;
     const copieExtra = gruppi.reduce((t, g) => t + (g.qtyTotale - 1), 0);
     const valoreExtra = gruppi.reduce((t, g) => t + g.prezzoUnitario * (g.qtyTotale - 1), 0);
-    const eur = (v) => '€ ' + Number(v || 0).toLocaleString('it-IT', { maximumFractionDigits: 0 });
+    const eur = (v) => formattaEuro(v); // formato unico "12.345,00 €" (decisione Claudio 2026-09-25)
 
     corpo.innerHTML = `
         <div class="pg-intro">
@@ -256,7 +256,7 @@ function _doppioniRenderGriglia() {
         return;
     }
 
-    const eur = (v) => '€ ' + Number(v || 0).toLocaleString('it-IT', { maximumFractionDigits: 0 });
+    const eur = (v) => formattaEuro(v); // formato unico "12.345,00 €" (decisione Claudio 2026-09-25)
 
     // L'indice è nell'array ORIGINALE (non filtrato/ordinato) della
     // modalità attiva, non nella lista visualizzata qui — così il click
@@ -341,7 +341,7 @@ async function _doppioniApriDettaglio(indice) {
 // del flip — grande, centrato, a piena pagina (niente più metà schermo).
 function _doppioniMostraVisualStaticoBox(gruppo) {
     const contenitore = document.getElementById('doppioniBoxVisualContainer');
-    const eur = (v) => '€ ' + Number(v || 0).toLocaleString('it-IT', { maximumFractionDigits: 0 });
+    const eur = (v) => formattaEuro(v); // formato unico "12.345,00 €" (decisione Claudio 2026-09-25)
     const immagineSrc = gruppo.immagine ? (_urlImmagineVisualizzabile(gruppo.immagine, 500) || '') : '';
     contenitore.innerHTML = `
         <div class="doppioni-box-visual">
@@ -489,7 +489,7 @@ function _doppioniPosizioniRaggruppate(posizioni) {
 function _doppioniRenderControlli(gruppo, posizioni) {
     const controlli = document.getElementById('doppioniControlliContainer');
     if (!controlli || _doppioniGruppoApertoIndice == null) return;
-    const eur = (v) => '€ ' + Number(v || 0).toLocaleString('it-IT', { maximumFractionDigits: 0 });
+    const eur = (v) => formattaEuro(v); // formato unico "12.345,00 €" (decisione Claudio 2026-09-25)
 
     _doppioniPosizioniRaggruppateCorrenti = _doppioniPosizioniRaggruppate(posizioni);
     const righePosizioni = _doppioniPosizioniRaggruppateCorrenti.map((p, i) => `

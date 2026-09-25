@@ -181,7 +181,7 @@ async function renderPaginaValoreCollezione() {
         return;
     }
 
-    const eur = (v) => '€ ' + Number(v || 0).toLocaleString('it-IT', { maximumFractionDigits: 0 });
+    const eur = (v) => formattaEuro(v); // formato unico "12.345,00 €" (decisione Claudio 2026-09-25)
 
     const righeCarte = (dati.top && dati.top.length)
         ? dati.top.map(c => {

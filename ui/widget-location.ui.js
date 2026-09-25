@@ -128,8 +128,7 @@ function _locVoce(nome) { return _locDati.voci.find(v => v.nome === nome) || nul
 function _locAttr(s) { return escapeHtml(s).replace(/"/g, '&quot;'); }
 function _locCarte(n) { return `${n} cart${n === 1 ? 'a' : 'e'}`; }
 function _locEur(v) {
-    const n = Number(v) || 0;
-    return '€ ' + n.toLocaleString('it-IT', { minimumFractionDigits: n >= 100 ? 0 : 2, maximumFractionDigits: n >= 100 ? 0 : 2 });
+    return formattaEuro(v); // formato unico "12.345,00 €" (decisione Claudio 2026-09-25)
 }
 function _locIconaFallback(nome) {
     const u = String(nome).trim().toUpperCase();

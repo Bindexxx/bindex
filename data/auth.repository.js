@@ -4,7 +4,7 @@
 // pattern "getSession() poi leggi session.user.id" era ripetuto identico
 // in 34 punti diversi di index.html.
 //
-// Dipende da: supabaseClient (creato in index.html, vedi config/supabase.js).
+// Dipende da: supabaseClient (creato in config/supabase.js dal 2026-09-25).
 // Va caricato PRIMA del resto della logica applicativa che lo usa.
 
 // Ritorna l'oggetto sessione Supabase corrente, o null se non loggato.
@@ -41,42 +41,10 @@ async function authLogout() {
     return supabaseClient.auth.signOut({ scope: 'local' });
 }
 
-// ── DOVE VIVE LA SESSIONE ("Mantieni accesso", audit 2026-09-25 A1) ─────
-// Adattatore di storage passato a supabase.createClient() in index.html
-// (opzione auth.storage). Sostituisce il vecchio logout su 'beforeunload'
-// in ui/auth.ui.js, che scattava anche al REFRESH e aprendo una pagina
-// pubblica nella stessa scheda, e che essendo asincrono durante lo
-// scaricamento della pagina poteva completarsi o no a caso.
-//   - "Mantieni accesso" = sì (o mai scelto) → localStorage, come sempre:
-//     la sessione resta tra un'apertura e l'altra del browser.
-//   - "Mantieni accesso" = no → sessionStorage: la sessione sopravvive a
-//     refresh e navigazione nella stessa scheda, e sparisce da sola quando
-//     si chiude la scheda/il browser. Nessun evento di chiusura necessario.
-// Ogni scrittura cancella la stessa chiave dall'ALTRO storage, così non
-// resta mai una sessione "orfana" nel posto sbagliato quando la
-// preferenza cambia al login successivo. Solo lato client: nessun effetto
-// su server, RLS o policy.
-// prefMantieniAccessoGet() vive in data/preferences.repository.js (caricato
-// dopo questo file): viene letta solo al momento della chiamata, quando
-// tutti gli script sono già caricati.
-function _authStoragePreferito() {
-    return prefMantieniAccessoGet() === 'no' ? window.sessionStorage : window.localStorage;
-}
-const AUTH_STORAGE_SESSIONE = {
-    getItem(chiave) {
-        return _authStoragePreferito().getItem(chiave);
-    },
-    setItem(chiave, valore) {
-        const scelto = _authStoragePreferito();
-        scelto.setItem(chiave, valore);
-        const altro = scelto === window.localStorage ? window.sessionStorage : window.localStorage;
-        altro.removeItem(chiave);
-    },
-    removeItem(chiave) {
-        window.localStorage.removeItem(chiave);
-        window.sessionStorage.removeItem(chiave);
-    },
-};
+// ── DOVE VIVE LA SESSIONE ("Mantieni accesso") ──────────────────────────
+// AUTH_STORAGE_SESSIONE è stato SPOSTATO in config/supabase.js il
+// 2026-09-25: deve esistere prima che il client venga creato, e il client
+// ora nasce lì.
 
 async function authUpdatePassword(nuovaPassword) {
     return supabaseClient.auth.updateUser({ password: nuovaPassword });
