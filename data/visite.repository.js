@@ -26,3 +26,14 @@ async function visitaRegistra(pausaOre) {
 async function variazioniPrezziDa(daISO) {
     return _selectTuttePagine(supabaseClient.rpc('leggi_variazioni_da', { p_da: daISO }));
 }
+
+// Spostata qui da ui/paginainiziale-polling-avvio.ui.js (_avviaPresenzaLive) (audit 2026-09-25, B8): regola del progetto,
+// nessuna chiamata a supabaseClient fuori da data/*.repository.js.
+// Canale Realtime Presence condiviso "presenza-cardsync" (nessuna
+// tabella, niente scritto su Postgres). Ritorna il canale NON ancora
+// sottoscritto: .on()/.subscribe()/.track() restano al chiamante.
+function presenzaCreaCanale(chiave) {
+    return supabaseClient.channel('presenza-cardsync', {
+        config: { presence: { key: chiave } },
+    });
+}

@@ -320,8 +320,8 @@ async function _renderSleeve(card) {
         if (!riga) {
             _sleeveRisolta = false; // niente sleeve, non ritentare ad ogni carta
         } else if (riga.source === 'default') {
-            const { data: pub } = supabaseClient.storage.from('default-assets').getPublicUrl(riga.storage_path);
-            _sleeveRisolta = pub?.publicUrl ? { url: pub.publicUrl, metadata: riga.metadata } : false;
+            const urlPub = binderPubblicoUrlFile('default-assets', riga.storage_path); // data/binder-pubblico.repository.js (audit 2026-09-25, B8)
+            _sleeveRisolta = urlPub ? { url: urlPub, metadata: riga.metadata } : false;
         } else {
             // Upload personalizzato: bucket pubblico 'immaginivisibili',
             // cartella 'carta' (stessa convenzione di _sincronizzaCopiaPubblica
@@ -330,8 +330,8 @@ async function _renderSleeve(card) {
             // non esiste nel bucket — l'onerror sull'<img> del retro carta
             // (già gestito dal fallback var(--primary) di sempre) copre quel
             // caso senza bisogno di verificarlo qui.
-            const { data: pub } = supabaseClient.storage.from('immaginivisibili').getPublicUrl(`carta/${_ownerUserId}/${_binderId}.png`);
-            _sleeveRisolta = pub?.publicUrl ? { url: pub.publicUrl, metadata: riga.metadata } : false;
+            const urlPub = binderPubblicoUrlFile('immaginivisibili', `carta/${_ownerUserId}/${_binderId}.png`);
+            _sleeveRisolta = urlPub ? { url: urlPub, metadata: riga.metadata } : false;
         }
     }
 

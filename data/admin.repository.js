@@ -11,8 +11,11 @@
 async function adminAuthLogin(email, password) {
     return supabaseClient.auth.signInWithPassword({ email, password });
 }
+// scope 'local' (audit 2026-09-25, A1): esce solo da questo browser, non
+// da tutti i dispositivi dell'admin — stessa scelta di authLogout() in
+// data/auth.repository.js.
 async function adminAuthLogout() {
-    return supabaseClient.auth.signOut();
+    return supabaseClient.auth.signOut({ scope: 'local' });
 }
 async function adminAuthGetSession() {
     const { data } = await supabaseClient.auth.getSession();

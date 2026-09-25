@@ -274,7 +274,7 @@ function _ballCorpoFotoCarta(d) {
     if (!url) return '';
 
     const esc = (t) => (typeof escapeHtml === 'function' ? escapeHtml(t) : String(t));
-    const eur = (v) => '€ ' + Number(v || 0).toFixed(2);
+    const eur = (v) => formattaEuro(v); // formato unico, audit 2026-09-25 C2
     const coloreVar = d.variazioneNumerica > 0 ? 'var(--success)'
         : (d.variazioneNumerica < 0 ? 'var(--danger)' : 'var(--text-muted)');
 

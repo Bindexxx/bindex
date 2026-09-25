@@ -58,14 +58,19 @@ function _urlImmagineVisualizzabile(immagine, larghezza) {
     return _urlImmagineSicura(`https://images.weserv.nl/?url=${encodeURIComponent(indirizzo.href)}&w=${larghezza || 64}`);
 }
 
+// Copia IDENTICA di formattaEuro in utils/formatters.js (audit 2026-09-25,
+// C2): prima qui v.toLocaleString senza controllo andava in errore con
+// null/undefined, e senza punto delle migliaia sotto 10.000.
 function formattaEuro(v) {
-    return v.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+    return (Number(v) || 0).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2, useGrouping: 'always' }) + ' €';
 }
 
+// Copia IDENTICA di escapeHtml in utils/formatters.js — vedi il commento
+// lì (audit 2026-09-25, A2: ora escapa anche le virgolette doppie).
 function escapeHtml(str) {
     const div = document.createElement('div');
     div.textContent = str == null ? '' : String(str);
-    return div.innerHTML;
+    return div.innerHTML.replace(/"/g, '&quot;');
 }
 
 function toggleSelezione(id, checked) {
@@ -151,8 +156,7 @@ let _tipoOggettoRichiesta = 'carta';
 let _proprietarioIdRichiestaPendente = null;
 
 async function _sessionePubblicoAttiva() {
-    const { data } = await supabaseClient.auth.getSession();
-    return data?.session?.user || null;
+    return pubblicoSessioneUtente(); // data/pubblico.repository.js (audit 2026-09-25, B8)
 }
 
 function apriLoginPubblico() {
@@ -181,7 +185,7 @@ async function tentaLoginPubblico() {
     btn.disabled = true;
     btn.textContent = 'Accesso in corso…';
 
-    const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+    const { error } = await pubblicoLogin(email, password); // data/pubblico.repository.js
 
     btn.disabled = false;
     btn.textContent = 'Accedi';
@@ -222,14 +226,18 @@ async function _richiediScambioDopoLogin() {
     const btn = document.getElementById('btnRichiediScambio');
     if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Invio...'; }
 
-    const { error } = await supabaseClient.rpc('invia_richiesta_scambio', { p_proprietario_id: proprietarioId, p_righe: righe });
+    const { error } = await pubblicoInviaRichiestaScambio(proprietarioId, righe); // data/pubblico.repository.js
 
     if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Richiedi'; }
 
     if (error) { alert('❌ ' + error.message); return; }
 
     alert('✅ Richiesta inviata! Il proprietario la vedrà nella sua pagina Richieste su CardSync Pro.');
-    selezioni = {};
+    // Svuotata SUL POSTO invece di "selezioni = {}" (audit 2026-09-25, B3):
+    // in sealed.html/wishlist.html/scambio.html selezioni è una const
+    // (state/*.state.js), e riassegnarla lanciava un TypeError dopo
+    // l'invio riuscito. Funziona identico anche dove è let.
+    Object.keys(selezioni).forEach(k => { delete selezioni[k]; });
     if (typeof renderLista === 'function') renderLista();
     if (typeof aggiornaTotale === 'function') aggiornaTotale();
 }

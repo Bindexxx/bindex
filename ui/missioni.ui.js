@@ -429,7 +429,7 @@ const MOTORE_MISSIONI = {
             // FIX (Claudio, 2026-09-10): m94_personalizza/m95_il_tuo_telefono
             // (metrica layout_modificato_periodo) non vengono MAI assegnate
             // passando da qui — hanno un aggancio diretto e separato
-            // (_missioneAggancioPersonalizzaLayout() in ui/phone.ui.js,
+            // (_missioneAggancioPersonalizzaLayout() in ui/paginainiziale.ui.js,
             // chiamata da _salvaLayoutWidget(daAzioneUtente=true)), che
             // inserisce il completamento direttamente in missioni_completate,
             // protetto dallo stesso UNIQUE anti-doppio-accredito di sempre.

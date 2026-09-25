@@ -29,3 +29,12 @@ async function binderPubblicoLeggiMedia(binderId) {
 async function binderPubblicoRegistraApertura(binderId) {
     return supabaseClient.rpc('registra_apertura_binder_pubblico', { p_binder_id: binderId });
 }
+
+// Spostata qui da ui/binder-flipbook.ui.js e ui/binder-pubblico.ui.js (audit 2026-09-25, B8): regola del progetto,
+// nessuna chiamata a supabaseClient fuori da data/*.repository.js.
+// URL pubblico di un file in un bucket pubblico (default-assets,
+// immaginivisibili). Nessuna richiesta di rete: costruisce solo l'URL.
+function binderPubblicoUrlFile(bucket, percorso) {
+    const { data } = supabaseClient.storage.from(bucket).getPublicUrl(percorso);
+    return data?.publicUrl || null;
+}

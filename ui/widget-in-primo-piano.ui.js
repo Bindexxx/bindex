@@ -105,7 +105,7 @@ function _ppEsc(v) {
 }
 
 function _ppEur(v) {
-    return '€ ' + Number(v || 0).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    return formattaEuro(v); // formato unico "1.234,50 €", audit 2026-09-25 C2
 }
 
 // Variazione per il badge: "+€3,20" / "−€12,40" (meno vero, come nel titolo
@@ -276,7 +276,7 @@ CATALOGO_WIDGET.primo_piano = {
             const cat = _ppCategorie(PRIMO_PIANO_MAX_TILE);
             const top = cat.perValore[0];
             if (!top) return { righe: ['Nessuna carta ancora'], dati: cat };
-            const righe = [`${top.nome}`, `€ ${(Number(top.prezzo) || 0).toFixed(2)}`];
+            const righe = [`${top.nome}`, formattaEuro(top.prezzo)];
             if (cat.su[0]) righe.push(`↑ ${cat.su[0].nome}`);
             return {
                 righe,

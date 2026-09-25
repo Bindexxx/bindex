@@ -32,6 +32,13 @@
                 e.stopPropagation();
                 if (!confirm('Uscire da CardSync Pro (' + email + ')?')) return;
                 await authLogout();
+                // Azzera la tab ricordata (per-dispositivo) — dispositivo
+                // condiviso tra il gruppo, il prossimo login non deve
+                // ritrovarsi nella stessa schermata di chi ha appena fatto
+                // logout. Spostato qui (audit 2026-09-25) dal vecchio
+                // logoutDaImpostazioni(), rimosso: era l'unico dei due
+                // logout che lo faceva.
+                prefActiveTabClear();
                 location.reload();
             };
         }
@@ -42,26 +49,11 @@
             menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
         }
 
-        // TEMPORANEO (26/08/2026): secondo punto d'accesso allo stesso
-        // identico logout già presente in mostraUtenteLoggato() sopra
-        // (bottone #profiloMenuLogout nel menu Profilo/avatar). Aggiunto
-        // perché quel menu risulta non raggiungibile/visibile nella
-        // visualizzazione attuale — causa non ancora diagnosticata in
-        // questa sessione (richiede di guardare come #profiloAvatar/
-        // #profiloMenu vengono mostrati nel layout "smartphone simulato").
-        // DA RIMUOVERE quando quel problema sarà risolto: a quel punto il
-        // logout torna ad avere un solo punto d'accesso, come prima.
-        async function logoutDaImpostazioni() {
-            const email = document.getElementById('profiloMenuEmail')?.textContent || '';
-            if (!confirm('Uscire da CardSync Pro' + (email ? ' (' + email + ')' : '') + '?')) return;
-            await authLogout();
-            // Azzera la tab ricordata (per-dispositivo) — dispositivo
-            // condiviso tra il gruppo, il prossimo login non deve
-            // ritrovarsi nella stessa schermata di chi ha appena fatto
-            // logout. Vedi data/preferences.repository.js.
-            prefActiveTabClear();
-            location.reload();
-        }
+        // logoutDaImpostazioni() RIMOSSA (audit 2026-09-25, decisione
+        // Claudio): era un secondo accesso TEMPORANEO (26/08) al logout,
+        // aggiunto quando il menu Profilo non era raggiungibile. Il menu
+        // Profilo funziona: il logout ha di nuovo un solo punto d'accesso
+        // (mostraUtenteLoggato sopra), che ora azzera anche la tab ricordata.
 
         document.addEventListener('click', (e) => {
             if (!e.target.closest('.profilo-container')) {
@@ -70,14 +62,14 @@
             }
         });
 
-        // Se "mantieni acceso" è disattivato, la sessione viene chiusa alla
-        // chiusura della scheda/finestra — altrimenti (default) resta come
-        // sempre stata: persistente tra un utilizzo e l'altro.
-        window.addEventListener('beforeunload', () => {
-            if (prefMantieniAccessoGet() === 'no') {
-                authLogout();
-            }
-        });
+        // "Mantieni accesso" = no: il vecchio logout su 'beforeunload' è
+        // stato RIMOSSO (audit 2026-09-25, A1). Scattava anche al refresh e
+        // aprendo una pagina pubblica nella stessa scheda, era asincrono
+        // durante lo scaricamento (esito casuale) e con signOut() globale
+        // chiudeva la sessione su TUTTI i dispositivi. Ora la scelta decide
+        // DOVE viene salvata la sessione (sessionStorage = muore da sola
+        // alla chiusura della scheda): vedi AUTH_STORAGE_SESSIONE in
+        // data/auth.repository.js e createClient in index.html.
 
 
         async function tentaLogin() {
@@ -98,6 +90,12 @@
             authSubmit.textContent = 'Accesso in corso…';
             authError.style.display = 'none';
 
+            // Salvata PRIMA del login (audit 2026-09-25, A1): la sessione
+            // appena creata viene scritta nello storage scelto da questa
+            // preferenza (vedi AUTH_STORAGE_SESSIONE) — se la impostassimo
+            // dopo, il token finirebbe nello storage della scelta precedente.
+            prefMantieniAccessoSet(mantieniAccessoToggle.checked ? 'si' : 'no');
+
             const { data, error } = await authLogin(email, password);
             if (error) {
                 authError.textContent = '❌ ' + (error.message === 'Invalid login credentials' ? 'Nome utente o password errati.' : error.message);
@@ -106,7 +104,6 @@
                 authSubmit.textContent = 'Accedi';
                 return;
             }
-            prefMantieniAccessoSet(mantieniAccessoToggle.checked ? 'si' : 'no');
             mostraUtenteLoggato(data.session.user.email);
             nascondiPannelloCardsync();
             await _avviaSitoDopoAccesso();

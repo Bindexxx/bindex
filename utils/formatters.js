@@ -21,7 +21,7 @@
                 const diff = Number(r.prezzo) - Number(r.prezzo_precedente);
                 if (Math.abs(diff) >= 0.005) { // ignora rumore di arrotondamento
                     const segno = diff > 0 ? '▲' : '▼';
-                    variation = `${segno} ${diff > 0 ? '+' : ''}${diff.toFixed(2)}€`;
+                    variation = `${segno} ${diff > 0 ? '+' : '−'}${formattaEuro(Math.abs(diff))}`; // formato unico, audit 2026-09-25 C2
                 }
             }
             return variation;
@@ -36,15 +36,57 @@
         // sulla pagina Richieste). Stessa convenzione già usata inline nel
         // resto del sito (Number(x).toFixed(2) + ' €') — nessun formato
         // nuovo inventato, solo resa condivisa.
+        // FORMATO UNICO (audit 2026-09-25, C2 — decisione Claudio: "1.234,50 €"
+        // ovunque). Prima qui "1234.50 €" e nelle pagine pubbliche
+        // "1234,50 €": lo stesso prezzo appariva diverso tra sito e pagine
+        // condivise. useGrouping 'always': l'italiano standard NON mette il
+        // punto delle migliaia sotto 10.000 ("1234,50") — 'always' lo forza.
+        // Browser vecchi che non conoscono 'always' ricadono sul comportamento
+        // standard (nessun errore). Tollera null/undefined/stringhe (→ 0,00 €).
+        // Copia IDENTICA in utils/shared-public.js: tenerle allineate.
         function formattaEuro(v) {
-            return (Number(v) || 0).toFixed(2) + ' €';
+            return (Number(v) || 0).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2, useGrouping: 'always' }) + ' €';
         }
 
 
+        // FIX (audit 2026-09-25, A2): textContent→innerHTML escapa solo
+        // & < > — NON le virgolette doppie. Dentro un attributo
+        // (value="${escapeHtml(x)}", alt="...", title="...") una " nel
+        // testo chiudeva l'attributo: nomi/note tipo 'box 10"' venivano
+        // troncati al ripristino della bozza di Inserimento. Ora escapa
+        // anche " (→ &quot;), che nel testo normale si vede identica.
+        // L'apostrofo resta invariato APPOSTA: diversi punti fanno
+        // escapeHtml(x).replace(/'/g, "\\'") per metterlo dentro un
+        // onclick — convertirlo in &#39; romperebbe quei punti. Per gli
+        // argomenti stringa degli onclick usare escapeJsAttr() qui sotto.
+        // Copia IDENTICA in utils/shared-public.js (pagine pubbliche):
+        // tenerle allineate.
         function escapeHtml(str) {
             const div = document.createElement('div');
             div.textContent = str == null ? '' : String(str);
-            return div.innerHTML;
+            return div.innerHTML.replace(/"/g, '&quot;');
+        }
+
+        // Testo da mettere come argomento stringa TRA APICI SINGOLI dentro
+        // un attributo HTML a virgolette doppie, es.
+        //   onclick="apri('${escapeJsAttr(nome)}')"
+        // Prima escapa per la stringa JS (\ ' a-capo), poi per l'attributo
+        // HTML (& " < >): il browser decodifica l'attributo e poi esegue il
+        // JS, quindi il valore arriva alla funzione IDENTICO all'originale,
+        // qualunque carattere contenga. Sostituisce il vecchio
+        // .replace(/'/g, "\\'") che gestiva solo l'apostrofo (una " o un
+        // a-capo in un nome/nota rompevano il click). Audit 2026-09-25, M2.
+        function escapeJsAttr(str) {
+            return String(str == null ? '' : str)
+                .replace(/\\/g, '\\\\')
+                .replace(/'/g, "\\'")
+                .replace(/\r\n|\r|\n/g, '\\n')
+                .replace(/\u2028/g, '\\u2028')
+                .replace(/\u2029/g, '\\u2029')
+                .replace(/&/g, '&amp;')
+                .replace(/"/g, '&quot;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;');
         }
 
 

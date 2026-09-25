@@ -250,9 +250,9 @@
         // salva su segnalazioni_bug (sql/61) con il log diagnostico
         // dell'ultima sessione allegato automaticamente (ui/log-
         // diagnostico.ui.js) — l'utente non deve più sapere cos'è la
-        // console F12. mailto: tenuto come fallback SOLO se l'insert
-        // fallisce (es. offline), per non perdere comunque la
-        // segnalazione.
+        // console F12. Se l'insert fallisce (es. offline) il testo viene
+        // copiato negli appunti (audit 2026-09-25: prima un mailto verso un
+        // indirizzo finto), per non perdere comunque la segnalazione.
         async function segnalaCaterpie() {
             const descrizione = prompt('🐛 Un Caterpie selvatico appare! Descrivi cosa hai visto (cosa NON funzionava come dovrebbe):');
             if (!descrizione || !descrizione.trim()) return;
@@ -274,15 +274,23 @@
                     alert('🐛 Caterpie catturato! Grazie della segnalazione, l\'admin la vedrà a breve.');
                     return;
                 }
-                console.error('Errore invio segnalazione bug, uso il fallback email:', error.message);
+                console.error('Errore invio segnalazione bug, uso il fallback appunti:', error.message);
             }
 
-            // Fallback (utente non loggato, o insert fallito): stesso
-            // mailto di prima, con in più il log diagnostico nel corpo.
-            const corpo = encodeURIComponent(
-                `Ho catturato un Caterpie!\n\nDescrizione: ${descrizione.trim()}\n\nPagina: ${window.location.href}\nData: ${new Date().toLocaleString('it-IT')}\n\n--- Log diagnostico ---\n${logTesto || '(non disponibile)'}`
-            );
-            window.location.href = `mailto:admin@cardsyncpro.local?subject=${encodeURIComponent('🐛 Caterpie catturato — CardSync Pro')}&body=${corpo}`;
+            // Fallback (utente non loggato, o insert fallito) — CAMBIATO
+            // (audit 2026-09-25, decisione Claudio): prima apriva una mail
+            // verso admin@cardsyncpro.local, un indirizzo finto che non
+            // arriva a nessuno. Ora il testo completo (descrizione + log
+            // diagnostico) viene copiato negli appunti, da incollare dove si
+            // vuole. Se anche la copia non è permessa dal browser, il testo
+            // viene mostrato in un prompt da cui copiarlo a mano.
+            const testo = `Ho catturato un Caterpie!\n\nDescrizione: ${descrizione.trim()}\n\nPagina: ${window.location.href}\nData: ${new Date().toLocaleString('it-IT')}\n\n--- Log diagnostico ---\n${logTesto || '(non disponibile)'}`;
+            try {
+                await navigator.clipboard.writeText(testo);
+                alert('🐛 Non sono riuscito a salvare la segnalazione (sei offline o non hai fatto l\'accesso).\n\nIl testo completo, con il log diagnostico, è stato COPIATO negli appunti: incollalo in un messaggio all\'admin.');
+            } catch (_) {
+                prompt('🐛 Non sono riuscito a salvare la segnalazione. Copia questo testo e mandalo all\'admin:', testo);
+            }
         }
 
         /* AVVISO DI USCITA/REFRESH SE CI SONO DATI NON SALVATI */
@@ -478,10 +486,6 @@
         /* RENDERING E SELEZIONE DELLA RIGA */
 
 
-        function saveDataMock() {
-            clearEntryDraft();
-            alert("Carte salvate con successo e bozza ripulita!");
-        }
 
 
         // ═══════════════════════════════════════════════════════════════════

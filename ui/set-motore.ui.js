@@ -679,6 +679,7 @@ function setMRidisegnaHome() {
 // a libreria caricata. Idempotente.
 function setAvviaMotore() {
     if (_setM.timer) return;
-    _setM.timer = setInterval(() => { setMotoreAggiorna({ render: true }); }, SET_INTERVALLO_MS);
+    // document.hidden (audit 2026-09-25, M5): niente giri a scheda nascosta.
+    _setM.timer = setInterval(() => { if (!document.hidden) setMotoreAggiorna({ render: true }); }, SET_INTERVALLO_MS);
     setTimeout(() => { setMotoreAggiorna({ render: true }); }, 3000);
 }

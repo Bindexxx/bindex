@@ -10,7 +10,7 @@
 // spostamento, zero cambi di comportamento per l'utente finale.
 //
 // Contiene: INTERVALLO_WIDGET_VELOCE_MS/LENTO_MS, avviaPollingWidgetHome,
-// _paginaAttivaTelefono, _vaiAllaPaginaHome, _aggiornaMatitaBarraGlobale,
+// _vaiAllaPaginaHome, _aggiornaMatitaBarraGlobale,
 // _aggiornaTastoFisico, _clickTastoFisico, _avviaPresenzaLive,
 // initPhoneShell.
 //
@@ -31,18 +31,47 @@
 const INTERVALLO_WIDGET_VELOCE_MS = 15000;
 const INTERVALLO_WIDGET_LENTO_MS = 60000;
 
+let _pollingVisibilitaAgganciato = false;
+let _giroLentoInCorso = false; // il ritorno sulla scheda e il timer non si accavallano
+
 function avviaPollingWidgetHome() {
     if (_pollingWidgetInterval) clearInterval(_pollingWidgetInterval);
     if (_pollingWidgetIntervalLento) clearInterval(_pollingWidgetIntervalLento);
 
+    // SCHEDA NASCOSTA (audit 2026-09-25, M5): entrambi i cicli ora saltano
+    // il giro se la scheda non è visibile (altra scheda in primo piano,
+    // telefono bloccato, browser ridotto a icona). Prima giravano sempre:
+    // renderWidgetHome() rifà gli SVG di ogni widget ogni 15s, e il ciclo
+    // lento fa 4 chiamate al DB ogni 60s — batteria del telefono e quota
+    // del piano FREE Supabase consumate per nessuno. Al ritorno sulla
+    // scheda il listener 'visibilitychange' qui sotto recupera subito un
+    // giro completo, così i dati non restano vecchi di un minuto.
     _pollingWidgetInterval = setInterval(() => {
+        if (document.hidden) return;
         if (!document.body.classList.contains('phone-detail-open') && !_editModeWidget) {
             renderWidgetHome();
         }
     }, INTERVALLO_WIDGET_VELOCE_MS);
 
-    _pollingWidgetIntervalLento = setInterval(async () => {
-        if (document.body.classList.contains('phone-detail-open') || _editModeWidget) return;
+    _pollingWidgetIntervalLento = setInterval(_giroPollingLento, INTERVALLO_WIDGET_LENTO_MS);
+
+    if (!_pollingVisibilitaAgganciato) {
+        _pollingVisibilitaAgganciato = true;
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) return;
+            _giroPollingLento();
+        });
+    }
+}
+
+// Ciclo lento (60s) estratto in una funzione con nome — stesso identico
+// corpo di prima — per poterlo richiamare anche al ritorno sulla scheda.
+async function _giroPollingLento() {
+    if (document.hidden) return;
+    if (document.body.classList.contains('phone-detail-open') || _editModeWidget) return;
+    if (_giroLentoInCorso) return;
+    _giroLentoInCorso = true;
+    try {
         _impostaSyncAttivo(true);
         try {
             await caricaAvvisiHome();
@@ -63,7 +92,9 @@ function avviaPollingWidgetHome() {
         } catch (e) { console.error('Errore polling avvisi (widget prezzi/inserimento/match):', e); }
         _impostaSyncAttivo(false);
         renderWidgetHome();
-    }, INTERVALLO_WIDGET_LENTO_MS);
+    } finally {
+        _giroLentoInCorso = false;
+    }
 }
 
 // ── LA HOME E' LA PAGINA A WIDGET ────────────────────────────────────────
@@ -73,13 +104,9 @@ function avviaPollingWidgetHome() {
 // widget. Ora c'e' solo la seconda, e le "pagine" sono quelle orizzontali
 // stile telefono.
 //
-// _paginaAttivaTelefono resta e vale sempre 'widget': era letta da
-// _aggiornaTastoFisico e da _aggiornaMatitaBarraGlobale, e toglierla
-// avrebbe voluto dire riscrivere anche quelle. Lasciarla come costante
-// costa nulla e mantiene leggibile il confronto con la versione
-// precedente. Se un giorno non servira' piu' a nessuno, si toglie insieme
-// alle sue due lettrici.
-const _paginaAttivaTelefono = 'widget';
+// _paginaAttivaTelefono RIMOSSA (audit 2026-09-25): come previsto dal suo
+// commento, "si toglie quando non servirà più a nessuno" —
+// _aggiornaTastoFisico e _aggiornaMatitaBarraGlobale non la leggono più.
 
 // _spostaHomeNellaPaginaPrincipale() e _gestisciScrollPagine() sono state
 // RIMOSSE con la home fissa: la prima spostava #home dentro la pagina
@@ -173,13 +200,14 @@ let _ultimoStatoPresenzaRealtime = null;
 // i nomi, va prima verificato/configurato un canale privato con
 // autorizzazione RLS lato Supabase, non aggiunto qui alla leggera.
 async function _avviaPresenzaLive() {
-    if (typeof CSBar === 'undefined' || typeof supabaseClient === 'undefined') return;
+    if (typeof CSBar === 'undefined') return;
     try {
-        const { data: { user } } = await supabaseClient.auth.getUser();
+        // Chiamate spostate in data/auth.repository.js e
+        // data/visite.repository.js (audit 2026-09-25, B8) — stesso
+        // identico canale e stessa chiave di prima.
+        const user = await authGetUserVerificato();
         if (!user) return;
-        const canale = supabaseClient.channel('presenza-cardsync', {
-            config: { presence: { key: user.id } },
-        });
+        const canale = presenzaCreaCanale(user.id);
         canale
             .on('presence', { event: 'sync' }, () => {
                 const stato = canale.presenceState();

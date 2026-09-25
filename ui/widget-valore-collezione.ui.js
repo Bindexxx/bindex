@@ -134,7 +134,7 @@ CATALOGO_WIDGET.variazione_valore = {
             }
 
             const c = storicoValoreConfronta(righe);
-            const eur = (v) => (v >= 0 ? '+' : '−') + '€ ' + Math.abs(Number(v) || 0).toFixed(2);
+            const eur = (v) => (v >= 0 ? '+' : '−') + formattaEuro(Math.abs(Number(v) || 0)); // formato unico, audit 2026-09-25 C2
             const testo = [eur(c.variazione)];
             if (c.carteAggiunte > 0) testo.push(`${c.carteAggiunte} cart${c.carteAggiunte === 1 ? 'a aggiunta' : 'e aggiunte'}`);
 
@@ -251,7 +251,7 @@ async function renderPaginaVariazioneValore() {
     }
 
     const eventi = data || [];
-    const eur = (v) => (v >= 0 ? '+' : '−') + '€ ' + Math.abs(Number(v) || 0).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const eur = (v) => (v >= 0 ? '+' : '−') + formattaEuro(Math.abs(Number(v) || 0)); // formato unico, audit 2026-09-25 C2
 
     if (eventi.length === 0) {
         container.innerHTML = `

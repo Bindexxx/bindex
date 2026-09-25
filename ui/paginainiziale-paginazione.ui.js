@@ -343,6 +343,22 @@ function _vaiAllaPaginaWidgetRelativa(delta) {
     _vaiAllaPaginaWidget(_paginaWidgetCorrente + delta);
 }
 
+// Pokéball laterali della cornice (#pokeballSinistra/#pokeballDestra in
+// index.html). Prima l'onclick chiamava questa funzione che NON esisteva
+// in nessun file: ogni click era un ReferenceError finito nel log
+// diagnostico (audit 2026-09-25, M1). Decisione Claudio: sinistra =
+// pagina precedente della home, destra = pagina successiva — lo stesso
+// spostamento delle frecce accanto ai puntini. Nome lasciato invariato
+// per non toccare l'HTML. Non fa nulla mentre è aperta una pagina di
+// dettaglio o si sta modificando la home (lì cambiare pagina sotto
+// sarebbe solo confuso), né oltre la prima/ultima pagina
+// (_vaiAllaPaginaWidget limita già l'indice).
+function _clickPokeballDecorativa(lato) {
+    if (document.body.classList.contains('phone-detail-open')) return;
+    if (typeof _editModeWidget !== 'undefined' && _editModeWidget) return;
+    _vaiAllaPaginaWidgetRelativa(lato === 'sinistra' ? -1 : 1);
+}
+
 function _aggiornaPuntiniPagine() {
     document.querySelectorAll('#phoneWidgetPuntini .widget-puntino').forEach((el, i) => {
         el.classList.toggle('attivo', i === _paginaWidgetCorrente);

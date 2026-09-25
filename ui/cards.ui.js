@@ -313,7 +313,9 @@
                 totalQty += card.qty;
 
                 const idAttr = String(card.id).replace(/'/g, "\\'");
-                const locAttr = (card.location || '').replace(/'/g, "\\'");
+                // escapeJsAttr (audit 2026-09-25, A3/M2): una " o un a-capo
+                // in location/nome/codice/note rompeva l'onclick della cella.
+                const locAttr = escapeJsAttr(card.location || '');
                 // FIX: Cardmarket blocca l'hotlinking diretto delle proprie
                 // immagini (per questo il <img src> mostrava l'icona rotta) —
                 // images.weserv.nl le recupera lato server e le riserve dal
@@ -335,9 +337,9 @@
                 const obiettivoRaggiunto = card.tabella === 'wishlist' && card.prezzoObiettivo != null && card.price > 0 && card.price <= card.prezzoObiettivo;
                 if (obiettivoRaggiunto) tr.style.backgroundColor = 'var(--success-bg)';
 
-                const nomeAttr = card.name.replace(/'/g, "\\'");
-                const codeAttr = (card.code || '').replace(/'/g, "\\'");
-                const notesAttr = (card.notes || '').replace(/'/g, "\\'");
+                const nomeAttr = escapeJsAttr(card.name);
+                const codeAttr = escapeJsAttr(card.code || '');
+                const notesAttr = escapeJsAttr(card.notes || '');
 
                 if (modalitaCompatta) {
                     htmlCompatto += _rigaCompattaHtml(card, idAttr, locAttr, nomeAttr, langClass, condClass, varClass, immagineSrc, obiettivoRaggiunto);
@@ -352,7 +354,7 @@
                     <td data-label="Location"><span class="badge badge-location" title="${(card.location || '').replace(/"/g, '&quot;')} — clicca per modificare" onclick="event.stopPropagation(); modificaLocationInline(event, '${idAttr}', '${card.tabella}', '${locAttr}')">${escapeHtml(card.location || '—')}</span></td>
                     <td data-label="Lingua"><span class="badge ${langClass} cella-editabile" title="Clicca per modificare" onclick="event.stopPropagation(); modificaLinguaInline(event, '${idAttr}', '${card.tabella}', '${card.lang}')">${card.lang ? escapeHtml(card.lang) : 'Qualsiasi'}</span></td>
                     <td data-label="Cond."><span class="badge ${condClass} cella-editabile" title="Clicca per modificare" onclick="event.stopPropagation(); modificaCondizioneInline(event, '${idAttr}', '${card.tabella}', '${card.cond}')">${escapeHtml(card.cond)}</span></td>
-                    <td data-label="Prezzo" id="prezzoCella-${idAttr}" class="price cella-editabile" title="Clicca per modificare" onclick="event.stopPropagation(); modificaCampoInline('${idAttr}', '${card.tabella}', 'prezzo', ${card.price}, 'Prezzo (€)', 'numero')">${card.price.toFixed(2)} €</td>
+                    <td data-label="Prezzo" id="prezzoCella-${idAttr}" class="price cella-editabile" title="Clicca per modificare" onclick="event.stopPropagation(); modificaCampoInline('${idAttr}', '${card.tabella}', 'prezzo', ${card.price}, 'Prezzo (€)', 'numero')">${formattaEuro(card.price)}</td>
                     <td data-label="Var." class="${varClass}">${escapeHtml(card.variation)}</td>
                     <td data-label="Link">
                         <a href="${card.link}" target="_blank" class="link-icon">
@@ -368,8 +370,8 @@
                                 ${card.tabella === 'wishlist' ? `<button onclick="segnaOttenuta('${card.id}')" style="color:var(--success);"><i class="fa-solid fa-check"></i> Ottenuta</button>` : ''}
                                 ${card.tabella === 'carte' && card.stato === 'collezione' ? `<button class="btn-binder-toggle" data-id="${idAttr}" onclick="event.stopPropagation(); toggleBinderMembership('${idAttr}')"><i class="fa-solid fa-layer-group"></i> ${_idsNelBinder.has(String(card.id)) ? 'Rimuovi dal Binder' : 'Aggiungi al Binder'}</button>` : ''}
                                 ${card.tabella === 'carte' && card.stato === 'collezione' ? `<button class="btn-scambio-toggle" data-id="${idAttr}" onclick="event.stopPropagation(); apriModaleQuantitaScambio('${idAttr}')"><i class="fa-solid fa-right-left"></i> ${_idsInScambio.has(String(card.id)) ? `In Scambio: ${_quantitaOfferteScambio[String(card.id)] ?? 0}` : 'Offri in Scambio'}</button>` : ''}
-                                <button onclick="apriGraficoPrezzo('${idAttr}', '${card.tabella}', '${card.name.replace(/'/g, "\\'")}')"><i class="fa-solid fa-chart-line"></i> Andamento prezzo</button>
-                                <button onclick="apriFotoDettaglio('${idAttr}', '${card.tabella}', '${card.name.replace(/'/g, "\\'")}')"><i class="fa-solid fa-camera"></i> Foto dettaglio</button>
+                                <button onclick="apriGraficoPrezzo('${idAttr}', '${card.tabella}', '${nomeAttr}')"><i class="fa-solid fa-chart-line"></i> Andamento prezzo</button>
+                                <button onclick="apriFotoDettaglio('${idAttr}', '${card.tabella}', '${nomeAttr}')"><i class="fa-solid fa-camera"></i> Foto dettaglio</button>
                                 <button onclick="eliminaCarta('${card.id}')" style="color:var(--danger);"><i class="fa-solid fa-trash"></i> Elimina</button>
                             </div>
                         </div>
@@ -383,7 +385,7 @@
             }
 
             document.getElementById('stat-count').innerText = totalQty;
-            document.getElementById('stat-value').innerText = `€ ${totalSum.toFixed(2)}`;
+            document.getElementById('stat-value').innerText = formattaEuro(totalSum);
             const uniqueLocs = [...new Set(data.map(item => item.location))].length;
             document.getElementById('stat-locations').innerText = uniqueLocs;
 
@@ -425,7 +427,7 @@
                             ${linkIcona}
                         </span>
                         ${iconaVariazione}
-                        <span class="riga-compatta-prezzo" id="prezzoCellaCompatta-${idAttr}">${card.price.toFixed(2)}€</span>
+                        <span class="riga-compatta-prezzo" id="prezzoCellaCompatta-${idAttr}">${formattaEuro(card.price)}</span>
                         <button class="riga-compatta-menu-btn" onclick="event.stopPropagation(); toggleMenuCompatto('${idAttr}')"><i class="fa-solid fa-ellipsis-vertical"></i></button>
                     </div>
                     <div class="riga-compatta-meta">

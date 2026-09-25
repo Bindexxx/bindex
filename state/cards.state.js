@@ -25,6 +25,5 @@
         let _ambitoControlloPrezziSealed = 'soloMie';
         let _pollOrdineSealedInterval = null;
         const SOGLIA_GIORNI_PREZZO_SCADUTO = 7;
-        const SOGLIA_MINUTI_CLAIM_PREZZI = 10;
         let _elencoPrezziScaduti = [];
         let _graficoPrezzoChart = null;

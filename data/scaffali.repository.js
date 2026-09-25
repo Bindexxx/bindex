@@ -113,3 +113,9 @@ async function scaffaleProdottoImpostaQuantitaScambio(userId, scaffaleId, prodot
     return supabaseClient.from('scaffale_prodotti')
         .upsert({ owner_id: userId, scaffale_id: scaffaleId, prodotto_id: prodottoId, quantita_offerta: quantita }, { onConflict: 'owner_id,scaffale_id,prodotto_id' });
 }
+
+// Spostata qui da ui/widget-scaffali.ui.js (audit 2026-09-25, B8): regola del progetto,
+// nessuna chiamata a supabaseClient fuori da data/*.repository.js.
+async function scaffaliConta(userId) {
+    return supabaseClient.from('scaffali').select('id', { count: 'exact', head: true }).eq('owner_id', userId);
+}

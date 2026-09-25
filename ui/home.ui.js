@@ -28,7 +28,7 @@
             const elCount = document.getElementById('stat-count-home');
             const elValue = document.getElementById('stat-value-home');
             if (elCount) elCount.innerText = totalQty;
-            if (elValue) elValue.innerText = `€ ${totalSum.toFixed(2)}`;
+            if (elValue) elValue.innerText = formattaEuro(totalSum);
         }
 
 

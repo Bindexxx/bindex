@@ -387,12 +387,12 @@
 
             if (themeName === 'verde') {
                 document.body.classList.add('theme-verde');
-                document.getElementById('themeBtn-verde').classList.add('active');
+                document.getElementById('themeBtn-verde')?.classList.add('active'); // ?. : bottone rimosso col restyle Pokédex (audit 2026-09-25, B2)
             } else if (themeName === 'pokemon') {
                 document.body.classList.add('theme-pokemon');
-                document.getElementById('themeBtn-pokemon').classList.add('active');
+                document.getElementById('themeBtn-pokemon')?.classList.add('active'); // ?. : bottone rimosso col restyle Pokédex (audit 2026-09-25, B2)
             } else {
-                document.getElementById('themeBtn-viola').classList.add('active');
+                document.getElementById('themeBtn-viola')?.classList.add('active'); // ?. : bottone rimosso col restyle Pokédex (audit 2026-09-25, B2)
             }
         }
 

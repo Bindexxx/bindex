@@ -159,7 +159,15 @@ async function _chatVerificaAccessoConsentito() {
 // ogni apertura della chat/inbox, quindi un mancato aggiornamento qui
 // (sessione non ancora pronta a tempo di caricamento script) si
 // autocorregge al primo giro utile.
-_chatVerificaAccessoConsentito();
+// FIX (audit 2026-09-25, A4): prima era chiamata direttamente qui, al
+// caricamento di questo file — ma supabaseClient nasce solo nell'ultimo
+// <script> di index.html, quindi ad OGNI caricamento pagina partiva un
+// "ReferenceError: supabaseClient is not defined" (ingoiato dal catch,
+// ma finito nel log diagnostico). All'evento 'load' tutti gli script,
+// incluso quello che crea supabaseClient, sono già stati eseguiti.
+// REGOLA per il futuro: nessun codice eseguito al caricamento di un file
+// deve chiamare (anche indirettamente) il DB.
+window.addEventListener('load', () => { _chatVerificaAccessoConsentito(); });
 
 // ── 2) FILTRO PAROLACCE — lista non esaustiva, pensata per un gruppo di
 // amici/famiglia, non per moderazione professionale: meglio accettare
@@ -309,7 +317,9 @@ async function renderPaginaChat() {
     }).sort((a, b) => String(b.ultimoQuando).localeCompare(String(a.ultimoQuando)));
 
     container.innerHTML = '<div class="pg-elenco">' + righe.map(r => {
-        const labelSafe = escapeHtml(r.label).replace(/'/g, "\\'");
+        // escapeJsAttr (audit 2026-09-25, M2): il nome dell'altro utente
+        // finisce dentro onclick — gestisce anche " e a-capo.
+        const labelSafe = escapeJsAttr(r.label);
         const anteprima = r.ultimoTesto
             ? `${r.ultimoMio ? 'Tu: ' : ''}${escapeHtml(r.ultimoTesto).slice(0, 60)}${r.ultimoTesto.length > 60 ? '…' : ''}`
             : 'Nessun messaggio ancora — scrivi il primo.';

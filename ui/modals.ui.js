@@ -162,7 +162,7 @@
             _cbdScriviTesto('pokemon', card.name || '');
             _cbdScriviTesto('condition', card.cond || '');
             _cbdScriviTesto('variazione', card.variation || '—');
-            _cbdScriviTesto('price', (card.price != null ? Number(card.price) : 0).toFixed(2) + ' €');
+            _cbdScriviTesto('price', formattaEuro(card.price));
 
             // Posizioni/scale dei 4 campi: quelle salvate dall'editor sulla
             // riga user_media (metadata), con i default come rete di sicurezza

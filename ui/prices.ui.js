@@ -112,35 +112,58 @@
             const MAX_TENTATIVI = 200; // ~10 minuti
             let tentativi = 0;
 
+            // Audit 2026-09-25 (M6): guardia "richiesta già in volo" (con rete
+            // lenta le letture ogni 3s si accavallavano) + try/catch (un
+            // errore di rete lanciato da ordiniLeggiStato diventava una
+            // promise rifiutata non gestita a ogni giro).
+            let inVolo = false;
             _pollOrdineInterval = setInterval(async () => {
-                tentativi++;
-                const { data, error } = await ordiniLeggiStato(ordineId);
+                if (inVolo) return;
+                inVolo = true;
+                try {
+                    tentativi++;
+                    const { data, error } = await ordiniLeggiStato(ordineId);
 
-                if (error) {
-                    clearInterval(_pollOrdineInterval);
-                    _resetBottonePrezzi(btn, sub);
-                    sub.textContent = '❌ Errore nel controllo dello stato: ' + error.message;
-                    return;
-                }
+                    if (error) {
+                        clearInterval(_pollOrdineInterval);
+                        _resetBottonePrezzi(btn, sub);
+                        sub.textContent = '❌ Errore nel controllo dello stato: ' + error.message;
+                        return;
+                    }
 
-                if (data.stato === 'in_corso') {
-                    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Controllo prezzi in corso...';
-                    sub.textContent = 'Un dispositivo sta controllando le quotazioni su Cardmarket adesso.';
-                } else if (data.stato === 'completato') {
-                    clearInterval(_pollOrdineInterval);
-                    const r = data.risultato || {};
-                    _resetBottonePrezzi(btn, sub);
-                    sub.innerHTML = `✅ Fatto! <span style="color:var(--success)">▲ ${r.salite ?? 0}</span> · <span style="color:var(--danger)">▼ ${r.scese ?? 0}</span> · ➖ ${r.invariate ?? 0} invariate`;
-                } else if (data.stato === 'errore') {
-                    clearInterval(_pollOrdineInterval);
-                    _resetBottonePrezzi(btn, sub);
-                    sub.textContent = '❌ ' + (data.errore_msg || 'Errore sconosciuto durante il controllo prezzi.');
-                }
+                    if (!data) {
+                        // Ordine sparito (cancellato o non più leggibile): prima
+                        // "data.stato" lanciava un TypeError ogni 3 secondi fino
+                        // al limite dei tentativi.
+                        clearInterval(_pollOrdineInterval);
+                        _resetBottonePrezzi(btn, sub);
+                        sub.textContent = '❌ Ordine non trovato: riprova ad avviare il controllo.';
+                        return;
+                    }
 
-                if (tentativi >= MAX_TENTATIVI) {
-                    clearInterval(_pollOrdineInterval);
-                    _resetBottonePrezzi(btn, sub);
-                    sub.textContent = '⏱️ Nessun dispositivo ha ancora eseguito l\'ordine. Controlla che qualcuno del gruppo abbia l\'estensione aperta e sia online.';
+                    if (data.stato === 'in_corso') {
+                        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Controllo prezzi in corso...';
+                        sub.textContent = 'Un dispositivo sta controllando le quotazioni su Cardmarket adesso.';
+                    } else if (data.stato === 'completato') {
+                        clearInterval(_pollOrdineInterval);
+                        const r = data.risultato || {};
+                        _resetBottonePrezzi(btn, sub);
+                        sub.innerHTML = `✅ Fatto! <span style="color:var(--success)">▲ ${r.salite ?? 0}</span> · <span style="color:var(--danger)">▼ ${r.scese ?? 0}</span> · ➖ ${r.invariate ?? 0} invariate`;
+                    } else if (data.stato === 'errore') {
+                        clearInterval(_pollOrdineInterval);
+                        _resetBottonePrezzi(btn, sub);
+                        sub.textContent = '❌ ' + (data.errore_msg || 'Errore sconosciuto durante il controllo prezzi.');
+                    }
+
+                    if (tentativi >= MAX_TENTATIVI) {
+                        clearInterval(_pollOrdineInterval);
+                        _resetBottonePrezzi(btn, sub);
+                        sub.textContent = '⏱️ Nessun dispositivo ha ancora eseguito l\'ordine. Controlla che qualcuno del gruppo abbia l\'estensione aperta e sia online.';
+                    }
+                } catch (e) {
+                    console.error('[prezzi] polling stato ordine:', e);
+                } finally {
+                    inVolo = false;
                 }
             }, INTERVALLO_MS);
         }
@@ -192,35 +215,58 @@
             const MAX_TENTATIVI = 200; // ~10 minuti
             let tentativi = 0;
 
+            // Audit 2026-09-25 (M6): guardia "richiesta già in volo" (con rete
+            // lenta le letture ogni 3s si accavallavano) + try/catch (un
+            // errore di rete lanciato da ordiniLeggiStato diventava una
+            // promise rifiutata non gestita a ogni giro).
+            let inVolo = false;
             _pollOrdineWishlistInterval = setInterval(async () => {
-                tentativi++;
-                const { data, error: errPoll } = await ordiniLeggiStato(ordine.id);
+                if (inVolo) return;
+                inVolo = true;
+                try {
+                    tentativi++;
+                    const { data, error: errPoll } = await ordiniLeggiStato(ordine.id);
 
-                if (errPoll) {
-                    clearInterval(_pollOrdineWishlistInterval);
-                    _resetBottonePrezzi(btn, sub, testoDefault);
-                    sub.textContent = '❌ Errore nel controllo dello stato: ' + errPoll.message;
-                    return;
-                }
+                    if (errPoll) {
+                        clearInterval(_pollOrdineWishlistInterval);
+                        _resetBottonePrezzi(btn, sub, testoDefault);
+                        sub.textContent = '❌ Errore nel controllo dello stato: ' + errPoll.message;
+                        return;
+                    }
 
-                if (data.stato === 'in_corso') {
-                    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Controllo prezzi in corso...';
-                    sub.textContent = 'Un dispositivo sta controllando le quotazioni della wishlist su Cardmarket adesso.';
-                } else if (data.stato === 'completato') {
-                    clearInterval(_pollOrdineWishlistInterval);
-                    const r = data.risultato || {};
-                    _resetBottonePrezzi(btn, sub, testoDefault);
-                    sub.textContent = `✅ Fatto! ${r.aggiornate ?? 0} su ${r.totale ?? 0} carte aggiornate.`;
-                } else if (data.stato === 'errore') {
-                    clearInterval(_pollOrdineWishlistInterval);
-                    _resetBottonePrezzi(btn, sub, testoDefault);
-                    sub.textContent = '❌ ' + (data.errore_msg || 'Errore sconosciuto durante il controllo prezzi.');
-                }
+                    if (!data) {
+                        // Ordine sparito (cancellato o non più leggibile): prima
+                        // "data.stato" lanciava un TypeError ogni 3 secondi fino
+                        // al limite dei tentativi.
+                        clearInterval(_pollOrdineWishlistInterval);
+                        _resetBottonePrezzi(btn, sub, testoDefault);
+                        sub.textContent = '❌ Ordine non trovato: riprova ad avviare il controllo.';
+                        return;
+                    }
 
-                if (tentativi >= MAX_TENTATIVI) {
-                    clearInterval(_pollOrdineWishlistInterval);
-                    _resetBottonePrezzi(btn, sub, testoDefault);
-                    sub.textContent = '⏱️ Nessun dispositivo ha ancora eseguito l\'ordine. Controlla che qualcuno del gruppo abbia l\'estensione aperta e sia online.';
+                    if (data.stato === 'in_corso') {
+                        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Controllo prezzi in corso...';
+                        sub.textContent = 'Un dispositivo sta controllando le quotazioni della wishlist su Cardmarket adesso.';
+                    } else if (data.stato === 'completato') {
+                        clearInterval(_pollOrdineWishlistInterval);
+                        const r = data.risultato || {};
+                        _resetBottonePrezzi(btn, sub, testoDefault);
+                        sub.textContent = `✅ Fatto! ${r.aggiornate ?? 0} su ${r.totale ?? 0} carte aggiornate.`;
+                    } else if (data.stato === 'errore') {
+                        clearInterval(_pollOrdineWishlistInterval);
+                        _resetBottonePrezzi(btn, sub, testoDefault);
+                        sub.textContent = '❌ ' + (data.errore_msg || 'Errore sconosciuto durante il controllo prezzi.');
+                    }
+
+                    if (tentativi >= MAX_TENTATIVI) {
+                        clearInterval(_pollOrdineWishlistInterval);
+                        _resetBottonePrezzi(btn, sub, testoDefault);
+                        sub.textContent = '⏱️ Nessun dispositivo ha ancora eseguito l\'ordine. Controlla che qualcuno del gruppo abbia l\'estensione aperta e sia online.';
+                    }
+                } catch (e) {
+                    console.error('[prezzi] polling stato ordine:', e);
+                } finally {
+                    inVolo = false;
                 }
             }, INTERVALLO_MS);
         }
@@ -280,6 +326,28 @@
 
 
 
+        // Chart.js caricato SOLO quando serve (audit 2026-09-25, E1/E3): prima
+        // index.html scaricava ~200 KB di chart.js@4 (versione non fissata)
+        // ad ogni apertura del sito, anche se l'unico grafico è questo.
+        // Versione ESATTA fissata: un aggiornamento della libreria non può
+        // più cambiare il sito da solo. Una sola richiesta anche con più
+        // click ravvicinati (promise condivisa); se il download fallisce la
+        // promise si azzera e il click successivo ritenta.
+        const CHART_JS_URL = 'https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js';
+        let _chartJsPromise = null;
+        function _caricaChartJs() {
+            if (typeof Chart !== 'undefined') return Promise.resolve();
+            if (_chartJsPromise) return _chartJsPromise;
+            _chartJsPromise = new Promise((resolve, reject) => {
+                const tag = document.createElement('script');
+                tag.src = CHART_JS_URL;
+                tag.onload = () => resolve();
+                tag.onerror = () => { _chartJsPromise = null; tag.remove(); reject(new Error('Impossibile scaricare la libreria dei grafici.')); };
+                document.head.appendChild(tag);
+            });
+            return _chartJsPromise;
+        }
+
         async function apriGraficoPrezzo(id, tabella, nome) {
             document.getElementById('graficoPrezzoNome').textContent = nome;
             document.getElementById('graficoModal').style.display = 'flex';
@@ -293,6 +361,13 @@
             }
             if (!data || data.length < 2) {
                 container.innerHTML = `<p style="color:var(--text-muted); font-size:0.85rem; text-align:center;">Non ci sono ancora abbastanza dati per un grafico.<br>Il prezzo viene registrato ad ogni controllo prezzi — da qui in poi lo storico crescerà da solo.</p>`;
+                return;
+            }
+            try {
+                await _caricaChartJs();
+            } catch (e) {
+                console.error('[grafico prezzo]', e);
+                container.innerHTML = `<p style="color:var(--danger); font-size:0.85rem;">${escapeHtml(e.message)} Controlla la connessione e riprova.</p>`;
                 return;
             }
             container.innerHTML = '<canvas id="graficoPrezzoCanvas"></canvas>';
@@ -318,7 +393,7 @@
                 options: {
                     responsive: true,
                     plugins: { legend: { display: false } },
-                    scales: { y: { ticks: { callback: v => v.toFixed(2) + ' €' } } },
+                    scales: { y: { ticks: { callback: v => formattaEuro(v) } } },
                 },
             });
         }
@@ -431,35 +506,58 @@
             const MAX_TENTATIVI = 200; // ~10 minuti
             let tentativi = 0;
 
+            // Audit 2026-09-25 (M6): guardia "richiesta già in volo" (con rete
+            // lenta le letture ogni 3s si accavallavano) + try/catch (un
+            // errore di rete lanciato da ordiniLeggiStato diventava una
+            // promise rifiutata non gestita a ogni giro).
+            let inVolo = false;
             _pollOrdineSealedInterval = setInterval(async () => {
-                tentativi++;
-                const { data, error: errPoll } = await ordiniLeggiStato(ordine.id);
+                if (inVolo) return;
+                inVolo = true;
+                try {
+                    tentativi++;
+                    const { data, error: errPoll } = await ordiniLeggiStato(ordine.id);
 
-                if (errPoll) {
-                    clearInterval(_pollOrdineSealedInterval);
-                    _resetBottonePrezzi(btn, sub, testoDefault);
-                    sub.textContent = '❌ Errore nel controllo dello stato: ' + errPoll.message;
-                    return;
-                }
+                    if (errPoll) {
+                        clearInterval(_pollOrdineSealedInterval);
+                        _resetBottonePrezzi(btn, sub, testoDefault);
+                        sub.textContent = '❌ Errore nel controllo dello stato: ' + errPoll.message;
+                        return;
+                    }
 
-                if (data.stato === 'in_corso') {
-                    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Controllo prezzi sealed in corso...';
-                    sub.textContent = 'Un dispositivo sta controllando le quotazioni dei prodotti sealed su Cardmarket adesso.';
-                } else if (data.stato === 'completato') {
-                    clearInterval(_pollOrdineSealedInterval);
-                    const r = data.risultato || {};
-                    _resetBottonePrezzi(btn, sub, testoDefault);
-                    sub.innerHTML = `✅ Fatto! <span style="color:var(--success)">▲ ${r.salite ?? 0}</span> · <span style="color:var(--danger)">▼ ${r.scese ?? 0}</span> · ➖ ${r.invariate ?? 0} invariati`;
-                } else if (data.stato === 'errore') {
-                    clearInterval(_pollOrdineSealedInterval);
-                    _resetBottonePrezzi(btn, sub, testoDefault);
-                    sub.textContent = '❌ ' + (data.errore_msg || 'Errore sconosciuto durante il controllo prezzi sealed.');
-                }
+                    if (!data) {
+                        // Ordine sparito (cancellato o non più leggibile): prima
+                        // "data.stato" lanciava un TypeError ogni 3 secondi fino
+                        // al limite dei tentativi.
+                        clearInterval(_pollOrdineSealedInterval);
+                        _resetBottonePrezzi(btn, sub, testoDefault);
+                        sub.textContent = '❌ Ordine non trovato: riprova ad avviare il controllo.';
+                        return;
+                    }
 
-                if (tentativi >= MAX_TENTATIVI) {
-                    clearInterval(_pollOrdineSealedInterval);
-                    _resetBottonePrezzi(btn, sub, testoDefault);
-                    sub.textContent = '⏱️ Nessun dispositivo ha ancora eseguito l\'ordine. Controlla che qualcuno del gruppo abbia l\'estensione aperta e sia online.';
+                    if (data.stato === 'in_corso') {
+                        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Controllo prezzi sealed in corso...';
+                        sub.textContent = 'Un dispositivo sta controllando le quotazioni dei prodotti sealed su Cardmarket adesso.';
+                    } else if (data.stato === 'completato') {
+                        clearInterval(_pollOrdineSealedInterval);
+                        const r = data.risultato || {};
+                        _resetBottonePrezzi(btn, sub, testoDefault);
+                        sub.innerHTML = `✅ Fatto! <span style="color:var(--success)">▲ ${r.salite ?? 0}</span> · <span style="color:var(--danger)">▼ ${r.scese ?? 0}</span> · ➖ ${r.invariate ?? 0} invariati`;
+                    } else if (data.stato === 'errore') {
+                        clearInterval(_pollOrdineSealedInterval);
+                        _resetBottonePrezzi(btn, sub, testoDefault);
+                        sub.textContent = '❌ ' + (data.errore_msg || 'Errore sconosciuto durante il controllo prezzi sealed.');
+                    }
+
+                    if (tentativi >= MAX_TENTATIVI) {
+                        clearInterval(_pollOrdineSealedInterval);
+                        _resetBottonePrezzi(btn, sub, testoDefault);
+                        sub.textContent = '⏱️ Nessun dispositivo ha ancora eseguito l\'ordine. Controlla che qualcuno del gruppo abbia l\'estensione aperta e sia online.';
+                    }
+                } catch (e) {
+                    console.error('[prezzi] polling stato ordine:', e);
+                } finally {
+                    inVolo = false;
                 }
             }, INTERVALLO_MS);
         }

@@ -1,0 +1,21 @@
+-- ============================================================================
+-- VERIFICA DIPENDENZE CLIENT -> DB (sola lettura, nessuna modifica)
+-- Generata 2026-09-25 dall'audit dipendenze (aggiornata dopo la rimozione di scambio.html). Elenca SOLO ciò che il codice di
+-- sito + estensione chiama ma che NON esiste sul DB live. Risultato atteso:
+-- zero righe. Ogni riga restituita = una chiamata che fallirà a runtime.
+-- ============================================================================
+with
+rpc_attese(nome) as (values ('accetta_riga_richiesta'), ('admin_ban_user'), ('admin_hard_delete_user'), ('admin_process_pending_request'), ('admin_reset_password'), ('admin_restore_user'), ('admin_revoke_sessions'), ('admin_soft_delete_user'), ('admin_unban_user'), ('aggiorna_nota_controllo_gruppo'), ('aggiorna_prezzo_controllo_gruppo'), ('aggiorna_prezzo_controllo_gruppo_sealed'), ('aggiorna_url_controllo_gruppo'), ('aggiorna_url_controllo_gruppo_sealed'), ('annulla_riga_richiesta'), ('apri_bustina'), ('blocca_utente'), ('bustine_stato'), ('completa_riga_coda_carte'), ('concludi_riga_richiesta'), ('conta_carte_da_controllare_gruppo'), ('conta_prodotti_sealed_da_controllare_gruppo'), ('imposta_colore_cornice'), ('imposta_nickname'), ('invia_messaggio'), ('invia_richiesta_scambio'), ('leggi_binder_id_owner'), ('leggi_binder_pubblico'), ('leggi_binder_pubblico_info'), ('leggi_card_back_approvata'), ('leggi_colore_cornice_pubblico'), ('leggi_contributi_gruppo'), ('leggi_media_binder_pubblico'), ('leggi_scaffale_pubblico'), ('leggi_scaffale_pubblico_info'), ('leggi_sealed_condiviso'), ('leggi_stato_claim_gruppo'), ('leggi_variazioni_da'), ('leggi_wishlist_condivisa'), ('leggi_wishlist_sealed_condivisa'), ('log_admin_action'), ('ottieni_nicknames'), ('ottieni_o_crea_conversazione'), ('polvere_saldo'), ('reclama_carte_per_controllo_prezzi'), ('reclama_prodotti_sealed_per_controllo_prezzi'), ('registra_aiuto_gruppo'), ('registra_apertura_binder_pubblico'), ('registra_apertura_scaffale_pubblico'), ('registra_visita'), ('request_password_reset'), ('rifiuta_riga_richiesta'), ('rilascia_claim_controllo_prezzi'), ('rilascia_claim_controllo_prezzi_sealed'), ('rinomina_location'), ('riscatta_missione_completata'), ('riscatta_traguardo'), ('sblocca_riga_richiesta'), ('sblocca_utente'), ('segna_controllata_gruppo'), ('segna_controllata_gruppo_sealed'), ('segna_letti_conversazione'), ('segnala_conversazione'), ('set_carte_conteggi'), ('sposta_riga_in_correzione_manuale'), ('tagga_dispositivo_claim_gruppo'), ('tagga_dispositivo_claim_gruppo_sealed'), ('verifica_versione_minima')),
+tabelle_attese(nome) as (values ('achievement_catalogo'), ('activity_log'), ('admin_audit_log'), ('binder_carte'), ('binders'), ('blocchi_chat'), ('bustina_carte_possedute'), ('bustina_catalogo'), ('carte'), ('chat_restrizioni_utente'), ('coda_carte'), ('coda_wishlist'), ('conversazioni'), ('correzioni_manuali_carte'), ('foto_carte'), ('inventario_ricompense'), ('location'), ('messaggi'), ('missioni_completate'), ('movimenti_collezione'), ('ordini'), ('pending_requests'), ('preferenze_utente'), ('prodotti_sealed'), ('profiles'), ('richieste_scambio_righe'), ('scaffale_prodotti'), ('scaffali'), ('segnalazioni_bug'), ('set_carte'), ('set_carte_ignorate'), ('set_espansioni'), ('set_nascosti'), ('set_soglie_notificate'), ('storico_prezzi'), ('storico_valore_collezione'), ('traguardi_riscossi'), ('user_media'), ('wishlist'), ('wishlist_sealed'), ('work_in_progress')),
+bucket_attesi(nome) as (values ('bustina-assets'), ('bustina-immagini'), ('bustina-quotes'), ('bustina-testi'), ('default-assets'), ('foto-carte'), ('immagini-carte'), ('immaginivisibili'), ('user-media'))
+select 'RPC mancante' as tipo, r.nome from rpc_attese r
+ where not exists (select 1 from pg_proc p join pg_namespace n on n.oid=p.pronamespace
+                   where n.nspname='public' and p.proname=r.nome)
+union all
+select 'Tabella/vista mancante', t.nome from tabelle_attese t
+ where not exists (select 1 from information_schema.tables x
+                   where x.table_schema='public' and x.table_name=t.nome)
+union all
+select 'Bucket storage mancante', b.nome from bucket_attesi b
+ where not exists (select 1 from storage.buckets s where s.id=b.nome)
+order by 1,2;

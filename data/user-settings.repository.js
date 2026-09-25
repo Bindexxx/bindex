@@ -83,3 +83,11 @@ async function userSettingsUpsertAchievementVetrina(userId, ids) {
         aggiornato_il: new Date().toISOString(),
     });
 }
+
+// Spostata qui da ui/impostazioni.ui.js (pannello Connessioni) (audit 2026-09-25, B8): regola del progetto,
+// nessuna chiamata a supabaseClient fuori da data/*.repository.js.
+// Query minima (HEAD, nessuna riga scaricata) solo per verificare che
+// DB+auth rispondano.
+async function preferenzeUtentePing() {
+    return supabaseClient.from('preferenze_utente').select('owner_id', { count: 'exact', head: true });
+}

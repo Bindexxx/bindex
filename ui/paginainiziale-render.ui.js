@@ -11,8 +11,7 @@
 // Contiene: renderWidgetHome (il cuore visivo, disegna la griglia),
 // _potaContenutoFuoriTessera, _eseguiAzioneWidget, _spostaWidget,
 // _nascondiWidget, _apriPickerAggiungiWidget/_chiudiPickerAggiungiWidget,
-// _mostraWidget, _aggiungiIstanzaWidget, _testForzaTaglia2x2 (bottone
-// diagnostico usa-e-getta), toggleModificaWidgetHome.
+// _mostraWidget, _aggiungiIstanzaWidget, toggleModificaWidgetHome.
 //
 // NOTA EREDITATA DAL COMMENTO ORIGINALE (SEZIONE 2, qui sotto invariato):
 // _aggiungiIstanzaWidget richiama _apriRicercaCartaVetrina, che oggi vive
@@ -550,20 +549,8 @@ function _aggiungiIstanzaWidget(id) {
 // di phone.ui.js). Usa-e-getta secondo Claudio, vedi compilati precedenti.
 // ───────────────────────────────────────────────────────────────────────
 
-// STRUMENTO DIAGNOSTICO (Claudio, 2026-09-10) — forza il PRIMO widget
-// visibile a '2x2' cosi' si vede dal vivo quanto rende grande lo standard
-// minimo di zona icona, senza doverci arrivare trascinando a mano.
-// Usa-e-getta: modifica per davvero il widget (non e' un'anteprima finta),
-// quindi resta lì finché non lo ridimensioni di nuovo — è lo scopo,
-// vederlo esattamente come sarebbe per un utente vero.
-function _testForzaTaglia2x2() {
-    const w = (_layoutWidget || []).find(x => x.visibile);
-    if (!w) return;
-    w.size = '2x2';
-    w.mini = false;
-    _salvaLayoutWidget(false); // diagnostico, non conta come personalizzazione vera per le missioni
-    renderWidgetHome();
-}
+// _testForzaTaglia2x2() RIMOSSA (audit 2026-09-25): strumento diagnostico
+// usa-e-getta, il suo bottone non esiste più in index.html.
 
 // ───────────────────────────────────────────────────────────────────────
 // SEZIONE 4 — Modifica/drag/resize, peek, apertura/chiusura dettaglio

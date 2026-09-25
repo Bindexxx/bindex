@@ -602,6 +602,7 @@ let _ballSemaforoInterval = null;
 
 function _ballGiraSemaforo() {
     if (!BALL_ATTIVA || !_ballAnimazioniAttive()) return;
+    if (document.hidden) return; // audit 2026-09-25, M5: nessuna animazione a scheda nascosta
     if (_editModeWidget || document.body.classList.contains('phone-detail-open')) return;
 
     let ritardo = 0;

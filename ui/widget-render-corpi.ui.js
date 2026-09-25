@@ -61,7 +61,7 @@ const _ballCORPI = {
     // scomposizione arriva gia' pronta da storicoValoreConfronta().
     variazione_valore: (d) => {
         if (!d) return { inline: '', blocco: '' };
-        const eur = (v) => '€ ' + Math.abs(Number(v) || 0).toFixed(2);
+        const eur = (v) => formattaEuro(Math.abs(Number(v) || 0)); // formato unico, audit 2026-09-25 C2
         const segno = (v) => (Number(v) >= 0 ? '+' : '−');
 
         if (d.soloUnGiorno) {
@@ -395,8 +395,8 @@ const _ballCORPI = {
         if (d.voci && d.voci.length) {
             const massimo = d.voci[0][1] || 1;
             blocco = d.voci.slice(0, 3).map(([nome, n]) =>
-                _ballRigaBarra(nome, n, (n / massimo) * 100,
-                    `_ballAzioneRiga(event,'location','${String(nome).replace(/'/g, "\\'")}')`)).join('');
+                _ballRigaBarra(escapeHtml(nome), n, (n / massimo) * 100,
+                    `_ballAzioneRiga(event,'location','${escapeJsAttr(nome)}')`)).join('');
         }
         return { inline, blocco };
     },
@@ -514,11 +514,11 @@ const _ballCORPI = {
         const inline =
             '<p class="ball-k-tit">Location</p>' +
             `<div class="ball-k-big ball-k-mono">${d.voci.length}</div>` +
-            `<span class="ball-k-lab">${d.voci.length === 1 ? 'posizione' : 'posizioni'} · più piena ${prima[0]}</span>`;
+            `<span class="ball-k-lab">${d.voci.length === 1 ? 'posizione' : 'posizioni'} · più piena ${escapeHtml(prima[0])}</span>`;
 
         const blocco = d.voci.slice(0, 4).map(([nome, n]) =>
-            _ballRigaBarra(nome, n, (n / massimo) * 100,
-                `_ballAzioneRiga(event,'location','${String(nome).replace(/'/g, "\\'")}')`)
+            _ballRigaBarra(escapeHtml(nome), n, (n / massimo) * 100,
+                `_ballAzioneRiga(event,'location','${escapeJsAttr(nome)}')`)
         ).join('');
         return { inline, blocco };
     },
@@ -586,7 +586,7 @@ const _ballCORPI = {
 
         const blocco = conversazioni.map(c => {
             const label = (typeof escapeHtml === 'function' ? escapeHtml(c.label) : c.label);
-            const labelAttr = String(label).replace(/'/g, "\\'");
+            const labelAttr = escapeJsAttr(c.label); // audit 2026-09-25 M2
             return `<div class="ball-riga ball-clic" onclick="_ballAzioneRiga(event,'chat-conversazione','${c.ownerAltro}','${labelAttr}')"><span class="ball-nome">${label}</span><span class="ball-dato">${c.count}</span></div>`;
         }).join('');
         return { inline, blocco };

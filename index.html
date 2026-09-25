@@ -5496,10 +5496,9 @@
             <a class="nav-item" id="mNav-wishlist" onclick="switchTab('wishlist', this)">
                 <i class="fa-solid fa-bookmark"></i><span class="nav-label">Wishlist</span><span class="badge-pallino" data-badge-tab="wishlist" style="display:none;"></span>
             </a>
-            <!-- Binder — Stage 1 (Traccia A): vista grafica attivata.
-                 TEMPORANEO: mostra tutta la collezione, non ancora filtrata
-                 sul campo dedicato (Fase A0, non ancora fatta — vedi
-                 renderBinder() più sotto nel file). -->
+            <!-- Binder — sezione dei raccoglitori (multi-binder, Fase 2).
+                 Il vecchio commento "TEMPORANEO: mostra tutta la
+                 collezione" era superato: rimosso in audit 2026-09-25. -->
             <a class="nav-item" id="mNav-binder" onclick="switchTab('binder', this)">
                 <i class="fa-solid fa-layer-group"></i><span class="nav-label">Binder</span>
             </a>
@@ -6853,13 +6852,9 @@
                     <label style="display:block; font-size: 0.72rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.3rem;">NUOVA PASSWORD</label>
                     <input type="password" id="nuovaPasswordInput" placeholder="Almeno 6 caratteri" style="margin-bottom: 1rem;">
                     <button class="btn-main" onclick="cambiaPassword()"><i class="fa-solid fa-key"></i> Cambia Password</button>
-
-                    <!-- TEMPORANEO (26/08/2026): duplica il logout già presente
-                         nel menu Profilo (#profiloMenu), non raggiungibile/
-                         visibile nella visualizzazione attuale — vedi commento
-                         su logoutDaImpostazioni() in ui/auth.ui.js. DA
-                         RIMUOVERE quando quel problema sarà risolto. -->
-                    <button class="btn-secondary" style="margin-top:0.8rem;" onclick="logoutDaImpostazioni()"><i class="fa-solid fa-right-from-bracket"></i> Esci</button>
+                    <!-- Logout duplicato "Esci" RIMOSSO (audit 2026-09-25,
+                         decisione Claudio): il logout dal menu Profilo
+                         funziona, questo era un accesso TEMPORANEO del 26/08. -->
                 </div>
             </div>
 
@@ -8094,8 +8089,13 @@
     </div>
 
     <!-- SUPABASE JS -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+    <!-- Versione ESATTA (audit 2026-09-25, E1): con "@2" il sito caricava
+         sempre l'ultima release uscita, e un aggiornamento difettoso della
+         libreria poteva rompere il sito senza nessuna modifica nel repo.
+         Stessa versione in tutte le pagine: aggiornarla a mano, tutte
+         insieme. chart.js non è più caricato qui: lo scarica
+         ui/prices.ui.js solo all'apertura del grafico prezzo. -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.1"></script>
     <script src="config/supabase.js"></script>
     <!-- ui/log-diagnostico.ui.js: Fase 10, Step 3 (2026-09-13) — caricato
          SUBITO dopo supabase.js, il più presto possibile, così cattura
@@ -8341,7 +8341,12 @@
         // "anon public" (mai la service_role) — vedi le Row Level Security
         // policy sul progetto, sono loro l'unico scudo dato che questo codice
         // gira nel browser di chiunque visiti il sito.
-        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        // auth.storage (audit 2026-09-25, A1): la sessione va in localStorage
+        // o in sessionStorage a seconda di "Mantieni accesso" — vedi
+        // AUTH_STORAGE_SESSIONE in data/auth.repository.js.
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+            auth: { storage: AUTH_STORAGE_SESSIONE }
+        });
 
         // ── AVVIO APP — punto d'ingresso unico, eseguito al caricamento pagina ──
         window.onload = async () => {

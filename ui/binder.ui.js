@@ -467,68 +467,8 @@ async function impostaModalitaBinder(modalita) {
 // location/wishlist rimuovere qui non avrebbe un'azione univoca (andrebbe
 // cambiata la location della carta, o cancellata dalla wishlist: azioni
 // che vivono già altrove nel sito), quindi resta nascosto per quei due tipi.
-function renderBinderGrigliaImmagini() {
-    const binder = _bindersElenco.find(b => String(b.id) === String(_binderAttivo));
-    const permettiRimozione = binder && (binder.tipo === 'extra' || binder.tipo === 'scambio');
-    const eScambio = binder && binder.tipo === 'scambio';
-
-    const griglia = document.getElementById('binderGrid');
-    const contenitoreElenco = document.getElementById('binderElencoBody');
-    griglia.style.display = '';
-    if (contenitoreElenco) contenitoreElenco.style.display = 'none';
-
-    const layout = BINDER_LAYOUTS[_binderLayout] || BINDER_LAYOUTS['3x3'];
-    const perPagina = layout.cols * layout.rows;
-
-    const carte = _carteBinderAttivoCache.slice().sort((a, b) => {
-        const da = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-        const db = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-        return da - db;
-    });
-
-    const totalePagine = Math.max(1, Math.ceil(carte.length / perPagina));
-    if (_binderPagina > totalePagine - 1) _binderPagina = totalePagine - 1;
-    if (_binderPagina < 0) _binderPagina = 0;
-
-    const inizio = _binderPagina * perPagina;
-    const carteQuestaPagina = carte.slice(inizio, inizio + perPagina);
-
-    document.querySelectorAll('.binder-layout-btn').forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.layout === _binderLayout);
-    });
-
-    griglia.className = `binder-grid binder-grid-${_binderLayout}`;
-
-    let html = '';
-    for (let i = 0; i < perPagina; i++) {
-        const card = carteQuestaPagina[i];
-        if (card) {
-            const idAttr = String(card.id).replace(/'/g, "\\'");
-            const nomeAttr = escapeHtml(card.name || '').replace(/"/g, '&quot;'); // SICUREZZA 2026-09-01: escapeHtml PRIMA, vedi nota sotto
-            const immagineSrc = _urlImmagineVisualizzabile(card.immagine, 300);
-            html += `
-                <div class="binder-slot binder-slot-filled" onclick="${eScambio ? `apriModaleQuantitaScambio('${idAttr}')` : `apriImmagineIngrandita('${idAttr}')`}" title="${nomeAttr}">
-                    ${permettiRimozione ? `<button type="button" class="binder-slot-remove-btn" title="${eScambio ? 'Modifica quantità offerta' : 'Rimuovi dal Binder'}" aria-label="${eScambio ? 'Modifica quantità offerta' : 'Rimuovi dal Binder'}" onclick="event.stopPropagation(); ${eScambio ? `rimuoviDaScambioGriglia('${idAttr}')` : `rimuoviDalBinderExtra('${idAttr}')`}"><i class="fa-solid ${eScambio ? 'fa-pen' : 'fa-xmark'}"></i></button>` : ''}
-                    <div class="binder-slot-fallback"><i class="fa-solid fa-image"></i><span>${nomeAttr}</span></div>
-                    ${immagineSrc ? `<img src="${immagineSrc}" alt="${nomeAttr}" loading="lazy" onerror="this.remove();">` : ''}
-                    ${eScambio
-                        ? `<span class="binder-slot-qty-badge" title="Quantità offerta in Scambio">Offerte: ${card.quantitaOfferta ?? 0}</span>`
-                        : (card.qty > 1 ? `<span class="binder-slot-qty-badge" title="Hai ${card.qty} copie di questa carta — occupano un solo slot">×${card.qty}</span>` : '')}
-                </div>`;
-        } else {
-            html += `<div class="binder-slot binder-slot-empty"><i class="fa-solid fa-layer-group"></i></div>`;
-        }
-    }
-    griglia.innerHTML = html;
-
-    document.getElementById('binderPaginaLabel').textContent = carte.length
-        ? `Pagina ${_binderPagina + 1} di ${totalePagine}`
-        : 'Nessuna carta in questo binder';
-    document.getElementById('binderPrevBtn').disabled = _binderPagina <= 0;
-    document.getElementById('binderNextBtn').disabled = _binderPagina >= totalePagine - 1;
-    document.getElementById('binderEmptyMsg').style.display = carte.length ? 'none' : 'block';
-    document.getElementById('binderPagination').style.display = totalePagine > 1 ? 'flex' : 'none';
-}
+// renderBinderGrigliaImmagini() RIMOSSA (audit 2026-09-25): non più chiamata
+// da nessun punto del sito (sostituita dalle viste Elenco/Libro).
 
 // ── Aggiungi/Rimuovi dal binder extra (bottoni già esistenti in
 // Visualizzazione/Wishlist, ui/cards.ui.js) ─────────────────────────────
@@ -752,11 +692,8 @@ function _aggiornaBottoniScambioToggle(id) {
     });
 }
 
-// Click su uno slot della griglia del binder Scambio aperto — riapre lo
-// stesso modale, precompilato (vedi renderBinderGrigliaImmagini sotto).
-function rimuoviDaScambioGriglia(cartaId) {
-    apriModaleQuantitaScambio(cartaId);
-}
+// rimuoviDaScambioGriglia() RIMOSSA (audit 2026-09-25): era usata solo
+// dalla griglia renderBinderGrigliaImmagini, anch'essa rimossa.
 
 
 // ── Modalità elenco (parallela a renderViewTable di Visualizzazione, non

@@ -120,7 +120,7 @@
                     <span><code style="background:none; color:inherit; padding:0;">${escapeHtml(card.code)}</code> · ${escapeHtml(card.location || '—')}</span>
                 </div>
             `;
-            const prezzoTesto = (card.price != null ? Number(card.price) : 0).toFixed(2) + ' €';
+            const prezzoTesto = formattaEuro(card.price);
             document.getElementById('flipCardStatBoxes').innerHTML = `
                 <div><b>${prezzoTesto}</b><span>Prezzo</span></div>
                 <div><b>${card.cond ? escapeHtml(card.cond) : '—'}</b><span>Condizione</span></div>

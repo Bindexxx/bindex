@@ -52,3 +52,14 @@ async function sbloccaRigaRichiesta(rigaId, motivo) {
 async function concludiRigaRichiesta(rigaId, locationScelta) {
     return supabaseClient.rpc('concludi_riga_richiesta', { p_riga_id: rigaId, p_location_scelta: locationScelta || '?' });
 }
+
+// Spostata qui da ui/widget-richieste.ui.js (audit 2026-09-25, B8): regola del progetto,
+// nessuna chiamata a supabaseClient fuori da data/*.repository.js.
+// Conta le righe che richiedono un'azione del proprietario (in_attesa).
+async function richiesteScambioContaDaGestire(userId) {
+    return supabaseClient
+        .from('richieste_scambio_righe')
+        .select('id', { count: 'exact', head: true })
+        .eq('proprietario_id', userId)
+        .eq('stato_riga', 'in_attesa');
+}

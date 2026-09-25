@@ -18,16 +18,12 @@
 // è lo stesso file: solo il nome è cambiato. Nessuna collisione con
 // ui/home.ui.js.
 //
-// Caricato PRIMA di ui/phone.ui.js in index.html (che oggi contiene ancora
-// tutti i widget non ancora estratti — verranno spostati un file alla
-// volta nei prossimi step, vedi roadmap).
+// AGGIORNATO (audit 2026-09-25): ui/phone.ui.js NON esiste più — la
+// migrazione a un file per widget è completa.
 //
-// CATALOGO_WIDGET: dichiarato QUI come registro vuoto. Oggi (STEP 0) viene
-// popolato da ui/phone.ui.js con le 22 voci non ancora estratte (via
-// Object.assign, vedi commento in phone.ui.js al posto dove prima c'era la
-// dichiarazione). Nei prossimi step, ogni widget estratto smetterà di
-// vivere in quell'Object.assign e scriverà la propria voce direttamente
-// nel proprio file widget-<nome>.ui.js (es. CATALOGO_WIDGET.wishlist = {...}).
+// CATALOGO_WIDGET: dichiarato QUI come registro vuoto. Ogni widget scrive
+// la propria voce nel proprio file ui/widget-<nome>.ui.js
+// (es. CATALOGO_WIDGET.wishlist = {...}). Oggi: 28 voci in 24 file.
 //
 // ⚠ SECONDO GIRO DI RISTRUTTURAZIONE (avviato 2026-09-11, piano approvato
 // da Claudio in sessione): questo file (il MOTORE della home, non i
@@ -45,15 +41,13 @@ const CATALOGO_WIDGET = {};
 // ───────────────────────────────────────────────────────────────────────
 
 const ORDINE_WIDGET_DEFAULT = ['visualizzazione', 'inserimento', 'prezzi', 'binder', 'sealed'];
-// TEMPORANEO (Claudio, 2026-08-28): nessun limite, per poter provare tutti
-// i widget del catalogo insieme in home. Da RIPRISTINARE a 10 quando finito
+// NESSUN LIMITE (Claudio, 2026-08-28; riconfermato 2026-09-25 in audit:
+// "lascia illimitato"). Se un giorno servisse un tetto, il vecchio valore era 10
 // — è l'unica riga da cambiare, usata solo qui sotto e in _mostraWidget().
 const MAX_WIDGET_VISIBILI = Infinity;
-// TAGLIE_CICLO — SUPERATO dalla griglia a 6 colonne (2026-09-03). Resta
-// SOLO come elenco delle 4 taglie del vecchio modello a 2 colonne: serve a
-// _migraTagliaWidget() per riconoscere un layout salvato prima del cambio.
-// Non usarlo più come whitelist delle taglie ammesse: oggi sono libere.
-const TAGLIE_CICLO = ['1x1', '2x1', '1x2', '2x2'];
+// TAGLIE_CICLO RIMOSSA (audit 2026-09-25): superata dalla griglia a 6
+// colonne (2026-09-03) e non più letta da nessuno — _migraTagliaWidget()
+// riconosce i layout vecchi da sola.
 
 // ── GRIGLIA WIDGET: 6 COLONNE (Claudio, 2026-09-03) ─────────────────────
 // "Massima personalizzazione possibile e immaginabile": icone piccolissime
@@ -230,7 +224,6 @@ let _densitaCompatta = false;
 let _pollingWidgetInterval = null;
 let _pollingWidgetIntervalLento = null;
 let _resizeCorniceTimeout = null;
-let _cartaDelGiornoId = null;
 let _primoRenderWidgetFatto = false; // per la cascata d'ingresso, una sola volta per sessione
 
 // Identificatore univoco di RIGA in _layoutWidget — non l'id di catalogo:

@@ -11,26 +11,14 @@
 // _matchVisti, _segnaMatchVisti, _notificaUnaVolta, aggiornaBadgeMatch,
 // _aggiornaPallinoMenu, caricaMatch.
 //
-// NOTA: subito dopo l'header originale c'è un frammento di commento
-// orfano ("Sposta una carta dalla wishlist alla collezione..." + header
-// "GRAFICO ANDAMENTO PREZZO") che non corrisponde a nessuna funzione qui —
-// relitto di uno spostamento precedente (probabile riferimento a codice
-// ora in ui/prices.ui.js/widget-prezzi.ui.js), lasciato invariato come
-// tutto il resto (zero riscrittura), segnalato qui per completezza.
+// (Commento orfano "Sposta una carta dalla wishlist…" RIMOSSO, audit
+// 2026-09-25: relitto di uno spostamento precedente, nessuna funzione qui.)
 //
 // _aggiornaPallinoMenu() qui sotto è chiamata cross-file da
 // ui/queue-correzioni.ui.js dopo alcune azioni sulla coda. Nessuna
 // istruzione qui gira a tempo di caricamento script — l'ordine tra i due
 // file è indifferente.
 
-        // Sposta una carta dalla wishlist alla collezione vera e propria —
-        // equivalente sul sito del bottone "✓ Comprata" dell'estensione.
-        // Due passaggi separati (insert poi delete), non una transazione SQL
-        // unica: se il secondo fallisse dopo il primo, la carta resterebbe
-        // duplicata in entrambe le tabelle invece che sparire da tutte e due
-        // — un doppione visibile è facile da sistemare a mano, una carta
-        // persa no.
-        // ── GRAFICO ANDAMENTO PREZZO ──────────────────────────────────────────────
 
         // ── MATCH AUTOMATICO TRA AMICI ────────────────────────────────────────────
         // Due funzioni "security definer" sul database confrontano le tue
@@ -279,8 +267,12 @@
                 if (tabId === 'wishlist') {
                     const oggettoId = m.categoria === 'sealed' ? m.altro_prodotto_id : m.altra_carta_id;
                     const tipoRichiesta = m.categoria === 'sealed' ? 'sealed' : 'carta';
-                    const nomeAttr = String(m.mio_nome || '').replace(/'/g, "\\'");
-                    const personaAttr = persona.replace(/'/g, "\\'");
+                    // escapeJsAttr (audit 2026-09-25, M2): nome oggetto e nome
+                    // dell'ALTRO utente dentro onclick — prima era escapato
+                    // solo l'apostrofo. personaAttr parte dal nome grezzo
+                    // (non da 'persona', già HTML-escapato per la stampa).
+                    const nomeAttr = escapeJsAttr(m.mio_nome || '');
+                    const personaAttr = escapeJsAttr((m.altra_email || '').split('@')[0]);
                     bottone = `<button class="btn-secondary" style="padding:0.35rem 0.7rem; font-size:0.78rem; white-space:nowrap;"
                         onclick="apriRichiediMatch('${m.altro_owner_id}', '${oggettoId}', '${tipoRichiesta}', '${nomeAttr}', '${personaAttr}')">
                         <i class="fa-solid fa-paper-plane"></i> Richiedi</button>`;
@@ -288,11 +280,11 @@
 
                 if (tabId === 'scambio') {
                     return `<div style="display:flex; justify-content:space-between; align-items:center; padding:0.6rem 0; border-bottom:1px solid var(--border-color); gap:0.5rem;">
-                        <span style="font-size:0.85rem;"><strong>${escapeHtml(m.mio_nome)}</strong> (tuo${m.categoria === 'sealed' ? ' sealed' : ''}, ${Number(m.mio_prezzo || 0).toFixed(2)} €) — cercato da <strong>${persona}</strong>${m.altro_prezzo_obiettivo != null ? ` (fino a ${Number(m.altro_prezzo_obiettivo).toFixed(2)} €)` : ''}</span>
+                        <span style="font-size:0.85rem;"><strong>${escapeHtml(m.mio_nome)}</strong> (tuo${m.categoria === 'sealed' ? ' sealed' : ''}, ${formattaEuro(m.mio_prezzo || 0)}) — cercato da <strong>${persona}</strong>${m.altro_prezzo_obiettivo != null ? ` (fino a ${formattaEuro(m.altro_prezzo_obiettivo)})` : ''}</span>
                     </div>`;
                 }
                 return `<div style="display:flex; justify-content:space-between; align-items:center; padding:0.6rem 0; border-bottom:1px solid var(--border-color); gap:0.5rem;">
-                    <span style="font-size:0.85rem;"><strong>${escapeHtml(m.mio_nome)}</strong> (in wishlist${m.categoria === 'sealed' ? ' sealed' : ''}${m.mio_prezzo_obiettivo != null ? `, fino a ${Number(m.mio_prezzo_obiettivo).toFixed(2)} €` : ''}) — in scambio da <strong>${persona}</strong> a ${Number(m.altro_prezzo || 0).toFixed(2)} €</span>
+                    <span style="font-size:0.85rem;"><strong>${escapeHtml(m.mio_nome)}</strong> (in wishlist${m.categoria === 'sealed' ? ' sealed' : ''}${m.mio_prezzo_obiettivo != null ? `, fino a ${formattaEuro(m.mio_prezzo_obiettivo)}` : ''}) — in scambio da <strong>${persona}</strong> a ${formattaEuro(m.altro_prezzo || 0)}</span>
                     ${bottone}
                 </div>`;
             }).join('');

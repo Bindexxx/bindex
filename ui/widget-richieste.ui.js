@@ -14,11 +14,8 @@ CATALOGO_WIDGET.richieste = {
         // Conta solo le righe che richiedono un'azione dell'utente: da
         // proprietario (in_attesa da accettare/rifiutare) — le "inviate"
         // in attesa non richiedono un'azione MIA, solo pazienza.
-        const { count, error } = await supabaseClient
-            .from('richieste_scambio_righe')
-            .select('id', { count: 'exact', head: true })
-            .eq('proprietario_id', userId)
-            .eq('stato_riga', 'in_attesa');
+        // Query spostata in data/richieste-scambio.repository.js (audit 2026-09-25, B8).
+        const { count, error } = await richiesteScambioContaDaGestire(userId);
         if (error) { console.error('[widget-richieste] preview:', error.message); return { righe: ['—'], dati: { totale: 0 } }; }
         const totale = count || 0;
         return { righe: [totale > 0 ? `${totale} da gestire` : 'Nessuna in attesa'], dati: { totale } };

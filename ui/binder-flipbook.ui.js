@@ -63,14 +63,12 @@ async function _risolviCopertinaBinderPubblico(binderId) {
 
     let url = null;
     if (copertina.source === 'default') {
-        const { data: pub } = supabaseClient.storage.from('default-assets').getPublicUrl(copertina.storage_path);
-        url = pub?.publicUrl || null;
+        url = binderPubblicoUrlFile('default-assets', copertina.storage_path); // data/binder-pubblico.repository.js (audit 2026-09-25, B8)
     } else {
         // Upload personalizzato: bucket pubblico 'immaginivisibili',
         // sincronizzato dall'admin all'approvazione — vedi
         // _sincronizzaCopiaPubblica in ui/admin-requests.ui.js.
-        const { data: pub } = supabaseClient.storage.from('immaginivisibili').getPublicUrl(`binder/${_ownerUserId}/${binderId}.png`);
-        url = pub?.publicUrl || null;
+        url = binderPubblicoUrlFile('immaginivisibili', `binder/${_ownerUserId}/${binderId}.png`);
     }
     _copertinaRisolta = url || false;
     return url;

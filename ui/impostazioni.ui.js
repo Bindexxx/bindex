@@ -95,7 +95,7 @@ async function _connessioniRicontrolla() {
     // un errore di rete/auth invece lancia.
     (async () => {
         try {
-            const { error } = await supabaseClient.from('preferenze_utente').select('owner_id', { count: 'exact', head: true });
+            const { error } = await preferenzeUtentePing(); // data/user-settings.repository.js (audit 2026-09-25, B8)
             _badgeConnessione('statoConnSupabase', error ? 'errore' : 'ok', error ? 'Non raggiungibile' : 'Connesso');
         } catch (_) {
             _badgeConnessione('statoConnSupabase', 'errore', 'Non raggiungibile');

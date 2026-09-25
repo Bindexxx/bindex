@@ -30,8 +30,18 @@
 
 
         // Chiede la versione all'estensione (se installata) tramite
-        // externally_connectable — se non risponde entro 1.2s, la
+        // externally_connectable — se non risponde entro il timeout, la
         // consideriamo assente (disinstallata, o non è Chrome/Chromium).
+        //
+        // TIMEOUT 1,2s → 5s (audit 2026-09-25, M4). Il service worker di
+        // un'estensione MV3 addormentato può metterci più di 1,2s a
+        // svegliarsi e rispondere: rischio di un falso "estensione non
+        // installata/non aggiornata" a intermittenza. Alzarlo NON rallenta
+        // chi l'estensione non ce l'ha: in quel caso chrome.runtime non
+        // esiste proprio nella pagina (la funzione esce subito, prima riga
+        // sotto) oppure Chrome risponde subito con lastError. Il timeout
+        // scatta solo se l'estensione c'è ma tarda.
+        const TIMEOUT_RISPOSTA_ESTENSIONE_MS = 5000;
         function _chiediVersioneEstensione() {
             return new Promise((resolve) => {
                 if (!window.chrome || !chrome.runtime || !chrome.runtime.sendMessage) {
@@ -39,7 +49,7 @@
                     return;
                 }
                 let risolto = false;
-                const timeoutId = setTimeout(() => { if (!risolto) { risolto = true; resolve(null); } }, 1200);
+                const timeoutId = setTimeout(() => { if (!risolto) { risolto = true; resolve(null); } }, TIMEOUT_RISPOSTA_ESTENSIONE_MS);
                 try {
                     chrome.runtime.sendMessage(ID_ESTENSIONE_CARDSYNC, { type: 'CARDSYNC_GET_VERSION' }, (risposta) => {
                         if (risolto) return;
@@ -128,7 +138,7 @@
                     return;
                 }
                 let risolto = false;
-                const timeoutId = setTimeout(() => { if (!risolto) { risolto = true; resolve(false); } }, 1200);
+                const timeoutId = setTimeout(() => { if (!risolto) { risolto = true; resolve(false); } }, TIMEOUT_RISPOSTA_ESTENSIONE_MS);
                 try {
                     chrome.runtime.sendMessage(ID_ESTENSIONE_CARDSYNC, { type: 'CARDSYNC_GET_AIUTA_GRUPPO' }, (risposta) => {
                         if (risolto) return;
@@ -264,7 +274,14 @@
                 // cambia solo cosa c'è sotto: il form, o un solo bottone
                 // "Continua come..." per chi deve solo confermare.
                 await _mostraStatoLoginOControllo();
-            } catch (_) { /* silenzioso: un controllo fallito non deve mai bloccare il sito */ }
+            } catch (e) {
+                // Un controllo fallito non deve mai bloccare il sito — ma
+                // prima l'errore spariva del tutto (catch muto): se qualcosa
+                // qui dentro lanciava, il pannello di login poteva non
+                // comparire mai senza lasciare traccia. Ora finisce nel log
+                // diagnostico (audit 2026-09-25, M3). Comportamento invariato.
+                console.error('[ingresso] controllo estensione/login fallito:', e);
+            }
         }
 
 

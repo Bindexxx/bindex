@@ -156,7 +156,7 @@ async function renderPaginaMatch() {
         persona: (m.altra_email || '').split('@')[0] || 'Utente',
         ownerAltro: m.altro_owner_id,
         binderAltro: m.altro_binder_id || null, // presente solo dopo la migration 29
-        testo: `<strong>${escapeHtml(m.mio_nome)}</strong> (tuo, in Scambio, ${Number(m.mio_prezzo || 0).toFixed(2)} €) — lo cerca${m.altro_prezzo_obiettivo != null ? ` fino a ${Number(m.altro_prezzo_obiettivo).toFixed(2)} €` : ''}`,
+        testo: `<strong>${escapeHtml(m.mio_nome)}</strong> (tuo, in Scambio, ${formattaEuro(m.mio_prezzo || 0)}) — lo cerca${m.altro_prezzo_obiettivo != null ? ` fino a ${formattaEuro(m.altro_prezzo_obiettivo)}` : ''}`,
         richiedibile: false, // l'oggetto è mio — nulla da richiedere qui
     }));
     const righeWishlist = (dataWishlist || []).map(m => ({
@@ -164,7 +164,7 @@ async function renderPaginaMatch() {
         persona: (m.altra_email || '').split('@')[0] || 'Utente',
         ownerAltro: m.altro_owner_id,
         binderAltro: m.altro_binder_id || null,
-        testo: `<strong>${escapeHtml(m.mio_nome)}</strong> (tua, in Wishlist${m.mio_prezzo_obiettivo != null ? `, fino a ${Number(m.mio_prezzo_obiettivo).toFixed(2)} €` : ''}) — ce l'ha in Scambio a ${Number(m.altro_prezzo || 0).toFixed(2)} €`,
+        testo: `<strong>${escapeHtml(m.mio_nome)}</strong> (tua, in Wishlist${m.mio_prezzo_obiettivo != null ? `, fino a ${formattaEuro(m.mio_prezzo_obiettivo)}` : ''}) — ce l'ha in Scambio a ${formattaEuro(m.altro_prezzo || 0)}`,
         richiedibile: true,
         oggettoId: m.altra_carta_id,
         tipoRichiesta: 'carta',
@@ -178,7 +178,7 @@ async function renderPaginaMatch() {
         persona: (m.altra_email || '').split('@')[0] || 'Utente',
         ownerAltro: m.altro_owner_id,
         binderAltro: null, // gli Scaffali Scambio non hanno ancora un link diretto da qui
-        testo: `<strong>${escapeHtml(m.mio_nome)}</strong> (tuo sealed, in Scambio, ${Number(m.mio_prezzo || 0).toFixed(2)} €) — lo cerca${m.altro_prezzo_obiettivo != null ? ` fino a ${Number(m.altro_prezzo_obiettivo).toFixed(2)} €` : ''}`,
+        testo: `<strong>${escapeHtml(m.mio_nome)}</strong> (tuo sealed, in Scambio, ${formattaEuro(m.mio_prezzo || 0)}) — lo cerca${m.altro_prezzo_obiettivo != null ? ` fino a ${formattaEuro(m.altro_prezzo_obiettivo)}` : ''}`,
         richiedibile: false,
     }));
     const righeWishlistSealed = (dataWishlistSealed || []).map(m => ({
@@ -186,7 +186,7 @@ async function renderPaginaMatch() {
         persona: (m.altra_email || '').split('@')[0] || 'Utente',
         ownerAltro: m.altro_owner_id,
         binderAltro: null,
-        testo: `<strong>${escapeHtml(m.mio_nome)}</strong> (tua sealed, in Wishlist${m.mio_prezzo_obiettivo != null ? `, fino a ${Number(m.mio_prezzo_obiettivo).toFixed(2)} €` : ''}) — ce l'ha in Scambio a ${Number(m.altro_prezzo || 0).toFixed(2)} €`,
+        testo: `<strong>${escapeHtml(m.mio_nome)}</strong> (tua sealed, in Wishlist${m.mio_prezzo_obiettivo != null ? `, fino a ${formattaEuro(m.mio_prezzo_obiettivo)}` : ''}) — ce l'ha in Scambio a ${formattaEuro(m.altro_prezzo || 0)}`,
         richiedibile: true,
         oggettoId: m.altro_prodotto_id,
         tipoRichiesta: 'sealed',
@@ -245,7 +245,7 @@ function _matchRaggruppaPerPersona(righe, nicknameMap) {
     righe.forEach(r => { (perPersona[r.ownerAltro] ||= []).push(r); });
     return Object.entries(perPersona).map(([ownerAltro, righeOwner]) => {
         const label = nicknameMap[ownerAltro] || righeOwner[0].persona;
-        return { ownerAltro, label, labelSafe: escapeHtml(label).replace(/'/g, "\\'"), righe: righeOwner };
+        return { ownerAltro, label, labelSafe: escapeJsAttr(label), /* audit 2026-09-25 M2 */ righe: righeOwner };
     });
 }
 
@@ -299,7 +299,7 @@ function _matchRigaHtml(r, eCerchi) {
     // (Binder + Nascondi) nel menu "⋯". Tab "Lo hai tu": nulla da
     // richiedere (è tuo), azione primaria = Binder, "⋯" ha solo Nascondi.
     const azionePrimaria = eCerchi
-        ? `<button type="button" class="match-icobtn" onclick="event.stopPropagation(); apriRichiediMatch('${r.ownerAltro}', '${r.oggettoId}', '${r.tipoRichiesta}', '${String(r.nomeOggetto).replace(/'/g, "\\'")}', '${String(r.persona).replace(/'/g, "\\'")}')" title="Richiedi" aria-label="Richiedi"><i class="fa-solid fa-paper-plane"></i></button>`
+        ? `<button type="button" class="match-icobtn" onclick="event.stopPropagation(); apriRichiediMatch('${r.ownerAltro}', '${r.oggettoId}', '${r.tipoRichiesta}', '${escapeJsAttr(r.nomeOggetto)}', '${escapeJsAttr(r.persona)}')" title="Richiedi" aria-label="Richiedi"><i class="fa-solid fa-paper-plane"></i></button>`
         : `<button type="button" class="match-icobtn" onclick="event.stopPropagation(); _apriBinderAltruiMatch('${r.ownerAltro}', '${r.binderAltro || ''}')" title="Vai al binder" aria-label="Vai al binder"><i class="fa-solid fa-layer-group"></i></button>`;
     const voceMenu = eCerchi
         ? `<button type="button" onclick="_matchChiudiMenuAperto(); _apriBinderAltruiMatch('${r.ownerAltro}', '${r.binderAltro || ''}')"><i class="fa-solid fa-layer-group"></i> Vai al binder</button>

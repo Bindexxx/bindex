@@ -21,7 +21,7 @@ CATALOGO_WIDGET.scaffali = {
     preview: async () => {
         const userId = await authGetUserId();
         if (!userId) return { righe: ['—'], dati: { totale: 0 } };
-        const { count, error } = await supabaseClient.from('scaffali').select('id', { count: 'exact', head: true }).eq('owner_id', userId);
+        const { count, error } = await scaffaliConta(userId); // data/scaffali.repository.js (audit 2026-09-25, B8)
         if (error) { console.error('[widget-scaffali] preview:', error.message); return { righe: ['—'], dati: { totale: 0 } }; }
         const totale = count || 0;
         return { righe: [`${totale} scaffal${totale === 1 ? 'e' : 'i'}`], dati: { totale } };

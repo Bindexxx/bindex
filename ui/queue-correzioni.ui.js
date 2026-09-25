@@ -33,7 +33,9 @@
 
             lista.innerHTML = data.map(r => {
                 const opzioni = Array.isArray(r.opzioni_disambiguazione) ? r.opzioni_disambiguazione : [];
-                const nomeAttr = r.nome.replace(/'/g, "\\'");
+                // escapeJsAttr (audit 2026-09-25, M2): nomi carta ed etichette
+                // Cardmarket possono contenere " — prima rompevano i bottoni.
+                const nomeAttr = escapeJsAttr(r.nome);
                 const idOpzioni = 'opz-' + r.id;
                 const filtroHtml = opzioni.length > 8 ? `
                     <input type="text" placeholder="Filtra tra le ${opzioni.length} opzioni..." oninput="_filtraOpzioniDisambiguazione('${idOpzioni}', this.value)" style="margin-bottom:0.3rem; font-size:0.75rem; padding:0.4rem 0.6rem;">
@@ -45,8 +47,8 @@
                         ${filtroHtml}
                         <div id="${idOpzioni}" style="display:flex; flex-direction:column; gap:0.3rem; max-height:280px; overflow-y:auto;">
                             ${opzioni.map(o => `
-                                <div data-filtro-testo="${(o.label || '').toLowerCase()}" style="display:flex; align-items:stretch; gap:0.3rem;">
-                                    <button class="btn-secondary" style="flex:1; text-align:left; font-size:0.75rem; padding:0.4rem 0.6rem;" onclick="sceglieOpzioneDisambiguazione('${r.id}', '${(o.label || '').replace(/'/g, "\\'")}', '${(o.urlSingles || '').replace(/'/g, "\\'")}')">▸ ${escapeHtml(o.label || o.urlSingles || 'opzione senza nome')}</button>
+                                <div data-filtro-testo="${escapeHtml((o.label || '').toLowerCase())}" style="display:flex; align-items:stretch; gap:0.3rem;">
+                                    <button class="btn-secondary" style="flex:1; text-align:left; font-size:0.75rem; padding:0.4rem 0.6rem;" onclick="sceglieOpzioneDisambiguazione('${r.id}', '${escapeJsAttr(o.label || '')}', '${escapeJsAttr(o.urlSingles || '')}')">▸ ${escapeHtml(o.label || o.urlSingles || 'opzione senza nome')}</button>
                                     ${o.urlSingles ? `<a href="${o.urlSingles}" target="_blank" onclick="event.stopPropagation()" class="btn-secondary" style="flex-shrink:0; padding:0.4rem 0.6rem;" title="Apri su Cardmarket per vederla prima di scegliere"><i class="fa-solid fa-arrow-up-right-from-square"></i></a>` : ''}
                                 </div>
                             `).join('')}
