@@ -236,13 +236,19 @@
     <div class="card">
       <h3 style="margin-top:0;">Attiva un Work in Progress</h3>
       <div class="search-bar" style="flex-wrap:wrap; gap:0.6rem;">
-        <select id="wipTargetTipo">
+        <select id="wipTargetTipo" onchange="_wipAggiornaCampoId()">
           <option value="widget">Widget Home</option>
           <option value="pagina">Pagina</option>
           <option value="binder_speciale">Binder speciale (non ancora verificato lato client)</option>
           <option value="funzione">Singola funzione (non ancora verificato lato client)</option>
         </select>
-        <input type="text" id="wipTargetId" placeholder="id (es. bustina, dafare, scambio...)" style="min-width:220px;">
+        <!-- 2026-09-26: tendina con gli id VERI (quelli che arrivano ad
+             apriDettaglioWidget, dove il WIP viene controllato) invece del
+             testo libero. "Altro…" (e i tipi binder/funzione, che non hanno
+             un elenco fisso) riaprono il campo di testo. Elenco in
+             ui/admin-wip.ui.js (WIP_BERSAGLI). -->
+        <select id="wipTargetScelta" onchange="_wipAggiornaCampoId()" style="min-width:220px;"></select>
+        <input type="text" id="wipTargetId" placeholder="id del bersaglio" style="min-width:220px; display:none;">
         <select id="wipMessaggio">
           <option value="Un Ditto ha copiato qualche impostazione di troppo. Stiamo sistemando.">Un Ditto ha copiato qualche impostazione di troppo…</option>
           <option value="Il Professor Oak sta facendo un controllo qualità. Torniamo presto.">Il Professor Oak sta facendo un controllo qualità…</option>

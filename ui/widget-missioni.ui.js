@@ -75,12 +75,10 @@
 // "Permanenti" qui non avrebbe più nulla di stabile da mostrare ed è stato
 // RIMOSSO (Claudio: "Va benissimo, rimuovi la tab") — restano solo
 // Oggi/Settimana/Mese. La settima missione una_tantum,
-// m95_il_tuo_telefono, RESTA nel catalogo missioni per ora (rimandata,
-// metrica non adatta a un traguardo permanente senza lavoro dedicato) — ma
-// non essendoci più un tab "Permanenti" non è più visibile da nessuna
-// parte in questa pagina; MOTORE_MISSIONI continua comunque a valutarla e
-// ad assegnarne la ricompensa in automatico quando soddisfatta (il motore
-// non dipende dalla UI dei tab).
+// m95_il_tuo_telefono, è diventata anch'essa un traguardo il 2026-09-26
+// (t_il_tuo_telefono, visibile in Achievement — vedi
+// ui/missioni-catalogo.ui.js e sql/79): oggi non esiste più nessuna
+// missione una_tantum.
 //
 // CONSOLIDAMENTO FATTO NELLO STEP 14 (invariato): avvisi CSBar + beep +
 // rilettura saldo polvere sono in _missioniNotificaCompletamenti(), dentro

@@ -368,7 +368,16 @@ async function _missioneAggancioPersonalizzaLayout() {
         if (!userId) return;
         const oggi = new Date().toISOString().slice(0, 10);
         await missioneRiscattaCompletamento('m94_personalizza', 'giornaliera', oggi);
-        await missioneRiscattaCompletamento('m95_il_tuo_telefono', 'una_tantum', 'sempre');
+        // 2026-09-26: m95_il_tuo_telefono è diventata il TRAGUARDO
+        // t_il_tuo_telefono (Claudio: "Traguardo", sql/79). La RPC torna
+        // true solo la prima volta (poi UNIQUE → false, nessun doppio
+        // premio): solo allora avviso + popup Achievement, come per ogni
+        // altro traguardo (_missioniNotificaCompletamenti, ui/missioni.ui.js).
+        const { data: nuovo } = await traguardoRiscatta('t_il_tuo_telefono');
+        if (nuovo && typeof _missioniNotificaCompletamenti === 'function' && typeof CATALOGO_TRAGUARDI !== 'undefined') {
+            const t = CATALOGO_TRAGUARDI.find(x => x.id === 't_il_tuo_telefono');
+            if (t) _missioniNotificaCompletamenti([], [t]);
+        }
     } catch (_) { /* silenzioso, vedi commento sopra */ }
 }
 

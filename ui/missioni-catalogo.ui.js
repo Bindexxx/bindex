@@ -457,10 +457,10 @@ const CATALOGO_MISSIONI = [
       finestra: 'giornaliera', metrica: 'layout_modificato_periodo', operatore: '>=', valore: 1,
       ricompensa: { tipo: 'polvere', quantita: 3 } },
 
-    { id: 'm95_il_tuo_telefono', titolo: 'Il tuo telefono', categoria: 'home',
-      finestra: 'una_tantum', metrica: 'layout_modificato_periodo', operatore: '>=', valore: 1,
-      ricompensa: { tipo: 'polvere', quantita: 5 },
-      nota: 'duplicato concettuale di m94' },
+    // m95_il_tuo_telefono RIMOSSA (2026-09-26, Claudio: "Traguardo") —
+    // era l'ultima missione una_tantum, invisibile da quando non c'è più la
+    // tab "Permanenti". Ora è il traguardo t_il_tuo_telefono (vedi
+    // TRAGUARDI_SINGOLI sotto), stessa ricompensa, sql/79.
 
     { id: 'm99_super_giornata', titolo: 'Super giornata', categoria: 'meta',
       finestra: 'giornaliera', metrica: 'missioni_completate_periodo', operatore: '>=', valore: 7,
@@ -719,6 +719,19 @@ const SCALA_BINDER_VISITATI = _generaScalaTraguardi('t_binder_visitati', 'binder
 
 // Traguardi singoli (non in scala)
 const TRAGUARDI_SINGOLI = [
+    // 2026-09-26 (Claudio: m95 → "Traguardo"): ex missione una_tantum
+    // m95_il_tuo_telefono. Sbloccato SOLO dall'aggancio diretto
+    // _missioneAggancioPersonalizzaLayout() in ui/paginainiziale.ui.js
+    // (stesso punto che assegnava m95), mai dal motore: la metrica
+    // layout_personalizzato_mai è fissata a false in raccogliDati()
+    // (ui/missioni.ui.js), perché nessun dato sul DB dice se il layout è
+    // mai stato cambiato. Ricompensa e sblocco già dato a chi aveva
+    // completato m95: sql/79. Categoria 'home': una categoria in più tra i
+    // traguardi (6 invece di 5) — t_collezionista_completo resta a soglia 5.
+    { id: 't_il_tuo_telefono', titolo: 'Il tuo telefono', categoria: 'home',
+      metrica: 'layout_personalizzato_mai', operatore: '==', valore: true,
+      ricompensa: { tipo: 'polvere', quantita: 5 } },
+
     { id: 't_giorno_impeccabile', titolo: 'Giorno impeccabile', categoria: 'meta',
       metrica: 'giorno_perfetto_mai', operatore: '==', valore: true,
       ricompensa: { tipo: 'bustina', quantita: 1 },
@@ -894,6 +907,7 @@ const _FRASI_TRAGUARDO = {
     percentuale_traguardi_sbloccati: { testo: v => `Sblocca il ${v}% dei traguardi disponibili del catalogo.` },
     doppioni_totali: { frase: v => `${v} ${v === 1 ? 'doppione' : 'doppioni'} in collezione` },
     giorno_perfetto_mai: { testo: () => 'Completa il 100% delle missioni assegnate in un giorno, almeno una volta.' },
+    layout_personalizzato_mai: { testo: () => 'Personalizza la Home per la prima volta: sposta, nascondi, aggiungi o ridimensiona un widget.' },
     location_distinte: { frase: v => `${v} location${v === 1 ? '' : ' diverse'}` },
     missioni_completate_totale: { frase: v => `${v} ${v === 1 ? 'missione completata' : 'missioni completate'} in totale` },
     valore_collezione: { frase: v => `${v} € di valore totale della collezione` },

@@ -35,9 +35,70 @@ async function caricaWip() {
     `).join('');
 }
 
+// ── Bersagli validi (2026-09-26, Claudio: "trasforma in tendina") ─────
+// Sono gli id che arrivano davvero ad apriDettaglioWidget() in
+// ui/paginainiziale-dettaglio.ui.js, l'unico punto dove il WIP viene
+// controllato: def.tab || id di CATALOGO_WIDGET, più le destinazioni
+// aperte direttamente (dafare, impostazioni, primopiano). Copia locale
+// voluta (admin.html non carica il catalogo widget di index): se nasce un
+// widget/pagina nuovo, va aggiunto anche qui.
+const WIP_BERSAGLI = [
+    ['achievement', 'Achievement'],
+    ['binder', 'Binders'],
+    ['bustina', 'Bustina'],
+    ['dafare', 'Centro operativo (Da fare)'],
+    ['chat', 'Chat'],
+    ['condividi', 'Condividi'],
+    ['contributi', 'Contributi al gruppo'],
+    ['doppioni', 'Doppioni'],
+    ['impostazioni', 'Impostazioni (anche widget Estensione)'],
+    ['primopiano', 'In primo piano'],
+    ['inserimento', 'Inserimento'],
+    ['location', 'Location'],
+    ['match', 'Match trovati'],
+    ['missioni', 'Missioni'],
+    ['polvere', 'Polvere'],
+    ['prezzi', 'Prezzi (anche Prezzi aggiornati)'],
+    ['richieste', 'Richieste'],
+    ['scaffali', 'Scaffali'],
+    ['sealed', 'Sealed'],
+    ['set', 'Set'],
+    ['valore', 'Valore collezione'],
+    ['variazione', 'Variazione valore'],
+    ['visualizzazione', 'Visualizzazione (anche Ultime aggiunte)'],
+    ['wishlist', 'Wishlist'],
+];
+const WIP_SCELTA_ALTRO = '__altro__';
+
+function _wipRiempiTendina() {
+    const sel = document.getElementById('wipTargetScelta');
+    if (!sel || sel.options.length) return;
+    sel.innerHTML = '<option value="">— Scegli il bersaglio —</option>'
+        + WIP_BERSAGLI.map(([id, nome]) => `<option value="${id}">${nome} (${id})</option>`).join('')
+        + `<option value="${WIP_SCELTA_ALTRO}">Altro… (scrivi l'id)</option>`;
+}
+
+// Tendina per widget/pagina; campo di testo per binder speciale/funzione
+// (nessun elenco fisso) o quando si sceglie "Altro…".
+function _wipAggiornaCampoId() {
+    _wipRiempiTendina();
+    const tipo = document.getElementById('wipTargetTipo').value;
+    const sel = document.getElementById('wipTargetScelta');
+    const input = document.getElementById('wipTargetId');
+    const conElenco = (tipo === 'widget' || tipo === 'pagina');
+    sel.style.display = conElenco ? '' : 'none';
+    input.style.display = (!conElenco || sel.value === WIP_SCELTA_ALTRO) ? '' : 'none';
+}
+
+document.addEventListener('DOMContentLoaded', _wipAggiornaCampoId);
+
 async function attivaWip() {
     const targetTipo = document.getElementById('wipTargetTipo').value;
-    const targetId = document.getElementById('wipTargetId').value.trim();
+    const scelta = document.getElementById('wipTargetScelta').value;
+    const conElenco = (targetTipo === 'widget' || targetTipo === 'pagina');
+    const targetId = (conElenco && scelta !== WIP_SCELTA_ALTRO)
+        ? scelta
+        : document.getElementById('wipTargetId').value.trim();
     const messaggio = document.getElementById('wipMessaggio').value;
 
     if (!targetId) { mostraStatus('Inserisci l\'id del bersaglio (widget/pagina/...).', false); return; }
@@ -50,6 +111,8 @@ async function attivaWip() {
 
     mostraStatus('🚧 Work in Progress attivato.', true);
     document.getElementById('wipTargetId').value = '';
+    document.getElementById('wipTargetScelta').value = '';
+    _wipAggiornaCampoId();
     caricaWip();
 }
 

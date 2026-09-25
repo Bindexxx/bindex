@@ -445,6 +445,9 @@ const MOTORE_MISSIONI = {
             // l'aggancio diretto. Zittisce solo un avviso fuorviante che
             // segnalava un buco senza mai aver avuto effetti pratici.
             layout_modificato_periodo: 0,
+            // 2026-09-26: stessa logica per il traguardo t_il_tuo_telefono
+            // (ex m95): sbloccato solo dall'aggancio diretto, mai da qui.
+            layout_personalizzato_mai: false,
             // OTTIMIZZAZIONE (Claudio, 2026-09-10, dallo screenshot Network
             // con decine di POST 409 su traguardi_riscossi): il dato per
             // saltare i traguardi GIA' sbloccati prima di ritentare l'insert

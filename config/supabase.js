@@ -1,6 +1,7 @@
 // ── config/supabase.js ───────────────────────────────────────────────────
 // Fonte unica di URL e chiave anon Supabase, condivisa da tutte le pagine
-// del sito (index, admin, scambio, sealed, wishlist).
+// del sito (index, admin, binder-pubblico, scaffali-pubblico, sealed,
+// wishlist).
 //
 // Va caricato con <script src="config/supabase.js"></script> DOPO lo script
 // del CDN @supabase/supabase-js e PRIMA dello script inline di ciascuna
@@ -25,7 +26,10 @@
 // Level Security policy sul progetto, sono loro l'unico scudo dato che
 // questo codice gira nel browser di chiunque visiti il sito.
 //
-// ── PROGETTO DI TEST (Bindexxx / xpfibrzsffurdlypxnrw) ──────────────────
+// ── PROGETTO SUPABASE (xpfibrzsffurdlypxnrw) ─────────────────────────────
+// È l'UNICO progetto (nessun altro Supabase/repo/sito). Oggi è in fase di
+// test; quando diventerà ufficiale si cancellano account e dati, la
+// struttura del database resta questa (Claudio, 2026-09-25).
 const SUPABASE_URL = 'https://xpfibrzsffurdlypxnrw.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhwZmlicnpzZmZ1cmRseXB4bnJ3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODczOTU0MzYsImV4cCI6MjEwMjk3MTQzNn0.k5eELxNA3HkWdslxoqIL_IR8qFZ1W0j_IWZugE2GVCg';
 
