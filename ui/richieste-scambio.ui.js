@@ -37,6 +37,10 @@ const STATO_RIGA_LABEL = {
 
 
 async function apriPaginaRichieste() {
+    // Restyle FASE 2 (2026-09-30): la tessera Richieste tiene una cache di
+    // 60s; aprendo la pagina (e dopo ogni azione, che la riapre) si svuota,
+    // così al ritorno in home la tessera è già aggiornata.
+    if (typeof _widgetRichiesteSvuotaCache === 'function') _widgetRichiesteSvuotaCache();
     const userId = await authGetUserId();
     if (!userId) return;
 

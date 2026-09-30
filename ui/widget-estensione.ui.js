@@ -25,6 +25,33 @@
 //   confermata coerente.
 // ───────────────────────────────────────────────────────────────────────
 
+// Ultima versione pubblicata (releases/latest-version.txt), letta al
+// massimo ogni 10 minuti: il render della home gira ogni 15s. È un file
+// statico dello stesso sito, non Supabase.
+let _widgetEstensioneUltima = { quando: 0, versione: null };
+async function _widgetEstensioneUltimaVersione() {
+    if (_widgetEstensioneUltima.versione && Date.now() - _widgetEstensioneUltima.quando < 10 * 60 * 1000) return _widgetEstensioneUltima.versione;
+    try {
+        const r = await fetch('releases/latest-version.txt?t=' + Date.now(), { cache: 'no-store' });
+        const testo = r.ok ? (await r.text()).trim() : '';
+        if (testo) _widgetEstensioneUltima = { quando: Date.now(), versione: testo };
+    } catch (_) { /* rete assente: nessun avviso, meglio che uno falso */ }
+    return _widgetEstensioneUltima.versione;
+}
+
+// "Aggiorna" / "Come installarla" dalla tessera: le STESSE istruzioni del
+// pannello d'ingresso (comando che scarica releases/aggiorna_cardsync.bat,
+// mostraIstruzioniInstallazione in ui/extension.ui.js), non un flusso nuovo.
+// Su un dispositivo non Windows lo script non gira: lì si apre Impostazioni.
+function _widgetEstensioneApriIstruzioni(aggiornamento) {
+    if (typeof _editModeWidget !== 'undefined' && _editModeWidget) return;
+    if (typeof _piattaformaNonWindows === 'function' && _piattaformaNonWindows()) { apriDettaglioWidget('impostazioni', null); return; }
+    _versioneVecchiaRilevata = !!aggiornamento;
+    if (_widgetEstensioneUltima.versione) _ultimaVersioneRichiesta = _widgetEstensioneUltima.versione;
+    _apriPannelloCardsync();
+    mostraIstruzioniInstallazione();
+}
+
 // ── VOCE DI CATALOGO ──────────────────────────────────────────────────
     // Sbloccato (Claudio, 2026-08-27): extension.ui.js letto per intero in
     // questa sessione. _chiediVersioneEstensione()/_chiediAiutaGruppoEstensione()
@@ -33,15 +60,21 @@
     // query nuove, stessa filosofia degli altri widget.
 CATALOGO_WIDGET.estensione = {
         titolo: 'Estensione', icona: 'fa-link',
+        // RESTYLE BINDEX FASE 2 (2026-09-30, tavola "Estensione"): confronto
+        // con releases/latest-version.txt per "Aggiornamento disponibile",
+        // stessa regola di controlloIngressoCardsync (ui/extension.ui.js).
+        // La versione "su questo computer" è quella che l'estensione stessa
+        // risponde (CARDSYNC_GET_VERSION): il sito la riceve davvero.
         preview: async () => {
             const versione = await _chiediVersioneEstensione();
-            if (!versione) return { righe: ['Non rilevata'], rilevata: false, dati: { rilevata: false } };
-            const aiutaGruppo = await _chiediAiutaGruppoEstensione();
+            if (!versione) return { righe: ['non rilevata'], rilevata: false, dati: { rilevata: false } };
+            const [aiutaGruppo, ultima] = await Promise.all([_chiediAiutaGruppoEstensione(), _widgetEstensioneUltimaVersione()]);
+            const aggiornamento = !!(ultima && typeof versioneMaggioreSito === 'function' && versioneMaggioreSito(ultima, versione));
             return {
-                righe: [`v${versione}`, aiutaGruppo ? 'Aiuta il gruppo: attivo' : 'Aiuta il gruppo: no'],
+                righe: [aggiornamento ? `aggiornamento disponibile: v${ultima}` : `attiva · v${versione}`],
                 stato: aiutaGruppo ? 'ok' : undefined,
                 rilevata: true,
-                dati: { rilevata: true, versione, aiutaGruppo: !!aiutaGruppo },
+                dati: { rilevata: true, versione, aiutaGruppo: !!aiutaGruppo, ultima, aggiornamento },
             };
         },
         // Click: porta l'estensione in primo piano (stessa funzione già

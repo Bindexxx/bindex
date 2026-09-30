@@ -152,9 +152,43 @@ CATALOGO_WIDGET.suggerimento = {
 
             _rilevaTransizioniDaFare(segnali); // storico 24h — vedi sopra la funzione
 
-            if (segnali.length === 0) return { righe: ['Tutto in ordine'], stato: 'ok', dati: { segnali: [] } };
+            // RESTYLE BINDEX FASE 2 (2026-09-30, tavola "Tessera Centro
+            // operativo"): stessi segnali di sempre, stesso ordine, ma
+            // ciascuno sa in quale sezione della tessera va:
+            //   'fare'        → "Da fare adesso" (bordo rosso, conta nel badge)
+            //   'opportunita' → "Opportunità"
+            //   missioni e gruppo → riquadri in fondo (non sono voci)
+            // I campi di prima (id/testo/stato/tab) restano identici: la
+            // pagina Da fare e lo storico 24h li leggono così.
+            const META = {
+                coda_errori:             { gruppo: 'fare', icona: 'fa-triangle-exclamation', sotto: 'non trovate su Cardmarket' },
+                prezzi_scaduti:          { gruppo: 'fare', icona: 'fa-tags', sotto: `mai controllati o più vecchi di ${typeof SOGLIA_GIORNI_PREZZO_SCADUTO !== 'undefined' ? SOGLIA_GIORNI_PREZZO_SCADUTO : 7} giorni` },
+                richieste_da_gestire:    { gruppo: 'fare', icona: 'fa-handshake', sotto: 'aspettano una tua risposta' },
+                elementi_senza_location: { gruppo: 'fare', icona: 'fa-circle-question', sotto: 'scegli dove metterli' },
+                wishlist_obiettivo:      { gruppo: 'opportunita', icona: 'fa-arrow-trend-down', sotto: 'al prezzo che volevi o meno', immagini: wishlistSottoTarget.map(c => c.immagine).filter(Boolean).slice(0, 3) },
+                match_trovati:           { gruppo: 'opportunita', icona: 'fa-heart', sotto: 'carte che cerchi o che cercano da te' },
+            };
+            segnali.forEach(s => Object.assign(s, META[s.id] || { gruppo: 'info' }));
+            const daFare = segnali.filter(s => s.gruppo === 'fare');
+            const opportunita = segnali.filter(s => s.gruppo === 'opportunita');
+            const segnaleMissioni = segnali.find(s => s.id === 'missioni_da_fare') || null;
+            let missioni = null;
+            try {
+                const m = await CATALOGO_WIDGET.missioni.preview();
+                if (m && m.dati && !m.dati.placeholder && m.dati.totali) missioni = { fatte: m.dati.fatte, totali: m.dati.totali };
+            } catch (_) { missioni = null; }
+            const dati = { segnali, daFare, opportunita, missioni, segnaleMissioni, gruppoAlLavoro: !!alLavoro };
+
+            if (segnali.length === 0) return { righe: ['Tutto in ordine'], stato: 'ok', dati };
             const primo = segnali[0];
-            return { righe: [primo.testo], stato: primo.stato, badge: segnali.length, dati: { segnali } };
+            return {
+                righe: [daFare.length ? `${daFare.length} da fare adesso` : (opportunita.length ? `${opportunita.length} opportunità` : primo.testo)],
+                stato: primo.stato,
+                // Badge rosso = SOLO le cose da fare adesso (azioni), non le
+                // opportunità né le informazioni (prima contava tutto).
+                azioni: daFare.length,
+                dati,
+            };
         },
         azione: (dati, punto) => { apriDettaglioWidget('dafare', punto); },
 };

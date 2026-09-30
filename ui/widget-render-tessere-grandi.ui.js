@@ -232,6 +232,54 @@ function _ballCorpoSegnaposto(titolo, d) {
     };
 }
 
+// ── RESTYLE BINDEX FASE 2 (2026-09-30): mattoncini nuovi delle tavole ───
+// Colore fisso da una tavolozza di 8 tinte ben distinte, scelto dalla
+// chiave (nome o id): con _ballTintaDaNome nomi simili davano tinte quasi
+// uguali (copertine tutte rosse, scatole tutte viola).
+const _BALL_TAVOLOZZA = ['#7c4dff', '#e0457b', '#1f88c9', '#e6a100', '#2f8f6b', '#9a5a2a', '#5aa8d8', '#8a8f98'];
+function _ballColoreDaChiave(k) {
+    let h = 0;
+    const t = String(k == null ? '' : k);
+    for (let i = 0; i < t.length; i++) h = (h * 31 + t.charCodeAt(i)) >>> 0;
+    return _BALL_TAVOLOZZA[h % _BALL_TAVOLOZZA.length];
+}
+// Copertine di binder/contenitori come piccoli binder veri (dorso scuro a
+// sinistra, globo sui pubblici). voci: [{ nome, pubblico }]. Colore dalla
+// tinta fissa del nome (_ballTintaDaNome, sopra) finché non esiste il
+// colore scelto dall'utente. Il CSS (.ball-cov) ne mostra quante ci
+// stanno in una riga, le altre si nascondono.
+function _ballCopertine(voci) {
+    const esc = (t) => (typeof escapeHtml === 'function' ? escapeHtml(t) : String(t));
+    return '<div class="ball-cov">' + voci.map(v =>
+        `<i style="background:${_ballColoreDaChiave(v.nome)}" title="${esc(v.nome)}">${v.pubblico ? '<b class="fa-solid fa-globe"></b>' : ''}</i>`
+    ).join('') + '</div>';
+}
+
+// Ripiano con i prodotti come scatole colorate (tessera Scaffali). n =
+// quanti prodotti in totale; se ne disegnano al massimo 7.
+function _ballRipiano(n, chiavi) {
+    const quante = Math.min(7, n || 0);
+    const altezze = [26, 20, 24, 18, 26, 22, 20];
+    let scatole = '';
+    for (let i = 0; i < quante; i++) {
+        const tinta = _BALL_TAVOLOZZA[i % _BALL_TAVOLOZZA.length]; // una tinta diversa per scatola
+        scatole += `<b style="left:${10 + i * 26}px;height:${altezze[i]}px;background:${tinta}"></b>`;
+    }
+    return `<div class="ball-ripiano">${scatole}</div>`;
+}
+
+// Data breve e umana per le tessere: "oggi", "ieri", "mer 23 set".
+function _ballQuando(iso) {
+    const d = new Date(iso);
+    if (isNaN(d)) return '';
+    const oggi = new Date(); oggi.setHours(0, 0, 0, 0);
+    const giorno = new Date(d); giorno.setHours(0, 0, 0, 0);
+    const diff = Math.round((oggi - giorno) / 86400000);
+    if (diff === 0) return 'oggi';
+    if (diff === 1) return 'ieri';
+    return d.toLocaleDateString('it-IT', { weekday: 'short', day: 'numeric', month: 'short' }).replace(/\./g, '');
+}
+
 function _ballPill(testo, acceso) {
     return `<span class="ball-pill${acceso ? ' acceso' : ''}">${testo}</span>`;
 }

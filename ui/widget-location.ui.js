@@ -46,16 +46,30 @@
 // ── VOCE DI CATALOGO ──────────────────────────────────────────────────
 CATALOGO_WIDGET.location = {
         titolo: 'Location', icona: 'fa-map-pin',
+        // RESTYLE BINDEX FASE 2 (2026-09-30, tavola "Location = 3 più
+        // preziose + N in ?"): ordinate per VALORE (Σ prezzo × qty, stessa
+        // formula della pagina Location e di Valore collezione), non più per
+        // numero di carte; '?' (carte in attesa di una location) contata a
+        // parte. Sempre zero query: tutto da carteReali.
         preview: () => {
             const collezione = carteReali.filter(c => c.stato === 'collezione');
-            const conteggi = {};
-            collezione.forEach(c => { const k = c.location || '—'; conteggi[k] = (conteggi[k] || 0) + 1; });
-            const ordinate = Object.entries(conteggi).sort((a, b) => b[1] - a[1]);
-            const top = ordinate.slice(0, 2);
-            if (top.length === 0) return { righe: ['Nessuna carta'] };
-            // 'voci' = tutte le posizioni ordinate: le tessere grandi ne
-            // disegnano quattro, le righe di testo restano le prime due.
-            return { righe: top.map(([k, v]) => `${k}: ${v}`), dati: { voci: ordinate } };
+            const agg = {};
+            collezione.forEach(c => {
+                const k = c.location || '—';
+                const a = agg[k] || (agg[k] = { nome: k, n: 0, valore: 0 });
+                a.n += 1;
+                a.valore += (Number(c.price) || 0) * (Number(c.qty) || 1);
+            });
+            const inAttesa = agg['?'] ? agg['?'].n : 0;
+            const voci = Object.values(agg)
+                .filter(v => v.nome !== '?' && v.nome !== '—')
+                .sort((a, b) => b.valore - a.valore || b.n - a.n);
+            if (!voci.length && !inAttesa) return { righe: ['Nessuna carta'] };
+            const totale = voci.length;
+            return {
+                righe: [`${totale} location${inAttesa ? ` · ${inAttesa} in “?”` : ''}`],
+                dati: { voci, totale, inAttesa },
+            };
         },
         // AGGIUNTO (2026-08-30): prima non aveva 'tab', quindi
         // _eseguiAzioneWidget cadeva su apriDettaglioWidget(w.id, ...) =

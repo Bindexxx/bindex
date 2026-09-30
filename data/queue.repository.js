@@ -12,6 +12,20 @@ async function queueInsertRighe(righeDb) {
     return supabaseClient.from('coda_carte').insert(righeDb);
 }
 
+// Restyle Bindex FASE 2 (2026-09-30), tessera Inserimento: le ultime righe
+// della PROPRIA coda (stato e date), per "in coda" e "ultimo invio". Solo
+// lettura, filtrata per owner_id. NB: coda_carte è una vista sopra
+// coda_lavoro (stati CHECK: pending/in_corso/completato/errore — verificato
+// sul DB il 2026-09-30).
+async function codaCarteUltimeRighe(userId, quante = 50) {
+    return supabaseClient
+        .from('coda_carte')
+        .select('stato, creato_il, completato_il')
+        .eq('owner_id', userId)
+        .order('creato_il', { ascending: false })
+        .limit(quante);
+}
+
 async function correzioniManualiConta(userId) {
     return supabaseClient
         .from('correzioni_manuali_carte')

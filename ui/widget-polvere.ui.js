@@ -21,7 +21,34 @@
 // ───────────────────────────────────────────────────────────────────────
 
 // ── VOCE DI CATALOGO ──────────────────────────────────────────────────
+// RESTYLE BINDEX FASE 2 (2026-09-30, tavola "Polvere col saldo"): la
+// tessera mostra il saldo vero (polvere_saldo, la stessa RPC della barra in
+// alto). Resta 'bloccato' (nessuna pagina da aprire: la pagina Polvere =
+// Shop arriva con la FASE 9). Con 'bloccato' il motore chiama preview() in
+// modo SINCRONO, quindi il saldo si legge in background e si mostra al giro
+// di render successivo (ogni 15s), al massimo una lettura al minuto.
+// "+N ✧ questa settimana" delle tavole richiede lo storico dei movimenti
+// di polvere (file 03 § 4.3, FASE 8e): per ora solo il saldo.
+let _widgetPolvereSaldo = { quando: 0, valore: null, inCorso: false };
+function _widgetPolvereAggiorna() {
+    if (_widgetPolvereSaldo.inCorso || Date.now() - _widgetPolvereSaldo.quando < 60000) return;
+    if (typeof polvereSaldoLeggi !== 'function') return;
+    _widgetPolvereSaldo.inCorso = true;
+    polvereSaldoLeggi()
+        .then(({ data, error }) => {
+            if (!error) _widgetPolvereSaldo.valore = Number(data) || 0;
+            _widgetPolvereSaldo.quando = Date.now();
+        })
+        .catch(e => console.error('[widget-polvere] saldo:', e))
+        .finally(() => { _widgetPolvereSaldo.inCorso = false; });
+}
+
 CATALOGO_WIDGET.polvere = {
         titolo: 'Polvere', icona: 'fa-wand-sparkles', bloccato: true,
-        preview: () => ({ righe: ['In arrivo'], dati: { placeholder: true, testo: 'La valuta guadagnata coi doppioni' } }),
+        preview: () => {
+            _widgetPolvereAggiorna();
+            const s = _widgetPolvereSaldo.valore;
+            if (s == null) return { righe: ['saldo in arrivo'], dati: null };
+            return { righe: [`${s.toLocaleString('it-IT')} ✧`], dati: { saldo: s } };
+        },
 };
