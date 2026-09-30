@@ -576,82 +576,72 @@
 
         <!-- SEZIONE 3: CONTROLLO PREZZI -->
         <div id="prezzi" class="view-section">
-            <div class="card-panel" style="max-width:500px; margin:1rem auto; text-align:center; padding: 2rem;">
-                <div style="margin-bottom: 0.5rem; font-weight: 800; font-size: 1.1rem;">
-                    <i class="fa-solid fa-chart-line" style="color: var(--primary);"></i> Controllo Prezzi Automatico
+            <!-- RESTYLE FASE 3h: tre riquadri (Collezione, Wishlist, Sealed)
+                 spuntabili con UN solo pulsante. Gli id dei controlli e dei
+                 testi di stato sono quelli di sempre (ui/prices.ui.js); i tre
+                 pulsanti originali restano nascosti perché i controlli li
+                 usano per mostrare l'avanzamento. -->
+            <div class="pz-pagina">
+                <div class="page-header">
+                    <span class="page-title">Controllo prezzi</span>
                 </div>
-                <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1.2rem;" id="prezziSubtext">Aggiorna le quotazioni sincronizzando la tua estensione.</p>
+                <p class="pg-sotto" style="margin:-6px 0 14px;">Scegli cosa controllare: un dispositivo con l'estensione aperta aggiorna le quotazioni su Cardmarket.</p>
 
-                <div style="text-align:left; margin-bottom: 1.2rem;">
-                    <div style="font-size: 0.78rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.5rem; display:flex; justify-content:space-between; align-items:center;">
-                        <span>LOCATION DA CONTROLLARE</span>
-                        <button type="button" onclick="toggleTutteLocation()" style="background:none; border:none; color:var(--primary); font-weight:700; font-size:0.75rem; cursor:pointer;" id="btnToggleTutteLocation">Seleziona tutte</button>
+                <div class="pz-riquadro">
+                    <label class="pz-testa"><input type="checkbox" id="pzCollezione" checked><span class="pz-ico"><i class="fa-solid fa-layer-group"></i></span><b>Collezione</b></label>
+                    <div class="pz-corpo">
+                        <div class="pz-etichetta"><span>Location da controllare</span>
+                            <button type="button" onclick="toggleTutteLocation()" class="pz-link" id="btnToggleTutteLocation">Seleziona tutte</button></div>
+                        <div id="listaLocationCheckbox" class="pz-lista"><p class="pz-nota">Caricamento location...</p></div>
+                        <p class="pz-nota">Nessuna spuntata = controlla tutte le location.</p>
+                        <div class="pz-etichetta"><span>Carte di chi controllare</span></div>
+                        <div class="pz-seg">
+                            <button type="button" class="theme-btn active" id="btnAmbitoSoloMie" onclick="_impostaAmbitoControlloPrezzi('soloMie')">Solo le mie</button>
+                            <button type="button" class="theme-btn" id="btnAmbitoGruppo" onclick="_impostaAmbitoControlloPrezzi('gruppo')">Tutto il gruppo</button>
+                        </div>
+                        <p class="pz-stato" id="prezziSubtext">Aggiorna le quotazioni sincronizzando la tua estensione.</p>
                     </div>
-                    <div id="listaLocationCheckbox" style="display:flex; flex-direction:column; gap:0.4rem; max-height:220px; overflow-y:auto; border:1px solid var(--border-color); border-radius:10px; padding:0.7rem; background:var(--bg-color);">
-                        <p style="font-size:0.78rem; color:var(--text-muted); margin:0;">Caricamento location...</p>
-                    </div>
-                    <p style="font-size: 0.72rem; color: var(--text-muted); margin-top: 0.4rem;">Nessuna spuntata = controlla tutte le location (comportamento di default).</p>
                 </div>
 
-                <div style="text-align:left; margin-bottom: 1.2rem;">
-                    <div style="font-size: 0.78rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.5rem;">CARTE DI CHI CONTROLLARE</div>
-                    <div style="display:flex; gap:0.6rem;">
-                        <button type="button" class="theme-btn active" id="btnAmbitoSoloMie" style="flex:1;" onclick="_impostaAmbitoControlloPrezzi('soloMie')">Solo le mie</button>
-                        <button type="button" class="theme-btn" id="btnAmbitoGruppo" style="flex:1;" onclick="_impostaAmbitoControlloPrezzi('gruppo')">Tutto il gruppo</button>
+                <div class="pz-riquadro">
+                    <label class="pz-testa"><input type="checkbox" id="pzWishlist"><span class="pz-ico"><i class="fa-solid fa-bookmark"></i></span><b>Wishlist</b></label>
+                    <div class="pz-corpo">
+                        <p class="pz-stato" id="prezziWishlistSubtext">Aggiorna le quotazioni delle carte che desideri.</p>
                     </div>
-                    <p style="font-size: 0.72rem; color: var(--text-muted); margin-top: 0.4rem;">"Tutto il gruppo" aiuta a controllare anche le carte degli altri (utile se qualcuno ha l'estensione sempre aperta e vuole dare una mano).</p>
                 </div>
 
-                <button class="btn-main" id="btnControllaPrezzi" style="width: 100%; justify-content: center;" onclick="triggerExtensionPriceCheck()">
-                    <i class="fa-solid fa-paper-plane"></i> Avvia Controllo Prezzi
-                </button>
+                <!-- Sealed: filtro per Scaffale (Scaffali sostituisce location
+                     per i sealed). Ordine dedicato tipo='controlla_prezzi_sealed'. -->
+                <div class="pz-riquadro">
+                    <label class="pz-testa"><input type="checkbox" id="pzSealed"><span class="pz-ico"><i class="fa-solid fa-box"></i></span><b>Sealed</b></label>
+                    <div class="pz-corpo">
+                        <div class="pz-etichetta"><span>Scaffali da controllare</span>
+                            <button type="button" onclick="toggleTutteScaffaliSealed()" class="pz-link" id="btnToggleTutteScaffaliSealed">Seleziona tutti</button></div>
+                        <div id="listaScaffaliCheckboxSealed" class="pz-lista"><p class="pz-nota">Caricamento scaffali...</p></div>
+                        <p class="pz-nota">Nessuno spuntato = controlla tutti gli scaffali.</p>
+                        <div class="pz-etichetta"><span>Prodotti di chi controllare</span></div>
+                        <div class="pz-seg">
+                            <button type="button" class="theme-btn active" id="btnAmbitoSoloMieSealed" onclick="_impostaAmbitoControlloPrezziSealed('soloMie')">Solo i miei</button>
+                            <button type="button" class="theme-btn" id="btnAmbitoGruppoSealed" onclick="_impostaAmbitoControlloPrezziSealed('gruppo')">Tutto il gruppo</button>
+                        </div>
+                        <p class="pz-stato" id="prezziSealedSubtext">Aggiorna le quotazioni dei prodotti sealed sincronizzando la tua estensione.</p>
+                    </div>
+                </div>
+
+                <button type="button" class="pz-avvia" id="pzAvvia" onclick="prezziAvviaSelezionati()"><i class="fa-solid fa-paper-plane"></i> Avvia controllo</button>
+                <p class="pz-stato pz-centro" id="pzEsito"></p>
+                <button type="button" class="pz-secondario" onclick="apriDettaglioWidget('prezziagg', event)"><i class="fa-solid fa-clock-rotate-left"></i> Vedi i prezzi aggiornati</button>
+
+                <div style="display:none;">
+                    <button id="btnControllaPrezzi" onclick="triggerExtensionPriceCheck()"></button>
+                    <button id="btnControllaPrezziWishlist" onclick="triggerExtensionPriceCheckWishlist()"></button>
+                    <button id="btnControllaPrezziSealed" onclick="triggerExtensionPriceCheckSealed()"></button>
+                </div>
             </div>
+        </div>
 
-            <div class="card-panel" style="max-width:500px; margin:1rem auto; text-align:center; padding: 2rem;">
-                <div style="margin-bottom: 0.5rem; font-weight: 800; font-size: 1.1rem;">
-                    <i class="fa-solid fa-bookmark" style="color: var(--primary);"></i> Controllo Prezzi Wishlist
-                </div>
-                <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1.2rem;" id="prezziWishlistSubtext">Aggiorna le quotazioni delle carte che desideri.</p>
-                <button class="btn-main" id="btnControllaPrezziWishlist" style="width: 100%; justify-content: center;" onclick="triggerExtensionPriceCheckWishlist()">
-                    <i class="fa-solid fa-paper-plane"></i> Avvia Controllo Prezzi Wishlist
-                </button>
-            </div>
-
-            <!-- Fase 1.2 (2026-09-12): stesso schema del pannello carte sopra
-                 (ambito), ma per prodotti_sealed. Fase 1.3 (stesso giorno):
-                 filtro per Scaffale invece che location (Scaffali sostituisce
-                 location per i sealed, sql/41/42). Ordine dedicato
-                 tipo='controlla_prezzi_sealed' — vedi ui/prices.ui.js. -->
-            <div class="card-panel" style="max-width:500px; margin:1rem auto; text-align:center; padding: 2rem;">
-                <div style="margin-bottom: 0.5rem; font-weight: 800; font-size: 1.1rem;">
-                    <i class="fa-solid fa-box" style="color: var(--primary);"></i> Controllo Prezzi Sealed
-                </div>
-                <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1.2rem;" id="prezziSealedSubtext">Aggiorna le quotazioni dei prodotti sealed sincronizzando la tua estensione.</p>
-
-                <div style="text-align:left; margin-bottom: 1.2rem;">
-                    <div style="font-size: 0.78rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.5rem; display:flex; justify-content:space-between; align-items:center;">
-                        <span>SCAFFALI DA CONTROLLARE</span>
-                        <button type="button" onclick="toggleTutteScaffaliSealed()" style="background:none; border:none; color:var(--primary); font-weight:700; font-size:0.75rem; cursor:pointer;" id="btnToggleTutteScaffaliSealed">Seleziona tutti</button>
-                    </div>
-                    <div id="listaScaffaliCheckboxSealed" style="display:flex; flex-direction:column; gap:0.4rem; max-height:220px; overflow-y:auto; border:1px solid var(--border-color); border-radius:10px; padding:0.7rem; background:var(--bg-color);">
-                        <p style="font-size:0.78rem; color:var(--text-muted); margin:0;">Caricamento scaffali...</p>
-                    </div>
-                    <p style="font-size: 0.72rem; color: var(--text-muted); margin-top: 0.4rem;">Nessuno spuntato = controlla tutti gli scaffali (comportamento di default).</p>
-                </div>
-
-                <div style="text-align:left; margin-bottom: 1.2rem;">
-                    <div style="font-size: 0.78rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.5rem;">PRODOTTI DI CHI CONTROLLARE</div>
-                    <div style="display:flex; gap:0.6rem;">
-                        <button type="button" class="theme-btn active" id="btnAmbitoSoloMieSealed" style="flex:1;" onclick="_impostaAmbitoControlloPrezziSealed('soloMie')">Solo i miei</button>
-                        <button type="button" class="theme-btn" id="btnAmbitoGruppoSealed" style="flex:1;" onclick="_impostaAmbitoControlloPrezziSealed('gruppo')">Tutto il gruppo</button>
-                    </div>
-                    <p style="font-size: 0.72rem; color: var(--text-muted); margin-top: 0.4rem;">"Tutto il gruppo" aiuta a controllare anche i prodotti sealed degli altri.</p>
-                </div>
-
-                <button class="btn-main" id="btnControllaPrezziSealed" style="width: 100%; justify-content: center;" onclick="triggerExtensionPriceCheckSealed()">
-                    <i class="fa-solid fa-paper-plane"></i> Avvia Controllo Prezzi Sealed
-                </button>
-            </div>
+        <div id="prezziagg" class="view-section">
+            <div id="prezziaggContenuto"></div>
         </div>
 
         <!-- SEZIONE 4: IMPOSTAZIONI -->

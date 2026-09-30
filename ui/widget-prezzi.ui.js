@@ -120,7 +120,7 @@ CATALOGO_WIDGET.prezzi_recenti = {
                 dati: { lista: righeCache },
             };
         },
-        tab: 'prezzi',
+        tab: 'prezziagg', // RESTYLE FASE 3h: pagina propria "Prezzi aggiornati" (prima apriva Controllo prezzi)
 };
 
 const TTL_PREZZI_RECENTI_MS = 5 * 60 * 1000;
@@ -156,5 +156,158 @@ async function _prezziRecentiConCache() {
     } catch (e) {
         console.error('[widget prezzi_recenti]', e);
         return [];
+    }
+}
+
+
+// ── PAGINA "PREZZI AGGIORNATI" ───────────────────────────────────────────
+// RESTYLE BINDEX FASE 3h (2026-10-01, tavola "Prezzi aggiornati · cosa è
+// cambiato"): pagina separata da "Controllo prezzi". Periodo Oggi / 7 / 30
+// giorni; per ogni carta della collezione il cui prezzo è cambiato nel
+// periodo, il confronto è col prezzo che aveva all'inizio (RPC
+// leggi_variazioni_da, la stessa di "In primo piano" e "Variazione", solo
+// lettura). Salite e Scese in due gruppi. Il tocco sulla carta apre la carta
+// a tutto schermo.
+// NON mostrato: il numero esatto di carte "controllate" (non è una lettura
+// esistente): il riquadro conta le carte il cui prezzo è CAMBIATO.
+let _pagPeriodo = 'oggi';     // 'oggi' | '7' | '30'
+let _pagCache = {};           // periodo -> { righe } (mappa oggetto_id -> prezzo_base)
+let _pagUltimoControllo = null;
+
+function _pagDaISO(periodo) {
+    const d = new Date();
+    if (periodo === 'oggi') d.setHours(0, 0, 0, 0);
+    else d.setDate(d.getDate() - Number(periodo));
+    return d.toISOString();
+}
+
+async function renderPaginaPrezziAggiornati() {
+    const c = document.getElementById('prezziaggContenuto');
+    if (!c) return;
+    _pagPeriodo = 'oggi';
+    _pagCache = {};
+    c.innerHTML = '<p style="text-align:center; color:var(--text-muted); font-size:0.85rem; padding:1rem 0;">Caricamento…</p>';
+    try {
+        const userId = await authGetUserId();
+        if (userId) {
+            const { data } = await ordiniUltimoCompletato(userId);
+            _pagUltimoControllo = data && data[0] ? data[0].completato_il : null;
+        }
+    } catch (e) { console.error('[prezzi aggiornati] ultimo controllo:', e); }
+    await _pagCarica();
+}
+
+async function _pagCarica() {
+    if (!_pagCache[_pagPeriodo]) {
+        const { data, error } = await variazioniPrezziDa(_pagDaISO(_pagPeriodo));
+        if (error) {
+            console.error('[prezzi aggiornati] variazioni:', error.message);
+            const c = document.getElementById('prezziaggContenuto');
+            if (c) c.innerHTML = '<div class="stato-vuoto"><i class="fa-solid fa-triangle-exclamation"></i><br>Non riesco a leggere le variazioni. Riprova più tardi.</div>';
+            return;
+        }
+        const mappa = new Map();
+        (data || []).forEach(r => { if (r.tabella === 'carte') mappa.set(String(r.oggetto_id), Number(r.prezzo_base)); });
+        _pagCache[_pagPeriodo] = mappa;
+    }
+    _pagDisegna();
+}
+
+function _pagImpostaPeriodo(p) {
+    _pagPeriodo = p;
+    _pagCarica();
+}
+
+function _pagQuando(iso) {
+    if (!iso) return '';
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return '';
+    const ora = d.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+    const oggi = new Date();
+    if (d.toDateString() === oggi.toDateString()) return `oggi alle ${ora}`;
+    return d.toLocaleDateString('it-IT', { day: 'numeric', month: 'short' }) + ` alle ${ora}`;
+}
+
+function _pagDisegna() {
+    const c = document.getElementById('prezziaggContenuto');
+    if (!c) return;
+    const mappa = _pagCache[_pagPeriodo] || new Map();
+    const eur = (v) => formattaEuro(v);
+    const righe = [];
+    carteReali.filter(r => r.stato === 'collezione').forEach(r => {
+        const base = mappa.get(String(r.id));
+        if (base == null) return;
+        const delta = (Number(r.price) || 0) - base;
+        if (Math.abs(delta) < 0.005) return;
+        righe.push({ r, delta });
+    });
+    const salite = righe.filter(x => x.delta > 0).sort((a, b) => b.delta - a.delta);
+    const scese = righe.filter(x => x.delta < 0).sort((a, b) => a.delta - b.delta);
+
+    const riga = ({ r, delta }) => {
+        const src = r.immagine ? (_urlImmagineVisualizzabile(r.immagine, 120) || '') : '';
+        const sotto = [r.code, r.lang, r.cond, (Number(r.qty) || 1) > 1 ? `×${r.qty}` : null].filter(Boolean).join(' · ');
+        const su = delta > 0;
+        return `
+            <div class="pa-riga" onclick="apriFlipCardHome('${escapeJsAttr(String(r.id))}')">
+                <div class="pa-fig">${src ? `<img src="${src}" alt="" loading="lazy" onerror="this.remove();">` : '<i class="fa-solid fa-image"></i>'}</div>
+                <div class="pa-testo"><b>${escapeHtml(r.name || '—')}</b><span>${escapeHtml(sotto)}</span></div>
+                ${r.location ? `<span class="pa-loc">${escapeHtml(r.location)}</span>` : ''}
+                <div class="pa-destra"><b>${eur(Number(r.price) || 0)}</b><span class="${su ? 'pa-su' : 'pa-giu'}">${su ? '▲ +' : '▼ −'}${eur(Math.abs(delta)).replace(' €', '')}</span></div>
+            </div>`;
+    };
+    const gruppo = (titolo, elenco) => elenco.length ? `<div class="pa-gruppo">${titolo}</div>${elenco.map(riga).join('')}` : '';
+    const tab = (p, e) => `<span class="pa-tab${_pagPeriodo === p ? ' attivo' : ''}" onclick="_pagImpostaPeriodo('${p}')">${e}</span>`;
+
+    c.innerHTML = `
+        <div class="pa-pagina">
+            <div class="page-header pa-testa">
+                <span class="page-title">Prezzi aggiornati</span>
+                ${_pagUltimoControllo ? `<span class="pa-quando">${_pagQuando(_pagUltimoControllo)}</span>` : ''}
+            </div>
+            <div class="pa-stat">
+                <div><b>${righe.length}</b><span>cambiate</span></div>
+                <div><b class="pa-su">${salite.length}</b><span>salite</span></div>
+                <div><b class="pa-giu">${scese.length}</b><span>scese</span></div>
+            </div>
+            <div class="pa-tabs">${tab('oggi', 'Oggi')}${tab('7', '7 giorni')}${tab('30', '30 giorni')}</div>
+            ${righe.length === 0
+                ? '<div class="stato-vuoto"><i class="fa-solid fa-clock-rotate-left"></i><br>Nessun prezzo è cambiato in questo periodo.</div>'
+                : gruppo('Salite', salite) + gruppo('Scese', scese)}
+        </div>`;
+}
+
+
+// ── CONTROLLO PREZZI: UN pulsante per i riquadri spuntati ────────────────
+// RESTYLE FASE 3h: riusa i tre controlli esistenti (ui/prices.ui.js), che
+// creano ciascuno il proprio ordine e mostrano l'avanzamento nel testo del
+// riquadro. Nessuna logica di ordini nuova. Il riepilogo unico "controlli
+// partiti insieme" e l'elenco degli ordini recenti richiedono una lettura
+// in più (FASE 8e): non sono qui.
+async function prezziAvviaSelezionati() {
+    const coll = document.getElementById('pzCollezione')?.checked;
+    const wish = document.getElementById('pzWishlist')?.checked;
+    const seal = document.getElementById('pzSealed')?.checked;
+    const esito = document.getElementById('pzEsito');
+    if (!coll && !wish && !seal) {
+        if (esito) esito.textContent = 'Spunta almeno un riquadro da controllare.';
+        return;
+    }
+    if (esito) esito.textContent = '';
+    const btn = document.getElementById('pzAvvia');
+    if (btn) btn.disabled = true;
+    try {
+        const lavori = [];
+        if (coll) lavori.push(triggerExtensionPriceCheck());
+        if (wish) lavori.push(triggerExtensionPriceCheckWishlist());
+        if (seal) lavori.push(triggerExtensionPriceCheckSealed());
+        await Promise.all(lavori);
+        const n = [coll, wish, seal].filter(Boolean).length;
+        if (esito) esito.textContent = n === 1 ? 'Controllo avviato.' : `${n} controlli avviati insieme.`;
+    } catch (e) {
+        console.error('[prezzi] avvio controlli:', e);
+        if (esito) esito.textContent = 'Errore nell\'avvio del controllo.';
+    } finally {
+        if (btn) btn.disabled = false;
     }
 }
