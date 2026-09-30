@@ -398,8 +398,18 @@ function _ppApriPagina(cat, evt) {
 
 // ── PAGINA "IN PRIMO PIANO" (view-section #primopiano) ────────────────
 // Registrata in ui/paginainiziale-dettaglio.ui.js (whitelist + dispatch).
-// Testata e pillole con le classi pg-* delle altre pagine; l'elenco e' una
-// griglia di tessere come quella di Doppioni (classi pp-pag-* in index.html).
+// RESTYLE BINDEX FASE 3d (2026-10-01, tavole "In primo piano"):
+//   - schede Valore / Salite / Scese / Box con il TOTALE di ciascuna;
+//   - Valore: podio 1-2-3 (medaglie, "% della collezione") + griglia dal #4
+//     con numero di classifica, ×N e prezzo "cad.";
+//   - Salite / Scese: totale in testa, fascia verde/rossa con la variazione
+//     sulla copertina, "prima → ora" sotto;
+//   - piede: "N di TOT" + link alla pagina giusta (Collezione / Variazione /
+//     Sealed);
+//   - box → stessa modale di modifica di prima (i dettagli dei sealed
+//     arrivano con la pagina Sealed).
+// Il motore "senza scrolling" (quante tessere ci stanno) è quello di prima,
+// SOLO la griglia è misurata: il podio sta sopra ed è sempre intero.
 let _ppCategoriaPagina = 'valore';
 
 const _PP_CATEGORIE_PAGINA = [
@@ -409,21 +419,46 @@ const _PP_CATEGORIE_PAGINA = [
     { id: 'box', etichetta: 'Box', ordine: 'ordinati per valore', unita: ['box', 'box'], vuoto: 'Nessun box in collezione.' },
 ];
 const _PP_CAMPO_DATI = { valore: 'perValore', su: 'su', giu: 'giu', box: 'box' };
+// Quante voci stanno sul podio (solo categoria Valore).
+const _PP_PODIO = 3;
+
+// Valore totale della collezione (carte + sealed): serve a dire "27% della
+// collezione". Stessa definizione della pagina Variazione.
+function _ppValoreCollezione() {
+    const carte = (typeof carteReali !== 'undefined' ? carteReali : []).filter(c => c.stato === 'collezione' && c.tipo !== 'sealed')
+        .reduce((t, c) => t + (Number(c.price) || 0) * (Number(c.qty) || 1), 0);
+    const sealed = (typeof prodottiSealedReali !== 'undefined' ? prodottiSealedReali : [])
+        .reduce((t, s) => t + (Number(s.price) || 0) * (Number(s.qty) || 1), 0);
+    return carte + sealed;
+}
+
+// Riga sotto il titolo: dice sempre con quale definizione si confrontano
+// Salite e Scese (ultima visita oppure ripiego).
+function _ppSottoTitolo() {
+    if (_ppBaseline.pronta && _ppBaseline.da) {
+        const d = new Date(_ppBaseline.da);
+        if (!isNaN(d.getTime())) {
+            const quando = d.toLocaleString('it-IT', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }).replace('.', '');
+            return `Le tue carte che contano di più adesso · salite e scese dalla tua ultima visita, ${quando}`;
+        }
+        return 'Le tue carte che contano di più adesso · salite e scese dalla tua ultima visita';
+    }
+    return 'Le tue carte che contano di più adesso · salite e scese dall’ultimo aggiornamento del prezzo di ciascuna carta';
+}
 
 async function renderPaginaPrimoPiano() {
     const container = document.getElementById('primopianoContenuto');
     if (!container) return;
 
-    const filtri = _PP_CATEGORIE_PAGINA.map(c =>
-        `<span class="pg-filtro${c.id === _ppCategoriaPagina ? ' attivo' : ''}" data-cat="${c.id}" onclick="_ppImpostaCategoriaPagina('${c.id}')">${c.etichetta}</span>`
-    ).join('');
     container.innerHTML = `
         <div class="page-header">
             <span class="page-title">In primo piano</span>
         </div>
-        <div class="pg-pagina">
-            <div class="pg-filtri">${filtri}</div>
-            <div class="pp-pag-conteggio" id="primopianoConteggio"></div>
+        <div class="pp-pagina">
+            <p class="pg-sotto" id="primopianoSotto" style="margin:0 0 12px;"></p>
+            <div class="pg-filtri" id="primopianoFiltri"></div>
+            <div id="primopianoTesta"></div>
+            <div id="primopianoPodio"></div>
             <div class="pp-pag-griglia" id="primopianoElenco"></div>
             <div id="primopianoNota"></div>
         </div>
@@ -446,13 +481,10 @@ async function renderPaginaPrimoPiano() {
 
 function _ppImpostaCategoriaPagina(cat) {
     _ppCategoriaPagina = cat;
-    document.querySelectorAll('#primopianoContenuto .pg-filtro').forEach(el => {
-        el.classList.toggle('attivo', el.dataset.cat === cat);
-    });
     _ppRenderElencoPagina();
 }
 
-// Testo sopra la griglia. Con il taglio (senza scrolling) dice "N di TOT".
+// Testo del piede. Con il taglio (senza scrolling) dice "N di TOT".
 function _ppTestoConteggio(def, mostrate, totale) {
     if (!totale) return '';
     const unita = def.unita[totale === 1 ? 0 : 1];
@@ -472,6 +504,10 @@ function _ppTestoConteggio(def, mostrate, totale) {
 // Se il contenitore e' ancora nascosto (l'apertura di una pagina chiama il
 // render PRIMA di mostrarlo) non fa nulla: ci pensa il ResizeObserver, che
 // scatta appena il contenitore prende una dimensione.
+// FASE 3d: cio' che sta sopra la griglia (scheda, totale, podio) e sotto
+// (piede) e' gia' contato dalla misura della posizione della griglia e
+// dall'altezza di #primopianoNota; 'data-offset' = voci sul podio, da
+// aggiungere al conteggio mostrato.
 let _ppOsservatorePagina = null;
 
 function _ppFermaOsservatorePagina() {
@@ -515,7 +551,7 @@ function _ppAdattaGrigliaAlloSpazio() {
         if (rb.width && rb.top < rs.bottom && rb.bottom > rs.top) riserva = Math.max(riserva, rs.bottom - rb.top + 8);
     }
 
-    // Cio' che sta SOTTO la griglia (la nota delle categorie di oscillazione).
+    // Cio' che sta SOTTO la griglia (il piede con conteggio, link e nota).
     const sotto = document.getElementById('primopianoNota');
     if (sotto) riserva += sotto.offsetHeight;
 
@@ -532,64 +568,109 @@ function _ppAdattaGrigliaAlloSpazio() {
 
     const conteggio = document.getElementById('primopianoConteggio');
     const def = _PP_CATEGORIE_PAGINA.find(c => c.id === griglia.dataset.cat);
-    if (conteggio && def) conteggio.textContent = _ppTestoConteggio(def, Math.min(n, tessere.length), Number(griglia.dataset.totale) || tessere.length);
+    const offset = Number(griglia.dataset.offset) || 0;
+    if (conteggio && def) conteggio.textContent = _ppTestoConteggio(def, Math.min(n, tessere.length) + offset, Number(griglia.dataset.totale) || (tessere.length + offset));
+}
+
+// Copertina con i suoi contrassegni (numero di classifica, ×N, fascia della
+// variazione). 'extra' = html dei contrassegni.
+function _ppFoto(v, larghezza, extra) {
+    const src = (v.immagine && typeof _urlImmagineVisualizzabile === 'function') ? (_urlImmagineVisualizzabile(v.immagine, larghezza) || '') : '';
+    // loading="lazy": anche le tessere nascoste dal taglio non scaricano nulla.
+    const fig = src
+        ? `<img class="pp-pag-cover" src="${_ppEsc(src)}" alt="" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'pp-pag-cover pp-pag-cover-vuota',innerHTML:'<i class=&quot;fa-solid fa-image&quot;></i>'}))">`
+        : `<div class="pp-pag-cover pp-pag-cover-vuota"><i class="fa-solid ${v.tipo === 'box' ? 'fa-box-archive' : 'fa-image'}"></i></div>`;
+    return `<div class="pp-pag-foto">${fig}${extra || ''}</div>`;
 }
 
 function _ppRenderElencoPagina() {
     const elenco = document.getElementById('primopianoElenco');
     const nota = document.getElementById('primopianoNota');
-    const conteggio = document.getElementById('primopianoConteggio');
     if (!elenco) return;
     _ppFermaOsservatorePagina();
 
     const def = _PP_CATEGORIE_PAGINA.find(c => c.id === _ppCategoriaPagina) || _PP_CATEGORIE_PAGINA[0];
-    const tutte = _ppCategorie(Infinity)[_PP_CAMPO_DATI[def.id]] || [];
+    const dati = _ppCategorie(Infinity);
+    const tutte = dati[_PP_CAMPO_DATI[def.id]] || [];
     const oscillazione = def.id === 'su' || def.id === 'giu';
-    // Categorie senza scrolling (ora tutte) -> si disegna un massimo e il resto lo
-    // decide lo spazio (vedi _ppAdattaGrigliaAlloSpazio). Le altre: tutte.
-    const conTaglio = PRIMO_PIANO_CATEGORIE_SENZA_SCROLL.includes(def.id);
-    const voci = conTaglio ? tutte.slice(0, PRIMO_PIANO_MAX_PAGINA) : tutte;
-    elenco.dataset.fit = conTaglio ? '1' : '';
+
+    const sotto = document.getElementById('primopianoSotto');
+    if (sotto) sotto.textContent = _ppSottoTitolo();
+    const filtri = document.getElementById('primopianoFiltri');
+    if (filtri) filtri.innerHTML = _PP_CATEGORIE_PAGINA.map(c =>
+        `<span class="pg-filtro${c.id === def.id ? ' attivo' : ''}" data-cat="${c.id}" onclick="_ppImpostaCategoriaPagina('${c.id}')">${c.etichetta} &middot; ${(dati[_PP_CAMPO_DATI[c.id]] || []).length}</span>`
+    ).join('');
+
+    // Testa: per Salite / Scese il totale (per-copia × copie).
+    const testa = document.getElementById('primopianoTesta');
+    if (testa) {
+        if (oscillazione && tutte.length) {
+            const tot = tutte.reduce((t, v) => t + (Number(v.varia) || 0) * (Number(v.copie) || 1), 0);
+            testa.innerHTML = `<div class="pp-testa"><span>${def.etichetta}</span><b class="${tot >= 0 ? 'pp-su' : 'pp-giu'}">${formattaEuroVariazione(tot)}</b></div>`;
+        } else testa.innerHTML = '';
+    }
+
+    // Podio (solo Valore): primi 3.
+    const podioEl = document.getElementById('primopianoPodio');
+    const inPodio = def.id === 'valore' ? tutte.slice(0, _PP_PODIO) : [];
+    if (podioEl) {
+        const totColl = _ppValoreCollezione();
+        podioEl.innerHTML = inPodio.length ? `<div class="pp-podio">${inPodio.map((v, i) => {
+            const perc = totColl > 0 ? Math.round(v.prezzo / totColl * 100) : null;
+            const sottoTxt = v.copie > 1 ? `×${v.copie} · ${_ppEur(v.prezzo * v.copie)} in tutto` : (perc != null ? `${perc}% della collezione` : '');
+            return `<div class="pp-podio-voce pp-rango-${i + 1}" data-id="${_ppEsc(v.id)}" data-tipo="${v.tipo}" data-cat="${def.id}" onclick="_ppClicMini(event, this)">
+                ${_ppFoto(v, i === 0 ? 300 : 240, `<span class="pp-medaglia pp-medaglia-${i + 1}">${i + 1}</span>`)}
+                <div class="pp-pag-nome">${_ppEsc(v.nome)}</div>
+                <b class="pp-podio-prezzo">${_ppEur(v.prezzo)}</b>
+                <span class="pp-podio-sotto">${sottoTxt}</span>
+            </div>`;
+        }).join('')}</div>` : '';
+    }
+
+    // Griglia: il resto (dal #4 per Valore).
+    const restanti = tutte.slice(inPodio.length);
+    const voci = restanti.slice(0, PRIMO_PIANO_MAX_PAGINA);
+    elenco.dataset.fit = '1';
     elenco.dataset.cat = def.id;
     elenco.dataset.totale = String(tutte.length);
+    elenco.dataset.offset = String(inPodio.length);
 
+    // Piede: conteggio + link + (per Salite/Scese) la nota di sempre.
+    const link = def.id === 'valore' ? ['Vedi tutte in Collezione', 'visualizzazione']
+        : (oscillazione ? ['Vedi tutti i movimenti', 'variazione'] : ['Vedi tutti in Sealed', 'sealed']);
     if (nota) {
-        // Dice sempre quale definizione di oscillazione è attiva (ultima
-        // visita oppure ripiego sull'ultimo aggiornamento del prezzo).
-        nota.innerHTML = oscillazione
-            ? `<p style="text-align:center; color:var(--text-muted); font-size:0.72rem; padding:0.6rem 0;">${_ppEsc(_ppNotaOscillazione())}</p>`
-            : '';
+        nota.innerHTML = tutte.length ? `
+            <div class="pp-piede"><span id="primopianoConteggio">${_ppEsc(_ppTestoConteggio(def, Math.min(voci.length + inPodio.length, tutte.length), tutte.length))}</span>
+            <a onclick="apriDettaglioWidget('${link[1]}', event)">${link[0]} &rarr;</a></div>` : '';
     }
-    if (conteggio) conteggio.textContent = _ppTestoConteggio(def, voci.length, tutte.length);
 
-    if (!voci.length) {
+    if (!tutte.length) {
         elenco.innerHTML = `<p style="text-align:center; color:var(--text-muted); font-size:0.82rem; padding:1.2rem 0; grid-column:1/-1;">${def.vuoto}</p>`;
         return;
     }
 
-    // Tessera alla maniera di Doppioni: copertina, moltiplicatore in alto a
-    // destra (solo se le copie sono piu' di una), nome, valori. Il click e'
-    // lo stesso delle miniature del widget: carta -> flip, box -> modifica.
-    elenco.innerHTML = voci.map(v => {
-        const src = (v.immagine && typeof _urlImmagineVisualizzabile === 'function') ? (_urlImmagineVisualizzabile(v.immagine, 200) || '') : '';
-        // loading="lazy": anche le tessere nascoste dal taglio non scaricano nulla.
-        const fig = src
-            ? `<img class="pp-pag-cover" src="${_ppEsc(src)}" alt="" loading="lazy" onerror="this.style.display='none';">`
-            : `<div class="pp-pag-cover pp-pag-cover-vuota"><i class="fa-solid ${v.tipo === 'box' ? 'fa-box-archive' : 'fa-image'}"></i></div>`;
-        const copie = v.copie > 1 ? `<div class="pp-pag-copie">×${v.copie}</div>` : '';
-        const valori = oscillazione
-            ? `<b class="pp-var-testo ${v.varia > 0 ? 'pp-su' : 'pp-giu'}">${_ppFmtVar(v.varia)}</b><span>ora ${_ppEur(v.prezzo)}</span>`
-            : `<b>${_ppEur(v.prezzo)}</b><span>cad.</span>`;
+    elenco.innerHTML = voci.map((v, i) => {
+        const rango = inPodio.length + i + 1;
+        let extra = '', valori;
+        if (def.id === 'valore') {
+            extra = `<span class="pp-rango">#${rango}</span>${v.copie > 1 ? `<span class="pp-pag-copie">×${v.copie}</span>` : ''}`;
+            valori = `<b>${_ppEur(v.prezzo)}</b><span>cad.</span>`;
+        } else if (oscillazione) {
+            extra = `${v.copie > 1 ? `<span class="pp-pag-copie">×${v.copie}</span>` : ''}<span class="pp-fascia ${v.varia > 0 ? 'pp-fascia-su' : 'pp-fascia-giu'}">${_ppFmtVar(v.varia)}</span>`;
+            valori = `<span>${_ppEur(v.prezzo - v.varia)} &rarr; ${_ppEur(v.prezzo)}</span>`;
+        } else {
+            extra = v.copie > 1 ? `<span class="pp-pag-copie">×${v.copie}</span>` : '';
+            valori = `<b>${_ppEur(v.prezzo)}</b><span>cad.</span>`;
+        }
         return `
             <div class="pp-pag-tile" data-id="${_ppEsc(v.id)}" data-tipo="${v.tipo}" data-cat="${def.id}" onclick="_ppClicMini(event, this)">
-                ${fig}
-                ${copie}
+                ${_ppFoto(v, 200, extra)}
                 <div class="pp-pag-nome">${_ppEsc(v.nome)}</div>
                 <div class="pp-pag-valori">${valori}</div>
             </div>`;
     }).join('');
 
-    if (conTaglio) {
+    if (voci.length) {
         _ppAdattaGrigliaAlloSpazio();
         _ppAvviaOsservatorePagina();
     }
