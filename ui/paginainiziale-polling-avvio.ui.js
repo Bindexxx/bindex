@@ -89,6 +89,7 @@ async function _giroPollingLento() {
             // ora vive in ui/widget-chat.ui.js come _aggiornaBadgeChat().
             await _aggiornaBadgeChat();
             await _controllaNotifichePush();
+            await _aggiornaPokeballStatoEstensione(); // restyle FASE 1: rossa/verde
         } catch (e) { console.error('Errore polling avvisi (widget prezzi/inserimento/match):', e); }
         _impostaSyncAttivo(false);
         renderWidgetHome();
@@ -355,8 +356,22 @@ async function initPhoneShell() {
             // restano nel codice (non più richiamate da qui) — nessun
             // altro punto le chiama, rimozione a costo zero se in futuro
             // si vuole ripulire anche quelle.
+            // RESTYLE BINDEX FASE 1 (2026-09-30, decisione Claudio): la
+            // riga del nome in cima alla home (con il bottone "Modifica")
+            // sparisce come nelle tavole approvate, quindi "Modifica home"
+            // TORNA qui fra le scorciatoie \u2014 ora \u00e8 l'unica strada (oltre al
+            // tocco lungo), non pi\u00f9 un doppione. Tipo 'action': chiude la
+            // tendina, chiude un eventuale dettaglio aperto e riusa
+            // toggleModificaWidgetHome() invariata (#btnModificaWidgetHome
+            // resta nel DOM, nascosto, cos\u00ec quella funzione continua a
+            // trovarlo senza modifiche).
             quickActions: [
                 { id: 'suoni', label: 'Suoni', glyph: '\u266a', active: prefSuoniWidgetGet(), onToggle: () => toggleSuoniWidgetHome() },
+                { id: 'modifica-home', label: 'Modifica home', glyph: '\u270e', type: 'action', onToggle: () => {
+                    if (typeof CSBar !== 'undefined') CSBar.close();
+                    if (document.body.classList.contains('phone-detail-open')) chiudiDettaglioWidget();
+                    toggleModificaWidgetHome();
+                } },
             ],
 
             onSettings: () => apriDettaglioWidget('impostazioni'),
@@ -463,6 +478,7 @@ async function initPhoneShell() {
         if (profiloContainer && csbRight) csbRight.appendChild(profiloContainer);
 
         _avviaPresenzaLive(); // fire-and-forget, vedi commento sulla funzione sopra
+        _aggiornaPokeballStatoEstensione(); // restyle FASE 1: rossa/verde, fire-and-forget
 
         // Valuta (2026-09-01): collegata al saldo reale di
         // inventario_ricompense. AGGIORNATO 2026-09-07: usa polvere_saldo()

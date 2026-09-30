@@ -168,6 +168,12 @@ async function renderWidgetHome() {
         const _iconaStatica = w.mini || _ta.col < CELLE_MIN_PER_SFERA || _ta.row < 2;
 
         let visuale;
+        // RESTYLE BINDEX FASE 1 (2026-09-30): "badge SEMPRE sulla sfera".
+        // Se la tessera ha una sfera, il badge viene messo DENTRO
+        // .pkdx-icon-wrap (fratello di .pkdx-ball: resta fermo durante la
+        // cattura) e non più come figlio diretto della tessera. Senza
+        // sfera (tessere con la foto della carta) resta dov'era.
+        let badgeSuSfera = false;
         if (BALL_ATTIVA && !anteprima.immagine && _iconaStatica) {
             // SFERA FERMA (Claudio: "devono essere comunque piccole
             // pokeball, senza movimento e senza nome, non icone a caso").
@@ -179,10 +185,13 @@ async function renderWidgetHome() {
             // ed e' proprio quello che si vedeva nello screenshot.
             // Restano il corpo della sfera e il badge numerico.
             const aspettoMini = _ballASPETTO[w.id] || { emblema: 'piu', colore: null };
+            // RESTYLE BINDEX FASE 1: badge SOPRA la sfera (in alto a
+            // destra), non più nell'angolo della tessera — vedi 'badgeSuSfera'.
             visuale = `
                 <div class="pkdx-icon-wrap pkdx-ball-statica"><div class="pkdx-ball">
                     <div class="pkdx-ball-body">${_ballSvgCache(aspettoMini.emblema, aspettoMini.colore, null)}</div>
-                </div></div>`;
+                </div>${badge}</div>`;
+            badgeSuSfera = true;
         } else if (BALL_ATTIVA && !anteprima.immagine) {
             const aspetto = _ballASPETTO[w.id] || { emblema: 'piu', colore: null };
             // L'incisione compare solo sulle 1x1: sulle altre taglie il
@@ -192,11 +201,14 @@ async function renderWidgetHome() {
             // libere, confrontare w.size con la stringa '1x1' era diventato
             // sbagliato: '1x1' ora e' l'ICONA, dove non c'e' nemmeno la
             // sfera su cui incidere.
+            // RESTYLE BINDEX FASE 1 (2026-09-30, regola imperativa "nessun
+            // numero inciso sulle sfere"): sempre e solo il titolo breve.
+            // Prima, quando il widget chiedeva attenzione, nella pancia
+            // finiva righe[0] ("3 da correggere"): ora il dato sta accanto
+            // alla sfera (vedi .widget-tile-testo) e l'attenzione la danno
+            // il semaforo e il badge sulla sfera.
             if (_ta.col <= 4 && _ta.row <= 2 && prefScritteBallGet()) {
-                const chiedeAttenzione = !!_ballChiedeAttenzione(w.id, anteprima);
-                inciso = chiedeAttenzione
-                    ? _ballAccorcia(anteprima.righe[0])
-                    : (_ballTITOLI_BREVI[w.id] || def.titolo);
+                inciso = _ballTITOLI_BREVI[w.id] || def.titolo;
             }
             visuale = `
                 <div class="pkdx-icon-wrap"><div class="pkdx-ball">
@@ -209,7 +221,8 @@ async function renderWidgetHome() {
                     <span class="pkdx-lock-ring"></span>
                     <span class="pkdx-lock-ring ring-2"></span>
                     ${_ballParticelle()}
-                </div></div>`;
+                </div>${badge}</div>`;
+            badgeSuSfera = true;
         } else {
             visuale = `<i class="fa-solid ${def.icona} widget-tile-icon"></i>`;
         }
@@ -261,17 +274,24 @@ async function renderWidgetHome() {
             // niente per nessun altro widget. Resta invariata sulla tessera
             // PICCOLA (ramo else sotto), dove non c'è nessun corpo dedicato.
         } else {
+            // RESTYLE BINDEX FASE 1 (2026-09-30): titolo e righe avvolti in
+            // .widget-tile-testo, così sulle tessere piccole con la sfera
+            // possono stare ACCANTO alla sfera (sfera sempre a sinistra,
+            // nome + stato in una riga). Per mini/icona e senza sfera il
+            // CSS li tratta come prima (nascosti o in colonna).
             corpo = `
                 ${visuale}
-                <div class="widget-tile-titolo">${def.titolo}</div>
                 ${rigaImmagine}
-                <div class="widget-tile-righe">${anteprima.righe.map(r => `<span>${r}</span>`).join('')}</div>`;
+                <div class="widget-tile-testo">
+                    <div class="widget-tile-titolo">${def.titolo}</div>
+                    <div class="widget-tile-righe">${anteprima.righe.map(r => `<span>${r}</span>`).join('')}</div>
+                </div>`;
         }
 
         return `
             <div class="widget-tile ${classeStato} ${classeCascata} widget-size-${w.size} widget-col-${_t.col} widget-row-${_t.row} ${_formaWidget(_ta.col, _ta.row)} ${_iconaStatica ? 'widget-tile-mini' : ''}" ${stileRitardo} data-widget-id="${w.instanceId}" data-widget-index="${indice}" ${azioneClick}>
                 ${controlliEdit}
-                ${badge}
+                ${badgeSuSfera ? '' : badge}
                 <div class="tile-tinta"></div><div class="tile-alone"></div>
                 ${corpo}
             </div>`;
@@ -577,6 +597,11 @@ function toggleModificaWidgetHome() {
         const label = btn.querySelector('span');
         if (label) label.textContent = _editModeWidget ? 'Fatto' : 'Modifica';
     }
+    // RESTYLE BINDEX FASE 1 (2026-09-30): la riga in cima alla home è
+    // nascosta e ricompare SOLO in modifica, come barra "Aggiungi widget /
+    // Fatto" (tavola "Modifica home" approvata) — vedi .phone-home-header
+    // in index.css. La classe sul body è l'unico aggancio per il CSS.
+    document.body.classList.toggle('home-in-modifica', _editModeWidget);
     renderWidgetHome();
 }
 

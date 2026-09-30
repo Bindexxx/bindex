@@ -407,10 +407,19 @@ function _vaiAllaPaginaWidgetRelativa(delta) {
 // dettaglio o si sta modificando la home (lì cambiare pagina sotto
 // sarebbe solo confuso), né oltre la prima/ultima pagina
 // (_vaiAllaPaginaWidget limita già l'indice).
+//
+// RESTYLE BINDEX FASE 1 (2026-09-30, tavole approvate + decisione Claudio
+// "fissi ora, configurabili dopo"): sinistra = Cerca (la ricerca globale
+// di sempre, apriRicercaGlobale in ui/navigation-ricerca.ui.js), destra =
+// Inserisci (pagina Inserimento, la stessa che apre la sua tessera). Le
+// pagine della home si cambiano con puntini, frecce e scorrimento, che
+// restano invariati. La scelta del tasto in Impostazioni arriverà con la
+// FASE 3: il punto da cambiare sarà solo questo.
 function _clickPokeballDecorativa(lato) {
     if (document.body.classList.contains('phone-detail-open')) return;
     if (typeof _editModeWidget !== 'undefined' && _editModeWidget) return;
-    _vaiAllaPaginaWidgetRelativa(lato === 'sinistra' ? -1 : 1);
+    if (lato === 'sinistra') apriRicercaGlobale();
+    else apriDettaglioWidget('inserimento', null);
 }
 
 function _aggiornaPuntiniPagine() {

@@ -570,6 +570,7 @@
       '<header class="csb-bar" data-csb="bar">' +
         '<div class="csb-left">' +
           '<span class="csb-clock" data-csb="clock">--:--</span>' +
+          '<span class="csb-nbadge" data-csb="nbadge" hidden></span>' +
           '<span class="csb-ball-wrap">' +
             '<button type="button" class="csb-ball" data-csb="ball" data-state="offline" ' +
             'aria-label="Connessione assente" aria-expanded="false"></button>' +
@@ -658,6 +659,7 @@
     el.headsText = q("headstext");
     el.bar = q("bar");
     el.clock = q("clock");
+    el.nbadge = q("nbadge"); // Bindex restyle FASE 1: contatore accanto all'ora
     el.ball = q("ball");
     el.pop = q("pop");
     el.popState = q("popstate");
@@ -1118,6 +1120,15 @@
        il ticker sta occupando il centro della barra */
     updateTitleBadge();
     if (state.popOpen) renderPop();
+    // Bindex restyle FASE 1 (2026-09-30): contatore rosso accanto all'ora,
+    // stesso numero del titolo della scheda (da gestire o da leggere, il
+    // maggiore). Aggiornato PRIMA del ritorno anticipato del ticker, così
+    // non resta mai indietro mentre il centro mostra un avviso.
+    if (el.nbadge) {
+      var nb = Math.max(unreadCount(), interventiAperti().length);
+      el.nbadge.textContent = nb > 99 ? "99+" : String(nb);
+      el.nbadge.hidden = nb === 0;
+    }
     if (el.center.classList.contains("is-alert")) return;
     var da = interventiAperti().length;
     var n = unreadCount();

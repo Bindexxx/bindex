@@ -98,57 +98,107 @@ const _ballSchiarisci = (h, q) => _ballMiscela(h, 255, q);
 const _ballScurisci   = (h, q) => _ballMiscela(h, 0, q);
 
 // ── EMBLEMI (sagome bianche piene, riquadro 24x24) ───────────────────────
-// I primi dieci vengono dal modulo di Opus; gli ultimi quattro (persone,
-// pin, lampadina, orologio) sono stati disegnati per i widget che non
-// avevano corrispondenza.
+// RESTYLE BINDEX FASE 1 (2026-09-30, tavole approvate sulla tela "Bindex —
+// restyle"): TUTTI gli emblemi ora hanno il bordino scuro sottile che prima
+// avevano solo 'carte' (stesso tono: calotta scurita al 50%, 1.6 di
+// spessore) — pieni, leggibili anche sulle sfere piccole. La sfera
+// (_ballSvg) e le animazioni NON cambiano: cambia solo il contenuto
+// dell'emblema. Nuovi: cartaNuova, cartellino, trend, corona, bandiera,
+// stella, doppie, griglia, puzzle, nodi, fumetto, vassoio, coppa, mensole,
+// fotocamera. Le chiavi vecchie restano tutte (nessun chiamante rotto).
+function _ballEmbBordo(c) {
+    return ` stroke="${_ballScurisci(c, 0.5)}" stroke-width="1.6" stroke-linejoin="round"`;
+}
+// Tratto bianco con contorno scuro (per le frecce/linee non chiuse).
+function _ballEmbLinea(c, d, w) {
+    return `<path d="${d}" fill="none" stroke="${_ballScurisci(c, 0.5)}" stroke-width="${w + 2.6}" stroke-linecap="round" stroke-linejoin="round"/>` +
+           `<path d="${d}" fill="none" stroke="#fff" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round"/>`;
+}
 const _ballEMBLEMI = {
     carte: (c) => {
-        const st = ` stroke="${_ballScurisci(c, 0.5)}" stroke-width="1.6" stroke-linejoin="round"`;
+        const st = _ballEmbBordo(c);
         return `<rect x="1.8" y="6.5" width="8.5" height="13" rx="1.6" transform="rotate(-26 6.05 13)"${st}/>` +
                `<rect x="13.7" y="6.5" width="8.5" height="13" rx="1.6" transform="rotate(26 17.95 13)"${st}/>` +
                `<rect x="7.75" y="4.5" width="8.5" height="15" rx="1.6"${st}/>`;
     },
-    piu: () => '<rect x="9.8" y="2.6" width="4.4" height="18.8" rx="2.2"/>' +
-               '<rect x="2.6" y="9.8" width="18.8" height="4.4" rx="2.2"/>',
-    scambio: () => '<path d="M2.5 6.4h11.2V2.4l7.8 5.6-7.8 5.6V9.6H2.5z"/>' +
-                   '<path d="M21.5 17.6H10.3v4l-7.8-5.6 7.8-5.6v4h11.2z"/>',
-    monete: (c) => '<ellipse cx="12" cy="5.6" rx="9" ry="3.4"/>' +
-        '<path d="M3 8.4v3.1c0 1.9 4 3.4 9 3.4s9-1.5 9-3.4V8.4c0 1.9-4 3.4-9 3.4S3 10.3 3 8.4z"/>' +
-        '<path d="M3 14.4v3.1c0 1.9 4 3.4 9 3.4s9-1.5 9-3.4v-3.1c0 1.9-4 3.4-9 3.4s-9-1.5-9-3.4z"/>' +
+    piu: (c) => `<path d="M9.7 2.6h4.6v7.1h7.1v4.6h-7.1v7.1H9.7v-7.1H2.6V9.7h7.1z"${_ballEmbBordo(c)}/>`,
+    scambio: (c) => `<path d="M2.5 6.4h11.2V2.4l7.8 5.6-7.8 5.6V9.6H2.5z"${_ballEmbBordo(c)}/>` +
+                    `<path d="M21.5 17.6H10.3v4l-7.8-5.6 7.8-5.6v4h11.2z"${_ballEmbBordo(c)}/>`,
+    monete: (c) => `<path d="M3 14.4v3.1c0 1.9 4 3.4 9 3.4s9-1.5 9-3.4v-3.1c0 1.9-4 3.4-9 3.4s-9-1.5-9-3.4z"${_ballEmbBordo(c)}/>` +
+        `<path d="M3 8.4v3.1c0 1.9 4 3.4 9 3.4s9-1.5 9-3.4V8.4c0 1.9-4 3.4-9 3.4S3 10.3 3 8.4z"${_ballEmbBordo(c)}/>` +
+        `<ellipse cx="12" cy="5.6" rx="9" ry="3.4"${_ballEmbBordo(c)}/>` +
         `<ellipse cx="12" cy="5.6" rx="3.4" ry="1.3" fill="${c}"/>`,
-    cuore: () => '<path d="M12 21.2l-1.7-1.6C4.3 14.1 1 11.1 1 7.6 1 4.5 3.4 2 6.5 2c1.8 0 3.5.9 4.5 2.2C12 2.9 13.7 2 15.5 2 18.6 2 21 4.5 21 7.6c0 3.5-3.3 6.5-9.3 12z"/>',
-    album: (c) => '<path d="M2 4.6C4.6 3 8.4 3 11 4.6v15.2C8.4 18.2 4.6 18.2 2 19.8z"/>' +
-        '<path d="M13 4.6C15.6 3 19.4 3 22 4.6v15.2c-2.6-1.6-6.4-1.6-9 0z"/>' +
-        `<rect x="11.2" y="3.4" width="1.6" height="17" rx=".8" fill="${c}"/>`,
-    bustina: (c) => '<path d="M5.5 7L7.1 4.9 8.8 7l1.6-2.1L12 7l1.6-2.1L15.3 7l1.6-2.1L18.5 7v13.6a1.4 1.4 0 01-1.4 1.4H6.9a1.4 1.4 0 01-1.4-1.4z"/>' +
+    cuore: (c) => `<path d="M12 21.2l-1.7-1.6C4.3 14.1 1 11.1 1 7.6 1 4.5 3.4 2 6.5 2c1.8 0 3.5.9 4.5 2.2C12 2.9 13.7 2 15.5 2 18.6 2 21 4.5 21 7.6c0 3.5-3.3 6.5-9.3 12z"${_ballEmbBordo(c)}/>`,
+    album: (c) => `<path d="M2 4.6C4.6 3 8.4 3 11 4.6v15.2C8.4 18.2 4.6 18.2 2 19.8z"${_ballEmbBordo(c)}/>` +
+        `<path d="M13 4.6C15.6 3 19.4 3 22 4.6v15.2c-2.6-1.6-6.4-1.6-9 0z"${_ballEmbBordo(c)}/>`,
+    bustina: (c) => `<path d="M5.5 7L7.1 4.9 8.8 7l1.6-2.1L12 7l1.6-2.1L15.3 7l1.6-2.1L18.5 7v13.6a1.4 1.4 0 01-1.4 1.4H6.9a1.4 1.4 0 01-1.4-1.4z"${_ballEmbBordo(c)}/>` +
         `<rect x="5.5" y="11.9" width="13" height="2.4" fill="${c}"/>`,
-    polvere: () => '<path d="M12 0.8l2.6 6.6 6.6 2.6-6.6 2.6L12 19.2 9.4 12.6 2.8 10l6.6-2.6z"/>' +
-        '<path d="M19.4 14.6l1.1 2.8 2.8 1.1-2.8 1.1-1.1 2.8-1.1-2.8-2.8-1.1 2.8-1.1z"/>' +
-        '<circle cx="4.4" cy="18.4" r="2.1"/>',
-    regalo: (c) => '<rect x="3" y="9.5" width="18" height="11.8" rx="1.8"/>' +
-        '<rect x="1.8" y="5.6" width="20.4" height="4.6" rx="1.6"/>' +
-        `<rect x="10.4" y="4.5" width="3.2" height="17" fill="${c}"/>` +
-        '<path d="M12 6.2C10.2 2.2 5.6 2.6 6.1 5.6c.4 2.1 3.5 1.7 5.9.6z"/>' +
-        '<path d="M12 6.2c1.8-4 6.4-3.6 5.9-.6-.4 2.1-3.5 1.7-5.9.6z"/>',
-    ingranaggio: (c) => '<path d="M12 1.8l1.7 2.7 3.2-.7.5 3.2 3 1.3-1.6 2.8 1.6 2.8-3 1.3-.5 3.2-3.2-.7L12 22.2l-1.7-2.7-3.2.7-.5-3.2-3-1.3L5.2 13 3.6 10.2l3-1.3.5-3.2 3.2.7z"/>' +
+    polvere: (c) => `<path d="M12 0.8l2.6 6.6 6.6 2.6-6.6 2.6L12 19.2 9.4 12.6 2.8 10l6.6-2.6z"${_ballEmbBordo(c)}/>` +
+        `<path d="M19.4 14.6l1.1 2.8 2.8 1.1-2.8 1.1-1.1 2.8-1.1-2.8-2.8-1.1 2.8-1.1z"${_ballEmbBordo(c)}/>` +
+        `<circle cx="4.4" cy="18.4" r="2.1"${_ballEmbBordo(c)}/>`,
+    regalo: (c) => `<rect x="3" y="9.5" width="18" height="11.8" rx="1.8"${_ballEmbBordo(c)}/>` +
+        `<path d="M12 6.2C10.2 2.2 5.6 2.6 6.1 5.6c.4 2.1 3.5 1.7 5.9.6z"${_ballEmbBordo(c)}/>` +
+        `<path d="M12 6.2c1.8-4 6.4-3.6 5.9-.6-.4 2.1-3.5 1.7-5.9.6z"${_ballEmbBordo(c)}/>` +
+        `<rect x="1.8" y="5.6" width="20.4" height="4.6" rx="1.6"${_ballEmbBordo(c)}/>` +
+        `<rect x="10.4" y="5.6" width="3.2" height="15.7" fill="${c}"/>`,
+    ingranaggio: (c) => `<path d="M12 1.8l1.7 2.7 3.2-.7.5 3.2 3 1.3-1.6 2.8 1.6 2.8-3 1.3-.5 3.2-3.2-.7L12 22.2l-1.7-2.7-3.2.7-.5-3.2-3-1.3L5.2 13 3.6 10.2l3-1.3.5-3.2 3.2.7z"${_ballEmbBordo(c)}/>` +
         `<circle cx="12" cy="12" r="3.7" fill="${c}"/>`,
-
-    persone: (c) => '<circle cx="8.6" cy="7.4" r="4.3"/>' +
-        '<path d="M1.6 20.6c0-3.9 3.1-6.6 7-6.6s7 2.7 7 6.6z"/>' +
-        '<circle cx="17.2" cy="8.6" r="3.4" opacity=".92"/>' +
-        '<path d="M13.4 20.6c0-3.2 1.9-5.4 4.6-5.4 2.6 0 4.4 2 4.4 5.4z" opacity=".92"/>' +
-        `<path d="M13.9 15.6c.9-.3 2-.4 3.3-.4" stroke="${c}" stroke-width="1.2" fill="none"/>`,
-    pin: (c) => '<path d="M12 1.6c-4.2 0-7.4 3.2-7.4 7.3 0 5.3 6.4 12.6 6.7 12.9a1 1 0 001.4 0c.3-.3 6.7-7.6 6.7-12.9 0-4.1-3.2-7.3-7.4-7.3z"/>' +
+    persone: (c) => `<circle cx="17.2" cy="8.6" r="3.4"${_ballEmbBordo(c)}/>` +
+        `<path d="M13.4 20.6c0-3.2 1.9-5.4 4.6-5.4 2.6 0 4.4 2 4.4 5.4z"${_ballEmbBordo(c)}/>` +
+        `<circle cx="8.6" cy="7.4" r="4.3"${_ballEmbBordo(c)}/>` +
+        `<path d="M1.6 20.6c0-3.9 3.1-6.6 7-6.6s7 2.7 7 6.6z"${_ballEmbBordo(c)}/>`,
+    pin: (c) => `<path d="M12 1.6c-4.2 0-7.4 3.2-7.4 7.3 0 5.3 6.4 12.6 6.7 12.9a1 1 0 001.4 0c.3-.3 6.7-7.6 6.7-12.9 0-4.1-3.2-7.3-7.4-7.3z"${_ballEmbBordo(c)}/>` +
         `<circle cx="12" cy="8.8" r="3.1" fill="${c}"/>`,
-    lampadina: (c) => '<path d="M12 1.8a7 7 0 00-4.1 12.7c.7.5 1.1 1.2 1.1 2v.4h6v-.4c0-.8.4-1.5 1.1-2A7 7 0 0012 1.8z"/>' +
-        '<rect x="8.8" y="18" width="6.4" height="2.2" rx="1.1"/>' +
-        '<rect x="9.6" y="21" width="4.8" height="1.8" rx=".9"/>' +
-        `<path d="M10.4 14.6h3.2" stroke="${c}" stroke-width="1.1" fill="none"/>`,
-    orologio: (c) => '<circle cx="12" cy="12.4" r="9.6"/>' +
-        `<circle cx="12" cy="12.4" r="7.4" fill="${c}"/>` +
+    lampadina: (c) => `<path d="M12 1.8a7 7 0 00-4.1 12.7c.7.5 1.1 1.2 1.1 2v.4h6v-.4c0-.8.4-1.5 1.1-2A7 7 0 0012 1.8z"${_ballEmbBordo(c)}/>` +
+        `<rect x="8.8" y="18" width="6.4" height="2.2" rx="1.1"${_ballEmbBordo(c)}/>` +
+        `<rect x="9.6" y="21" width="4.8" height="1.8" rx=".9"${_ballEmbBordo(c)}/>`,
+    orologio: (c) => `<circle cx="12" cy="12.4" r="9.6"${_ballEmbBordo(c)}/>` +
+        `<circle cx="12" cy="12.4" r="6.8" fill="${c}"/>` +
         '<rect x="11.2" y="6.6" width="1.7" height="6.6" rx=".85"/>' +
         '<rect x="11.2" y="11.6" width="5.6" height="1.7" rx=".85"/>' +
-        '<circle cx="12" cy="12.4" r="1.4"/>'
+        '<circle cx="12" cy="12.4" r="1.4"/>',
+    // ── nuovi (restyle 2026-09-30) ──
+    cartaNuova: (c) => `<rect x="2.6" y="4.6" width="12.6" height="17.6" rx="2"${_ballEmbBordo(c)}/>` +
+        `<rect x="5.2" y="7.3" width="7.4" height="5.6" rx="1" fill="${c}"/>` +
+        `<path d="M18.5 .8l1.5 3.3 3.6.4-2.7 2.4.8 3.5-3.2-1.8-3.2 1.8.8-3.5-2.7-2.4 3.6-.4z"${_ballEmbBordo(c)}/>`,
+    cartellino: (c) => `<path d="M2 3.5A1.5 1.5 0 0 1 3.5 2h8.3c.4 0 .8.2 1.1.4l8.7 8.7c.6.6.6 1.5 0 2.1l-8.3 8.3c-.6.6-1.5.6-2.1 0L2.4 12.8c-.3-.3-.4-.7-.4-1.1z"${_ballEmbBordo(c)}/>` +
+        `<circle cx="7.3" cy="7.3" r="2.1" fill="${c}"/>`,
+    trend: (c) => _ballEmbLinea(c, 'M2.2 18.2l6.4-6.4 4 4 5-5', 3.2) +
+        `<path d="M13 3.6h8.4v8.4z"${_ballEmbBordo(c)}/>`,
+    corona: (c) => `<rect x="4.2" y="19.2" width="15.6" height="2.8" rx="1"${_ballEmbBordo(c)}/>` +
+        `<path d="M2 7l5.2 4.4L12 3l4.8 8.4L22 7l-2.2 11.4H4.2z"${_ballEmbBordo(c)}/>` +
+        `<circle cx="12" cy="14.2" r="1.9" fill="${c}"/>`,
+    bandiera: (c) => `<rect x="3.2" y="1.8" width="2.8" height="20.6" rx="1.4"${_ballEmbBordo(c)}/>` +
+        `<path d="M6 2.8h14.8l-3.7 5.1 3.7 5.1H6z"${_ballEmbBordo(c)}/>`,
+    stella: (c) => `<path d="M12 1.4l3.1 6.4 7 1-5.1 5 1.2 7L12 17.5l-6.2 3.3 1.2-7-5.1-5 7-1z"${_ballEmbBordo(c)}/>`,
+    doppie: (c) => `<rect x="2.4" y="1.8" width="12.6" height="16.6" rx="2"${_ballEmbBordo(c)}/>` +
+        `<rect x="9" y="5.6" width="12.6" height="16.6" rx="2"${_ballEmbBordo(c)}/>` +
+        `<path d="M12.3 13.9h6.2M15.4 10.8v6.2" stroke="${c}" stroke-width="2.2" stroke-linecap="round"/>`,
+    // Set: pagina di raccoglitore 3x3, caselle piene = carte del set che hai
+    griglia: (c) => `<rect x="2.2" y="2.2" width="19.6" height="19.6" rx="2.6"${_ballEmbBordo(c)}/>` +
+        [[0,0,1],[1,0,1],[2,0,1],[0,1,1],[1,1,1],[2,1,0],[0,2,1],[1,2,0],[2,2,0]].map(([x, y, pieno]) => {
+            const X = 4.6 + x * 5.2, Y = 4.6 + y * 5.2;
+            return pieno ? `<rect x="${X}" y="${Y}" width="4.2" height="4.2" rx=".8" fill="${c}"/>`
+                         : `<rect x="${X + .5}" y="${Y + .5}" width="3.2" height="3.2" rx=".6" fill="none" stroke="${c}" stroke-width="1"/>`;
+        }).join(''),
+    // Estensione: tassello di puzzle
+    puzzle: (c) => `<path d="M3.6 7.4h4.2a2.7 2.7 0 1 1 5.4 0h4.2v4.2a2.7 2.7 0 1 1 0 5.4v4.6H3.6v-4.6a2.7 2.7 0 1 0 0-5.4z"${_ballEmbBordo(c)}/>`,
+    nodi: (c) => _ballEmbLinea(c, 'M6 12l12.4-6.7M6 12l12.4 6.7', 2.6) +
+        `<circle cx="5.3" cy="12" r="3.7"${_ballEmbBordo(c)}/><circle cx="18.6" cy="5.2" r="3.7"${_ballEmbBordo(c)}/><circle cx="18.6" cy="18.8" r="3.7"${_ballEmbBordo(c)}/>`,
+    fumetto: (c) => `<path d="M2 5.2C2 4 3 3 4.2 3h15.6C21 3 22 4 22 5.2v10.3c0 1.2-1 2.2-2.2 2.2H10l-5.4 4.4v-4.4h-.4C3 17.7 2 16.7 2 15.5z"${_ballEmbBordo(c)}/>` +
+        `<circle cx="7.4" cy="10.4" r="1.7" fill="${c}"/><circle cx="12" cy="10.4" r="1.7" fill="${c}"/><circle cx="16.6" cy="10.4" r="1.7" fill="${c}"/>`,
+    vassoio: (c) => `<path d="M5.4 3h13.2l3.4 9.6V20c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2v-7.4z"${_ballEmbBordo(c)}/>` +
+        `<path d="M2.6 12.6h5.6l1.4 2.8h4.8l1.4-2.8h5.6" fill="none" stroke="${c}" stroke-width="1.8" stroke-linejoin="round"/>`,
+    coppa: (c) => _ballEmbLinea(c, 'M6.6 4.4H3.6a3.4 3.4 0 0 0 3.6 5M17.4 4.4h3a3.4 3.4 0 0 1-3.6 5', 2) +
+        `<rect x="10.6" y="13.6" width="2.8" height="4.8"${_ballEmbBordo(c)}/><rect x="6.4" y="18.4" width="11.2" height="3.8" rx="1.2"${_ballEmbBordo(c)}/>` +
+        `<path d="M6.4 2h11.2v6.9a5.6 5.6 0 0 1-11.2 0z"${_ballEmbBordo(c)}/>` +
+        `<path d="M12 4.6l.9 1.9 2.1.3-1.5 1.5.4 2.1-1.9-1-1.9 1 .4-2.1-1.5-1.5 2.1-.3z" fill="${c}"/>`,
+    mensole: (c) => `<rect x="2" y="2" width="20" height="20" rx="2"${_ballEmbBordo(c)}/>` +
+        `<rect x="2.8" y="9" width="18.4" height="1.9" fill="${c}"/><rect x="2.8" y="15.6" width="18.4" height="1.9" fill="${c}"/>` +
+        `<rect x="5" y="3.8" width="3" height="5.2" rx=".5" fill="${c}"/><rect x="9" y="4.9" width="3" height="4.1" rx=".5" fill="${c}"/><rect x="13" y="11" width="4.2" height="4.6" rx=".5" fill="${c}"/>`,
+    // Widget Foto carte (FASE 8c): pronto da ora, nessuno lo usa ancora.
+    fotocamera: (c) => `<path d="M8.2 3.6h7.6l1.6 2.6h3a1.8 1.8 0 011.8 1.8v11a1.8 1.8 0 01-1.8 1.8H3.6a1.8 1.8 0 01-1.8-1.8V8a1.8 1.8 0 011.8-1.8h3z"${_ballEmbBordo(c)}/>` +
+        `<circle cx="12" cy="13.2" r="4.6" fill="${c}"/><circle cx="12" cy="13.2" r="2.6"/>`
 };
 
 // ── DISEGNO DELLA SFERA ──────────────────────────────────────────────────
@@ -318,40 +368,44 @@ const _ballTITOLI_BREVI = {
 // Il colore serve solo al tema futuro "ball colorate": oggi la calotta la
 // decide _ballTemaAttivo().
 const _ballASPETTO = {
-    // Blocchi della home fissa diventati widget (2026-09-03). Emblemi
-    // scelti fra quelli gia' disegnati, nessun disegno nuovo:
-    // 'album' per la vetrina delle carte in primo piano, 'piu' per le
-    // ultime aggiunte, 'orologio' per i prezzi controllati di recente.
-    variazione_valore:{ emblema: 'monete',      colore: '#3FA45B' },
-    primo_piano:      { emblema: 'album',       colore: '#D4A017' },
-    carte_recenti:    { emblema: 'piu',         colore: '#3B7DD8' },
+    // RESTYLE BINDEX FASE 1 (2026-09-30): un emblema proprio per ogni
+    // widget (prima chat, achievement, richieste, scaffali e contributi non
+    // erano elencati e ricadevano sul "più" di ripiego in
+    // paginainiziale-render.ui.js). I colori restano quelli di sempre: oggi
+    // la calotta la decide comunque il tema (_ballPaletteWidget = false).
+    variazione_valore:{ emblema: 'trend',       colore: '#3FA45B' },
+    primo_piano:      { emblema: 'corona',      colore: '#D4A017' },
+    carte_recenti:    { emblema: 'cartaNuova',  colore: '#3B7DD8' },
     prezzi_recenti:   { emblema: 'orologio',    colore: '#F2C230' },
     visualizzazione:  { emblema: 'carte',       colore: '#3B7DD8' },
     inserimento:      { emblema: 'piu',         colore: '#D4342C' },
-    prezzi:           { emblema: 'monete',      colore: '#F2C230' },
+    prezzi:           { emblema: 'cartellino',  colore: '#F2C230' },
     binder:           { emblema: 'album',       colore: '#7F77DD' },
+    scaffali:         { emblema: 'mensole',     colore: '#7F77DD' },
     sealed:           { emblema: 'regalo',      colore: '#D6538F' },
-    ultima_carta:     { emblema: 'carte',       colore: '#4EA9A4' },
+    ultima_carta:     { emblema: 'stella',      colore: '#4EA9A4' },
     carta_del_giorno: { emblema: 'polvere',     colore: '#E8763C' },
     gruppo_attivo:    { emblema: 'persone',     colore: '#5AA8D8' },
     location:         { emblema: 'pin',         colore: '#639922' },
     suggerimento:     { emblema: 'lampadina',   colore: '#F2C230' },
     orologio:         { emblema: 'orologio',    colore: '#8A8A93' },
     aggiungi_carta:   { emblema: 'piu',         colore: '#639922' },
-    condividi:        { emblema: 'scambio',     colore: '#4B9AA6' },
-    match:            { emblema: 'cuore',       colore: '#D6538F' },
-    estensione:       { emblema: 'ingranaggio', colore: '#7A7F8A' },
-    // Widget nuovi
+    condividi:        { emblema: 'nodi',        colore: '#4B9AA6' },
+    match:            { emblema: 'scambio',     colore: '#D6538F' },
+    richieste:        { emblema: 'vassoio',     colore: '#4B9AA6' },
+    chat:             { emblema: 'fumetto',     colore: '#5AA8D8' },
+    contributi:       { emblema: 'persone',     colore: '#5AA8D8' },
+    achievement:      { emblema: 'coppa',       colore: '#D4A017' },
+    estensione:       { emblema: 'puzzle',      colore: '#7A7F8A' },
     valore_collezione:{ emblema: 'monete',      colore: '#C8892B' },
-    doppioni:         { emblema: 'carte',       colore: '#8A6FD0' },
+    doppioni:         { emblema: 'doppie',      colore: '#8A6FD0' },
     wishlist_obiettivi:{ emblema: 'cuore',      colore: '#D6538F' },
     traguardi:        { emblema: 'polvere',     colore: '#F2C230' },
     lingue:           { emblema: 'album',       colore: '#4B9AA6' },
-    set_completamento:{ emblema: 'carte',       colore: '#3B7DD8' },
-    // Segnaposto gacha: emblemi già scelti, si accenderanno con il sistema
+    set_completamento:{ emblema: 'griglia',     colore: '#3B7DD8' },
     bustina:          { emblema: 'bustina',     colore: '#D6538F' },
     polvere:          { emblema: 'polvere',     colore: '#7F77DD' },
-    missioni:         { emblema: 'regalo',      colore: '#639922' }
+    missioni:         { emblema: 'bandiera',    colore: '#639922' }
 };
 
 // Il testo inciso è stretto: teniamo le prime parole, il resto lo dice la

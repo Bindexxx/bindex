@@ -13,8 +13,8 @@
 // utils/formatters.js in index.html, subito prima di utils/shared-public.js
 // nelle pagine pubbliche).
 //
-// Contiene: formattaEuro, escapeHtml, escapeJsAttr, _urlImmagineSicura,
-// _urlImmagineVisualizzabile.
+// Contiene: formattaEuro, formattaEuroTondo, formattaEuroVariazione,
+// escapeHtml, escapeJsAttr, _urlImmagineSicura, _urlImmagineVisualizzabile.
 
 // AGGIUNTA (2026-09-24): mancava — ui/richieste-scambio.ui.js la
 // dava per scontata fin dall'header ("utils condivisi: escapeHtml,
@@ -34,6 +34,22 @@
 // (Dal 2026-09-25 esiste in una sola copia, qui in utils/comuni.js.)
 function formattaEuro(v) {
     return (Number(v) || 0).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2, useGrouping: 'always' }) + ' €';
+}
+
+// RESTYLE BINDEX FASE 1 (2026-09-30) — regola comune "Euro" (file 01 § B):
+//   "12,00 €" in liste e dettagli          → formattaEuro (sopra, invariata)
+//   "1.520 €" arrotondato, SOLO nei widget → formattaEuroTondo
+//   "+14,00 €" / "−14,00 €" per le variazioni, segno attaccato, mai
+//   "€ 14" né "+€3,20"                     → formattaEuroVariazione
+// Usate dalle fasi successive (tessere e pagine): nessun chiamante ancora.
+function formattaEuroTondo(v) {
+    return Math.round(Number(v) || 0).toLocaleString('it-IT', { maximumFractionDigits: 0, useGrouping: 'always' }) + ' €';
+}
+function formattaEuroVariazione(v) {
+    const n = Number(v) || 0;
+    // Sotto il mezzo centesimo è rumore di arrotondamento: niente segno.
+    if (Math.abs(n) < 0.005) return formattaEuro(0);
+    return (n > 0 ? '+' : '−') + formattaEuro(Math.abs(n));
 }
 
 
