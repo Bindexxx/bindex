@@ -5081,34 +5081,74 @@
            #chatModal (vedi Compilato_2026-09-24_widget-chat-server.txt).
            Vive qui e non in un file a sé perché tutto il resto del CSS
            di pagina (.pg-*, .btn-*) è già in questo blocco unico. */
-        #match .match-tabs { display: flex; gap: 8px; margin: 4px 0 14px; }
+        /* RESTYLE BINDEX FASE 3b (2026-10-01, tavole "Match"): telefono = una
+           card per persona; PC (pagina larga) = elenco persone a sinistra e
+           dettaglio della persona scelta a destra. Decide la larghezza VERA
+           della pagina (@container), non la finestra. */
+        #match { container-type: inline-size; }
+        #match .match-riepilogo { margin: 0 0 12px; font-size: 0.9rem; }
+        #match .match-riepilogo b { color: var(--text-dark); }
+        #match .match-rosso { color: var(--danger) !important; }
+        #match .match-riep-pc { display: none; }
+        #match .match-layout { display: flex; flex-direction: column; gap: 12px; padding-bottom: 4.5rem; }
+        #match .match-tabs { display: flex; gap: 6px; padding: 4px; border-radius: 14px; background: var(--primary-light); }
         #match .match-tabbtn {
             flex: 1; text-align: center; padding: 10px 6px; border-radius: 11px;
-            font-weight: 800; font-size: 0.78rem; cursor: pointer; border: none;
-            font-family: inherit; background: var(--primary-light); color: var(--primary);
+            font-weight: 800; font-size: 0.82rem; cursor: pointer; border: none;
+            font-family: inherit; background: transparent; color: var(--text-muted);
+            display: inline-flex; align-items: center; justify-content: center; gap: 7px;
         }
-        #match .match-tabbtn.attivo { background: var(--primary); color: #fff; }
+        #match .match-tabbtn.attivo { background: var(--card-bg); color: var(--text-dark); box-shadow: 0 1px 4px rgba(0,0,0,0.12); }
+        #match .match-master { display: none; }
+        #match .match-dettaglio { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+        #match .match-pc { display: none; }
+        #match .match-tel { display: inline; }
 
-        #match .match-persona { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 16px; overflow: hidden; margin-bottom: 12px; }
-        #match .match-persona-head { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-bottom: 1px solid var(--border-color); }
+        #match .match-persona { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 18px; overflow: visible; }
+        #match .match-persona-nasc { opacity: 0.7; border-style: dashed; }
+        #match .match-persona-head { display: flex; align-items: center; gap: 12px; padding: 14px 16px; }
         #match .match-avatar {
-            width: 36px; height: 36px; border-radius: 50%; flex: 0 0 auto;
-            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
-            color: #fff; font-weight: 800; display: flex; align-items: center; justify-content: center; font-size: 0.9rem;
+            width: 44px; height: 44px; border-radius: 50%; flex: 0 0 auto;
+            background: var(--primary);
+            color: #fff; font-weight: 800; display: flex; align-items: center; justify-content: center; font-size: 1.05rem;
         }
-        #match .match-persona-nome { font-weight: 800; font-size: 0.86rem; color: var(--text-dark); }
-        #match .match-persona-sotto { font-size: 0.66rem; color: var(--text-muted); }
-        #match .match-riga { display: flex; align-items: center; gap: 10px; padding: 11px 14px; position: relative; }
-        #match .match-riga + .match-riga { border-top: 1px solid var(--border-color); }
-        #match .match-riga-testo { flex: 1; min-width: 0; font-size: 0.8rem; color: var(--text-dark); line-height: 1.35; }
+        #match .match-persona-nome { font-weight: 800; font-size: 1rem; color: var(--text-dark); }
+        #match .match-persona-sotto { font-size: 0.8rem; color: var(--text-muted); line-height: 1.3; }
+        #match .match-riga { display: flex; align-items: flex-start; gap: 12px; padding: 14px 16px; position: relative; border-top: 1px solid var(--border-color); }
+        #match .match-thumb { margin-top: 2px; }
+        #match .match-thumb:not([onclick]) { cursor: default; }
+        #match .match-thumb:not([onclick])::after { display: none; }
+        #match .match-img { width: 52px; height: 72px; border-radius: 5px; object-fit: cover; display: block; box-shadow: 0 2px 6px rgba(0,0,0,0.25); background: var(--primary-light); }
+        #match .match-img-vuota { display: flex; align-items: center; justify-content: center; color: var(--text-muted); font-size: 1.2rem; box-shadow: none; border: 1px dashed var(--border-color); }
+        #match .match-riga-testo { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 3px; }
+        #match .match-riga-nome { font-weight: 800; font-size: 0.98rem; color: var(--text-dark); }
+        #match .match-riga-meta { font-size: 0.8rem; color: var(--text-muted); }
+        #match .match-riga-prezzo { font-size: 0.82rem; color: var(--text-muted); line-height: 1.35; }
+        #match .match-riga-prezzo b { color: var(--text-dark); }
+        #match .match-riga-testo .bx-stato { margin-top: 4px; }
+        #match .match-nuovo { font-size: 0.66rem; font-weight: 800; letter-spacing: 0.6px; color: var(--danger); background: color-mix(in srgb, var(--danger) 14%, transparent); border-radius: 7px; padding: 2px 7px; vertical-align: middle; }
+        #match .match-spunta { width: 20px; height: 20px; margin-top: 4px; accent-color: var(--primary); flex: 0 0 auto; cursor: pointer; }
         #match .match-icobtn {
-            width: 34px; height: 34px; border-radius: 9px; flex: 0 0 auto;
-            background: var(--primary-light); color: var(--primary); border: none;
-            display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 0.85rem;
+            width: 38px; height: 38px; border-radius: 11px; flex: 0 0 auto;
+            background: var(--card-bg); color: var(--text-dark); border: 1px solid var(--border-color);
+            display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 0.9rem; font-family: inherit;
         }
         #match .match-persona-head .match-icobtn { margin-left: auto; }
+        #match .match-azione {
+            display: none; align-items: center; gap: 7px; padding: 8px 14px; border-radius: 999px; cursor: pointer;
+            font: inherit; font-size: 0.8rem; font-weight: 700; white-space: nowrap;
+            background: var(--card-bg); color: var(--text-dark); border: 1px solid var(--border-color);
+        }
+        #match .match-persona-fondo { padding: 12px 16px 16px; border-top: 1px solid var(--border-color); }
+        #match .match-fondo {
+            width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px;
+            padding: 12px; border-radius: 999px; cursor: pointer; font: inherit; font-size: 0.9rem; font-weight: 700;
+            background: var(--card-bg); color: var(--text-dark); border: 1px solid var(--border-color);
+        }
+        #match .match-fondo.attivo { background: var(--primary); color: #fff; border-color: var(--primary); }
+        #match .match-fondo:disabled { opacity: 0.5; cursor: default; }
         #match .match-menu {
-            position: absolute; top: 44px; right: 14px; z-index: 20;
+            position: absolute; top: 52px; right: 16px; z-index: 20;
             background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 12px;
             box-shadow: 0 8px 24px rgba(0,0,0,0.18); overflow: hidden; min-width: 170px; display: none;
         }
@@ -5120,6 +5160,180 @@
         }
         #match .match-menu button:hover { background: var(--primary-light); }
         #match .match-vuoto { text-align: center; color: var(--text-muted); font-size: 0.9rem; padding: 2rem 0; }
+        #match .match-nascoste { font-size: 0.8rem; color: var(--text-muted); display: flex; align-items: center; gap: 6px; padding: 4px 2px; }
+        #match .match-nascoste a { color: var(--primary); font-weight: 700; text-decoration: none; }
+        #match .match-nascoste:not(.match-nascoste-tel) { display: none; }
+        #match .match-punto { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--danger); vertical-align: middle; }
+
+        @container (min-width: 780px) {
+            #match .match-riep-pc { display: inline; }
+            #match .match-layout { display: grid; grid-template-columns: 360px minmax(0, 1fr); column-gap: 18px; row-gap: 12px; align-items: start; }
+            #match .match-tabs { grid-column: 1; }
+            #match .match-master { display: flex; flex-direction: column; gap: 8px; grid-column: 1; grid-row: 2; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 18px; padding: 14px; }
+            #match .match-dettaglio { grid-column: 2; grid-row: 1 / span 2; }
+            #match .match-descr { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 2px; }
+            #match .match-mrow { display: flex; align-items: center; gap: 10px; padding: 10px; border: 1px solid var(--border-color); border-radius: 14px; cursor: pointer; }
+            #match .match-mrow.sel { border-color: var(--primary); box-shadow: 0 0 0 1px var(--primary) inset; }
+            #match .match-mrow .match-avatar { width: 38px; height: 38px; font-size: 0.95rem; }
+            #match .match-mtesto { flex: 1; min-width: 0; }
+            #match .match-mrow .match-persona-nome { font-size: 0.92rem; }
+            #match .match-mrow .match-persona-sotto { font-size: 0.74rem; }
+            #match .match-freccia { color: var(--text-muted); font-size: 0.75rem; }
+            #match .match-nascoste:not(.match-nascoste-tel) { display: flex; border-top: 1px solid var(--border-color); padding-top: 10px; margin-top: 2px; }
+            #match .match-nascoste-tel { display: none; }
+            /* Solo la persona scelta nel dettaglio (le nascoste sempre visibili). */
+            #match .match-dettaglio > .match-persona:not(.match-persona-sel):not(.match-persona-nasc) { display: none; }
+            #match .match-tel { display: none; }
+            #match .match-pc { display: inline; }
+            #match .match-persona-nome .match-pc { font-size: 1.3rem; }
+            #match .match-persona-head .match-avatar { width: 56px; height: 56px; font-size: 1.3rem; }
+            #match .match-persona-head { padding: 18px 20px; }
+            #match .match-scrivi { width: auto; padding: 0 16px; gap: 8px; font-weight: 700; font-size: 0.85rem; }
+            #match .match-riga { align-items: center; padding: 14px 20px; }
+            #match .match-azione { display: inline-flex; }
+            #match .match-persona-fondo { display: none; }
+            #match .match-menu { top: 60px; right: 20px; }
+        }
+
+        /* ── Pagina Richieste (RESTYLE BINDEX FASE 3b) ─────────────────────
+           Una riga = una RICHIESTA (tutto quello che una persona ha chiesto
+           in una volta). Telefono: elenco, poi dettaglio con "Tutte le
+           richieste" per tornare. PC (pagina larga): elenco a sinistra e
+           dettaglio a destra. Classi .match-* duplicate qui (scoped a
+           #richieste) invece di condividerle: nessun refactoring cross-file. */
+        #richieste { container-type: inline-size; }
+        #richieste .pg-sotto b { color: var(--text-dark); }
+        #richieste .ric-layout { display: flex; flex-direction: column; gap: 12px; padding-bottom: 4.5rem; }
+        #richieste .ric-master, #richieste .ric-dettaglio { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+        #richieste .match-tabs { display: flex; gap: 6px; padding: 4px; border-radius: 14px; background: var(--primary-light); }
+        #richieste .match-tabbtn {
+            flex: 1; text-align: center; padding: 10px 6px; border-radius: 11px;
+            font-weight: 800; font-size: 0.82rem; cursor: pointer; border: none;
+            font-family: inherit; background: transparent; color: var(--text-muted);
+        }
+        #richieste .match-tabbtn.attivo { background: var(--card-bg); color: var(--text-dark); box-shadow: 0 1px 4px rgba(0,0,0,0.12); }
+        #richieste .ric-filtri { display: flex; gap: 6px; flex-wrap: wrap; }
+        #richieste .ric-filtro {
+            font: inherit; font-size: 0.78rem; font-weight: 700; padding: 7px 12px; border-radius: 999px;
+            border: 1px solid var(--border-color); background: var(--card-bg); color: var(--text-muted); cursor: pointer;
+        }
+        #richieste .ric-filtro.attivo { background: var(--primary); border-color: var(--primary); color: #fff; }
+        #richieste .ric-elenco { display: flex; flex-direction: column; gap: 8px; }
+        #richieste .ric-riga {
+            display: flex; align-items: center; gap: 10px; padding: 12px; cursor: pointer;
+            background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 16px;
+        }
+        #richieste .ric-riga.sel { border-color: var(--primary); box-shadow: 0 0 0 1px var(--primary) inset; }
+        #richieste .match-avatar {
+            width: 40px; height: 40px; border-radius: 50%; flex: 0 0 auto; background: var(--primary);
+            color: #fff; font-weight: 800; display: flex; align-items: center; justify-content: center; font-size: 1rem;
+        }
+        #richieste .match-mtesto { flex: 1; min-width: 0; }
+        #richieste .match-persona-nome { font-weight: 800; font-size: 0.95rem; color: var(--text-dark); }
+        #richieste .match-persona-sotto { font-size: 0.78rem; color: var(--text-muted); line-height: 1.3; }
+        #richieste .match-punto { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--danger); vertical-align: middle; }
+        #richieste .match-freccia { color: var(--text-muted); font-size: 0.75rem; }
+        #richieste .match-descr { font-size: 0.8rem; color: var(--text-muted); }
+        #richieste .match-vuoto { text-align: center; color: var(--text-muted); font-size: 0.9rem; padding: 1.5rem 0; }
+
+        #richieste .ric-card { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 18px; overflow: hidden; }
+        #richieste .ric-indietro {
+            display: flex; align-items: center; gap: 8px; width: 100%; padding: 12px 16px; border: none;
+            border-bottom: 1px solid var(--border-color); background: transparent; color: var(--primary);
+            font: inherit; font-weight: 700; font-size: 0.85rem; cursor: pointer; text-align: left;
+        }
+        #richieste .ric-testata { display: flex; align-items: center; gap: 12px; padding: 14px 16px; }
+        #richieste .ric-titolo { font-size: 1rem; }
+        #richieste .match-icobtn {
+            width: 38px; height: 38px; border-radius: 11px; flex: 0 0 auto; margin-left: auto;
+            background: var(--card-bg); color: var(--text-dark); border: 1px solid var(--border-color);
+            display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 0.9rem; font-family: inherit;
+        }
+        #richieste .ric-scrivi-txt { display: none; }
+        #richieste .ric-come {
+            margin: 0 16px 12px; padding: 10px 12px; border-radius: 12px; background: var(--primary-light);
+            font-size: 0.78rem; color: var(--text-muted); line-height: 1.9;
+        }
+        #richieste .ric-come b { color: var(--text-dark); }
+        #richieste .ric-come .fa-arrow-right { font-size: 0.65rem; margin: 0 2px; }
+        #richieste .ric-oggetto {
+            display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 14px 16px;
+            border-top: 1px solid var(--border-color);
+        }
+        #richieste .match-img { width: 48px; height: 67px; border-radius: 5px; object-fit: cover; display: block; flex: 0 0 auto; box-shadow: 0 2px 6px rgba(0,0,0,0.25); background: var(--primary-light); }
+        #richieste .match-img-vuota { display: flex; align-items: center; justify-content: center; color: var(--text-muted); font-size: 1.1rem; box-shadow: none; border: 1px dashed var(--border-color); }
+        #richieste .ric-ogg-testo { flex: 1 1 140px; min-width: 0; }
+        #richieste .match-riga-nome { font-weight: 800; font-size: 0.95rem; color: var(--text-dark); }
+        #richieste .match-riga-prezzo { font-size: 0.78rem; color: var(--text-muted); line-height: 1.35; margin-top: 2px; }
+        #richieste .ric-azioni { display: flex; gap: 8px; flex-wrap: wrap; flex: 1 1 100%; }
+        #richieste .ric-azioni:empty { display: none; }
+        #richieste .ric-btn {
+            font: inherit; font-size: 0.82rem; font-weight: 700; padding: 9px 14px; border-radius: 11px;
+            border: 1px solid var(--border-color); background: var(--card-bg); color: var(--text-dark);
+            cursor: pointer; display: inline-flex; align-items: center; gap: 7px;
+        }
+        #richieste .ric-btn-pieno { background: var(--primary); border-color: var(--primary); color: #fff; }
+        #richieste .ric-btn-rosso { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 45%, var(--border-color)); }
+        #richieste .ric-btn:active { opacity: .7; }
+        #richieste .ric-fondo {
+            display: flex; flex-direction: column; gap: 10px; padding: 14px 16px;
+            border-top: 1px solid var(--border-color); background: var(--primary-light);
+            font-size: 0.8rem; color: var(--text-muted);
+        }
+        #richieste .ric-fondo .ric-btn { align-self: flex-start; }
+
+        /* Telefono: elenco OPPURE dettaglio. */
+        #richieste .ric-layout:not(.ric-tel-dettaglio) .ric-dettaglio { display: none; }
+        #richieste .ric-layout.ric-tel-dettaglio .ric-master { display: none; }
+
+        @container (min-width: 780px) {
+            #richieste .ric-layout, #richieste .ric-layout.ric-tel-dettaglio { display: grid; grid-template-columns: 380px minmax(0, 1fr); column-gap: 18px; align-items: start; }
+            #richieste .ric-layout .ric-master, #richieste .ric-layout.ric-tel-dettaglio .ric-master { display: flex; }
+            #richieste .ric-layout .ric-dettaglio, #richieste .ric-layout:not(.ric-tel-dettaglio) .ric-dettaglio { display: flex; }
+            #richieste .ric-indietro { display: none; }
+            #richieste .ric-scrivi-txt { display: inline; }
+            #richieste .match-icobtn { width: auto; padding: 0 16px; font-weight: 700; font-size: 0.85rem; gap: 8px; }
+            #richieste .ric-testata { padding: 18px 20px; }
+            #richieste .ric-titolo { font-size: 1.2rem; }
+            #richieste .ric-oggetto { padding: 14px 20px; flex-wrap: nowrap; }
+            #richieste .ric-azioni { flex: 0 0 auto; }
+            #richieste .ric-come { margin: 0 20px 12px; }
+            #richieste .ric-fondo { flex-direction: row; align-items: center; justify-content: space-between; padding: 14px 20px; }
+        }
+
+        /* Motivi (radio) nel riquadro Annulla / Sblocca */
+        .ric-motivi { display: flex; flex-direction: column; gap: 8px; }
+        .ric-motivo {
+            display: flex; align-items: center; gap: 10px; padding: 11px 12px; cursor: pointer;
+            border: 1px solid var(--border-color); border-radius: 12px; font-size: 0.9rem; color: var(--text-dark);
+        }
+        .ric-motivo:has(input:checked) { border-color: var(--primary); box-shadow: 0 0 0 1px var(--primary) inset; }
+        .ric-motivo input { accent-color: var(--primary); width: 18px; height: 18px; flex: 0 0 auto; }
+
+        /* Modale "Richiedi a …" (più oggetti in una richiesta) */
+        .richiedi-modal { max-width: 560px; width: 94%; text-align: left; }
+        .richiedi-head { display: flex; align-items: center; gap: 14px; margin-bottom: 16px; padding-right: 30px; }
+        .richiedi-head .match-avatar {
+            width: 48px; height: 48px; border-radius: 50%; flex: 0 0 auto; background: var(--primary);
+            color: #fff; font-weight: 800; display: flex; align-items: center; justify-content: center; font-size: 1.15rem;
+        }
+        .richiedi-head h3 { margin: 0; font-size: 1.15rem; font-weight: 800; color: var(--text-dark); }
+        .richiedi-sotto { font-size: 0.82rem; color: var(--text-muted); }
+        .richiedi-riga { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-top: 1px solid var(--border-color); }
+        .richiedi-riga .match-img { width: 44px; height: 62px; border-radius: 5px; object-fit: cover; flex: 0 0 auto; box-shadow: 0 2px 6px rgba(0,0,0,0.25); }
+        .richiedi-riga .match-img-vuota { display: flex; align-items: center; justify-content: center; color: var(--text-muted); border: 1px dashed var(--border-color); box-shadow: none; }
+        .richiedi-testo { flex: 1; min-width: 0; }
+        .richiedi-modal .match-riga-nome { font-weight: 800; font-size: 0.92rem; color: var(--text-dark); }
+        .richiedi-modal .match-riga-meta { font-size: 0.78rem; color: var(--text-muted); }
+        .richiedi-prezzo { font-weight: 800; font-size: 0.92rem; color: var(--text-dark); white-space: nowrap; }
+        .richiedi-qty { display: inline-flex; align-items: center; border: 1px solid var(--border-color); border-radius: 11px; overflow: hidden; }
+        .richiedi-qty button { width: 34px; height: 34px; border: none; background: var(--card-bg); color: var(--text-dark); font-size: 1rem; cursor: pointer; font-family: inherit; }
+        .richiedi-qty button:disabled { opacity: 0.35; cursor: default; }
+        .richiedi-qty span { min-width: 34px; text-align: center; font-weight: 800; color: var(--text-dark); }
+        .richiedi-totale { display: flex; justify-content: space-between; align-items: baseline; padding: 14px 0 4px; border-top: 1px solid var(--border-color); color: var(--text-muted); }
+        .richiedi-totale b { font-size: 1.1rem; color: var(--text-dark); }
+        .richiedi-nota { font-size: 0.78rem; color: var(--text-muted); margin: 6px 0 14px; line-height: 1.4; }
+        .richiedi-azioni { display: flex; justify-content: flex-end; gap: 10px; flex-wrap: wrap; }
 
         .pg-fig {
             width: 34px; height: 47px; border-radius: 6px; flex: 0 0 auto;

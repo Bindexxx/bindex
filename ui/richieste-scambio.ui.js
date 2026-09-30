@@ -17,6 +17,11 @@
 let _richiesteVista = 'ricevute'; // 'ricevute' | 'inviate'
 let _richiesteRicevute = [];
 let _richiesteInviate = [];
+// RESTYLE BINDEX FASE 3b (2026-10-01, tavole "Richieste"): stato di vista.
+let _richiesteFiltro = 'tutte';    // 'tutte' | 'gestire' | 'corso' | 'chiuse'
+let _richiesteSel = null;          // richiesta_id aperta nel dettaglio
+let _richiesteDettaglioTel = false; // telefono: dettaglio aperto al posto dell'elenco
+let _richiesteNick = {};           // owner_id → nickname
 
 const MOTIVI_ANNULLAMENTO = {
     ho_cambiato_idea: 'Ho cambiato idea',
@@ -28,21 +33,30 @@ const MOTIVI_ANNULLAMENTO = {
 };
 
 const STATO_RIGA_LABEL = {
-    in_attesa: { testo: 'In attesa', colore: 'var(--text-muted)' },
-    accettata: { testo: 'Riservata', colore: 'var(--primary)' },
-    rifiutata: { testo: 'Rifiutata', colore: 'var(--danger)' },
-    annullata: { testo: 'Annullata', colore: 'var(--danger)' },
-    conclusa: { testo: 'Conclusa', colore: 'var(--success)' },
+    in_attesa: { testo: 'In attesa', colore: 'var(--text-muted)', cls: 'bx-stato-attesa' },
+    accettata: { testo: 'Riservata', colore: 'var(--primary)', cls: 'bx-stato-riservata' },
+    rifiutata: { testo: 'Rifiutata', colore: 'var(--danger)', cls: 'bx-stato-rifiutata' },
+    annullata: { testo: 'Annullata', colore: 'var(--danger)', cls: 'bx-stato-annullata' },
+    conclusa: { testo: 'Conclusa', colore: 'var(--success)', cls: 'bx-stato-conclusa' },
 };
 
 
-async function apriPaginaRichieste() {
+// `mantieni`: true quando si ricarica dopo un'azione (resta la richiesta
+// aperta e il filtro); false/assente all'apertura della pagina.
+async function apriPaginaRichieste(mantieni) {
     // Restyle FASE 2 (2026-09-30): la tessera Richieste tiene una cache di
     // 60s; aprendo la pagina (e dopo ogni azione, che la riapre) si svuota,
     // così al ritorno in home la tessera è già aggiornata.
     if (typeof _widgetRichiesteSvuotaCache === 'function') _widgetRichiesteSvuotaCache();
     const userId = await authGetUserId();
     if (!userId) return;
+
+    if (!mantieni) {
+        _richiesteVista = 'ricevute';
+        _richiesteFiltro = 'tutte';
+        _richiesteSel = null;
+        _richiesteDettaglioTel = false;
+    }
 
     const [{ data: ricevute, error: errRic }, { data: inviate, error: errInv }] = await Promise.all([
         richiesteScambioRicevuteList(userId),
@@ -54,68 +68,227 @@ async function apriPaginaRichieste() {
     _richiesteRicevute = ricevute || [];
     _richiesteInviate = inviate || [];
 
+    // Nickname in batch delle controparti (mai l'email). Se la RPC fallisce
+    // il nome diventa "Un utente del gruppo": nessuna richiesta sparisce.
+    const ids = [...new Set([
+        ..._richiesteRicevute.map(r => r.richiedente_id),
+        ..._richiesteInviate.map(r => r.proprietario_id),
+    ].filter(Boolean))];
+    _richiesteNick = {};
+    if (ids.length) {
+        try {
+            const { data, error } = await chatOttieniNicknames(ids);
+            if (error) console.error('apriPaginaRichieste (nickname):', error.message);
+            else (data || []).forEach(n => { if (n.nickname) _richiesteNick[n.owner_id] = n.nickname; });
+        } catch (e) { console.error('apriPaginaRichieste (nickname):', e); }
+    }
+
     renderPaginaRichieste();
 }
 
+function _richiesteNome(ownerId) { return _richiesteNick[ownerId] || 'Un utente del gruppo'; }
 
 function cambiaVistaRichieste(vista) {
     _richiesteVista = vista;
-    document.getElementById('btnRichiesteRicevute').classList.toggle('active', vista === 'ricevute');
-    document.getElementById('btnRichiesteInviate').classList.toggle('active', vista === 'inviate');
+    _richiesteFiltro = 'tutte';
+    _richiesteSel = null;
+    _richiesteDettaglioTel = false;
     renderPaginaRichieste();
 }
+function _richiesteImpostaFiltro(f) { _richiesteFiltro = f; _richiesteSel = null; _richiesteDettaglioTel = false; renderPaginaRichieste(); }
+function _richiesteApri(id) { _richiesteSel = id; _richiesteDettaglioTel = true; renderPaginaRichieste(); }
+function _richiesteIndietro() { _richiesteDettaglioTel = false; renderPaginaRichieste(); }
 
+// Raggruppa le righe per richiesta (richiesta_id): una richiesta = tutto
+// quello che una persona ha chiesto in una volta sola.
+function _richiesteRaggruppa(righe, eRicevute) {
+    const mappa = new Map();
+    righe.forEach(r => {
+        const id = r.richiesta_id || r.id;
+        if (!mappa.has(id)) mappa.set(id, []);
+        mappa.get(id).push(r);
+    });
+    return [...mappa.entries()].map(([id, rr]) => {
+        const altro = eRicevute ? rr[0].richiedente_id : rr[0].proprietario_id;
+        const quando = (rr[0].richieste_scambio && rr[0].richieste_scambio.creato_il) || rr[0].creato_il;
+        const conta = (st) => rr.filter(r => r.stato_riga === st).length;
+        const attesa = conta('in_attesa'), riservate = conta('accettata');
+        const totale = rr.reduce((t, r) => t + (Number(r.prezzo_congelato) || 0) * (Number(r.quantita_richiesta) || 1), 0);
+        // Stato riassuntivo: se c'è qualcosa in attesa o riservato conta
+        // quello; altrimenti la richiesta è chiusa (stato dell'ultima riga).
+        let chip;
+        if (attesa) chip = { cls: 'bx-stato-attesa', testo: `${attesa} in attesa` };
+        else if (riservate) chip = { cls: 'bx-stato-riservata', testo: riservate === 1 ? 'Riservata' : `${riservate} riservate` };
+        else { const st = STATO_RIGA_LABEL[rr[0].stato_riga] || { testo: rr[0].stato_riga, cls: '' }; chip = { cls: st.cls, testo: st.testo }; }
+        return { id, righe: rr, altro, quando, attesa, riservate, totale, chip, chiusa: !attesa && !riservate };
+    }).sort((x, y) => new Date(y.quando) - new Date(x.quando));
+}
+
+function _richiesteFiltra(gruppi) {
+    if (_richiesteFiltro === 'gestire') return gruppi.filter(g => g.attesa > 0);
+    if (_richiesteFiltro === 'corso') return gruppi.filter(g => g.attesa === 0 && g.riservate > 0);
+    if (_richiesteFiltro === 'chiuse') return gruppi.filter(g => g.chiusa);
+    return gruppi;
+}
+
+function _richiesteData(iso, conOra) {
+    const d = new Date(iso);
+    if (isNaN(d)) return '';
+    const g = d.toLocaleDateString('it-IT', conOra ? { day: 'numeric', month: 'long' } : { day: 'numeric', month: 'short' });
+    return conOra ? `${g}, ${d.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}` : g;
+}
 
 function renderPaginaRichieste() {
     const wrap = document.getElementById('richiesteContenuto');
     if (!wrap) return;
 
-    const righe = _richiesteVista === 'ricevute' ? _richiesteRicevute : _richiesteInviate;
     const eRicevute = _richiesteVista === 'ricevute';
+    const tutteRighe = eRicevute ? _richiesteRicevute : _richiesteInviate;
+    const gruppiTutti = _richiesteRaggruppa(tutteRighe, eRicevute);
 
-    if (righe.length === 0) {
-        wrap.innerHTML = `<div class="stato-vuoto"><i class="fa-solid fa-handshake"></i><br>Nessuna richiesta ${eRicevute ? 'ricevuta' : 'inviata'} ancora.</div>`;
+    // Riepilogo sotto il titolo.
+    const riep = document.getElementById('richiesteRiepilogo');
+    if (riep) {
+        const daGestire = gruppiTutti.filter(g => g.attesa > 0).length;
+        const oggAttesa = gruppiTutti.reduce((t, g) => t + g.attesa, 0);
+        const oggRis = gruppiTutti.reduce((t, g) => t + g.riservate, 0);
+        if (eRicevute) {
+            riep.innerHTML = daGestire
+                ? `<b>${daGestire} richiest${daGestire === 1 ? 'a' : 'e'} da gestire</b> · ${oggAttesa} oggett${oggAttesa === 1 ? 'o' : 'i'} in attesa${oggRis ? `, ${oggRis} riservat${oggRis === 1 ? 'o' : 'i'}` : ''}`
+                : (oggRis ? `Nessuna da gestire · ${oggRis} oggett${oggRis === 1 ? 'o' : 'i'} riservat${oggRis === 1 ? 'o' : 'i'}` : 'Nessuna richiesta da gestire');
+        } else {
+            riep.innerHTML = gruppiTutti.length
+                ? `<b>${oggAttesa} oggett${oggAttesa === 1 ? 'o' : 'i'} in attesa</b>${oggRis ? ` · ${oggRis} riservat${oggRis === 1 ? 'o' : 'i'} in attesa di concludere` : ''}`
+                : 'Nessuna richiesta inviata';
+        }
+    }
+
+    const vistaTab = (id, testo, n) => `<button type="button" class="match-tabbtn ${_richiesteVista === id ? 'attivo' : ''}" onclick="cambiaVistaRichieste('${id}')">${testo} &middot; ${n}</button>`;
+    const nRic = new Set(_richiesteRicevute.map(r => r.richiesta_id || r.id)).size;
+    const nInv = new Set(_richiesteInviate.map(r => r.richiesta_id || r.id)).size;
+    const tabsHtml = `<div class="match-tabs">${vistaTab('ricevute', 'Ricevute', nRic)}${vistaTab('inviate', 'Inviate', nInv)}</div>`;
+
+    const cnt = { tutte: gruppiTutti.length, gestire: gruppiTutti.filter(g => g.attesa > 0).length, corso: gruppiTutti.filter(g => g.attesa === 0 && g.riservate > 0).length, chiuse: gruppiTutti.filter(g => g.chiusa).length };
+    const filtri = [['tutte', 'Tutte'], ['gestire', eRicevute ? 'Da gestire' : 'In attesa'], ['corso', eRicevute ? 'In corso' : 'Riservate'], ['chiuse', 'Chiuse']];
+    const filtriHtml = `<div class="ric-filtri">${filtri.map(([id, t]) => `<button type="button" class="ric-filtro ${_richiesteFiltro === id ? 'attivo' : ''}" onclick="_richiesteImpostaFiltro('${id}')">${t} &middot; ${cnt[id]}</button>`).join('')}</div>`;
+
+    if (gruppiTutti.length === 0) {
+        wrap.innerHTML = `<div class="ric-layout">${tabsHtml}<div class="stato-vuoto"><i class="fa-solid fa-handshake"></i><br>Nessuna richiesta ${eRicevute ? 'ricevuta' : 'inviata'} ancora.</div></div>`;
         return;
     }
 
-    wrap.innerHTML = righe.map(r => {
-        const snap = r.snapshot || {};
-        const nome = escapeHtml(snap.nome || snap.codice || '(senza nome)');
-        const stato = STATO_RIGA_LABEL[r.stato_riga] || { testo: r.stato_riga, colore: 'var(--text-muted)' };
-        const idAttr = String(r.id).replace(/'/g, "\\'");
+    const gruppi = _richiesteFiltra(gruppiTutti);
+    if (gruppi.length && !gruppi.some(g => g.id === _richiesteSel)) {
+        _richiesteSel = gruppi[0].id;          // PC: sempre una richiesta aperta
+        _richiesteDettaglioTel = false;        // telefono: si parte dall'elenco
+    }
+    if (!gruppi.length) _richiesteSel = null;
 
+    const elenco = gruppi.map(g => {
+        const nome = _richiesteNome(g.altro);
+        const n = g.righe.length;
+        return `<div class="ric-riga ${g.id === _richiesteSel ? 'sel' : ''}" onclick="_richiesteApri('${escapeJsAttr(String(g.id))}')">
+            <div class="match-avatar">${escapeHtml(nome.charAt(0).toUpperCase())}</div>
+            <div class="match-mtesto"><div class="match-persona-nome">${escapeHtml(nome)}${(eRicevute && g.attesa) ? ' <span class="match-punto"></span>' : ''}</div>
+                <div class="match-persona-sotto">${_richiesteData(g.quando)} · ${n} oggett${n === 1 ? 'o' : 'i'}${g.totale ? ` · ${formattaEuro(g.totale)}` : ''}</div></div>
+            <span class="bx-stato ${g.chip.cls}">${g.chip.testo}</span><i class="fa-solid fa-chevron-right match-freccia"></i></div>`;
+    }).join('') || '<p class="match-vuoto">Nessuna richiesta in questo gruppo.</p>';
+
+    const nota = eRicevute ? 'Una richiesta = tutto quello che una persona ti ha chiesto in una volta.' : 'Quello che hai chiesto tu agli altri, dai Match.';
+    const sel = gruppi.find(g => g.id === _richiesteSel);
+
+    wrap.innerHTML = `
+        <div class="ric-layout ${_richiesteDettaglioTel ? 'ric-tel-dettaglio' : ''}">
+            <div class="ric-master">
+                ${tabsHtml}${filtriHtml}
+                <div class="ric-elenco">${elenco}</div>
+                <div class="match-descr">${nota}</div>
+            </div>
+            <div class="ric-dettaglio">${sel ? _richiesteDettaglioHtml(sel, eRicevute) : ''}</div>
+        </div>`;
+}
+
+function _richiesteDettaglioHtml(g, eRicevute) {
+    const nome = _richiesteNome(g.altro);
+    const nomeJs = escapeJsAttr(nome);
+    const n = g.righe.length;
+    const titolo = eRicevute ? `Richiesta di ${escapeHtml(nome)}` : `La tua richiesta a ${escapeHtml(nome)}`;
+    const sotto = `${_richiesteData(g.quando, true)} · ${n} oggett${n === 1 ? 'o' : 'i'}${eRicevute ? ' dal tuo Scambio' : ''}${g.totale ? ` · ${formattaEuro(g.totale)}` : ''}${(!eRicevute && g.attesa) ? ` · aspetta che ${escapeHtml(nome)} accetti` : ''}`;
+    const comeFunziona = eRicevute ? `
+        <div class="ric-come"><b>Come funziona:</b>
+            <span class="bx-stato bx-stato-attesa">In attesa</span> <i class="fa-solid fa-arrow-right"></i>
+            <span class="bx-stato bx-stato-riservata">Riservata</span> <span>(accetti: nessun altro può chiederla)</span> <i class="fa-solid fa-arrow-right"></i>
+            <span class="bx-stato bx-stato-conclusa">Conclusa</span> <span>(l'oggetto passa a ${escapeHtml(nome)} e gli arriva in “?”)</span></div>` : '';
+
+    const righe = g.righe.map(r => {
+        const snap = r.snapshot || {};
+        const nomeOgg = escapeHtml(snap.nome || snap.codice || '(senza nome)');
+        const stato = STATO_RIGA_LABEL[r.stato_riga] || { testo: r.stato_riga, cls: '' };
+        const idAttr = escapeJsAttr(String(r.id));
+        const src = _urlImmagineVisualizzabile(snap.immagine, 96);
+        const miniatura = src
+            ? `<img class="match-img" src="${src}" alt="" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'match-img match-img-vuota',innerHTML:'<i class=&quot;fa-solid fa-image&quot;></i>'}))">`
+            : `<span class="match-img match-img-vuota"><i class="fa-solid ${r.prodotto_sealed_id ? 'fa-box' : 'fa-image'}"></i></span>`;
         let azioni = '';
         if (eRicevute && r.stato_riga === 'in_attesa') {
-            azioni = `
-                <button class="btn-main" style="padding:0.4rem 0.8rem; font-size:0.78rem;" onclick="_azioneRichiesta('accetta', '${idAttr}')"><i class="fa-solid fa-check"></i> Accetta</button>
-                <button class="btn-secondary" style="padding:0.4rem 0.8rem; font-size:0.78rem;" onclick="_azioneRichiesta('rifiuta', '${idAttr}')"><i class="fa-solid fa-xmark"></i> Rifiuta</button>`;
+            azioni = `<button type="button" class="ric-btn ric-btn-pieno" onclick="_azioneRichiesta('accetta', '${idAttr}')"><i class="fa-solid fa-check"></i> Accetta</button>
+                      <button type="button" class="ric-btn" onclick="_azioneRichiesta('rifiuta', '${idAttr}')"><i class="fa-solid fa-xmark"></i> Rifiuta</button>`;
         } else if (eRicevute && r.stato_riga === 'accettata') {
-            azioni = `
-                <button class="btn-main" style="padding:0.4rem 0.8rem; font-size:0.78rem;" onclick="_azioneRichiesta('concludi', '${idAttr}')"><i class="fa-solid fa-flag-checkered"></i> Concludi</button>
-                <button class="btn-secondary" style="padding:0.4rem 0.8rem; font-size:0.78rem; color:var(--danger);" onclick="_azioneRichiesta('sblocca', '${idAttr}')"><i class="fa-solid fa-unlock"></i> Sblocca</button>`;
+            azioni = `<button type="button" class="ric-btn" onclick="_azioneRichiesta('concludi', '${idAttr}')"><i class="fa-solid fa-flag-checkered"></i> Concludi</button>
+                      <button type="button" class="ric-btn ric-btn-rosso" onclick="_azioneRichiesta('sblocca', '${idAttr}')"><i class="fa-solid fa-lock-open"></i> Sblocca</button>`;
         } else if (!eRicevute && (r.stato_riga === 'in_attesa' || r.stato_riga === 'accettata')) {
-            azioni = `<button class="btn-secondary" style="padding:0.4rem 0.8rem; font-size:0.78rem; color:var(--danger);" onclick="_azioneRichiesta('annulla', '${idAttr}')"><i class="fa-solid fa-ban"></i> Annulla</button>`;
+            azioni = `<button type="button" class="ric-btn ric-btn-rosso" onclick="_azioneRichiesta('annulla', '${idAttr}')"><i class="fa-solid fa-ban"></i> Annulla</button>`;
         }
-
-        const motivoTxt = r.motivo_chiusura ? `<div style="font-size:0.72rem; color:var(--text-muted); margin-top:0.2rem;">Motivo: ${MOTIVI_ANNULLAMENTO[r.motivo_chiusura] || r.motivo_chiusura}</div>` : '';
-
-        // RESTYLE FASE 3a (2026-10-01, file 02): immagine dal filtro unico
-        // _urlImmagineVisualizzabile (utils/comuni.js), non più grezza.
-        const src = _urlImmagineVisualizzabile(snap.immagine, 64);
+        const motivoTxt = r.motivo_chiusura ? ` · Motivo: ${escapeHtml(MOTIVI_ANNULLAMENTO[r.motivo_chiusura] || r.motivo_chiusura)}` : '';
         return `
-            <div class="card-row" style="flex-wrap:wrap;">
-                ${src ? `<img src="${src}" alt="" class="card-thumb" onerror="this.style.display='none';">` : ''}
-                <div class="card-info" style="min-width:160px;">
-                    <div class="card-name">${nome} <span style="font-weight:600; color:var(--text-muted);">×${r.quantita_richiesta}</span></div>
-                    <div class="card-meta">
-                        <span class="badge" style="color:${stato.colore}; border-color:${stato.colore};">${stato.testo}</span>
-                        ${r.prezzo_congelato != null ? `<span class="badge">${formattaEuro(r.prezzo_congelato)} cad.</span>` : ''}
-                    </div>
-                    ${motivoTxt}
+            <div class="ric-oggetto">
+                ${miniatura}
+                <div class="ric-ogg-testo">
+                    <div class="match-riga-nome">${nomeOgg}</div>
+                    <div class="match-riga-prezzo">×${r.quantita_richiesta}${r.prezzo_congelato != null ? ` · ${formattaEuro(r.prezzo_congelato)} cad. · prezzo fissato al momento della richiesta` : ''}${motivoTxt}</div>
                 </div>
-                <div style="display:flex; gap:0.4rem; flex-wrap:wrap;">${azioni}</div>
+                <span class="bx-stato ${stato.cls}">${stato.testo}</span>
+                <div class="ric-azioni">${azioni}</div>
             </div>`;
     }).join('');
+
+    const daConcludere = eRicevute ? g.righe.filter(r => r.stato_riga === 'accettata') : [];
+    const fondo = daConcludere.length >= 2 ? `
+        <div class="ric-fondo">
+            <span>Concludi quando lo scambio è avvenuto davvero: gli oggetti passano a ${escapeHtml(nome)} e non si torna indietro.</span>
+            <button type="button" class="ric-btn ric-btn-pieno" onclick="_richiesteConcludiTutto('${escapeJsAttr(String(g.id))}')"><i class="fa-solid fa-flag-checkered"></i> Concludi tutto (${daConcludere.length})</button>
+        </div>` : '';
+
+    return `
+        <div class="ric-card">
+            <button type="button" class="ric-indietro" onclick="_richiesteIndietro()"><i class="fa-solid fa-chevron-left"></i> Tutte le richieste</button>
+            <div class="match-persona-head ric-testata">
+                <div class="match-avatar">${escapeHtml(nome.charAt(0).toUpperCase())}</div>
+                <div style="flex:1; min-width:0;">
+                    <div class="match-persona-nome ric-titolo">${titolo}</div>
+                    <div class="match-persona-sotto">${sotto}</div>
+                </div>
+                <button type="button" class="match-icobtn match-scrivi" onclick="_contattaPersonaMatch('${g.altro}', '${nomeJs}')" title="Scrivi a ${escapeHtml(nome)}" aria-label="Scrivi a ${escapeHtml(nome)}"><i class="fa-solid fa-comment"></i><span class="ric-scrivi-txt"> Scrivi a ${escapeHtml(nome)}</span></button>
+            </div>
+            ${comeFunziona}
+            <div class="ric-oggetti">${righe}</div>
+            ${fondo}
+        </div>`;
+}
+
+// "Concludi tutto": stessa RPC di "Concludi" su ogni oggetto riservato
+// della richiesta, una conferma sola. Si ferma al primo errore (le righe
+// già concluse restano concluse: ogni RPC è una transazione a sé).
+async function _richiesteConcludiTutto(richiestaId) {
+    const righe = (_richiesteVista === 'ricevute' ? _richiesteRicevute : _richiesteInviate)
+        .filter(r => String(r.richiesta_id || r.id) === String(richiestaId) && r.stato_riga === 'accettata');
+    if (!righe.length) return;
+    if (!confirm(`Concludere tutti e ${righe.length} gli oggetti riservati? Gli oggetti verranno trasferiti ora, azione irreversibile.\nIl destinatario li troverà nella Location "?" e potrà spostarli dove vuole.`)) return;
+    for (const r of righe) {
+        const { error } = await concludiRigaRichiesta(r.id, '?');
+        if (error) { alert('❌ ' + error.message); break; }
+    }
+    await apriPaginaRichieste(true);
 }
 
 
@@ -151,7 +324,7 @@ async function _azioneRichiesta(azione, rigaId) {
         return;
     }
 
-    await apriPaginaRichieste(); // ricarica tutto, più semplice e sicuro di un aggiornamento locale mirato
+    await apriPaginaRichieste(true); // ricarica tutto (mantiene richiesta e filtro), più semplice e sicuro di un aggiornamento locale mirato
 }
 
 
@@ -168,29 +341,28 @@ async function _azioneRichiesta(azione, rigaId) {
 // l'utente chiude/annulla (stesso contratto di prima per il chiamante).
 function _chiediMotivo(azione) {
     return new Promise((risolvi) => {
-        const titolo = azione === 'sblocca' ? 'Sbloccare la richiesta?' : 'Annullare la richiesta?';
-        const opzioni = Object.keys(MOTIVI_ANNULLAMENTO)
-            .map(k => `<option value="${k}">${escapeHtml(MOTIVI_ANNULLAMENTO[k])}</option>`).join('');
+        const titolo = azione === 'sblocca' ? 'Sbloccare la richiesta?' : 'Annullare la richiesta? Scegli un motivo';
+        // Nella lista di chi annulla non c'è "Intervento amministrativo"
+        // (è il motivo che usa l'amministrazione, come da tavola approvata).
+        const chiavi = Object.keys(MOTIVI_ANNULLAMENTO).filter(k => azione === 'sblocca' || k !== 'intervento_amministrativo');
+        const opzioni = chiavi.map(k => `
+            <label class="ric-motivo"><input type="radio" name="ricMotivo" value="${k}"><span>${escapeHtml(MOTIVI_ANNULLAMENTO[k])}</span></label>`).join('');
 
         const overlay = document.createElement('div');
         overlay.className = 'modal-overlay';
         overlay.style.display = 'flex';
         overlay.innerHTML = `
-            <div class="modal-content" style="text-align:left;">
-                <div style="font-weight:700; margin-bottom:0.8rem;">${titolo}</div>
-                <label style="display:block; font-size:0.8rem; color:var(--text-muted); margin-bottom:0.3rem;">Motivo</label>
-                <select class="filter-select" style="width:100%;">
-                    <option value="">— Scegli un motivo —</option>
-                    ${opzioni}
-                </select>
-                <div style="display:flex; gap:0.5rem; justify-content:flex-end; margin-top:1rem;">
+            <div class="modal-content richiedi-modal" style="text-align:left;">
+                <div style="font-weight:800; font-size:1.05rem; margin-bottom:0.8rem; color:var(--text-dark);">${titolo}</div>
+                <div class="ric-motivi">${opzioni}</div>
+                <div class="richiedi-azioni" style="margin-top:1rem;">
                     <button type="button" class="btn-secondary" data-azione="annulla">Indietro</button>
-                    <button type="button" class="btn-main" data-azione="conferma" disabled>Conferma</button>
+                    <button type="button" class="btn-main" data-azione="conferma" disabled>${azione === 'sblocca' ? 'Conferma' : 'Annulla richiesta'}</button>
                 </div>
             </div>`;
 
-        const tendina = overlay.querySelector('select');
         const btnConferma = overlay.querySelector('[data-azione="conferma"]');
+        const scelto = () => { const r = overlay.querySelector('input[name="ricMotivo"]:checked'); return r ? r.value : ''; };
 
         function chiudi(valore) {
             document.removeEventListener('keydown', suTasto);
@@ -199,13 +371,12 @@ function _chiediMotivo(azione) {
         }
         function suTasto(e) { if (e.key === 'Escape') chiudi(null); }
 
-        tendina.addEventListener('change', () => { btnConferma.disabled = !tendina.value; });
-        btnConferma.addEventListener('click', () => { if (tendina.value) chiudi(tendina.value); });
+        overlay.querySelectorAll('input[name="ricMotivo"]').forEach(i => i.addEventListener('change', () => { btnConferma.disabled = !scelto(); }));
+        btnConferma.addEventListener('click', () => { if (scelto()) chiudi(scelto()); });
         overlay.querySelector('[data-azione="annulla"]').addEventListener('click', () => chiudi(null));
         overlay.addEventListener('click', (e) => { if (e.target === overlay) chiudi(null); });
         document.addEventListener('keydown', suTasto);
 
         document.body.appendChild(overlay);
-        tendina.focus();
     });
 }

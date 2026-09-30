@@ -764,7 +764,6 @@
                 <span class="page-title">Match</span>
             </div>
             <div class="pg-pagina">
-                <p class="pg-sotto" style="margin:-6px 0 2px;">Corrispondenze tra i tuoi Scambio/Wishlist e quelli del gruppo, raggruppate per persona.</p>
                 <div id="matchLista"></div>
             </div>
         </div>
@@ -1035,19 +1034,13 @@
              comportamento). Vedi ui/richieste-scambio.ui.js. -->
         <div id="richieste" class="view-section">
             <div class="pg-contenuto-pagina">
-                <!-- RESTYLE FASE 3a: intestazione comune (era una card con h3). -->
+                <!-- RESTYLE FASE 3b: intestazione comune + riepilogo; tutto il
+                     resto (Ricevute/Inviate, filtri, elenco, dettaglio) lo
+                     disegna renderPaginaRichieste() in ui/richieste-scambio.ui.js. -->
                 <div class="page-header">
                     <span class="page-title">Richieste</span>
                 </div>
-                <p class="pg-sotto" style="margin:-6px 0 1rem;">
-                    Richieste di scambio ricevute e inviate.
-                </p>
-
-                <div style="display:flex; gap:0.6rem; margin-bottom: 1.2rem;">
-                    <button type="button" class="theme-btn active" id="btnRichiesteRicevute" style="flex:1;" onclick="cambiaVistaRichieste('ricevute')">Ricevute</button>
-                    <button type="button" class="theme-btn" id="btnRichiesteInviate" style="flex:1;" onclick="cambiaVistaRichieste('inviate')">Inviate</button>
-                </div>
-
+                <p class="pg-sotto" id="richiesteRiepilogo" style="margin:0 0 12px;"></p>
                 <div id="richiesteContenuto"></div>
             </div>
         </div>
@@ -2579,17 +2572,25 @@
          ui/queue.ui.js. Nessun invio automatico: solo dopo conferma
          manuale, come richiesto esplicitamente da Claudio. -->
     <div id="richiediMatchModal" class="modal-overlay">
-        <div class="modal-content" style="max-width: 340px; text-align: left;" onclick="event.stopPropagation()">
-            <button class="close-modal-btn" onclick="chiudiRichiediMatch()"><i class="fa-solid fa-xmark"></i></button>
-            <h3 style="font-weight: 800; margin-bottom: 1rem; text-align:center;"><i class="fa-solid fa-paper-plane" style="color: var(--primary);"></i> Richiedi</h3>
-            <p id="richiediMatchTesto" style="font-size:0.9rem; margin-bottom:1rem;"></p>
-            <div class="auth-field">
-                <label>Quantità</label>
-                <input type="number" id="richiediMatchQty" min="1" value="1">
+        <!-- RESTYLE FASE 3b (2026-10-01): più oggetti della stessa persona in
+             una sola richiesta. Contenuto disegnato da _renderRichiediMatch()
+             in ui/queue.ui.js. -->
+        <div class="modal-content richiedi-modal" onclick="event.stopPropagation()">
+            <button class="close-modal-btn" onclick="chiudiRichiediMatch()" aria-label="Chiudi"><i class="fa-solid fa-xmark"></i></button>
+            <div class="richiedi-head">
+                <div class="match-avatar" id="richiediMatchAvatar"></div>
+                <div>
+                    <h3 id="richiediMatchTitolo"></h3>
+                    <div class="richiedi-sotto" id="richiediMatchSotto"></div>
+                </div>
             </div>
-            <button class="btn-main" id="btnConfermaRichiediMatch" style="width: 100%; justify-content:center; margin-top: 0.4rem;" onclick="confermaRichiediMatch()">
-                <i class="fa-solid fa-paper-plane"></i> Invia richiesta
-            </button>
+            <div id="richiediMatchLista"></div>
+            <div class="richiedi-totale"><span>Totale</span><b id="richiediMatchTotale"></b></div>
+            <p class="richiedi-nota" id="richiediMatchNota"></p>
+            <div class="richiedi-azioni">
+                <button type="button" class="btn-secondary" onclick="chiudiRichiediMatch()">Annulla</button>
+                <button type="button" class="btn-main" id="btnConfermaRichiediMatch" onclick="confermaRichiediMatch()"></button>
+            </div>
         </div>
     </div>
 
