@@ -226,7 +226,8 @@ CATALOGO_WIDGET.chat = {
         // _ballChiedeAttenzione('chat', ...) in
         // ui/widget-render-condiviso.ui.js legge righe[0] per decidere se
         // far "scuotere" la tessera: deve contenere una cifra.
-        return { righe: [`${totale} messagg${totale === 1 ? 'io' : 'i'} non lett${totale === 1 ? 'o' : 'i'}`], stato: 'ok', dati };
+        // Restyle FASE 2: messaggi da leggere = azione → badge rosso.
+        return { righe: [`${totale} messagg${totale === 1 ? 'io' : 'i'} nuov${totale === 1 ? 'o' : 'i'}`], stato: 'ok', azioni: totale, dati };
     },
     azione: (dati, evt) => { apriDettaglioWidget('chat', evt); },
 };

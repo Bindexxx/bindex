@@ -73,7 +73,9 @@ function _contaAlertPrezzoNonVisti() {
 
 // ── VOCE DI CATALOGO "PREZZI" ────────────────────────────────────────
 CATALOGO_WIDGET.prezzi = {
-        titolo: 'Prezzi', icona: 'fa-chart-line',
+        // Restyle FASE 2 (2026-09-30): "Controllo prezzi" (id invariato);
+        // le carte da aggiornare sono l'azione → badge rosso ('azioni').
+        titolo: 'Controllo prezzi', icona: 'fa-chart-line',
         // _elencoPrezziScaduti è popolato da caricaAvvisiHome() (già
         // richiamata a intervalli da avviaPollingWidgetHome più sotto) —
         // qui lo leggiamo soltanto. Forma confermata in home.ui.js:
@@ -95,8 +97,8 @@ CATALOGO_WIDGET.prezzi = {
                 // (vedi apriModalePrezziScaduti in ui/prices.ui.js r.212).
                 lista: lista.slice(0, 3).map(v => ({ nome: v.name || '—', quando: v.ultimoTesto || '' }))
             };
-            if (lista.length === 0) return { righe: ['Tutti aggiornati'], stato: 'ok', dati };
-            return { righe: [`${lista.length} da aggiornare`, lista[0].name || ''], stato: 'allerta', dati };
+            if (lista.length === 0) return { righe: ['tutti aggiornati'], stato: 'ok', dati };
+            return { righe: [`${lista.length} da aggiornare`, lista[0].name || ''], stato: 'allerta', azioni: lista.length, dati };
         },
 };
 

@@ -106,6 +106,7 @@ async function renderWidgetHome() {
                 <button type="button" onclick="_spostaWidgetNellaPagina('${w.instanceId}', 1)"><i class="fa-solid fa-arrow-down"></i> Sposta giù</button>
                 <button type="button" onclick="_spostaWidgetInPagina('${w.instanceId}', -1)" ${(w.pagina || 0) === 0 ? 'disabled' : ''}><i class="fa-solid fa-chevron-left"></i> Pagina precedente</button>
                 <button type="button" onclick="_spostaWidgetInPagina('${w.instanceId}', 1)"><i class="fa-solid fa-chevron-right"></i> Pagina successiva</button>
+                ${def.multiIstanza ? `<button type="button" onclick="_menuSpostaWidgetApertoId=null; _apriRicercaCartaVetrina('${w.instanceId}')"><i class="fa-solid fa-star"></i> Cambia carta</button>` : ''}
             </div>
             <div class="widget-resize-handle" data-widget-id="${w.instanceId}" title="Trascina per ridimensionare"><i class="fa-solid fa-up-right-and-down-left-from-center"></i></div>` : '';
 
@@ -119,17 +120,15 @@ async function renderWidgetHome() {
         // 'badge' esplicito (oggi solo 'suggerimento': conta i segnali
         // attivi, non un numero già dentro il testo) ha la precedenza;
         // altrimenti resta il comportamento di sempre per tutti gli altri.
-        const primoNumero = (anteprima.righe[0] || '').match(/\d[\d.,]*/);
-        // 'badge: false' = questo widget NON ha un numerino, non estrarlo.
-        // Serve agli elenchi con le date (Ultime aggiunte, Prezzi
-        // aggiornati): il numero pescato da righe[0] era il GIORNO della
-        // prima voce, mostrato come se fosse un conteggio di notifiche —
-        // "23" per una carta aggiunta il 23/08. Difetto visto in uno
-        // screenshot di Claudio il 2026-09-03.
-        // null e undefined restano "estrai in automatico", come sempre:
-        // nessun widget esistente cambia comportamento.
-        const valoreBadge = anteprima.badge === false ? null
-            : (anteprima.badge != null ? anteprima.badge : (primoNumero ? primoNumero[0] : null));
+        // RESTYLE BINDEX FASE 2 (2026-09-30, regola imperativa "badge rossi
+        // SOLO per azioni, mai conteggi, mai 0"): il badge NON si estrae più
+        // da righe[0] (dava "0" su Missioni, "1.520" su Valore, il giorno
+        // di una data...) e il vecchio campo 'badge' non si legge più.
+        // Lo mostra solo chi dichiara 'azioni': quante cose l'utente deve
+        // fare adesso (da correggere, da gestire, da aggiornare, premi da
+        // riscuotere, messaggi/match nuovi). 0 o assente = nessun badge.
+        const nAzioni = Number(anteprima.azioni) || 0;
+        const valoreBadge = nAzioni > 0 ? (nAzioni > 99 ? '99+' : String(nAzioni)) : null;
         const badge = (valoreBadge != null && prefBadgeWidgetGet()) ? `<div class="widget-badge">${valoreBadge}</div>` : '';
 
         // Bordo colorato per rarità SOLO se la carta ha davvero un campo
@@ -252,12 +251,18 @@ async function renderWidgetHome() {
             // (foto irraggiungibile, torna '') si ricade sul corpo generico
             // E la testa torna visibile, mai un buco vuoto silenzioso.
             const senzaTesta = !!(anteprima.immagine && c.blocco);
+            // RESTYLE BINDEX FASE 2 (2026-09-30, "niente titolo doppio"): se
+            // il corpo porta già il suo titolo (.ball-k-tit, es. "Missioni
+            // di oggi", "Collezione"), quello del catalogo non si stampa.
+            // Prima si leggevano due titoli uno sotto l'altro (Doppioni,
+            // Binders, Prezzi, Set...).
+            const titoloNelCorpo = /class="ball-k-tit"/.test(c.inline || '');
             corpo = `
                 ${senzaTesta ? '' : `
                 <div class="ball-testa">
                     ${visuale}
                     <div class="ball-slot-inline">
-                        <div class="widget-tile-titolo">${def.titolo}</div>
+                        ${titoloNelCorpo ? '' : `<div class="widget-tile-titolo">${def.titolo}</div>`}
                         ${c.inline}
                     </div>
                 </div>`}
@@ -427,7 +432,9 @@ function _potaContenutoFuoriTessera() {
         // la nasconda — stesso ragionamento di .ball-quota sopra, nessun
         // altro widget usa questa classe quindi nessun comportamento
         // esistente cambia.
-        blocco.querySelectorAll(':scope > .ball-riga, :scope > .ball-gruppi > .ball-gruppo, :scope > .ball-spark, :scope > .ball-strip, :scope > .ball-quota, :scope > .ball-foto-carta').forEach(pezzo => {
+        blocco.querySelectorAll(':scope > .ball-riga, :scope > .ball-gruppi > .ball-gruppo, :scope > .ball-spark, :scope > .ball-strip, :scope > .ball-quota, :scope > .ball-foto-carta, ' +
+            // RESTYLE BINDEX FASE 2 (2026-09-30): i mattoncini nuovi delle tessere.
+            ':scope > .ball-riga-set, :scope > .ball-cov, :scope > .ball-ripiano, :scope > .ball-medaglie, :scope > .ball-th, :scope > .ball-chips, :scope > .ball-k-lab, :scope > .ball-azione, :scope > .ball-ul > div, :scope > .ball-co > *').forEach(pezzo => {
             // Sempre ripristinato prima di misurare: la tessera puo' essere
             // stata ingrandita dall'ultimo giro e cio' che prima non ci
             // stava ora ci sta.

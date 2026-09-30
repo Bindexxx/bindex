@@ -48,7 +48,22 @@ CATALOGO_WIDGET.achievement = {
         if (errSb) return { righe: ['—'], dati: {} };
         const totale = CATALOGO_TRAGUARDI.length;
         const posseduti = (sbloccati || []).length;
-        return { righe: [`${posseduti}/${totale} sbloccati`], dati: { totale, posseduti } };
+        // RESTYLE BINDEX FASE 2 (2026-09-30, tavola "Achievement = ultime
+        // medaglie"): le ultime 5 sbloccate (dalla stessa lettura di
+        // sempre, nessuna query in più) con la loro rarità, e il nome
+        // dell'ultima. Rarità: regola calcolata condivisa
+        // (_achievementRaritaCalcolata); per i 37 curati a mano la pagina
+        // usa quella salvata, che può differire — qui è solo il colore del
+        // tondino, la pagina resta la fonte di verità.
+        const rarita = _achievementRaritaCalcolata();
+        const ultime = (sbloccati || []).slice()
+            .sort((a, b) => String(b.riscosso_il || '').localeCompare(String(a.riscosso_il || '')))
+            .slice(0, 5)
+            .map(s => {
+                const t = CATALOGO_TRAGUARDI.find(x => x.id === s.traguardo_id);
+                return { id: s.traguardo_id, titolo: t ? t.titolo : s.traguardo_id, rarita: rarita[s.traguardo_id] || 'comune', quando: s.riscosso_il };
+            });
+        return { righe: [`${posseduti} di ${totale}`], dati: { totale, posseduti, ultime } };
     },
     azione: (dati, evt) => { apriDettaglioWidget('achievement', evt); },
 };

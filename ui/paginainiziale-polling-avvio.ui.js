@@ -156,9 +156,14 @@ function _aggiornaTastoFisico() {
         if (icona) icona.className = 'fa-solid fa-house';
         btn.title = 'Prima pagina';
     } else {
-        // Prima pagina, nessun dettaglio aperto: non c'e' nessun posto
-        // dove tornare.
-        btn.classList.add('nascosto');
+        // RESTYLE BINDEX FASE 2 (2026-09-30, tavole approvate: "tasto in
+        // basso in pagina 1 = Centro operativo (lampadina)"). Prima qui il
+        // tasto veniva marcato 'nascosto', ma una regola CSS con !important
+        // (index.css, STEP 7 cornice) lo lasciava comunque visibile con la
+        // casetta, e toccarlo non faceva nulla.
+        btn.classList.remove('nascosto');
+        if (icona) icona.className = 'fa-solid fa-lightbulb';
+        btn.title = 'Centro operativo';
     }
 }
 
@@ -169,8 +174,12 @@ function _clickTastoFisico() {
     }
     if (_paginaWidgetCorrente > 0) {
         _vaiAllaPaginaHome();
+        return;
     }
-    // Se sei già sulla prima pagina, non fa nulla.
+    // Prima pagina: apre il Centro operativo (restyle FASE 2), non in
+    // modifica (lì il tocco serve a spostare/ridimensionare le tessere).
+    if (typeof _editModeWidget !== 'undefined' && _editModeWidget) return;
+    apriDettaglioWidget('dafare', null);
 }
 
 // ── PRESENZA LIVE (2026-09-01, punto 4 status bar) ──────────────────────

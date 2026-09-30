@@ -30,6 +30,12 @@
 // - Nessun collegamento con il widget Match.
 // ───────────────────────────────────────────────────────────────────────
 
+// Percentuale con UN decimale ("2,4%"), mai arrotondata per difetto a 0
+// quando c'è almeno una carta (con set da 200+ carte Math.floor dava "0%").
+function setPercentuale(p) {
+    return (Number(p) || 0).toLocaleString('it-IT', { maximumFractionDigits: 1 }) + '%';
+}
+
 // ── VOCE DI CATALOGO ──────────────────────────────────────────────────
 CATALOGO_WIDGET.set_completamento = {
     titolo: 'Set', icona: 'fa-layer-group',
@@ -45,23 +51,28 @@ CATALOGO_WIDGET.set_completamento = {
         }
 
         const g = setMSuddividi(r.voci);
-        const prima = g.inCorso[0] || null;
+        // RESTYLE BINDEX FASE 2 (2026-09-30, "Set = il set più avanti,
+        // percentuale con un decimale"): la tessera mostra i set in corso
+        // con la percentuale PIÙ ALTA (prima: i meno mancanti in assoluto,
+        // che premiava i set piccoli). La pagina Set resta ordinata come
+        // prima (per mancanti), questa è solo la vista della tessera.
+        const perAvanzamento = g.inCorso.slice().sort((a, b) => (b.perc || 0) - (a.perc || 0) || a.mancanti - b.mancanti);
+        const prima = perAvanzamento[0] || null;
         const nv = setMNotificaNonVista();
 
         let riga;
-        if (nv) riga = `${nv.nome}: ${nv.soglia}%`;
-        else if (prima) riga = `${prima.nome}: ${prima.mancanti} alla fine`;
+        if (nv) riga = `${nv.nome} · ${nv.soglia}%`;
+        else if (prima) riga = `${prima.nome} · ${setPercentuale(prima.perc)}`;
         else riga = r.voci.length ? 'Nessun set in corso' : 'Libreria set vuota';
 
         return {
             righe: [riga],
-            // Badge: '!' se c'è una notifica non vista, altrimenti le carte
-            // che mancano al set in testa (prima era il primo numero pescato
-            // dal testo, che con nomi tipo "151" dava il numero sbagliato).
-            badge: nv ? '!' : (prima ? prima.mancanti : false),
+            // Nessun badge: il set non è un'azione da fare (regola "badge
+            // rosso solo per le azioni"). La soglia appena raggiunta resta
+            // segnalata dalla pill "nuova soglia" nel corpo della tessera.
             dati: {
                 prima,
-                top: g.inCorso.slice(0, 4),
+                top: perAvanzamento.slice(0, 4),
                 nInCorso: g.inCorso.length,
                 nCompletati: g.completati.length,
                 nNonIniziati: g.nonIniziati.length,

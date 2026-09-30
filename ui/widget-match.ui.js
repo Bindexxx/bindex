@@ -112,7 +112,8 @@ CATALOGO_WIDGET.match = {
             // _ballChiedeAttenzione('match', ...) in
             // ui/widget-render-condiviso.ui.js legge righe[0] per decidere
             // se far "scuotere" la tessera: deve contenere una cifra.
-            return { righe: [`${totale} nuov${totale === 1 ? 'a' : 'e'} corrispondenz${totale === 1 ? 'a' : 'e'}`], stato: 'ok', dati };
+            // Restyle FASE 2: match nuovi da vedere = azione → badge rosso.
+            return { righe: [`${totale} corrispondenz${totale === 1 ? 'a nuova' : 'e nuove'}`], stato: 'ok', azioni: totale, dati };
         },
         // Pagina dedicata costruita 2026-08-28 (prima apriva Binders in
         // generale, unico punto disponibile all'epoca).

@@ -151,10 +151,26 @@ function _renderRicercaCartaVetrina(valore) {
     if (!container) return;
     const cerca = String(valore || '').toLowerCase().trim();
 
-    // Come filterTable(): senza testo digitato, nessun risultato — evita
-    // di rendere subito una lista con centinaia di righe non richiesta.
+    // RESTYLE BINDEX FASE 2 (2026-09-30, tavola "Vetrina · scegli/cambia
+    // carta con suggerimenti"): senza testo digitato, invece del solo
+    // invito a scrivere, due righe di suggerimenti già in memoria — le 8
+    // più preziose della collezione e 8 dalla Wishlist. Resta vero che non
+    // si rende la lista intera (centinaia di righe).
     if (!cerca) {
-        container.innerHTML = '<p style="text-align:center; color:var(--text-muted); font-size:0.85rem; padding:1rem 0;">Scrivi per cercare per nome o codice.</p>';
+        const perPrezzo = (a, b) => (Number(b.price) || 0) - (Number(a.price) || 0);
+        const preziose = carteReali.filter(c => c.stato === 'collezione').slice().sort(perPrezzo).slice(0, 8);
+        const wishlist = carteReali.filter(c => c.tabella === 'wishlist').slice().sort(perPrezzo).slice(0, 8);
+        const griglia = (lista) => '<div class="vetrina-sugg">' + lista.map(c => {
+            const idAttr = _escapeHtmlVetrina(c.id).replace(/'/g, "\\'");
+            const url = c.immagine ? (_urlImmagineVisualizzabile(c.immagine, 128) || '') : '';
+            return `<div class="vetrina-sugg-c" onclick="_selezionaCartaVetrina('${idAttr}')" title="${_escapeHtmlVetrina(c.name || '')}">` +
+                (url ? `<img src="${url}" alt="" onerror="this.outerHTML='<span class=&quot;vuota&quot;></span>'">` : '<span class="vuota"></span>') +
+                `<b>${_escapeHtmlVetrina(c.name || '')}</b><span>${c.price != null ? formattaEuro(c.price) : '—'}</span></div>`;
+        }).join('') + '</div>';
+        let html = '';
+        if (preziose.length) html += '<div class="vetrina-sugg-tit">Le tue più preziose</div>' + griglia(preziose);
+        if (wishlist.length) html += '<div class="vetrina-sugg-tit">Dalla Wishlist</div>' + griglia(wishlist);
+        container.innerHTML = html || '<p style="text-align:center; color:var(--text-muted); font-size:0.85rem; padding:1rem 0;">Scrivi per cercare per nome o codice.</p>';
         return;
     }
 

@@ -111,10 +111,23 @@ function _ppEur(v) {
 // Variazione per il badge: "+€3,20" / "−€12,40" (meno vero, come nel titolo
 // "Oscillazione −"). Sopra i 100 € niente decimali: il badge sta su una
 // miniatura da ~56px.
+// RESTYLE BINDEX FASE 2 (2026-09-30, regola comune euro): "+14,00 €",
+// segno attaccato e € dopo — mai più "+€3,20". Sopra i 100 € resta senza
+// decimali ("+120 €") per stare sulla miniatura.
 function _ppFmtVar(v) {
-    const a = Math.abs(Number(v) || 0);
-    const testo = a >= 100 ? String(Math.round(a)) : a.toFixed(2).replace('.', ',');
-    return (v > 0 ? '+' : '−') + '€' + testo;
+    const n = Number(v) || 0;
+    const a = Math.abs(n);
+    const testo = a >= 100 ? Math.round(a).toLocaleString('it-IT') : a.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    return (n > 0 ? '+' : '−') + testo + ' €';
+}
+
+// Titoli delle due categorie di oscillazione: "dall'ultima visita" solo se
+// il confronto è davvero con l'ultima visita (baseline pronta), altrimenti
+// è con l'ultimo aggiornamento di ciascun prezzo.
+function _ppTitoloOscillazione(cat) {
+    const dallUltima = _ppBaseline.pronta && _ppBaseline.da;
+    const base = cat === 'su' ? 'Salite' : 'Scese';
+    return dallUltima ? `${base} dall’ultima visita` : base;
 }
 
 // Stessa chiave di _doppioniChiaveCarta / _doppioniChiaveBox
@@ -314,14 +327,15 @@ function _primoPianoCorpo(d) {
     // widget accanto alla sfera, quindi si leggeva due volte (difetto visto
     // in uno screenshot di Claudio il 2026-09-03).
     const inline = top
-        ? `<div class="ball-k-big ball-k-mono">${_ppEur(top.prezzo)}</div><span class="ball-k-lab">${_ppEsc(top.nome)}</span>`
+        ? `<div class="ball-k-big ball-k-mono">${_ppEur(top.prezzo)}</div><span class="ball-k-lab">${_ppEsc(top.nome)} · la più preziosa</span>`
         : '<div class="ball-k-mid">—</div><span class="ball-k-lab">nessuna carta ancora</span>';
 
     // Ordine = priorità: se lo spazio manca, l'ultima sparisce per prima.
+    // Restyle FASE 2: "Oscillazione +/−" → "Salite/Scese dall'ultima visita".
     const categorie = [
         ['valore', 'Valore più alto', d.perValore],
-        ['su', 'Oscillazione +', d.su],
-        ['giu', 'Oscillazione −', d.giu],
+        ['su', _ppTitoloOscillazione('su'), d.su],
+        ['giu', _ppTitoloOscillazione('giu'), d.giu],
         ['box', 'Box di maggior valore', d.box],
     ].filter(c => c[2] && c[2].length);
 
@@ -390,8 +404,8 @@ let _ppCategoriaPagina = 'valore';
 
 const _PP_CATEGORIE_PAGINA = [
     { id: 'valore', etichetta: 'Valore', ordine: 'ordinate per valore', unita: ['carta', 'carte'], vuoto: 'Ancora nessuna carta in collezione.' },
-    { id: 'su', etichetta: 'Oscillazione +', ordine: 'ordinate per aumento maggiore', unita: ['carta', 'carte'], vuoto: 'Nessuna carta è salita di prezzo.' },
-    { id: 'giu', etichetta: 'Oscillazione −', ordine: 'ordinate per calo maggiore', unita: ['carta', 'carte'], vuoto: 'Nessuna carta è scesa di prezzo.' },
+    { id: 'su', etichetta: 'Salite', ordine: 'ordinate per aumento maggiore', unita: ['carta', 'carte'], vuoto: 'Nessuna carta è salita di prezzo.' },
+    { id: 'giu', etichetta: 'Scese', ordine: 'ordinate per calo maggiore', unita: ['carta', 'carte'], vuoto: 'Nessuna carta è scesa di prezzo.' },
     { id: 'box', etichetta: 'Box', ordine: 'ordinati per valore', unita: ['box', 'box'], vuoto: 'Nessun box in collezione.' },
 ];
 const _PP_CAMPO_DATI = { valore: 'perValore', su: 'su', giu: 'giu', box: 'box' };

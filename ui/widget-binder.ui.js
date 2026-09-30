@@ -35,21 +35,58 @@
 // restano: visualizzazione/inserimento/prezzi/binder/impostazioni).
 // Erano già inattivi prima di questa sessione. Il loro contenuto vive
 // ora dentro il widget "Binders" sotto, come binder dedicati.
+// RESTYLE BINDEX FASE 2 (2026-09-30, file 02 § 1: "conteggio vero dei
+// binder, oggi stima dalle location"). La stima di prima (location distinte
+// in carteReali + 2) sbagliava in entrambi i sensi: ignorava il binder
+// Scambio e le location senza carte, contava come binder le location che
+// il sito non ha ancora materializzato. Ora si conta ESATTAMENTE ciò che
+// mostra la pagina Binders dopo _garantisciTuttiIBinder (ui/binder.ui.js):
+// le righe di 'binders' + ciò che quella funzione creerebbe all'apertura
+// (una location senza binder, o wishlist/extra/scambio non ancora creati).
+// Qui si LEGGE soltanto, non si crea niente (la creazione resta alla
+// pagina Binders, come oggi).
+// Costo: due select leggere, al massimo una volta al minuto (cache sotto):
+// il render della home gira ogni 15s e rifare le query ogni volta sarebbe
+// traffico inutile.
+let _widgetBinderCache = null; // { quando, binders, nomiLocation }
+const _WIDGET_BINDER_CACHE_MS = 60000;
+
+async function _widgetBinderLeggi() {
+    if (_widgetBinderCache && Date.now() - _widgetBinderCache.quando < _WIDGET_BINDER_CACHE_MS) return _widgetBinderCache;
+    const userId = await authGetUserId();
+    if (!userId) return null;
+    const [rb, rl] = await Promise.all([bindersQueryTutti(userId), locationsList(userId)]);
+    if (rb.error) { console.error('[widget-binder] binders:', rb.error.message); return null; }
+    if (rl.error) console.error('[widget-binder] location:', rl.error.message);
+    _widgetBinderCache = {
+        quando: Date.now(),
+        binders: rb.data || [],
+        nomiLocation: (rl.data || []).map(l => l.nome).filter(Boolean),
+    };
+    return _widgetBinderCache;
+}
+
+// Ordine delle copertine in tessera: prima quelli speciali, poi le location
+// (stesso ordine logico della pagina: Scambio, Wishlist, il mio binder).
+const _WIDGET_BINDER_ORDINE = { scambio: 0, wishlist: 1, extra: 2, location: 3 };
+
 CATALOGO_WIDGET.binder = {
     titolo: 'Binders', icona: 'fa-layer-group',
-    // Zero query nuove (stessa filosofia degli altri preview): conta le
-    // location distinte già presenti in carteReali + 2 fissi (Wishlist
-    // + il binder 'extra', che esistono sempre una volta garantiti) —
-    // è una STIMA del numero di binder, non il conteggio esatto letto
-    // da bindersQueryTutti() (quello lo fa apriWidgetBinders() appena
-    // aperto il widget, qui servirebbe una query in più solo per
-    // l'anteprima e non vale il costo).
-    preview: () => {
-        const perLocation = {};
-        carteReali.filter(c => c.tabella === 'carte' && c.stato === 'collezione' && c.location)
-            .forEach(c => { perLocation[c.location] = (perLocation[c.location] || 0) + 1; });
-        const locationDistinte = Object.keys(perLocation).length;
-        const voci = Object.entries(perLocation).sort((a, b) => b[1] - a[1]);
-        return { righe: [`${locationDistinte + 2} binder`], dati: { totale: locationDistinte + 2, voci } };
+    preview: async () => {
+        const d = await _widgetBinderLeggi();
+        if (!d) return { righe: ['—'], dati: null };
+        const tipi = new Set(d.binders.map(b => b.tipo));
+        const materializzate = new Set(d.binders.filter(b => b.tipo === 'location').map(b => b.location_valore));
+        const mancanti = d.nomiLocation.filter(n => !materializzate.has(n)).length
+            + ['wishlist', 'extra', 'scambio'].filter(t => !tipi.has(t)).length;
+        const totale = d.binders.length + mancanti;
+        const pubblici = d.binders.filter(b => b.stato_pubblicazione === 'pubblico').length;
+        const copertine = d.binders.slice()
+            .sort((a, b) => (_WIDGET_BINDER_ORDINE[a.tipo] ?? 9) - (_WIDGET_BINDER_ORDINE[b.tipo] ?? 9) || String(a.nome || '').localeCompare(String(b.nome || '')))
+            .map(b => ({ nome: b.nome || '', tipo: b.tipo, pubblico: b.stato_pubblicazione === 'pubblico' }));
+        return {
+            righe: [`${totale} binder${pubblici ? ` · ${pubblici} pubblic${pubblici === 1 ? 'o' : 'i'}` : ''}`],
+            dati: { totale, pubblici, copertine },
+        };
     },
 };

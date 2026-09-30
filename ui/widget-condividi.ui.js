@@ -48,7 +48,27 @@
 // ── VOCE DI CATALOGO ──────────────────────────────────────────────────
 CATALOGO_WIDGET.condividi = {
         titolo: 'Condividi', icona: 'fa-share-nodes',
-        preview: () => ({ righe: ['Cosa vuoi condividere?'] }),
+        // RESTYLE BINDEX FASE 2 (2026-09-30, tavola "Condividi = pubbliche/
+        // private + copertine"): prima solo "Cosa vuoi condividere?". Riusa
+        // le letture (con cache di un minuto) delle tessere Binders e
+        // Scaffali — nessuna query in più se quelle tessere sono in home.
+        preview: async () => {
+            const [b, s] = await Promise.all([
+                typeof _widgetBinderLeggi === 'function' ? _widgetBinderLeggi() : null,
+                typeof _widgetScaffaliLeggi === 'function' ? _widgetScaffaliLeggi() : null,
+            ]);
+            if (!b && !s) return { righe: ['Cosa vuoi condividere?'] };
+            const binders = (b && b.binders) || [], scaffali = (s && s.scaffali) || [];
+            const pub = (x) => x.stato_pubblicazione === 'pubblico';
+            const pubbliche = binders.filter(pub).length + scaffali.filter(pub).length;
+            const private_ = binders.length + scaffali.length - pubbliche;
+            const copertine = binders.filter(pub).map(x => ({ nome: x.nome || '', pubblico: true }))
+                .concat(scaffali.filter(pub).map(x => ({ nome: x.nome || '', pubblico: true })));
+            return {
+                righe: [pubbliche ? `${pubbliche} cos${pubbliche === 1 ? 'a pubblica' : 'e pubbliche'}` : 'Niente di pubblico'],
+                dati: { pubbliche, private: private_, copertine },
+            };
+        },
         azione: (dati, punto) => { apriDettaglioWidget('condividi', punto); },
 };
 
