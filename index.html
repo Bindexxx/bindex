@@ -745,15 +745,14 @@
         </div>
 
         <div id="dafare" class="view-section">
-            <div class="settings-card" style="max-width: 700px;">
-                <h3 style="margin-bottom: 0.3rem; color: var(--text-dark); display: flex; align-items: center; gap: 0.6rem; font-size: 1.15rem; font-weight: 800;">
-                    <i class="fa-solid fa-list-check" style="color: var(--primary);"></i> Centro operativo
-                </h3>
-                <p style="font-size: 0.78rem; color: var(--text-muted); margin-bottom: 1.2rem;">
-                    Le cose che richiedono la tua attenzione in questo momento, in ordine di priorità.
-                </p>
-                <div id="daFareLista"></div>
+            <!-- RESTYLE BINDEX FASE 3a (2026-10-01): intestazione comune
+                 (titolo a sinistra) + riepilogo scritto da
+                 renderPaginaDaFare() in ui/widget-dafare.ui.js. -->
+            <div class="page-header">
+                <span class="page-title">Centro operativo</span>
             </div>
+            <p class="pg-sotto co-riepilogo" id="daFareRiepilogo"></p>
+            <div id="daFareLista"></div>
         </div>
 
         <div id="match" class="view-section">
@@ -952,11 +951,12 @@
              contenitore-* (puro stile, zero dipendenza di comportamento da
              binder.ui.js) — vedi ui/scaffali.ui.js. -->
         <div id="scaffali" class="view-section scaffale-tema-standard">
-            <div class="settings-card" style="max-width: 900px;">
-                <h3 style="margin-bottom: 0.3rem; color: var(--text-dark); display: flex; align-items: center; gap: 0.6rem; font-size: 1.15rem; font-weight: 800;">
-                    <i class="fa-solid fa-box-archive" style="color: var(--primary);"></i> Scaffali
-                </h3>
-                <p style="font-size: 0.78rem; color: var(--text-muted); margin-bottom: 1.2rem;">
+            <div class="pg-contenuto-pagina">
+                <!-- RESTYLE FASE 3a: intestazione comune (era una card con h3). -->
+                <div class="page-header">
+                    <span class="page-title">Scaffali</span>
+                </div>
+                <p class="pg-sotto" style="margin:-6px 0 1rem;">
                     Organizza i tuoi prodotti sealed in scaffali — un prodotto può stare in più scaffali insieme.
                 </p>
 
@@ -1034,11 +1034,12 @@
              — stesso identico stile visivo, nessuna dipendenza di
              comportamento). Vedi ui/richieste-scambio.ui.js. -->
         <div id="richieste" class="view-section">
-            <div class="settings-card" style="max-width: 900px;">
-                <h3 style="margin-bottom: 0.3rem; color: var(--text-dark); display: flex; align-items: center; gap: 0.6rem; font-size: 1.15rem; font-weight: 800;">
-                    <i class="fa-solid fa-handshake" style="color: var(--primary);"></i> Richieste
-                </h3>
-                <p style="font-size: 0.78rem; color: var(--text-muted); margin-bottom: 1.2rem;">
+            <div class="pg-contenuto-pagina">
+                <!-- RESTYLE FASE 3a: intestazione comune (era una card con h3). -->
+                <div class="page-header">
+                    <span class="page-title">Richieste</span>
+                </div>
+                <p class="pg-sotto" style="margin:-6px 0 1rem;">
                     Richieste di scambio ricevute e inviate.
                 </p>
 

@@ -40,7 +40,9 @@ CATALOGO_WIDGET.richieste = {
         return {
             righe: [totale > 0 ? `${totale} da gestire` : (riservate ? `${riservate} riservat${riservate === 1 ? 'a' : 'e'}` : 'Nessuna in attesa')],
             azioni: totale,
-            dati: { totale, riservate, valore, immagini, oggetti: inAttesa.length },
+            // righeInAttesa (FASE 3a): le stesse righe già lette, per la
+            // scheda del Centro operativo ("Irene ti ha chiesto 2 oggetti").
+            dati: { totale, riservate, valore, immagini, oggetti: inAttesa.length, righeInAttesa: inAttesa },
         };
     },
 };

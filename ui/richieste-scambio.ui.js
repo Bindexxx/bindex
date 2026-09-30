@@ -99,9 +99,12 @@ function renderPaginaRichieste() {
 
         const motivoTxt = r.motivo_chiusura ? `<div style="font-size:0.72rem; color:var(--text-muted); margin-top:0.2rem;">Motivo: ${MOTIVI_ANNULLAMENTO[r.motivo_chiusura] || r.motivo_chiusura}</div>` : '';
 
+        // RESTYLE FASE 3a (2026-10-01, file 02): immagine dal filtro unico
+        // _urlImmagineVisualizzabile (utils/comuni.js), non più grezza.
+        const src = _urlImmagineVisualizzabile(snap.immagine, 64);
         return `
             <div class="card-row" style="flex-wrap:wrap;">
-                ${snap.immagine ? `<img src="${escapeHtml(snap.immagine)}" alt="" class="card-thumb" onerror="this.style.display='none';">` : ''}
+                ${src ? `<img src="${src}" alt="" class="card-thumb" onerror="this.style.display='none';">` : ''}
                 <div class="card-info" style="min-width:160px;">
                     <div class="card-name">${nome} <span style="font-weight:600; color:var(--text-muted);">×${r.quantita_richiesta}</span></div>
                     <div class="card-meta">
