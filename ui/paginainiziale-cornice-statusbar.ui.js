@@ -122,6 +122,23 @@ function _impostaSyncAttivo(attivo) {
     }
 }
 
+// ── POKÉBALL DI STATO: ESTENSIONE (restyle Bindex FASE 1, 2026-09-30) ────
+// Rossa = Supabase + estensione attiva su questo computer, verde = solo
+// Supabase, grigia = offline (quest'ultima la gestisce già CSBar con
+// setConnection). Qui si decide solo rossa/verde: la classe
+// 'csb-solo-supabase' su #phoneScreen (vedi statusbar.css, blocco
+// restyle). Usa _chiediVersioneEstensione (ui/extension.ui.js), la stessa
+// sonda del widget Estensione: nessuna query al DB, timeout 1.2s, mai
+// bloccante. Chiamata all'avvio e a ogni giro di polling lento (60s).
+async function _aggiornaPokeballStatoEstensione() {
+    let versione = null;
+    try {
+        if (typeof _chiediVersioneEstensione === 'function') versione = await _chiediVersioneEstensione();
+    } catch (_) { versione = null; }
+    const schermo = document.getElementById('phoneScreen');
+    if (schermo) schermo.classList.toggle('csb-solo-supabase', !versione);
+}
+
 // ── SUONI RETRO (Web Audio, nessun file esterno) ─────────────────────────
 let _phoneAudioCtx = null;
 function _beep(frequenza, durataMs) {

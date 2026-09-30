@@ -217,6 +217,15 @@
                                 <img src="favicon.ico" alt="Favicon">
                                 <span class="logo-text">CardSync Pro</span>
                             </div>
+                            <!-- RESTYLE BINDEX FASE 1 (2026-09-30): questa riga
+                                 è nascosta (vedi .phone-home-header in
+                                 index.css) e ricompare SOLO in modifica
+                                 come barra "Aggiungi widget / Fatto".
+                                 Si entra in modifica dalla tendina
+                                 ("Modifica home") o col tocco lungo. -->
+                            <button type="button" class="btn-aggiungi-widget-home" onclick="_apriPickerAggiungiWidget()">
+                                <i class="fa-solid fa-plus"></i><span>Aggiungi widget</span>
+                            </button>
                             <button id="btnModificaWidgetHome" class="btn-modifica-widget-home" onclick="toggleModificaWidgetHome()" title="Personalizza i widget">
                                 <i class="fa-solid fa-pen"></i><span>Modifica</span>
                             </button>
@@ -244,8 +253,13 @@
             <button id="btnFisicoTelefono" class="nascosto pokedex-ball" onclick="_clickTastoFisico()" title="Home">
                 <i class="fa-solid fa-house"></i>
             </button>
-            <div id="pokeballSinistra" class="pokedex-ball pokedex-ball-laterale" onclick="_clickPokeballDecorativa('sinistra')"></div>
-            <div id="pokeballDestra" class="pokedex-ball pokedex-ball-laterale" onclick="_clickPokeballDecorativa('destra')"></div>
+            <!-- RESTYLE BINDEX FASE 1 (2026-09-30): tasti laterali con
+                 funzione (sinistra Cerca, destra Inserisci — vedi
+                 _clickPokeballDecorativa) e nome BINDEX inciso sulla
+                 cornice in basso a sinistra (solo decorazione). -->
+            <div id="pokeballSinistra" class="pokedex-ball pokedex-ball-laterale" onclick="_clickPokeballDecorativa('sinistra')" title="Cerca" role="button" aria-label="Cerca"><i class="fa-solid fa-magnifying-glass"></i></div>
+            <div id="pokeballDestra" class="pokedex-ball pokedex-ball-laterale" onclick="_clickPokeballDecorativa('destra')" title="Inserisci" role="button" aria-label="Inserisci"><i class="fa-solid fa-plus"></i></div>
+            <div id="corniceNomeInciso" aria-hidden="true"><svg width="9" height="12" viewBox="0 0 9 12"><rect x=".6" y=".6" width="7.8" height="10.8" rx="1.6" fill="none" stroke="currentColor" stroke-width="1.2"/><rect x="2.4" y="2.6" width="4.2" height="3" rx=".6" fill="currentColor"/></svg>BINDEX</div>
         </div>
     </div>
 

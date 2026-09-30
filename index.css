@@ -551,7 +551,10 @@
                nativi basta, dato che tutto il box è già scalato come
                blocco unico (Step 3): non serve vw/clamp, la scala della
                cornice fa già il lavoro di adattamento. */
-            --pokedex-margine-schermo: 16px;
+            /* RESTYLE BINDEX FASE 1 (2026-09-30): 16px → 12px, come
+               nelle tavole approvate. Le pagine pubbliche restano a 16px
+               (utils/cornice-pubblica.css ha la sua variabile). */
+            --pokedex-margine-schermo: 12px;
 
             /* Tetto massimo desktop per la cornice pokedex (2026-09-10,
                Claudio: "una risoluzione HD standard, 1366x768") — un solo
@@ -976,6 +979,30 @@
             margin-bottom: 0.9rem;
         }
         .phone-home-header .logo { font-size: 0.72rem; }
+
+        /* RESTYLE BINDEX FASE 1 (2026-09-30, tavole approvate): niente
+           riga del nome sopra i widget — il nome BINDEX è inciso sulla
+           cornice (#corniceNomeInciso). La riga ricompare SOLO in
+           modifica, come barra "Aggiungi widget / Fatto" (classe
+           home-in-modifica sul body, messa da toggleModificaWidgetHome in
+           ui/paginainiziale-render.ui.js). Il logo resta nel DOM, nascosto. */
+        .phone-home-header { display: none; }
+        body.home-in-modifica .phone-home-header {
+            display: flex; gap: 8px; justify-content: stretch;
+            padding: 8px 14px 0;
+        }
+        body.home-in-modifica .phone-home-header .logo { display: none; }
+        .btn-aggiungi-widget-home {
+            flex: 1; display: flex; align-items: center; justify-content: center; gap: 0.4rem;
+            height: 40px; border-radius: 14px;
+            border: 1px solid var(--border-color); background: var(--card-bg); color: var(--text-dark);
+            font: 600 0.85rem 'Space Grotesk', sans-serif; cursor: pointer;
+        }
+        body.home-in-modifica .btn-modifica-widget-home {
+            width: 96px; height: 40px; justify-content: center; border-radius: 14px;
+            font-size: 0.85rem; font-weight: 700;
+        }
+        body.home-in-modifica .btn-modifica-widget-home i { display: none; }
 
         /* Bottone "Modifica" — FIX (Claudio, 2026-09-10): prima l'unico
            modo per entrare in modifica widget standando in home era la
@@ -1717,6 +1744,48 @@
         .ball-ui .wf-alto,
         .ball-ui .wf-grande { align-items: stretch; justify-content: space-between; }
 
+        /* ── RESTYLE BINDEX FASE 1 (2026-09-30): SFERA SEMPRE A SINISTRA,
+           BADGE SULLA SFERA (regole imperative, tavole approvate) ────────
+           Vale su telefono e PC, in ogni taglia con la sfera:
+           - piccole (wf-piccolo, ex 1x1 / 3x2): prima sfera centrata e
+             basta; ora sfera a sinistra + nome e stato accanto
+             (.widget-tile-testo, vedi renderWidgetHome);
+           - alte (wf-alto): prima sfera sopra e testo centrato; ora sfera
+             a sinistra come nelle larghe e nelle grandi.
+           Mini/icona (widget-tile-mini) restano solo sfera. */
+        .ball-ui .wf-piccolo:not(.widget-tile-mini) {
+            display: flex; flex-direction: row;
+            align-items: center; justify-content: flex-start;
+            gap: 14px; padding: 0 0.6rem;
+            /* Senza min-width:0 un nome lungo allargherebbe la colonna
+               della griglia invece di finire coi puntini. */
+            min-width: 0;
+        }
+        .widget-tile-testo { display: flex; flex-direction: column; gap: 0.15rem; min-width: 0; }
+        .ball-ui .wf-piccolo:not(.widget-tile-mini) .widget-tile-testo {
+            flex: 1 1 auto; gap: 3px; text-align: left;
+        }
+        .ball-ui .wf-piccolo:not(.widget-tile-mini) .widget-tile-titolo {
+            display: block; font-size: 17px; font-weight: 700;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .ball-ui .wf-piccolo:not(.widget-tile-mini) .widget-tile-righe {
+            display: block; font-size: 13px; font-weight: 500;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        /* Una riga sola: "nome + stato in una riga". */
+        .ball-ui .wf-piccolo:not(.widget-tile-mini) .widget-tile-righe span:nth-child(n+2) { display: none; }
+        .ball-ui .wf-alto .ball-testa { flex-direction: row; gap: 0.65rem; }
+        .ball-ui .wf-alto .ball-slot-inline { text-align: left; align-items: flex-start; width: auto; }
+
+        /* Badge sulla sfera, in alto a destra (vale anche per le mini). */
+        .pkdx-icon-wrap > .widget-badge,
+        .widget-tile-mini .pkdx-icon-wrap > .widget-badge {
+            top: -2px; right: -2px; left: auto;
+            z-index: 6;
+            box-shadow: 0 0 0 2px var(--bg-color);
+        }
+
         /* ── MINIATURE DELLE CARTE ───────────────────────────────────────
            Ricalcate sul mockup (.strip/.mini di cardsync.css): stesse
            misure, stessi angoli, stessa ombra, stessa spaziatura. Le due
@@ -2151,6 +2220,34 @@
         }
         #pokeballSinistra { left: var(--pokedex-margine-schermo); transform: translate(-50%, -50%); }
         #pokeballDestra { right: var(--pokedex-margine-schermo); transform: translate(50%, -50%); }
+        /* RESTYLE BINDEX FASE 1 (2026-09-30): icona della funzione (Cerca /
+           Inserisci) al centro, stesso stile dell'icona del tasto in basso
+           (#btnFisicoTelefono i). */
+        .pokedex-ball-laterale { display: flex; align-items: center; justify-content: center; }
+        .pokedex-ball-laterale i {
+            position: relative;
+            z-index: 1;
+            font-size: 0.5rem;
+            color: #171717;
+            pointer-events: none;
+        }
+
+        /* Nome inciso sulla cornice, in basso a sinistra (tavole
+           approvate): solo decorazione, non intercetta i tocchi. */
+        #corniceNomeInciso {
+            position: absolute;
+            left: 34px;
+            bottom: 1px;
+            z-index: 2;
+            display: flex; align-items: center; gap: 5px;
+            font: 700 9px 'Space Grotesk', sans-serif;
+            letter-spacing: 2.2px;
+            color: rgba(255, 255, 255, 0.78);
+            text-shadow: 0 1px 0 rgba(0, 0, 0, 0.35);
+            pointer-events: none;
+            line-height: 1;
+        }
+        #corniceNomeInciso svg { flex: none; }
 
         #btnFisicoTelefono {
             position: absolute;
@@ -5440,3 +5537,68 @@
         }
         .chat-input-campo:focus { outline: none; border-color: var(--primary); }
         .chat-invia-btn { width: 40px; height: 40px; border-radius: 50%; flex-shrink: 0; padding: 0; }
+
+        /* ═══════════════════════════════════════════════════════════════
+           RESTYLE BINDEX FASE 1 (2026-09-30) — REGOLE COMUNI (file 01 § B)
+           Classi condivise per le pagine che verranno rifatte dalla FASE 3
+           in poi. Prefisso bx- (nessuna collisione: verificato con grep).
+           Nessuna pagina le usa ancora: aggiungerle non cambia niente di
+           visibile oggi. Per l'euro vedi formattaEuro/formattaEuroTondo/
+           formattaEuroVariazione in utils/comuni.js.
+           ═══════════════════════════════════════════════════════════════ */
+
+        /* Badge di stato: UN solo stile pieno tenue, un colore fisso per
+           significato (mai il colore del tema). */
+        .bx-stato {
+            display: inline-flex; align-items: center; gap: 4px;
+            font-size: 11px; font-weight: 700; line-height: 1;
+            border-radius: 8px; padding: 4px 8px; white-space: nowrap;
+            color: #5f5e5a; background: rgba(95, 94, 90, 0.14);
+        }
+        .bx-stato-attesa   { color: #8a5a00; background: rgba(200, 137, 43, 0.18); }
+        .bx-stato-riservata{ color: #1f5fae; background: rgba(59, 125, 216, 0.16); }
+        .bx-stato-conclusa { color: #1b5e20; background: rgba(46, 125, 50, 0.16); }
+        .bx-stato-rifiutata,
+        .bx-stato-annullata{ color: #b3261e; background: rgba(211, 47, 47, 0.14); }
+        .bx-stato-scambio  { color: var(--primary); background: var(--primary-light); }
+        body.dark-mode .bx-stato            { color: #c9c7c0; background: rgba(201, 199, 192, 0.16); }
+        body.dark-mode .bx-stato-attesa     { color: #f2c46d; background: rgba(242, 196, 109, 0.16); }
+        body.dark-mode .bx-stato-riservata  { color: #90b8f0; background: rgba(144, 184, 240, 0.16); }
+        body.dark-mode .bx-stato-conclusa   { color: #a5d6a7; background: rgba(129, 199, 132, 0.18); }
+        body.dark-mode .bx-stato-rifiutata,
+        body.dark-mode .bx-stato-annullata  { color: #ef9a9a; background: rgba(239, 154, 154, 0.16); }
+
+        /* Variazioni di prezzo: verde su, rosso giù (chiaro/scuro). */
+        .bx-su  { color: #2e7d32; }
+        .bx-giu { color: #d32f2f; }
+        body.dark-mode .bx-su  { color: #81c784; }
+        body.dark-mode .bx-giu { color: #ef9a9a; }
+
+        /* Miniatura con lente: la riga apre i dettagli, la MINIATURA apre
+           la carta a tutto schermo con flip (regola imperativa). La lente
+           in basso a destra dice che la miniatura si tocca. */
+        .bx-lente { position: relative; display: inline-block; flex: none; cursor: zoom-in; line-height: 0; }
+        .bx-lente::after {
+            content: "\f00e"; /* Font Awesome: magnifying-glass-plus */
+            font: 900 8px/16px "Font Awesome 6 Free";
+            position: absolute; right: -4px; bottom: -4px;
+            width: 16px; height: 16px; border-radius: 50%; text-align: center;
+            color: #fff; background: rgba(20, 16, 30, 0.78);
+            box-shadow: 0 0 0 2px var(--card-bg);
+            pointer-events: none;
+        }
+
+        /* Riquadri numerici in alto: sempre con icona. */
+        .bx-riquadri { display: grid; grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); gap: 8px; }
+        .bx-riquadro {
+            background: var(--card-bg); border: 1px solid var(--border-color);
+            border-radius: 14px; padding: 10px 10px 9px;
+            display: flex; flex-direction: column; gap: 2px; min-width: 0;
+        }
+        .bx-riquadro > i { color: var(--primary); font-size: 14px; }
+        .bx-riquadro > b {
+            font-size: 18px; font-weight: 700; white-space: nowrap;
+            overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums;
+            color: var(--text-dark);
+        }
+        .bx-riquadro > span { font-size: 11px; font-weight: 600; color: var(--text-muted); }
