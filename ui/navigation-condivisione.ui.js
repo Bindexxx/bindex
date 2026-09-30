@@ -112,8 +112,14 @@
             // binder-pubblico.html quando il binder aperto è di tipo
             // wishlist — altrimenti il nome del proprietario non
             // arriverebbe più a copiaRiepilogo() sul nuovo percorso.
-            if ((pagina === 'wishlist.html' || tipoBinderExtra === 'wishlist') && sessione?.user?.email) {
-                url.searchParams.set('nome', _nomeDaEmail(sessione.user.email));
+            // RESTYLE FASE 3e: ?nome= porta il NICKNAME (mai l'email); senza
+            // nickname il parametro non c'è.
+            if ((pagina === 'wishlist.html' || tipoBinderExtra === 'wishlist') && sessione?.user?.id) {
+                try {
+                    const { data: pref } = await userSettingsGet(sessione.user.id);
+                    const nick = pref && pref.nickname ? String(pref.nickname).trim() : '';
+                    if (nick) url.searchParams.set('nome', nick);
+                } catch (e) { console.error('[condivisione] nickname:', e); }
             }
             return url.href;
         }

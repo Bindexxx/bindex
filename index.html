@@ -791,7 +791,7 @@
                 <span class="page-title">Condividi</span>
             </div>
             <div class="pg-pagina">
-                <p class="pg-sotto" style="margin:-6px 0 2px;">Scegli cosa condividere — link, QR o condivisione nativa.</p>
+                <p class="pg-sotto" id="condividiRiepilogo" style="margin:-6px 0 2px;">Scegli cosa condividere — link, QR o condivisione nativa.</p>
                 <div id="condividiLista"></div>
 
                 <!-- AGGIORNATO 2026-09-18 (Claudio: "con molti binder/scaffali
@@ -1926,18 +1926,7 @@
          _condividiElementoWidget in ui/widget-condividi.ui.js. -->
     <div id="condividiShareModal" class="modal-overlay" onclick="chiudiCondividiPannelloShare()">
         <div class="modal-content" onclick="event.stopPropagation()">
-            <button class="close-modal-btn" onclick="chiudiCondividiPannelloShare()"><i class="fa-solid fa-xmark"></i></button>
-            <div style="max-width: 380px; margin: 0 auto;">
-                <h3 style="font-weight: 800; margin-bottom: 1rem; display:flex; align-items:center; justify-content:center; gap:0.5rem;">
-                    <i class="fa-solid fa-share-nodes" style="color: var(--primary);"></i> Condividi
-                </h3>
-                <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.9rem;">
-                    <input type="text" id="condividiLinkInput" readonly style="flex:1;">
-                    <button type="button" class="btn-secondary" onclick="_copiaLinkCondividiWidget()" title="Copia link"><i class="fa-solid fa-copy"></i></button>
-                </div>
-                <div id="condividiQrContainer" style="display:flex; justify-content:center; margin-bottom:0.9rem;"></div>
-                <button type="button" class="btn-main" id="condividiBtnNativo" style="display:none; width:100%;" onclick="_condividiNativoWidget()"><i class="fa-solid fa-share-nodes"></i> Condividi</button>
-            </div>
+            <div id="condividiShareContenuto"></div>
         </div>
     </div>
 
