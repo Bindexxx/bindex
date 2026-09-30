@@ -160,6 +160,7 @@
             _elencoPrezziScaduti = carteDaAggiornare.map(c => ({
                 name: c.name,
                 code: c.code,
+                immagine: c.immagine, // RESTYLE FASE 3a: miniature nel Centro operativo
                 ultimoTesto: ultimoPerCarta[c.id]
                     ? new Date(ultimoPerCarta[c.id]).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' })
                     : 'mai controllata',

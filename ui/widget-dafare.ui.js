@@ -100,89 +100,103 @@ CATALOGO_WIDGET.suggerimento = {
         // premi si assegnano da soli al completamento, non c'è niente da
         // riscuotere. Al suo posto (2026-09-26, Claudio: "sì"): segnale
         // "missioni ancora da fare oggi", vedi sotto.
+        // RESTYLE BINDEX FASE 3a (2026-10-01, tavole "Centro operativo"):
+        // - ordine "da fare": richieste → carte da correggere → prezzi;
+        // - le carte in "?" passano in "Opportunità e sistemazioni" (tavola:
+        //   "3 cose da fare adesso · 3 opportunità" = Match, Wishlist, "?");
+        // - wishlist sotto obiettivo porta alla pagina Wishlist (prima Binders);
+        // - ogni segnale porta con sé i dati per la scheda della pagina
+        //   (miniature, righe) — sempre dati già letti, nessuna query nuova
+        //   tranne il conteggio dispositivi, che sostituisce la vecchia
+        //   _dispositiviAttiviOra (stessa RPC, una chiamata sola).
         preview: async () => {
             const segnali = [];
-            const codaErrori = await _contaCodaErrori();
-            if (codaErrori > 0) segnali.push({ id: 'coda_errori', testo: `${codaErrori} carte da correggere`, stato: 'allerta', tab: 'inserimento' });
-
-            const lista = (typeof _elencoPrezziScaduti !== 'undefined' && _elencoPrezziScaduti) ? _elencoPrezziScaduti : [];
-            if (lista.length > 0) segnali.push({ id: 'prezzi_scaduti', testo: `${lista.length} prezzi da aggiornare`, stato: 'allerta', tab: 'prezzi' });
 
             // "Interesse ricevuto" — richieste di scambio ricevute che
             // aspettano una MIA decisione (accetta/rifiuta). Zero query
             // proprie: CATALOGO_WIDGET.richieste.preview() la fa già.
+            let righeRichieste = [];
             try {
                 const richiesteInfo = await CATALOGO_WIDGET.richieste.preview();
                 const daGestire = (richiesteInfo.dati && richiesteInfo.dati.totale) || 0;
-                if (daGestire > 0) segnali.push({ id: 'richieste_da_gestire', testo: `${daGestire} richiest${daGestire === 1 ? 'a' : 'e'} da gestire`, stato: 'allerta', tab: 'richieste' });
+                righeRichieste = (richiesteInfo.dati && richiesteInfo.dati.righeInAttesa) || [];
+                if (daGestire > 0) segnali.push({ id: 'richieste_da_gestire', testo: `${daGestire} richiest${daGestire === 1 ? 'a' : 'e'} da gestire`, stato: 'allerta', tab: 'richieste', immagini: (richiesteInfo.dati.immagini || []).slice(0, 3), righe: righeRichieste, valore: richiesteInfo.dati.valore || 0 });
             } catch (e) { console.error('[Centro operativo] richieste:', e); }
 
-            const wishlistSottoTarget = carteReali.filter(c => c.tabella === 'wishlist' && c.prezzoObiettivo != null && c.price > 0 && c.price <= c.prezzoObiettivo);
-            if (wishlistSottoTarget.length > 0) segnali.push({ id: 'wishlist_obiettivo', testo: `${wishlistSottoTarget.length} in wishlist sotto obiettivo`, stato: 'ok', tab: 'binder' });
+            const codaErrori = await _contaCodaErrori();
+            if (codaErrori > 0) segnali.push({ id: 'coda_errori', testo: `${codaErrori} cart${codaErrori === 1 ? 'a' : 'e'} da correggere`, stato: 'allerta', tab: 'inserimento', quante: codaErrori });
 
-            // Match — stessa idea di richieste sopra: CATALOGO_WIDGET.match
-            // .preview() è sincrona (legge due variabili di modulo già
-            // aggiornate dal polling di queue.ui.js), zero query qui.
+            const lista = (typeof _elencoPrezziScaduti !== 'undefined' && _elencoPrezziScaduti) ? _elencoPrezziScaduti : [];
+            if (lista.length > 0) segnali.push({ id: 'prezzi_scaduti', testo: `${lista.length} prezz${lista.length === 1 ? 'o' : 'i'} da aggiornare`, stato: 'allerta', tab: 'prezzi', immagini: lista.map(c => c.immagine).filter(Boolean).slice(0, 3), quante: lista.length });
+
+            // Match — CATALOGO_WIDGET.match.preview() è sincrona (legge due
+            // variabili di modulo già aggiornate dal polling di queue.ui.js).
+            // scambio = tue carte Scambio che altri cercano; wishlist = carte
+            // che cerchi e altri hanno in Scambio (trova_match_* in queue.ui.js).
             try {
                 const matchInfo = CATALOGO_WIDGET.match.preview();
-                const totaleMatch = ((matchInfo.dati && matchInfo.dati.scambio) || 0) + ((matchInfo.dati && matchInfo.dati.wishlist) || 0);
-                if (totaleMatch > 0) segnali.push({ id: 'match_trovati', testo: `${totaleMatch} corrispondenz${totaleMatch === 1 ? 'a' : 'e'} nel gruppo`, stato: 'ok', tab: 'match' });
+                const nScambio = (matchInfo.dati && matchInfo.dati.scambio) || 0;
+                const nWishlist = (matchInfo.dati && matchInfo.dati.wishlist) || 0;
+                const totaleMatch = nScambio + nWishlist;
+                if (totaleMatch > 0) segnali.push({ id: 'match_trovati', testo: `${totaleMatch} corrispondenz${totaleMatch === 1 ? 'a' : 'e'} nel gruppo`, stato: 'ok', tab: 'match', nScambio, nWishlist });
             } catch (e) { console.error('[Centro operativo] match:', e); }
 
-            // Missioni del giorno non ancora fatte (2026-09-26). Riusa
-            // CATALOGO_WIDGET.missioni.preview() (ui/widget-missioni.ui.js),
-            // la stessa della tessera Missioni: conta solo le missioni
-            // estratte per oggi. Priorità normale, apre la pagina Missioni.
-            // Quando le finisci tutte il segnale sparisce e resta barrato
-            // nello storico 24h come gli altri.
-            try {
-                const missioniInfo = await CATALOGO_WIDGET.missioni.preview();
-                const d = missioniInfo && missioniInfo.dati;
-                const mancanti = (d && !d.placeholder && d.totali) ? Math.max(0, d.totali - d.fatte) : 0;
-                if (mancanti > 0) segnali.push({ id: 'missioni_da_fare', testo: mancanti === 1 ? 'Ti manca 1 missione oggi' : `Ti mancano ${mancanti} missioni oggi`, stato: undefined, tab: 'missioni' });
-            } catch (e) { console.error('[Centro operativo] missioni:', e); }
+            const wishlistSottoTarget = carteReali.filter(c => c.tabella === 'wishlist' && c.prezzoObiettivo != null && c.price > 0 && c.price <= c.prezzoObiettivo);
+            if (wishlistSottoTarget.length > 0) segnali.push({ id: 'wishlist_obiettivo', testo: `${wishlistSottoTarget.length} in wishlist sotto obiettivo`, stato: 'ok', tab: 'wishlist', carte: wishlistSottoTarget });
 
             // Elementi ancora in location "?" — solo collezione (mai
             // wishlist, che non ha una location reale).
             const inAttesaLocation = carteReali.filter(c => c.tabella === 'carte' && c.location === '?');
-            if (inAttesaLocation.length > 0) segnali.push({ id: 'elementi_senza_location', testo: `${inAttesaLocation.length} element${inAttesaLocation.length === 1 ? 'o' : 'i'} ancora in "?"`, stato: undefined, tab: 'location' });
+            if (inAttesaLocation.length > 0) segnali.push({ id: 'elementi_senza_location', testo: `${inAttesaLocation.length} element${inAttesaLocation.length === 1 ? 'o' : 'i'} ancora in "?"`, stato: undefined, tab: 'location', carte: inAttesaLocation });
 
-            const alLavoro = await _dispositiviAttiviOra();
-            if (alLavoro) segnali.push({ id: 'gruppo_al_lavoro', testo: 'Il gruppo sta lavorando', stato: undefined, tab: 'home' });
+            // Missioni del giorno non ancora fatte (2026-09-26). Riusa
+            // CATALOGO_WIDGET.missioni.preview() (ui/widget-missioni.ui.js),
+            // la stessa della tessera Missioni. Non è una voce: finisce nel
+            // riquadro "Oggi"; il segnale serve allo storico 24h.
+            let missioni = null;
+            try {
+                const missioniInfo = await CATALOGO_WIDGET.missioni.preview();
+                const d = missioniInfo && missioniInfo.dati;
+                if (d && !d.placeholder && d.totali) {
+                    const inPalio = (d.voci || []).filter(v => !v.fatta && v.ricompensa && v.ricompensa.tipo === 'polvere').reduce((t, v) => t + (v.ricompensa.quantita || 1), 0);
+                    missioni = { fatte: d.fatte, totali: d.totali, inPalio };
+                }
+                const mancanti = missioni ? Math.max(0, missioni.totali - missioni.fatte) : 0;
+                if (mancanti > 0) segnali.push({ id: 'missioni_da_fare', testo: mancanti === 1 ? 'Ti manca 1 missione oggi' : `Ti mancano ${mancanti} missioni oggi`, stato: undefined, tab: 'missioni' });
+            } catch (e) { console.error('[Centro operativo] missioni:', e); }
+
+            const dispositivi = await _daFareDispositiviAlLavoro();
+            if (dispositivi > 0) segnali.push({ id: 'gruppo_al_lavoro', testo: 'Il gruppo sta lavorando', stato: undefined, tab: 'home' });
 
             _rilevaTransizioniDaFare(segnali); // storico 24h — vedi sopra la funzione
 
-            // RESTYLE BINDEX FASE 2 (2026-09-30, tavola "Tessera Centro
-            // operativo"): stessi segnali di sempre, stesso ordine, ma
-            // ciascuno sa in quale sezione della tessera va:
+            // Ogni segnale sa in quale sezione della tessera/pagina va:
             //   'fare'        → "Da fare adesso" (bordo rosso, conta nel badge)
-            //   'opportunita' → "Opportunità"
-            //   missioni e gruppo → riquadri in fondo (non sono voci)
-            // I campi di prima (id/testo/stato/tab) restano identici: la
-            // pagina Da fare e lo storico 24h li leggono così.
+            //   'opportunita' → "Opportunità e sistemazioni"
+            //   missioni e gruppo → riquadri a parte (non sono voci)
+            // I campi di prima (id/testo/stato/tab) restano identici: lo
+            // storico 24h li legge così.
             const META = {
-                coda_errori:             { gruppo: 'fare', icona: 'fa-triangle-exclamation', sotto: 'non trovate su Cardmarket' },
-                prezzi_scaduti:          { gruppo: 'fare', icona: 'fa-tags', sotto: `mai controllati o più vecchi di ${typeof SOGLIA_GIORNI_PREZZO_SCADUTO !== 'undefined' ? SOGLIA_GIORNI_PREZZO_SCADUTO : 7} giorni` },
-                richieste_da_gestire:    { gruppo: 'fare', icona: 'fa-handshake', sotto: 'aspettano una tua risposta' },
-                elementi_senza_location: { gruppo: 'fare', icona: 'fa-circle-question', sotto: 'scegli dove metterli' },
-                wishlist_obiettivo:      { gruppo: 'opportunita', icona: 'fa-arrow-trend-down', sotto: 'al prezzo che volevi o meno', immagini: wishlistSottoTarget.map(c => c.immagine).filter(Boolean).slice(0, 3) },
-                match_trovati:           { gruppo: 'opportunita', icona: 'fa-heart', sotto: 'carte che cerchi o che cercano da te' },
+                richieste_da_gestire:    { gruppo: 'fare', icona: 'fa-handshake', sotto: 'aspettano una tua risposta', bottone: 'Gestisci', bottoneIcona: 'fa-arrow-right' },
+                coda_errori:             { gruppo: 'fare', icona: 'fa-triangle-exclamation', sotto: 'non trovate su Cardmarket', bottone: 'Correggi', bottoneIcona: 'fa-wrench' },
+                prezzi_scaduti:          { gruppo: 'fare', icona: 'fa-tags', sotto: `mai controllati o più vecchi di ${typeof SOGLIA_GIORNI_PREZZO_SCADUTO !== 'undefined' ? SOGLIA_GIORNI_PREZZO_SCADUTO : 7} giorni`, bottone: 'Controlla prezzi', bottoneIcona: 'fa-arrow-right' },
+                match_trovati:           { gruppo: 'opportunita', icona: 'fa-heart', sotto: 'carte che cerchi o che cercano da te', bottone: 'Vedi Match' },
+                wishlist_obiettivo:      { gruppo: 'opportunita', icona: 'fa-arrow-trend-down', sotto: 'al prezzo che volevi o meno', immagini: wishlistSottoTarget.map(c => c.immagine).filter(Boolean).slice(0, 3), bottone: 'Vedi Wishlist' },
+                elementi_senza_location: { gruppo: 'opportunita', icona: 'fa-circle-question', sotto: 'scegli dove metterli', immagini: inAttesaLocation.map(c => c.immagine).filter(Boolean).slice(0, 3), bottone: 'Sposta', bottoneIcona: 'fa-arrow-right' },
             };
-            segnali.forEach(s => Object.assign(s, META[s.id] || { gruppo: 'info' }));
+            segnali.forEach(s => {
+                const m = META[s.id] || { gruppo: 'info' };
+                Object.keys(m).forEach(k => { if (s[k] === undefined) s[k] = m[k]; });
+            });
             const daFare = segnali.filter(s => s.gruppo === 'fare');
             const opportunita = segnali.filter(s => s.gruppo === 'opportunita');
             const segnaleMissioni = segnali.find(s => s.id === 'missioni_da_fare') || null;
-            let missioni = null;
-            try {
-                const m = await CATALOGO_WIDGET.missioni.preview();
-                if (m && m.dati && !m.dati.placeholder && m.dati.totali) missioni = { fatte: m.dati.fatte, totali: m.dati.totali };
-            } catch (_) { missioni = null; }
-            const dati = { segnali, daFare, opportunita, missioni, segnaleMissioni, gruppoAlLavoro: !!alLavoro };
+            const dati = { segnali, daFare, opportunita, missioni, segnaleMissioni, gruppoAlLavoro: dispositivi > 0, dispositivi };
 
-            if (segnali.length === 0) return { righe: ['Tutto in ordine'], stato: 'ok', dati };
+            if (daFare.length === 0 && opportunita.length === 0) return { righe: ['Tutto in ordine'], stato: 'ok', dati };
             const primo = segnali[0];
             return {
-                righe: [daFare.length ? `${daFare.length} da fare adesso` : (opportunita.length ? `${opportunita.length} opportunità` : primo.testo)],
+                righe: [daFare.length ? `${daFare.length} da fare adesso` : `${opportunita.length} opportunità`],
                 stato: primo.stato,
                 // Badge rosso = SOLO le cose da fare adesso (azioni), non le
                 // opportunità né le informazioni (prima contava tutto).
@@ -193,31 +207,144 @@ CATALOGO_WIDGET.suggerimento = {
         azione: (dati, punto) => { apriDettaglioWidget('dafare', punto); },
 };
 
-// ── PAGINA "DA FARE" ──────────────────────────────────────────────────
+// ── PAGINA "CENTRO OPERATIVO" (#dafare) ─────────────────────────────────
 // Nessuna logica propria sui segnali: riusa CATALOGO_WIDGET.suggerimento
-// .preview(), la stessa fonte già mostrata (in parte) dal tile "Prossima
-// azione" — zero duplicazione, un solo posto dove i 4 segnali sono
-// calcolati (Claudio, 2026-08-28: "da fare e prossima azione saranno la
-// stessa cosa").
+// .preview(), la stessa fonte della tessera — un solo posto dove i segnali
+// sono calcolati (Claudio, 2026-08-28).
 //
-// APERTO: la persistenza "resta barrata 24 ore dopo la risoluzione"
-// (Claudio, risposta 10) non è ancora implementata — richiede
-// data/preferences.repository.js (mai letto in questa sessione) per
-// salvare per-dispositivo quando un segnale si è risolto. Oggi la lista
-// mostra solo i segnali ATTIVI in questo momento; quelli appena risolti
-// spariscono subito invece di restare barrati.
+// RESTYLE BINDEX FASE 3a (2026-10-01) — ridisegnata sulle tavole approvate
+// (telefono + PC): riepilogo in alto, "Da fare adesso" (schede con bordo
+// rosso, miniature, bottone che porta alla pagina giusta), "Opportunità e
+// sistemazioni", e i riquadri Oggi / Il gruppo adesso / Fatto nelle ultime
+// 24 ore (a lato su PC, in fondo su telefono — decide la larghezza vera
+// della pagina, CSS @container). "Controlla prezzi" APRE la pagina
+// Controllo prezzi, non fa partire il controllo (file 01 § D).
+// Lo storico 24h È implementato (migration 31, preferenze_utente.
+// dafare_risolti): tolto il vecchio commento "APERTO: non ancora
+// implementata", non più vero.
+
+// Quanti dispositivi del gruppo stanno controllando prezzi adesso: stessa
+// RPC di _dispositiviAttiviOra (ui/home.ui.js, leggi_stato_claim_gruppo,
+// soglia 10 minuti di default), ma conta i dispositivi distinti invece di
+// dire solo sì/no — file 02: "senza ordine attivo → N dispositivi al
+// lavoro". Nessun nome, nessun dettaglio sulle carte.
+async function _daFareDispositiviAlLavoro() {
+    try {
+        const { data, error } = await claimGruppoStato();
+        if (error) { console.error('[Centro operativo] dispositivi:', error.message); return 0; }
+        return new Set((data || []).map(r => r.dispositivo || r.claimed_by || r.id)).size;
+    } catch (e) { console.error('[Centro operativo] dispositivi:', e); return 0; }
+}
+
+// Miniature (max 3 + "+N"), immagini sempre dal filtro unico.
+function _daFareMiniature(immagini, totale) {
+    const lista = (immagini || []).map(i => _urlImmagineVisualizzabile(i, 80)).filter(Boolean).slice(0, 3);
+    if (!lista.length) return '';
+    const altre = (totale || 0) - lista.length;
+    return `<div class="co-mini">${lista.map(src => `<img src="${src}" alt="" loading="lazy" onerror="this.remove();">`).join('')}${altre > 0 ? `<span class="co-mini-altre">+${altre}</span>` : ''}</div>`;
+}
+
+// "oggi 10:12" / "ieri 21:50" / "28/09 18:12"
+function _daFareQuando(iso) {
+    const d = new Date(iso);
+    if (isNaN(d)) return '';
+    const ora = d.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+    const oggi = new Date(); oggi.setHours(0, 0, 0, 0);
+    const giorno = new Date(d); giorno.setHours(0, 0, 0, 0);
+    const diff = Math.round((oggi - giorno) / 86400000);
+    if (diff === 0) return `oggi ${ora}`;
+    if (diff === 1) return `ieri ${ora}`;
+    return `${d.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' })} ${ora}`;
+}
+
+function _daFareNomi(carte) {
+    const nomi = (carte || []).map(c => c.name).filter(Boolean);
+    if (!nomi.length) return '';
+    return escapeHtml(nomi.slice(0, 2).join(', ')) + (nomi.length > 2 ? ` e altre ${nomi.length - 2}` : '');
+}
+
+// Titolo/sottotitolo di ogni scheda: dove ci sono dati più precisi (un
+// solo richiedente, una sola carta) la frase è quella delle tavole,
+// altrimenti resta il testo generico del segnale.
+function _daFareTesti(s, nickname) {
+    const titolo = escapeHtml(s.testo);
+    if (s.id === 'richieste_da_gestire') {
+        const righe = s.righe || [];
+        const persone = [...new Set(righe.map(r => (r.richieste_scambio || {}).richiedente_id).filter(Boolean))];
+        const oggetti = righe.map(r => (r.snapshot || {}).nome || (r.snapshot || {}).codice).filter(Boolean);
+        const pezzi = [];
+        if (oggetti.length) pezzi.push(escapeHtml(oggetti.slice(0, 2).join(', ')) + (oggetti.length > 2 ? ` e altri ${oggetti.length - 2}` : ''));
+        if (s.valore > 0) pezzi.push(formattaEuro(s.valore));
+        pezzi.push(persone.length > 1 ? `da ${persone.length} persone` : 'aspetta una tua risposta');
+        if (persone.length === 1) {
+            const chi = nickname[persone[0]] ? escapeHtml(nickname[persone[0]]) : 'Qualcuno del gruppo';
+            return { titolo: `${chi} ti ha chiesto ${righe.length} oggett${righe.length === 1 ? 'o' : 'i'}`, sotto: pezzi.join(' · ') };
+        }
+        return { titolo, sotto: pezzi.join(' · ') };
+    }
+    if (s.id === 'coda_errori') return { titolo, sotto: `L'estensione non ${s.quante === 1 ? 'l’ha trovata' : 'le ha trovate'} su Cardmarket` };
+    if (s.id === 'match_trovati') {
+        const pezzi = [];
+        if (s.nWishlist) pezzi.push(`${s.nWishlist} che cerchi`);
+        if (s.nScambio) pezzi.push(`${s.nScambio} che cercano da te`);
+        return { titolo, sotto: pezzi.join(' · ') || escapeHtml(s.sotto || '') };
+    }
+    if (s.id === 'wishlist_obiettivo' && (s.carte || []).length === 1) {
+        const c = s.carte[0];
+        return { titolo: `${escapeHtml(c.name || 'Una carta')} è sotto il tuo obiettivo`, sotto: `${formattaEuro(c.price)} · obiettivo ${formattaEuro(c.prezzoObiettivo)}` };
+    }
+    if (s.id === 'elementi_senza_location') {
+        const n = (s.carte || []).length;
+        return { titolo: `${n} cart${n === 1 ? 'a' : 'e'} ancora in “?”`, sotto: `${_daFareNomi(s.carte)} · scegli dove ${n === 1 ? 'metterla' : 'metterle'}` };
+    }
+    return { titolo, sotto: _daFareNomi(s.carte) || escapeHtml(s.sotto || '') };
+}
+
+function _daFareScheda(s, nickname) {
+    const t = _daFareTesti(s, nickname);
+    const fare = s.gruppo === 'fare';
+    const totaleImg = s.id === 'prezzi_scaduti' ? s.quante : (s.carte ? s.carte.length : (s.righe ? s.righe.length : 0));
+    const btn = s.bottone ? `<button type="button" class="co-btn${fare ? ' co-btn-pieno' : ''}" onclick="event.stopPropagation(); _apriVoceDaFare('${s.tab}', event)">${s.bottoneIcona ? `<i class="fa-solid ${s.bottoneIcona}"></i> ` : ''}${s.bottone}</button>` : '';
+    return `
+        <div class="co-scheda${fare ? ' co-fare' : ''} co-${s.id}">
+            <div class="co-ico"><i class="fa-solid ${s.icona || 'fa-circle-info'}"></i></div>
+            <div class="co-corpo">
+                <div class="co-tit">${t.titolo}</div>
+                ${t.sotto ? `<div class="co-sotto">${t.sotto}</div>` : ''}
+                ${_daFareMiniature(s.immagini, totaleImg)}
+            </div>
+            ${btn}
+        </div>`;
+}
+
 async function renderPaginaDaFare() {
     const container = document.getElementById('daFareLista');
     if (!container) return;
     container.innerHTML = '<p style="text-align:center; color:var(--text-muted); font-size:0.85rem; padding:1rem 0;">Caricamento…</p>';
+    const riepilogoEl = document.getElementById('daFareRiepilogo');
 
     let anteprima;
-    try { anteprima = await CATALOGO_WIDGET.suggerimento.preview(); } catch (e) { console.error('renderPaginaDaFare:', e); anteprima = { dati: { segnali: [] } }; }
-    const segnali = (anteprima.dati && anteprima.dati.segnali) || [];
+    try { anteprima = await CATALOGO_WIDGET.suggerimento.preview(); } catch (e) { console.error('renderPaginaDaFare:', e); anteprima = { dati: { segnali: [], daFare: [], opportunita: [] } }; }
+    const d = anteprima.dati || {};
+    const segnali = d.segnali || [];
+    const daFare = d.daFare || [];
+    const opportunita = d.opportunita || [];
+
+    // Nickname di chi ha chiesto (mai l'email): una RPC sola, solo se
+    // ci sono richieste in attesa.
+    const nickname = {};
+    const rich = daFare.find(s => s.id === 'richieste_da_gestire');
+    const idsRichiedenti = rich ? [...new Set((rich.righe || []).map(r => (r.richieste_scambio || {}).richiedente_id).filter(Boolean))] : [];
+    if (idsRichiedenti.length) {
+        try {
+            const { data, error } = await chatOttieniNicknames(idsRichiedenti);
+            if (error) console.error('renderPaginaDaFare: nickname:', error.message);
+            else (data || []).forEach(n => { if (n.nickname) nickname[n.owner_id] = n.nickname; });
+        } catch (e) { console.error('renderPaginaDaFare: nickname:', e); }
+    }
 
     // Storico: segnali risolti negli ultimi FINESTRA_STORICO_DAFARE_MS,
-    // persistente per-utente (migration 31) — non compaiono più tra gli
-    // attivi ma restano visibili barrati per un po' (Claudio, confermato).
+    // persistente per-utente (migration 31).
     let risolti = [];
     try {
         const userId = await authGetUserId();
@@ -229,43 +356,67 @@ async function renderPaginaDaFare() {
                 const idAttivi = new Set(segnali.map(s => s.id));
                 risolti = Object.entries(storico)
                     .filter(([id, v]) => !idAttivi.has(id) && (ora - new Date(v.risoltoIl).getTime()) < FINESTRA_STORICO_DAFARE_MS)
-                    .map(([, v]) => v.testo);
+                    .sort((x, y) => new Date(y[1].risoltoIl) - new Date(x[1].risoltoIl))
+                    .map(([, v]) => v);
             }
         }
     } catch (e) { console.error('renderPaginaDaFare: storico:', e); }
 
-    if (segnali.length === 0 && risolti.length === 0) {
-        container.innerHTML = `
-            <p style="text-align:center; color:var(--text-muted); font-size:0.9rem; padding:2rem 0;">
-                <i class="fa-solid fa-circle-check" style="font-size:1.6rem; display:block; margin-bottom:0.6rem; color:var(--success);"></i>
-                Niente da fare — tutto in ordine.
-            </p>`;
-        return;
+    if (riepilogoEl) {
+        const pezzi = [];
+        pezzi.push(daFare.length
+            ? `<b class="co-rosso">${daFare.length} ${daFare.length === 1 ? 'cosa' : 'cose'} da fare adesso</b>`
+            : '<b class="co-verde">Niente da fare adesso</b>');
+        if (opportunita.length) pezzi.push(`${opportunita.length} opportunità`);
+        pezzi.push('aggiornato ora');
+        riepilogoEl.innerHTML = pezzi.join(' · ');
     }
 
-    // Ordine = priorità: preview() li restituisce già in quest'ordine
-    // (coda errori → prezzi scaduti → wishlist sotto obiettivo → gruppo
-    // al lavoro), nessun riordino aggiuntivo qui (Claudio, risposta 12:
-    // "solo per priorità"). I risolti vanno sempre in coda, dopo gli attivi.
-    const righeAttive = segnali.map(s => {
-        const alta = s.stato === 'allerta';
-        return `
-            <div class="widget-picker-riga" onclick="_apriVoceDaFare('${s.tab}', event)" style="align-items:flex-start;">
-                <i class="fa-regular fa-square" style="color:${alta ? 'var(--danger)' : 'var(--text-muted)'}; margin-top:0.15rem;"></i>
-                <span style="flex:1;">
-                    ${s.testo}
-                    ${alta ? '<span class="badge" style="background-color:var(--danger); color:#fff; margin-left:0.4rem; font-size:0.65rem; vertical-align:middle;">priorità alta</span>' : ''}
-                </span>
+    const sezione = (icona, titolo, voci) => voci.length ? `
+        <div class="co-sez"><i class="fa-solid ${icona}"></i> ${titolo} <span class="co-conta">${voci.length}</span></div>
+        <div class="co-elenco${titolo.startsWith('Opportunità') ? ' co-elenco-due' : ''}">${voci.map(s => _daFareScheda(s, nickname)).join('')}</div>` : '';
+
+    const principale = (daFare.length || opportunita.length)
+        ? sezione('fa-bolt', 'Da fare adesso', daFare) + sezione('fa-lightbulb', 'Opportunità e sistemazioni', opportunita)
+        : `<div class="co-vuoto"><i class="fa-solid fa-circle-check"></i>Niente da fare — tutto in ordine.</div>`;
+
+    // Riquadro "Oggi": missioni del giorno.
+    let oggi = '';
+    if (d.missioni) {
+        const m = d.missioni;
+        const perc = Math.round((m.fatte / m.totali) * 100);
+        oggi = `
+            <div class="co-riquadro">
+                <div class="co-sez co-sez-piccola"><i class="fa-solid fa-calendar-day"></i> Oggi</div>
+                <div class="co-riga-miss"><b>Missioni del giorno</b><span><b>${m.fatte}</b> di ${m.totali}${m.inPalio ? ` · +${m.inPalio} ✧ in palio` : ''}</span></div>
+                <div class="co-barra"><div style="width:${perc}%"></div></div>
+                <button type="button" class="co-btn" onclick="_apriVoceDaFare('missioni', event)"><i class="fa-solid fa-bullseye"></i> Vai alle missioni</button>
             </div>`;
-    }).join('');
+    }
 
-    const righeRisolte = risolti.map(testo => `
-        <div class="widget-picker-riga" style="align-items:flex-start; opacity:0.55;">
-            <i class="fa-solid fa-square-check" style="color:var(--success); margin-top:0.15rem;"></i>
-            <span style="flex:1; text-decoration:line-through;">${testo}</span>
-        </div>`).join('');
+    // Riquadro "Il gruppo adesso": solo quanti dispositivi, nessun nome.
+    // "Stanno controllando i prezzi di …" richiede un dato che il DB non
+    // ha ancora (ordine attivo, file 03) — arriva con la FASE 8.
+    const nDisp = d.dispositivi || 0;
+    const gruppo = `
+        <div class="co-riquadro">
+            <div class="co-sez co-sez-piccola"><i class="fa-solid fa-users"></i> Il gruppo adesso</div>
+            ${nDisp
+                ? `<div class="co-gruppo"><span class="co-pallino"></span><b>${nDisp} dispositiv${nDisp === 1 ? 'o' : 'i'}</b> al lavoro sui prezzi</div>`
+                : '<div class="co-gruppo co-spento"><span class="co-pallino"></span>Nessuno sta controllando i prezzi adesso</div>'}
+        </div>`;
 
-    container.innerHTML = righeAttive + righeRisolte;
+    const fatto = risolti.length ? `
+        <div class="co-riquadro">
+            <div class="co-sez co-sez-piccola"><i class="fa-solid fa-clock-rotate-left"></i> Fatto nelle ultime 24 ore</div>
+            ${risolti.map(v => `<div class="co-fatto"><i class="fa-solid fa-circle-check"></i><s>${escapeHtml(v.testo)}</s><span>${_daFareQuando(v.risoltoIl)}</span></div>`).join('')}
+        </div>` : '';
+
+    container.innerHTML = `
+        <div class="co-pagina">
+            <div class="co-principale">${principale}</div>
+            <div class="co-lato">${oggi}${gruppo}${fatto}</div>
+        </div>`;
 }
 
 // Riusa apriDettaglioWidget per tutte le destinazioni tranne 'home' (già

@@ -36,8 +36,9 @@ const DURATA_ANIMAZIONE_DETTAGLIO_MS = 300;
 let _chiusuraDettaglioTimeout = null;
 
 function _impostaOrigineAnimazione(container, evt) {
-    const schermo = document.getElementById('phoneScreen');
-    const rect = schermo ? schermo.getBoundingClientRect() : { left: 0, top: 0, width: window.innerWidth, height: window.innerHeight };
+    // RESTYLE FASE 3a (2026-10-01): stesso rettangolo di .container, che ora
+    // parte sotto la barra di stato (_rettangoloPaginaSottoBarra).
+    const rect = _rettangoloPaginaSottoBarra() || { left: 0, top: 0, width: window.innerWidth, height: window.innerHeight };
     // FIX 2026-09-10 (bug: "schermata nera con una transizione che entra
     // da destra verso sinistra", segnalato su bustina ma riguarda OGNI
     // widget): --pokeball-x/-y alimentano clip-path: circle(... at

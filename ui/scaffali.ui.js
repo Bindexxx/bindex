@@ -239,10 +239,14 @@ function renderScaffaleContenuto() {
         const badge = eScambio
             ? `<div class="binder-slot-qty-badge" style="position:static; margin-top:0.2rem;">Offerte: ${_quantitaOfferteScambioSealed[idAttr] ?? 0}</div>`
             : '';
+        // RESTYLE FASE 3a (2026-10-01, file 02): immagine passata dal filtro
+        // unico _urlImmagineVisualizzabile (utils/comuni.js) come nel resto
+        // del sito — prima il valore grezzo finiva nel src.
+        const src = _urlImmagineVisualizzabile(p.immagine, 160);
         return `
             <div class="binder-contenitore-tile" onclick="${onclickAttr}" title="${eScambio ? 'Modifica quantità offerta' : `Rimuovi ${nomeAttr}`}">
                 <div class="binder-contenitore-cover">
-                    ${p.immagine ? `<img src="${escapeHtml(p.immagine)}" alt="${nomeAttr}" loading="lazy" onerror="this.remove();">` : `<i class="fa-solid fa-box"></i>`}
+                    ${src ? `<img src="${src}" alt="${nomeAttr}" loading="lazy" onerror="this.remove();">` : `<i class="fa-solid fa-box"></i>`}
                 </div>
                 <div class="binder-contenitore-nome">${nomeAttr}</div>
                 ${badge}

@@ -2211,6 +2211,20 @@
         .container.container-visibile.container-aperto {
             clip-path: circle(150% at var(--pokeball-x, 50%) var(--pokeball-y, 50%));
         }
+        /* RESTYLE BINDEX FASE 3a (2026-10-01): la pagina parte sotto la
+           barra di stato vera (vedi _rettangoloPaginaSottoBarra), quindi il
+           vecchio spazio in alto di 2.6rem non serve più. */
+        .container.container-visibile {
+            padding-top: 0.9rem;
+        }
+        /* Tendina aperta (o trascinata) da una pagina interna: la tendina
+           vive nello schermo del telefono, sotto .container (z-index 11) —
+           la pagina si nasconde finché la tendina è giù, e sotto il velo
+           scuro si vede la home (decisione Claudio). Nessun cambio a
+           statusbar.js: basta la classe che la barra ha già. */
+        body.phone-detail-open:has(#phoneScreen .csb-bar.is-shade-open) .container.container-visibile {
+            visibility: hidden;
+        }
         .container:not(.container-visibile) { display: none; }
 
         /* AGGIUNTO (STEP 12 fix restyle "cornice Pokédex", 2026-09-17):
@@ -4930,6 +4944,104 @@
         .page-azione:active { opacity: .6; }
 
         .pg-pagina { display: flex; flex-direction: column; gap: 14px; padding-bottom: 1rem; }
+
+        /* RESTYLE BINDEX FASE 3a (2026-10-01): intestazione comune ovunque —
+           titolo a sinistra, un'azione a destra. Titolo più grande, come
+           nelle tavole; niente riga sotto (il riepilogo fa da stacco). */
+        .page-header { border-bottom: none; padding-bottom: 4px; margin-bottom: 0.4rem; }
+        .page-header .page-title { font-size: 1.5rem; letter-spacing: -0.3px; }
+        .pg-contenuto-pagina { max-width: 900px; margin: 0 auto; padding-bottom: 1rem; }
+
+        /* CENTRO OPERATIVO (#dafare) — tavole approvate telefono/PC.
+           Due colonne quando la pagina è larga (PC), una sola su telefono:
+           decide la larghezza VERA della pagina (@container), non la
+           finestra — la pagina vive dentro lo schermo della cornice. */
+        #dafare { container-type: inline-size; }
+        #dafare .co-riepilogo { margin: 0 0 1rem; font-size: 0.86rem; }
+        #dafare .co-rosso { color: var(--danger); }
+        #dafare .co-verde { color: var(--success); }
+        #dafare .co-pagina { display: flex; flex-direction: column; gap: 16px; padding-bottom: 4.5rem; } /* spazio per il tasto fisico in basso */
+        #dafare .co-principale, #dafare .co-lato { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+        #dafare .co-sez {
+            display: flex; align-items: center; gap: 8px;
+            font-size: 0.72rem; font-weight: 800; letter-spacing: 1.2px; text-transform: uppercase;
+            color: var(--text-muted); margin-top: 4px;
+        }
+        #dafare .co-sez-piccola { margin: 0 0 10px; }
+        #dafare .co-conta {
+            background: var(--primary-light); color: var(--primary);
+            border-radius: 999px; padding: 1px 7px; font-size: 0.66rem; letter-spacing: 0;
+        }
+        #dafare .co-elenco { display: flex; flex-direction: column; gap: 12px; }
+        #dafare .co-scheda {
+            display: flex; flex-wrap: wrap; align-items: flex-start; gap: 12px;
+            background: var(--card-bg); border: 1px solid var(--border-color);
+            border-radius: 16px; padding: 14px 16px;
+        }
+        #dafare .co-scheda.co-fare {
+            border-color: color-mix(in srgb, var(--danger) 45%, var(--border-color));
+            box-shadow: inset 5px 0 0 var(--danger);
+        }
+        #dafare .co-ico {
+            width: 38px; height: 38px; border-radius: 11px; flex: 0 0 auto;
+            display: flex; align-items: center; justify-content: center;
+            background: var(--primary-light); color: var(--primary); font-size: 1rem;
+        }
+        #dafare .co-fare .co-ico { background: color-mix(in srgb, var(--danger) 14%, transparent); color: var(--danger); }
+        #dafare .co-wishlist_obiettivo .co-ico { background: color-mix(in srgb, var(--success) 16%, transparent); color: var(--success); }
+        #dafare .co-elementi_senza_location .co-ico { background: color-mix(in srgb, #c9a227 20%, transparent); color: #a8840f; }
+        /* Su telefono il testo prende tutta la riga (meno l'icona): il bottone
+           va a capo, sotto il testo, come nella tavola telefono. */
+        #dafare .co-corpo { flex: 1 1 calc(100% - 60px); min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+        #dafare .co-tit { font-weight: 800; font-size: 0.92rem; color: var(--text-dark); }
+        #dafare .co-sotto { font-size: 0.78rem; color: var(--text-muted); line-height: 1.35; }
+        #dafare .co-mini { display: flex; align-items: center; gap: 7px; margin-top: 7px; }
+        #dafare .co-mini img {
+            width: 30px; height: 42px; object-fit: cover; border-radius: 4px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.25);
+        }
+        #dafare .co-mini-altre { font-size: 0.74rem; color: var(--text-muted); }
+        /* Su telefono il bottone va sotto il testo, allineato al testo. */
+        #dafare .co-scheda .co-btn { margin-left: 50px; }
+        #dafare .co-btn {
+            display: inline-flex; align-items: center; gap: 7px;
+            padding: 8px 15px; border-radius: 999px; cursor: pointer;
+            font: inherit; font-size: 0.8rem; font-weight: 700; white-space: nowrap;
+            background: var(--card-bg); color: var(--text-dark); border: 1px solid var(--border-color);
+        }
+        #dafare .co-btn-pieno { background: var(--primary); color: #fff; border-color: var(--primary); }
+        #dafare .co-btn:active { opacity: .7; }
+        #dafare .co-vuoto { text-align: center; color: var(--text-muted); font-size: 0.9rem; padding: 2rem 0; }
+        #dafare .co-vuoto i { display: block; font-size: 1.6rem; margin-bottom: 0.6rem; color: var(--success); }
+        #dafare .co-riquadro {
+            background: var(--card-bg); border: 1px solid var(--border-color);
+            border-radius: 16px; padding: 14px 16px;
+        }
+        #dafare .co-riga-miss { display: flex; justify-content: space-between; gap: 8px; font-size: 0.84rem; color: var(--text-dark); }
+        #dafare .co-riga-miss span { color: var(--text-muted); white-space: nowrap; }
+        #dafare .co-riga-miss span b { color: var(--text-dark); }
+        #dafare .co-barra { height: 7px; border-radius: 999px; background: var(--primary-light); margin: 9px 0 12px; overflow: hidden; }
+        #dafare .co-barra > div { height: 100%; background: var(--primary); border-radius: 999px; }
+        #dafare .co-gruppo { display: flex; align-items: center; gap: 8px; font-size: 0.82rem; color: var(--text-muted); }
+        #dafare .co-gruppo b { color: var(--text-dark); }
+        #dafare .co-pallino { width: 10px; height: 10px; border-radius: 50%; background: var(--success); flex: 0 0 auto; }
+        #dafare .co-spento .co-pallino { background: var(--border-color); }
+        #dafare .co-fatto {
+            display: flex; align-items: center; gap: 9px; font-size: 0.8rem; color: var(--text-muted);
+            padding: 8px 0; border-top: 1px solid var(--border-color);
+        }
+        #dafare .co-sez + .co-fatto { border-top: none; }
+        #dafare .co-fatto i { color: var(--success); }
+        #dafare .co-fatto s { flex: 1; min-width: 0; }
+        #dafare .co-fatto span { white-space: nowrap; font-size: 0.74rem; }
+        /* PC: due colonne (va DOPO le regole base: stessa specificità). */
+        @container (min-width: 780px) {
+            #dafare .co-pagina { display: grid; grid-template-columns: minmax(0, 1fr) 320px; align-items: start; }
+            #dafare .co-elenco-due { display: grid; grid-template-columns: 1fr 1fr; }
+            #dafare .co-scheda { flex-wrap: nowrap; }
+            #dafare .co-corpo { flex: 1 1 0; }
+            #dafare .co-scheda .co-btn { margin-left: auto; align-self: flex-start; }
+        }
 
         .pg-intro { display: flex; flex-direction: column; gap: 4px; }
         .pg-grande {

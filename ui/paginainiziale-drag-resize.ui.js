@@ -424,9 +424,39 @@ function _rettangoloSchermoCornice() {
 // avranno meno spazio orizzontale/verticale reale e faranno più scroll
 // interno — nessuna eccezione per ora, da verificare widget per widget
 // quando Claudio li prova dal vivo.
+//
+// RESTYLE BINDEX FASE 3a (2026-10-01, decisione Claudio "Barra vera,
+// fissa"): le pagine interne partono SOTTO la barra di stato vera
+// (.csb-bar dentro #phoneScreen), che resta visibile e viva (ora,
+// contatore, pokéball, tendina). Prima .container copriva tutto lo schermo,
+// barra compresa. Il rettangolo si calcola in _rettangoloPaginaSottoBarra
+// (usata anche per l'origine dell'animazione, ui/paginainiziale-dettaglio.ui.js).
+// Gli altri overlay che usano _rettangoloSchermoCornice (bustina, condividi,
+// location, binder) NON cambiano: restano a schermo intero.
+function _rettangoloPaginaSottoBarra() {
+    const r = _rettangoloSchermoCornice();
+    if (!r) return null;
+    const schermo = document.getElementById('phoneScreen');
+    const barra = schermo ? schermo.querySelector('.csb-bar') : null;
+    let alto = 0;
+    if (barra) {
+        const rb = barra.getBoundingClientRect();
+        // Solo se la barra sta davvero in cima allo schermo (visibile):
+        // altrimenti si torna al comportamento di prima, schermo intero.
+        if (rb.height > 0 && rb.bottom > r.top && rb.bottom < r.top + r.height / 2) alto = rb.bottom - r.top;
+    }
+    const cs = schermo ? getComputedStyle(schermo) : null;
+    return {
+        top: r.top + alto, left: r.left, width: r.width, height: r.height - alto,
+        // Sotto la barra gli angoli in alto sono dritti; quelli in basso
+        // restano quelli dello schermo.
+        borderRadius: alto && cs ? `0 0 ${cs.borderBottomRightRadius} ${cs.borderBottomLeftRadius}` : r.borderRadius,
+    };
+}
+
 function _posizionaContainerNelloSchermo() {
     const container = document.querySelector('.container');
-    const r = _rettangoloSchermoCornice();
+    const r = _rettangoloPaginaSottoBarra();
     if (!container || !r) return;
     container.style.top = r.top + 'px';
     container.style.left = r.left + 'px';
