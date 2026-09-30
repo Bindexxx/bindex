@@ -90,34 +90,76 @@ async function apriPaginaScaffali() {
 }
 
 
-// ── Griglia degli scaffali ───────────────────────────────────────────────
-// Riusa le classi CSS .binder-contenitore-* (puro stile visivo, stessa
-// tessera dei Binder) — nessuna dipendenza di comportamento da binder.ui.js.
+// ── Elenco degli scaffali ────────────────────────────────────────────────
+// RESTYLE BINDEX FASE 3f (2026-10-01, tavole "Scaffali"): una riga per
+// scaffale (icona, nome, "N prodotti · valore · stato", freccia), riepilogo
+// con quanti prodotti sono senza scaffale. Nessuna query nuova oltre alle
+// associazioni già lette (scaffaleProdottiTuttiUtente).
+function _scaValoreProdotto(p, qtaOverride) {
+    const q = qtaOverride != null ? Number(qtaOverride) : (Number(p.qty) || 1);
+    return (Number(p.prezzo) || 0) * q;
+}
+function _scaStatoEtichetta(s) {
+    if (s.tipo === 'scambio') return 'sempre pubblico';
+    return s.stato_pubblicazione === 'pubblico' ? 'pubblico' : 'privato';
+}
+function _scaNomeScaffale(s) {
+    return s.nome || (s.tipo === 'vetrina' ? 'Vetrina' : (s.tipo === 'scambio' ? 'Scambio' : '(senza nome)'));
+}
+
 async function renderGrigliaScaffali() {
     const userId = await authGetUserId();
     const griglia = document.getElementById('scaffaliContenitoriGrid');
     if (!griglia) { console.error('renderGrigliaScaffali: manca #scaffaliContenitoriGrid in index.html'); return; }
 
-    const { data: conteggiRighe, error } = await scaffaleProdottiConteggiTutti(userId);
-    if (error) console.error('renderGrigliaScaffali (conteggi):', error.message);
-    const conteggi = {};
-    (conteggiRighe || []).forEach(r => { conteggi[r.scaffale_id] = (conteggi[r.scaffale_id] || 0) + 1; });
+    const { data: assoc, error } = await scaffaleProdottiTuttiUtente(userId);
+    if (error) console.error('renderGrigliaScaffali (associazioni):', error.message);
+    const perScaffale = {};
+    const inQualcheScaffale = new Set();
+    (assoc || []).forEach(r => {
+        (perScaffale[r.scaffale_id] = perScaffale[r.scaffale_id] || []).push(r);
+        inQualcheScaffale.add(String(r.prodotto_id));
+    });
+    const senzaScaffale = _prodottiSealedCache.filter(p => !inQualcheScaffale.has(String(p.id))).length;
+
+    const riep = document.getElementById('scaffaliRiepilogo');
+    if (riep) {
+        const n = _scaffaliElenco.length;
+        riep.innerHTML = `<b>${n} scaffal${n === 1 ? 'e' : 'i'}</b>` +
+            (senzaScaffale ? ` &middot; <span class="sc-senza">${senzaScaffale} prodott${senzaScaffale === 1 ? 'o' : 'i'} senza scaffale</span>` : '');
+    }
 
     if (_scaffaliElenco.length === 0) {
         griglia.innerHTML = '<div class="stato-vuoto"><i class="fa-solid fa-box-archive"></i><br>Nessuno scaffale ancora — creane uno per organizzare i tuoi prodotti sealed.</div>';
         return;
     }
 
+    const mappaProdotti = {};
+    _prodottiSealedCache.forEach(p => { mappaProdotti[String(p.id)] = p; });
+
     griglia.innerHTML = _scaffaliElenco.map(s => {
-        const idAttr = String(s.id).replace(/'/g, "\\'");
-        const nomeAttr = escapeHtml(s.nome || (s.tipo === 'vetrina' ? 'Vetrina' : '(senza nome)'));
-        const conteggio = conteggi[s.id] || 0;
-        const icona = s.tipo === 'vetrina' ? 'fa-star' : 'fa-box-archive';
+        const idAttr = escapeJsAttr(String(s.id));
+        const righe = perScaffale[s.id] || [];
+        const eScambio = s.tipo === 'scambio';
+        const fisso = eScambio || s.tipo === 'vetrina';
+        let valore = 0;
+        righe.forEach(r => { const p = mappaProdotti[String(r.prodotto_id)]; if (p) valore += _scaValoreProdotto(p, eScambio ? r.quantita_offerta : null); });
+        const n = righe.length;
+        const icona = s.tipo === 'vetrina' ? 'fa-star' : (eScambio ? 'fa-right-left' : 'fa-box-archive');
+        const conta = eScambio
+            ? `${n} prodott${n === 1 ? 'o offerto' : 'i offerti'}`
+            : `${n} prodott${n === 1 ? 'o' : 'i'}`;
+        const parti = [conta];
+        if (valore > 0) parti.push(formattaEuro(valore));
+        parti.push(_scaStatoEtichetta(s));
         return `
-            <div class="binder-contenitore-tile" onclick="apriScaffaleDettaglio('${idAttr}')" title="${nomeAttr}">
-                <div class="binder-contenitore-cover"><i class="fa-solid ${icona}"></i></div>
-                <div class="binder-contenitore-nome">${nomeAttr}</div>
-                <div class="binder-contenitore-conteggio">${conteggio} prodott${conteggio === 1 ? 'o' : 'i'}</div>
+            <div class="sc-riga" onclick="apriScaffaleDettaglio('${idAttr}')">
+                <div class="sc-riga-icona"><i class="fa-solid ${icona}"></i></div>
+                <div class="sc-riga-testo">
+                    <b>${escapeHtml(_scaNomeScaffale(s))}${fisso ? ' <i class="fa-solid fa-lock sc-lucchetto" title="Scaffale fisso"></i>' : ''}</b>
+                    <span>${parti.join(' · ')}</span>
+                </div>
+                <i class="fa-solid fa-chevron-right sc-freccia"></i>
             </div>`;
     }).join('');
 }
@@ -139,11 +181,22 @@ async function creaNuovoScaffale() {
 }
 
 
-// ── Vista di dettaglio (griglia statica dei prodotti assegnati) ─────────
+// ── Vista di dettaglio ───────────────────────────────────────────────────
+// RESTYLE FASE 3f: ripiano con i prodotti; "Modifica" mostra × e le frecce
+// per riordinare; il clic sul prodotto apre i DETTAGLI (prima lo toglieva
+// dallo scaffale). Ordini: "Come li metto io" (colonna scaffale_prodotti.
+// ordine), Nome, Tipo, Valore.
+let _scaEdit = false;
+let _scaOrd = 'mio';
+let _scaRighe = []; // [{ prodotto_id, ordine, aggiunta_il }] dello scaffale aperto
+
 async function apriScaffaleDettaglio(scaffaleId) {
     _scaffaleAttivo = scaffaleId;
+    _scaEdit = false;
+    _scaOrd = 'mio';
 
-    document.getElementById('scaffaliContenitoriGrid').style.display = 'none';
+    const elenco = document.getElementById('scaffaliElencoVista');
+    if (elenco) elenco.style.display = 'none';
     const wrapDettaglio = document.getElementById('scaffaleDettaglioWrap');
     if (wrapDettaglio) wrapDettaglio.style.display = 'block';
 
@@ -152,53 +205,99 @@ async function apriScaffaleDettaglio(scaffaleId) {
     const eScambio = scaffale.tipo === 'scambio';
 
     const titoloEl = document.getElementById('scaffaleDettaglioTitolo');
-    if (titoloEl) titoloEl.textContent = scaffale.nome || (scaffale.tipo === 'vetrina' ? 'Vetrina' : (eScambio ? 'Scambio' : ''));
+    if (titoloEl) titoloEl.textContent = _scaNomeScaffale(scaffale);
 
-    // Rinomina/pubblicazione/eliminazione: Vetrina e Scambio non si
-    // eliminano (fissi, un solo esemplare per utente — stesso motivo per
-    // cui il binder 'extra'/'scambio' non sono mai eliminabili).
+    // Vetrina e Scambio non si eliminano né si rinominano (fissi); Scambio è
+    // SEMPRE pubblico (forzato in scaffaleScambioGarantisci), nessun interruttore.
+    const fisso = scaffale.tipo === 'vetrina' || eScambio;
     const btnElimina = document.getElementById('btnEliminaScaffaleAttivo');
-    if (btnElimina) btnElimina.style.display = (scaffale.tipo === 'vetrina' || eScambio) ? 'none' : '';
+    if (btnElimina) btnElimina.style.display = fisso ? 'none' : '';
+    const btnRinomina = document.getElementById('btnRinominaScaffaleAttivo');
+    if (btnRinomina) btnRinomina.style.display = fisso ? 'none' : '';
 
-    // Fase 3, Step 3 (2026-09-12): Scambio è SEMPRE pubblico (forzato già
-    // in scaffaleScambioGarantisci) — checkbox nascosta, non ha senso
-    // mostrarla come se fosse una scelta libera dell'utente (stesso
-    // trattamento del binder Scambio in ui/binder.ui.js, eGiaPubblicoFisso).
     const rigaPubblicazione = document.getElementById('scaffalePubblicazioneRiga');
     if (rigaPubblicazione) rigaPubblicazione.style.display = eScambio ? 'none' : '';
     const checkboxPub = document.getElementById('scaffalePubblicazioneCheckbox');
     if (checkboxPub) checkboxPub.checked = eScambio || scaffale.stato_pubblicazione === 'pubblico';
     _aggiornaCondivisioneScaffaleWrap(scaffale);
 
-    // "Aggiungi prodotti" (checkbox sì/no) non si applica a Scambio, che ha
-    // bisogno di una QUANTITÀ — si offre un prodotto dalla sua modale di
-    // modifica sealed (bottone "Offri in Scambio", ui/widget-sealed.ui.js),
-    // non da qui. Bottone nascosto per evitare di suggerire un flusso che
-    // non fa quello che sembra.
+    // "Aggiungi o togli prodotti" non si applica a Scambio (serve una
+    // QUANTITÀ: si offre dalla scheda del prodotto, "Offri in Scambio").
     const btnAssegna = document.getElementById('btnApriModaleAssegnaProdotti');
     if (btnAssegna) btnAssegna.style.display = eScambio ? 'none' : '';
     const notaScambio = document.getElementById('scaffaleScambioNota');
     if (notaScambio) notaScambio.style.display = eScambio ? '' : 'none';
 
     await _caricaProdottiScaffaleAttivo(scaffale);
+    _scaAggiornaTesta();
+    renderScaffaleContenuto();
+}
+
+function _scaAggiornaTesta() {
+    const scaffale = _scaffaliElenco.find(s => String(s.id) === String(_scaffaleAttivo));
+    if (!scaffale) return;
+    const eScambio = scaffale.tipo === 'scambio';
+    const prodotti = _prodottiSealedCache.filter(p => _scaffaleAttivoProdottiIds.includes(p.id));
+    let valore = 0;
+    prodotti.forEach(p => { valore += _scaValoreProdotto(p, eScambio ? (_quantitaOfferteScambioSealed[String(p.id)] ?? 0) : null); });
+    const n = prodotti.length;
+    const parti = [`${n} prodott${n === 1 ? 'o' : 'i'}`];
+    if (valore > 0) parti.push(formattaEuro(valore));
+    parti.push(_scaStatoEtichetta(scaffale));
+    const sotto = document.getElementById('scaffaleDettaglioSotto');
+    if (sotto) sotto.textContent = parti.join(' · ');
+
+    const btnModifica = document.getElementById('btnScaffaleModifica');
+    if (btnModifica) {
+        btnModifica.textContent = _scaEdit ? 'Fatto' : 'Modifica';
+        btnModifica.classList.toggle('sc-btn-pieno', _scaEdit);
+    }
+    const banner = document.getElementById('scaffaleModificaBanner');
+    if (banner) {
+        banner.style.display = _scaEdit ? '' : 'none';
+        banner.innerHTML = _scaOrd === 'mio' && !eScambio
+            ? '<i class="fa-solid fa-pen"></i> Modifica · usa le frecce per riordinare, × per togliere'
+            : '<i class="fa-solid fa-pen"></i> Modifica · × per togliere' + (eScambio ? '' : ' (per riordinare scegli "Come li metto io")');
+    }
+    const azioni = document.getElementById('scaffaleAzioniModifica');
+    if (azioni) azioni.style.display = _scaEdit ? 'flex' : 'none';
+
+    document.querySelectorAll('#scaffaleOrdineChips .pg-filtro').forEach(c => {
+        c.classList.toggle('attivo', c.dataset.ord === _scaOrd);
+    });
+    const chipMio = document.querySelector('#scaffaleOrdineChips .pg-filtro[data-ord="mio"]');
+    if (chipMio) chipMio.style.display = eScambio ? 'none' : '';
+    if (eScambio && _scaOrd === 'mio') _scaOrd = 'nome';
+}
+
+function scaffaleToggleModifica() {
+    _scaEdit = !_scaEdit;
+    _scaAggiornaTesta();
+    renderScaffaleContenuto();
+}
+
+function scaffaleImpostaOrdinamento(o) {
+    _scaOrd = o;
+    _scaAggiornaTesta();
     renderScaffaleContenuto();
 }
 
 
-// Mostra/nasconde il blocco "Condividi" — solo quando lo scaffale è
-// pubblico, stesso schema di binder.ui.js (_aggiornaControlliRinomina...),
-// più semplice qui perché Scaffali ha un solo tipo di pagina pubblica.
+// Mostra/nasconde il blocco "Condividi" — solo quando lo scaffale è pubblico.
 function _aggiornaCondivisioneScaffaleWrap(scaffale) {
     const wrap = document.getElementById('scaffaleCondivisioneWrap');
-    if (wrap) wrap.style.display = (scaffale.stato_pubblicazione === 'pubblico') ? 'flex' : 'none';
+    if (wrap) wrap.style.display = (scaffale.stato_pubblicazione === 'pubblico' || scaffale.tipo === 'scambio') ? 'flex' : 'none';
 }
 
 
 function tornaAllaGrigliaScaffali() {
     _scaffaleAttivo = null;
+    _scaEdit = false;
     const wrapDettaglio = document.getElementById('scaffaleDettaglioWrap');
     if (wrapDettaglio) wrapDettaglio.style.display = 'none';
-    document.getElementById('scaffaliContenitoriGrid').style.display = '';
+    const elenco = document.getElementById('scaffaliElencoVista');
+    if (elenco) elenco.style.display = '';
+    renderGrigliaScaffali(); // conteggi e valori aggiornati dopo le modifiche
 }
 
 
@@ -208,14 +307,33 @@ async function _caricaProdottiScaffaleAttivo(scaffale) {
     const { data, error } = eScambio
         ? await scaffaleProdottiQueryConQuantita(userId, scaffale.id)
         : await scaffaleProdottiList(userId, scaffale.id);
-    if (error) { console.error('_caricaProdottiScaffaleAttivo:', error.message); _scaffaleAttivoProdottiIds = []; return; }
+    if (error) { console.error('_caricaProdottiScaffaleAttivo:', error.message); _scaffaleAttivoProdottiIds = []; _scaRighe = []; return; }
     if (eScambio) {
         _quantitaOfferteScambioSealed = {};
         (data || []).forEach(r => { _quantitaOfferteScambioSealed[String(r.prodotto_id)] = r.quantita_offerta; });
     }
+    _scaRighe = data || [];
     _scaffaleAttivoProdottiIds = (data || []).map(r => r.prodotto_id);
 }
 
+// Prodotti dello scaffale aperto nell'ordine scelto.
+function _scaProdottiOrdinati() {
+    const scaffale = _scaffaliElenco.find(s => String(s.id) === String(_scaffaleAttivo));
+    const eScambio = scaffale && scaffale.tipo === 'scambio';
+    const mappa = {};
+    _prodottiSealedCache.forEach(p => { mappa[String(p.id)] = p; });
+    let elenco = _scaRighe.map((r, i) => ({ r, p: mappa[String(r.prodotto_id)], i })).filter(x => x.p);
+    const nome = (x) => String(x.p.nome || x.p.codice || '');
+    if (_scaOrd === 'nome') elenco.sort((a, b) => nome(a).localeCompare(nome(b)));
+    else if (_scaOrd === 'tipo') elenco.sort((a, b) => String(a.p.tipo || '').localeCompare(String(b.p.tipo || '')) || nome(a).localeCompare(nome(b)));
+    else if (_scaOrd === 'valore') elenco.sort((a, b) => _scaValoreProdotto(b.p, eScambio ? b.r.quantita_offerta : null) - _scaValoreProdotto(a.p, eScambio ? a.r.quantita_offerta : null));
+    else elenco.sort((a, b) => {
+        const oa = a.r.ordine == null ? Infinity : a.r.ordine, ob = b.r.ordine == null ? Infinity : b.r.ordine;
+        if (oa !== ob) return oa < ob ? -1 : 1;
+        return String(a.r.aggiunta_il || '').localeCompare(String(b.r.aggiunta_il || '')) || a.i - b.i;
+    });
+    return elenco;
+}
 
 function renderScaffaleContenuto() {
     const wrap = document.getElementById('scaffaleContenutoGrid');
@@ -223,47 +341,84 @@ function renderScaffaleContenuto() {
 
     const scaffale = _scaffaliElenco.find(s => String(s.id) === String(_scaffaleAttivo));
     const eScambio = scaffale && scaffale.tipo === 'scambio';
+    const elenco = _scaProdottiOrdinati();
 
-    const prodotti = _prodottiSealedCache.filter(p => _scaffaleAttivoProdottiIds.includes(p.id));
-    if (prodotti.length === 0) {
+    if (elenco.length === 0) {
         wrap.innerHTML = eScambio
-            ? '<div class="stato-vuoto"><i class="fa-solid fa-right-left"></i><br>Nessun prodotto offerto in Scambio — usa "Offri in Scambio" dalla modifica di un prodotto sealed.</div>'
-            : '<div class="stato-vuoto"><i class="fa-solid fa-box-open"></i><br>Nessun prodotto in questo scaffale — usa "Aggiungi prodotti" per popolarlo.</div>';
+            ? '<div class="stato-vuoto"><i class="fa-solid fa-right-left"></i><br>Nessun prodotto offerto in Scambio — usa "Offri in Scambio" dalla scheda di un prodotto sealed.</div>'
+            : '<div class="stato-vuoto"><i class="fa-solid fa-box-open"></i><br>Nessun prodotto in questo scaffale — usa "Aggiungi o togli prodotti" per popolarlo.</div>';
         return;
     }
 
-    wrap.innerHTML = prodotti.map(p => {
-        const idAttr = String(p.id).replace(/'/g, "\\'");
+    const riordina = _scaEdit && _scaOrd === 'mio' && !eScambio;
+    wrap.innerHTML = '<div class="sc-ripiano">' + elenco.map((x, pos) => {
+        const p = x.p;
+        const idAttr = escapeJsAttr(String(p.id));
         const nomeAttr = escapeHtml(p.nome || p.codice || '(senza nome)');
-        const onclickAttr = eScambio ? `apriModaleQuantitaScambioSealed('${idAttr}')` : `rimuoviProdottoDaScaffaleAttivo('${idAttr}')`;
-        const badge = eScambio
-            ? `<div class="binder-slot-qty-badge" style="position:static; margin-top:0.2rem;">Offerte: ${_quantitaOfferteScambioSealed[idAttr] ?? 0}</div>`
-            : '';
-        // RESTYLE FASE 3a (2026-10-01, file 02): immagine passata dal filtro
-        // unico _urlImmagineVisualizzabile (utils/comuni.js) come nel resto
-        // del sito — prima il valore grezzo finiva nel src.
-        const src = _urlImmagineVisualizzabile(p.immagine, 160);
+        const offerte = _quantitaOfferteScambioSealed[String(p.id)] ?? 0;
+        // Clic = dettagli del prodotto (scheda sealed); su Scambio il clic
+        // apre la quantità offerta, come prima.
+        const onclick = eScambio ? `apriModaleQuantitaScambioSealed('${idAttr}')` : `scaffaleApriDettagliProdotto('${idAttr}')`;
+        const src = _urlImmagineVisualizzabile(p.immagine, 200);
+        const valore = _scaValoreProdotto(p, eScambio ? offerte : null);
         return `
-            <div class="binder-contenitore-tile" onclick="${onclickAttr}" title="${eScambio ? 'Modifica quantità offerta' : `Rimuovi ${nomeAttr}`}">
-                <div class="binder-contenitore-cover">
-                    ${src ? `<img src="${src}" alt="${nomeAttr}" loading="lazy" onerror="this.remove();">` : `<i class="fa-solid fa-box"></i>`}
+            <div class="sc-prod" onclick="${onclick}" title="${nomeAttr}">
+                <div class="sc-prod-img">
+                    ${src ? `<img src="${src}" alt="${nomeAttr}" loading="lazy" onerror="this.remove();">` : '<i class="fa-solid fa-box"></i>'}
+                    ${eScambio ? `<span class="sc-badge-off"><i class="fa-solid fa-right-left"></i> ${offerte} offert${offerte === 1 ? 'o' : 'i'}</span>` : ''}
+                    ${_scaEdit ? `<button type="button" class="sc-x" onclick="event.stopPropagation(); rimuoviProdottoDaScaffaleAttivo('${idAttr}')" aria-label="Togli dallo scaffale"><i class="fa-solid fa-xmark"></i></button>` : ''}
+                    ${riordina ? `<div class="sc-sposta">
+                        <button type="button" ${pos === 0 ? 'disabled' : ''} onclick="event.stopPropagation(); scaffaleSposta('${idAttr}', -1)" aria-label="Sposta prima"><i class="fa-solid fa-chevron-left"></i></button>
+                        <button type="button" ${pos === elenco.length - 1 ? 'disabled' : ''} onclick="event.stopPropagation(); scaffaleSposta('${idAttr}', 1)" aria-label="Sposta dopo"><i class="fa-solid fa-chevron-right"></i></button>
+                    </div>` : ''}
                 </div>
-                <div class="binder-contenitore-nome">${nomeAttr}</div>
-                ${badge}
+                <div class="sc-prod-nome">${nomeAttr}</div>
+                <div class="sc-prod-prezzo">${valore > 0 ? formattaEuro(valore) : ''}</div>
             </div>`;
-    }).join('');
+    }).join('') + '</div>';
+}
+
+
+// Dettagli del prodotto: usa la scheda sealed (modifica/dettaglio), dopo
+// essersi assicurati che l'elenco del widget Sealed sia caricato.
+async function scaffaleApriDettagliProdotto(id) {
+    if (typeof prodottiSealedReali === 'undefined' || !prodottiSealedReali.some(p => String(p.id) === String(id))) {
+        try { await caricaProdottiSealedReali(); } catch (e) { console.error('scaffaleApriDettagliProdotto:', e); }
+    }
+    apriModificaSealed(id);
+}
+
+
+// Riordino "Come li metto io": scambia di posto col vicino e riscrive
+// l'ordine 1..N sulle righe dello scaffale.
+async function scaffaleSposta(prodottoId, delta) {
+    if (!_scaffaleAttivo) return;
+    const elenco = _scaProdottiOrdinati();
+    const idx = elenco.findIndex(x => String(x.p.id) === String(prodottoId));
+    const j = idx + delta;
+    if (idx < 0 || j < 0 || j >= elenco.length) return;
+    const ids = elenco.map(x => x.r.prodotto_id);
+    [ids[idx], ids[j]] = [ids[j], ids[idx]];
+    const mappaRiga = {};
+    _scaRighe.forEach(r => { mappaRiga[String(r.prodotto_id)] = r; });
+    ids.forEach((id, k) => { if (mappaRiga[String(id)]) mappaRiga[String(id)].ordine = k + 1; });
+    renderScaffaleContenuto();
+    const userId = await authGetUserId();
+    const { error } = await scaffaleProdottiImpostaOrdine(userId, _scaffaleAttivo, ids);
+    if (error) { alert('Errore nel salvare l\'ordine: ' + error.message); await _caricaProdottiScaffaleAttivo(_scaffaliElenco.find(s => String(s.id) === String(_scaffaleAttivo))); renderScaffaleContenuto(); }
 }
 
 
 async function rimuoviProdottoDaScaffaleAttivo(prodottoId) {
     if (!_scaffaleAttivo) return;
-    if (!confirm('Rimuovere questo prodotto dallo scaffale?')) return;
-
     const userId = await authGetUserId();
     const { error } = await scaffaleProdottoRimuovi(userId, _scaffaleAttivo, prodottoId);
     if (error) { alert('Errore: ' + error.message); return; }
 
     _scaffaleAttivoProdottiIds = _scaffaleAttivoProdottiIds.filter(id => String(id) !== String(prodottoId));
+    _scaRighe = _scaRighe.filter(r => String(r.prodotto_id) !== String(prodottoId));
+    delete _quantitaOfferteScambioSealed[String(prodottoId)];
+    _scaAggiornaTesta();
     renderScaffaleContenuto();
 }
 
@@ -295,10 +450,14 @@ function apriModaleAssegnaProdotti() {
 }
 
 
-function chiudiModaleAssegnaProdotti() {
+async function chiudiModaleAssegnaProdotti() {
     const modal = document.getElementById('scaffaleAssegnaProdottiModal');
     if (modal) modal.style.display = 'none';
-    renderScaffaleContenuto(); // riflette eventuali aggiunte/rimozioni fatte nella modale
+    // riflette aggiunte/rimozioni fatte nella modale (righe e ordine da DB)
+    const scaffale = _scaffaliElenco.find(s => String(s.id) === String(_scaffaleAttivo));
+    if (scaffale) await _caricaProdottiScaffaleAttivo(scaffale);
+    _scaAggiornaTesta();
+    renderScaffaleContenuto();
 }
 
 
@@ -354,6 +513,7 @@ async function impostaPubblicazioneScaffaleAttivo(pubblico) {
     scaffale.stato_pubblicazione = pubblico ? 'pubblico' : 'privato';
     scaffale.condivisibile = pubblico;
     _aggiornaCondivisioneScaffaleWrap(scaffale);
+    _scaAggiornaTesta();
 }
 
 
@@ -370,7 +530,6 @@ async function eliminaScaffaleAttivo() {
 
     _scaffaliElenco = _scaffaliElenco.filter(s => String(s.id) !== String(scaffale.id));
     tornaAllaGrigliaScaffali();
-    await renderGrigliaScaffali();
 }
 
 

@@ -951,77 +951,60 @@
              binder.ui.js) — vedi ui/scaffali.ui.js. -->
         <div id="scaffali" class="view-section scaffale-tema-standard">
             <div class="pg-contenuto-pagina">
-                <!-- RESTYLE FASE 3a: intestazione comune (era una card con h3). -->
-                <div class="page-header">
-                    <span class="page-title">Scaffali</span>
+                <!-- RESTYLE FASE 3f: elenco a righe + dettaglio a ripiano.
+                     Logica in ui/scaffali.ui.js (id invariati). -->
+                <div id="scaffaliElencoVista">
+                    <div class="page-header sc-testa">
+                        <span class="page-title">Scaffali</span>
+                        <button type="button" class="sc-btn sc-btn-pieno" onclick="creaNuovoScaffale()"><i class="fa-solid fa-plus"></i> Nuovo</button>
+                    </div>
+                    <p class="pg-sotto" id="scaffaliRiepilogo" style="margin:-6px 0 12px;"></p>
+                    <div id="scaffaliContenitoriGrid" class="sc-elenco"></div>
+                    <p class="sc-nota">Vetrina e Scambio ci sono sempre. Un prodotto può stare in più scaffali.</p>
                 </div>
-                <p class="pg-sotto" style="margin:-6px 0 1rem;">
-                    Organizza i tuoi prodotti sealed in scaffali — un prodotto può stare in più scaffali insieme.
-                </p>
-
-                <button type="button" class="btn-main" style="margin-bottom: 1rem;" onclick="creaNuovoScaffale()">
-                    <i class="fa-solid fa-plus"></i> Nuovo scaffale
-                </button>
-
-                <!-- Griglia degli scaffali -->
-                <div id="scaffaliContenitoriGrid" class="binders-contenitori-grid"></div>
 
                 <!-- Dettaglio dello scaffale aperto -->
                 <div id="scaffaleDettaglioWrap" style="display:none;">
-                    <div style="display:flex; align-items:center; gap:0.6rem; margin-bottom:1rem; flex-wrap:wrap;">
-                        <button type="button" class="btn-secondary" style="padding:0.5rem 0.8rem; font-size:0.8rem;" onclick="tornaAllaGrigliaScaffali()">
-                            <i class="fa-solid fa-arrow-left"></i> Scaffali
-                        </button>
-                        <h4 id="scaffaleDettaglioTitolo" style="margin:0; font-size:1rem; font-weight:800; color:var(--text-dark); flex:1;"></h4>
-                        <button type="button" class="btn-secondary" style="padding:0.5rem 0.7rem; font-size:0.78rem;" onclick="proponiRinominaScaffaleAttivo()" title="La rinomina richiede approvazione admin">
-                            <i class="fa-solid fa-pen"></i>
-                        </button>
-                        <button type="button" class="btn-secondary" id="btnEliminaScaffaleAttivo" style="padding:0.5rem 0.7rem; font-size:0.78rem; color:var(--danger);" onclick="eliminaScaffaleAttivo()">
-                            <i class="fa-solid fa-trash"></i>
-                        </button>
+                    <div class="page-header sc-testa">
+                        <button type="button" class="sc-indietro" onclick="tornaAllaGrigliaScaffali()" aria-label="Torna agli scaffali"><i class="fa-solid fa-chevron-left"></i></button>
+                        <span class="page-title" id="scaffaleDettaglioTitolo" style="flex:1; min-width:0;"></span>
+                        <button type="button" class="sc-btn" id="btnScaffaleModifica" onclick="scaffaleToggleModifica()">Modifica</button>
+                    </div>
+                    <div id="scaffaleModificaBanner" class="sc-banner" style="display:none;"></div>
+                    <p class="pg-sotto" id="scaffaleDettaglioSotto" style="margin:0 0 10px;"></p>
+                    <div class="sc-chips" id="scaffaleOrdineChips">
+                        <span class="pg-filtro attivo" data-ord="mio" onclick="scaffaleImpostaOrdinamento('mio')">Come li metto io</span>
+                        <span class="pg-filtro" data-ord="nome" onclick="scaffaleImpostaOrdinamento('nome')">Nome</span>
+                        <span class="pg-filtro" data-ord="tipo" onclick="scaffaleImpostaOrdinamento('tipo')">Tipo</span>
+                        <span class="pg-filtro" data-ord="valore" onclick="scaffaleImpostaOrdinamento('valore')">Valore</span>
                     </div>
 
-                    <!-- Pubblicazione: aggiornamento diretto, nessuna
-                         moderazione (solo il NOME è moderato — coerente con
-                         come funziona oggi per i Binder, sql/41).
-                         Fase 3, Step 3 (2026-09-12): riga nascosta per
-                         tipo='scambio' (sempre pubblico, forzato in
-                         scaffaleScambioGarantisci — non ha senso mostrarla
-                         come scelta libera). -->
-                    <div id="scaffalePubblicazioneRiga" style="margin-bottom: 1rem; display:flex; align-items:center; gap:0.6rem;">
-                        <label style="display:inline-flex; align-items:center; gap:0.5rem; cursor:pointer; font-size:0.82rem; font-weight:700;">
-                            <input type="checkbox" id="scaffalePubblicazioneCheckbox" onchange="impostaPubblicazioneScaffaleAttivo(this.checked)">
-                            Rendi pubblico (link condivisibile)
-                        </label>
-                    </div>
+                    <div id="scaffaleContenutoGrid"></div>
 
-                    <!-- Condivisione — Fase 1.3, Step 5c (2026-09-12). Riusa
-                         lo stesso modale QR globale dei Binder (#qrModal,
-                         openQrModal/copyShareLink in
-                         ui/navigation-condivisione.ui.js), esteso con un
-                         ramo dedicato 'scaffali' — nessun modale nuovo. -->
-                    <div id="scaffaleCondivisioneWrap" style="display:none; align-items:center; gap:0.5rem; margin-bottom:1rem; flex-wrap:wrap;">
-                        <button type="button" class="btn-main" style="padding:0.5rem 0.9rem; font-size:0.8rem;" onclick="openQrModal()">
-                            <i class="fa-solid fa-qrcode"></i> QR / Link
-                        </button>
-                    </div>
-
-                    <!-- Fase 3, Step 3 (2026-09-12): per lo Scaffale Scambio
-                         si offre un prodotto dalla sua modifica sealed
-                         (bottone "Offri in Scambio"), non da qui — bottone
-                         nascosto, nota mostrata al suo posto. -->
-                    <button type="button" class="btn-secondary" id="btnApriModaleAssegnaProdotti" style="margin-bottom: 1rem;" onclick="apriModaleAssegnaProdotti()">
-                        <i class="fa-solid fa-boxes-stacked"></i> Aggiungi prodotti
+                    <button type="button" class="sc-btn sc-btn-pieno sc-btn-largo" id="btnApriModaleAssegnaProdotti" onclick="apriModaleAssegnaProdotti()">
+                        <i class="fa-solid fa-plus"></i> Aggiungi o togli prodotti
                     </button>
-                    <p id="scaffaleScambioNota" style="display:none; font-size: 0.78rem; color: var(--text-muted); margin-bottom: 1rem;">
-                        Per offrire un prodotto in Scambio, apri la sua scheda di modifica dalla pagina Sealed e usa "Offri in Scambio".
+                    <p id="scaffaleScambioNota" style="display:none; font-size: 0.78rem; color: var(--text-muted); margin: 0 0 1rem;">
+                        Per offrire un prodotto in Scambio, apri la sua scheda e usa "Offri in Scambio".
                     </p>
 
-                    <!-- Griglia statica dei prodotti assegnati — click per
-                         rimuovere (Claudio: niente flipbook, "faremo una
-                         visualizzazione a scaffali vera e propria" in un
-                         pezzo futuro a sé). -->
-                    <div id="scaffaleContenutoGrid" class="binders-contenitori-grid"></div>
+                    <!-- Pubblicazione: aggiornamento diretto, nessuna moderazione
+                         (solo il NOME è moderato). Nascosta per Scambio (sempre
+                         pubblico). -->
+                    <label id="scaffalePubblicazioneRiga" class="sc-interruttore">
+                        <input type="checkbox" id="scaffalePubblicazioneCheckbox" onchange="impostaPubblicazioneScaffaleAttivo(this.checked)">
+                        <span class="sc-switch"></span>
+                        <span>Pubblico con link</span>
+                    </label>
+                    <div id="scaffaleCondivisioneWrap" style="display:none; align-items:center; gap:0.5rem; margin-bottom:1rem; flex-wrap:wrap;">
+                        <button type="button" class="sc-btn" onclick="openQrModal()"><i class="fa-solid fa-qrcode"></i> QR / Link</button>
+                    </div>
+
+                    <!-- Rinomina (moderata) ed Elimina: solo in Modifica. -->
+                    <div id="scaffaleAzioniModifica" class="sc-azioni" style="display:none;">
+                        <button type="button" class="sc-btn" id="btnRinominaScaffaleAttivo" onclick="proponiRinominaScaffaleAttivo()" title="La rinomina richiede approvazione admin"><i class="fa-solid fa-pen"></i> Rinomina</button>
+                        <button type="button" class="sc-btn sc-btn-pericolo" id="btnEliminaScaffaleAttivo" onclick="eliminaScaffaleAttivo()"><i class="fa-solid fa-trash"></i> Elimina</button>
+                    </div>
                 </div>
             </div>
         </div>
