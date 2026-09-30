@@ -325,7 +325,7 @@ function _scaProdottiOrdinati() {
     let elenco = _scaRighe.map((r, i) => ({ r, p: mappa[String(r.prodotto_id)], i })).filter(x => x.p);
     const nome = (x) => String(x.p.nome || x.p.codice || '');
     if (_scaOrd === 'nome') elenco.sort((a, b) => nome(a).localeCompare(nome(b)));
-    else if (_scaOrd === 'tipo') elenco.sort((a, b) => String(a.p.tipo || '').localeCompare(String(b.p.tipo || '')) || nome(a).localeCompare(nome(b)));
+    else if (_scaOrd === 'tipo') elenco.sort((a, b) => String(a.p.codice || '').localeCompare(String(b.p.codice || '')) || nome(a).localeCompare(nome(b)));
     else if (_scaOrd === 'valore') elenco.sort((a, b) => _scaValoreProdotto(b.p, eScambio ? b.r.quantita_offerta : null) - _scaValoreProdotto(a.p, eScambio ? a.r.quantita_offerta : null));
     else elenco.sort((a, b) => {
         const oa = a.r.ordine == null ? Infinity : a.r.ordine, ob = b.r.ordine == null ? Infinity : b.r.ordine;
