@@ -3142,16 +3142,21 @@
            serve una griglia di zone come per le Impostazioni Binder,
            link+QR+bottone restano leggibili centrati anche su schermo
            largo. */
+        /* RESTYLE FASE 3e: foglio dal basso (telefono). Il contenuto è
+           #condividiShareContenuto (.cd-det-foglio), vedi blocco #condividi. */
         #condividiShareModal.modal-overlay {
-            align-items: stretch;
-            justify-content: stretch;
+            align-items: flex-end;
+            justify-content: center;
             padding: 0;
         }
         #condividiShareModal .modal-content {
             max-width: none;
             width: 100%;
-            height: 100%;
-            max-height: none;
+            height: auto;
+            max-height: 92%;
+            overflow-y: auto;
+            border-radius: 22px 22px 0 0;
+            padding: 18px 18px 22px;
         }
 
         /* ═══════════════════════════════════════════════════════════════
@@ -4661,6 +4666,112 @@
             z-index: 2;
         }
         .condividi-profilo-toggle input { width: 14px; height: 14px; margin: 0; cursor: pointer; }
+
+        /* ═══════════════════════════════════════════════════════════════
+           PAGINA CONDIVIDI — RESTYLE BINDEX FASE 3e (2026-10-01)
+           Telefono: griglia di copertine + foglio dal basso. PC (pagina
+           ≥780px): elenco a sinistra, dettaglio a destra.
+           ═══════════════════════════════════════════════════════════════ */
+        #condividi { container-type: inline-size; }
+        #condividi .cd-pagina { padding-bottom: 4.5rem; max-width: 1240px; }
+        #condividi .cd-elenco-pc, #condividi .cd-pane { display: none; }
+        #condividi .cd-sezione { font-size: 0.72rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); margin: 14px 2px 8px; }
+        #condividi .cd-griglia { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+        #condividi .cd-tile { cursor: pointer; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+        #condividi .cd-tile.cd-privato .cd-cover { filter: saturate(.55) brightness(.92); }
+        #condividi .cd-stato { font-size: 0.68rem; font-weight: 700; color: var(--text-muted); text-align: center; }
+        #condividi .cd-legenda { font-size: 0.74rem; color: var(--text-muted); margin: 14px 2px 0; }
+        #condividi .cd-legenda i { color: var(--primary); }
+
+        .cd-cover {
+            position: relative; width: 100%; aspect-ratio: 3 / 4; border-radius: 12px; overflow: hidden;
+            display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(0,0,0,.14);
+        }
+        .cd-cover img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+        .cd-cover-icona { font-size: 1.7rem; color: rgba(255,255,255,.85); position: relative; }
+        .cd-cover-nome {
+            position: absolute; left: 0; right: 0; bottom: 0; padding: 14px 6px 6px; text-align: center;
+            font-size: 0.74rem; font-weight: 800; color: #fff; line-height: 1.15;
+            background: linear-gradient(to top, rgba(0,0,0,.62), transparent);
+            overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+        }
+        .cd-globo {
+            position: absolute; top: 6px; right: 6px; width: 22px; height: 22px; border-radius: 50%;
+            background: rgba(255,255,255,.92); color: var(--primary); display: flex; align-items: center; justify-content: center; font-size: 0.72rem;
+        }
+        .cd-cover-sm { width: 44px; aspect-ratio: 3 / 4; border-radius: 8px; flex: 0 0 44px; }
+        .cd-cover-sm .cd-cover-icona { font-size: 1.05rem; }
+        .cd-cover-sm .cd-globo { display: none; }
+
+        /* Dettaglio (foglio e pannello) */
+        .cd-det { text-align: left; position: relative; display: flex; flex-direction: column; gap: 14px; }
+        .cd-chiudi {
+            position: absolute; top: -4px; right: -4px; width: 32px; height: 32px; border-radius: 50%; border: none; cursor: pointer;
+            background: var(--primary-light); color: var(--text-dark); display: flex; align-items: center; justify-content: center;
+        }
+        .cd-det-testa { display: flex; align-items: center; gap: 12px; padding-right: 34px; }
+        .cd-det-nome { font-size: 1.05rem; font-weight: 800; color: var(--text-dark); }
+        .cd-det-sotto { font-size: 0.8rem; color: var(--text-muted); line-height: 1.35; }
+        .cd-det-titoli { min-width: 0; }
+        .cd-det-corpo { display: flex; flex-direction: column; gap: 14px; align-items: stretch; }
+        .cd-qr-col { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+        .cd-qr { background: #fff; padding: 10px; border-radius: 14px; border: 1px solid var(--border-color); display: flex; }
+        .cd-qr img, .cd-qr canvas { display: block; }
+        .cd-det-azioni { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+        .cd-link { display: flex; align-items: center; gap: 8px; padding: 6px 6px 6px 12px; border-radius: 12px; border: 1px solid var(--border-color); background: var(--card-bg); }
+        .cd-link i { color: var(--text-muted); }
+        .cd-link input { flex: 1; min-width: 0; border: none; background: transparent; color: var(--text-dark); font-size: 0.8rem; outline: none; padding: 6px 0; }
+        .cd-bottoni { display: flex; flex-wrap: wrap; gap: 8px; }
+        .cd-btn {
+            display: inline-flex; align-items: center; justify-content: center; gap: 7px; padding: 10px 14px; border-radius: 12px;
+            border: 1px solid var(--border-color); background: var(--card-bg); color: var(--text-dark);
+            font-family: inherit; font-weight: 800; font-size: 0.82rem; cursor: pointer;
+        }
+        .cd-btn-pieno { background: var(--primary); border-color: var(--primary); color: #fff; }
+        .cd-btn-largo { flex: 1 1 100%; padding: 13px 14px; font-size: 0.9rem; }
+        .cd-bottoni .cd-btn:not(.cd-btn-largo) { flex: 1 1 0; }
+        .cd-info { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border-radius: 12px; background: var(--primary-light); }
+        .cd-info > i { color: var(--primary); margin-top: 2px; }
+        .cd-info b { display: block; font-size: 0.82rem; color: var(--text-dark); }
+        .cd-info span { display: block; font-size: 0.74rem; color: var(--text-muted); margin-top: 1px; }
+        .cd-det-piede { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding-top: 12px; border-top: 1px solid var(--border-color); font-size: 0.78rem; color: var(--text-muted); }
+        .cd-privato-corpo { display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center; padding: 6px 4px; }
+        .cd-privato-corpo .cd-cover { width: 110px; filter: saturate(.55) brightness(.92); }
+        .cd-privato-corpo .cd-btn { width: 100%; padding: 13px; }
+
+        /* Visibilità per contesto */
+        .cd-solo-pc { display: none !important; }
+        .cd-det-foglio .cd-solo-pc { display: none !important; }
+        .cd-det-foglio .cd-solo-sheet { display: inline-flex; }
+
+        .cd-riga { display: flex; align-items: center; gap: 12px; padding: 8px 10px; border-radius: 14px; cursor: pointer; border: 1px solid transparent; }
+        .cd-riga:hover { background: var(--primary-light); }
+        .cd-riga.sel { background: var(--primary-light); border-color: var(--primary); }
+        .cd-riga-testo { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+        .cd-riga-testo b { font-size: 0.88rem; color: var(--text-dark); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .cd-riga-testo span { font-size: 0.72rem; color: var(--text-muted); }
+        .cd-chip { font-size: 0.68rem; font-weight: 800; padding: 4px 9px; border-radius: 999px; white-space: nowrap; }
+        .cd-chip-pub { background: color-mix(in srgb, var(--primary) 16%, transparent); color: var(--primary); }
+        .cd-chip-priv { background: var(--border-color); color: var(--text-muted); }
+        .cd-riga.cd-privato .cd-cover { filter: saturate(.55) brightness(.92); }
+
+        @container (min-width: 780px) {
+            #condividi .cd-pagina { display: grid; grid-template-columns: minmax(300px, 380px) 1fr; gap: 22px; align-items: start; }
+            #condividi .cd-griglia-tel { display: none; }
+            #condividi .cd-elenco-pc { display: flex; flex-direction: column; gap: 4px; }
+            #condividi .cd-elenco-pc .cd-sezione:first-child { margin-top: 0; }
+            #condividi .cd-pane { display: block; border: 1px solid var(--border-color); border-radius: 20px; background: var(--card-bg); padding: 22px; position: sticky; top: 8px; }
+            #condividi .cd-pane .cd-solo-pc { display: inline-flex !important; }
+            #condividi .cd-pane .cd-link.cd-solo-pc { display: flex !important; }
+            #condividi .cd-pane .cd-solo-sheet { display: none !important; }
+            #condividi .cd-pane .cd-det-corpo { flex-direction: row; gap: 24px; align-items: flex-start; }
+            #condividi .cd-pane .cd-det-azioni { flex: 1; }
+            #condividi .cd-pane .cd-det-piede.cd-solo-pc { display: flex !important; }
+            #condividi .cd-pane .cd-cover-sm { width: 56px; flex-basis: 56px; }
+            #condividi .cd-pane .cd-det-nome { font-size: 1.25rem; }
+            #condividi .cd-pane .cd-privato-corpo { padding: 30px 10px; }
+            #condividi .cd-pane .cd-privato-corpo .cd-btn { width: auto; padding: 12px 22px; }
+        }
 
         /* ═══════════════════════════════════════════════════════════════
            LIBRO SFOGLIABILE — sessione Opus, 2026-08-25. Sostituisce la
