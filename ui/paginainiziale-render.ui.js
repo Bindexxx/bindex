@@ -156,8 +156,16 @@ async function renderWidgetHome() {
         // si sovrapponevano l'una sull'altra e l'incisione del titolo
         // ancora leggibile. Ora la modalita' icona esclude la sfera in
         // partenza.
+        // FIX COLONNE (2026-09-30): due taglie distinte. _t = SPAN vero
+        // nella griglia (solo per le classi widget-col-N/widget-row-N, cioè
+        // quanto spazio occupa); _ta = taglia d'ASPETTO (icona, forma,
+        // incisione, corpo ricco), calcolata come su 6 colonne anche sul
+        // telefono — vedi _tagliaAspettoWidget in
+        // ui/paginainiziale-paginazione.ui.js. Prima una sola taglia faceva
+        // entrambe le cose, gonfiata dalle colonne fantasma.
         const _t = _tagliaEffettiva(w, misura);
-        const _iconaStatica = w.mini || _t.col < CELLE_MIN_PER_SFERA || _t.row < 2;
+        const _ta = _tagliaAspettoWidget(w, misura);
+        const _iconaStatica = w.mini || _ta.col < CELLE_MIN_PER_SFERA || _ta.row < 2;
 
         let visuale;
         if (BALL_ATTIVA && !anteprima.immagine && _iconaStatica) {
@@ -184,7 +192,7 @@ async function renderWidgetHome() {
             // libere, confrontare w.size con la stringa '1x1' era diventato
             // sbagliato: '1x1' ora e' l'ICONA, dove non c'e' nemmeno la
             // sfera su cui incidere.
-            if (_t.col <= 4 && _t.row <= 2 && prefScritteBallGet()) {
+            if (_ta.col <= 4 && _ta.row <= 2 && prefScritteBallGet()) {
                 const chiedeAttenzione = !!_ballChiedeAttenzione(w.id, anteprima);
                 inciso = chiedeAttenzione
                     ? _ballAccorcia(anteprima.righe[0])
@@ -217,7 +225,7 @@ async function renderWidgetHome() {
         // Con BALL_ATTIVA a false si torna al corpo originale del sito.
         // Sotto CELLE_MIN_PER_SFERA la tessera e' un'icona statica: niente
         // sfera, niente corpo ricco. Sopra, tutto come prima.
-        const grande = BALL_ATTIVA && !_iconaStatica && !(_t.col === 3 && _t.row === 2);
+        const grande = BALL_ATTIVA && !_iconaStatica && !(_ta.col === 3 && _ta.row === 2);
         let corpo;
         if (grande) {
             const c = _ballCorpoWidget(w.id, anteprima);
@@ -261,7 +269,7 @@ async function renderWidgetHome() {
         }
 
         return `
-            <div class="widget-tile ${classeStato} ${classeCascata} widget-size-${w.size} widget-col-${_t.col} widget-row-${_t.row} ${_formaWidget(_t.col, _t.row)} ${_iconaStatica ? 'widget-tile-mini' : ''}" ${stileRitardo} data-widget-id="${w.instanceId}" data-widget-index="${indice}" ${azioneClick}>
+            <div class="widget-tile ${classeStato} ${classeCascata} widget-size-${w.size} widget-col-${_t.col} widget-row-${_t.row} ${_formaWidget(_ta.col, _ta.row)} ${_iconaStatica ? 'widget-tile-mini' : ''}" ${stileRitardo} data-widget-id="${w.instanceId}" data-widget-index="${indice}" ${azioneClick}>
                 ${controlliEdit}
                 ${badge}
                 <div class="tile-tinta"></div><div class="tile-alone"></div>

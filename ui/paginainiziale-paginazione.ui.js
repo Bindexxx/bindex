@@ -68,22 +68,60 @@ let _paginaWidgetCorrente = 0;
 // Legge dal DOM gia' impaginato quando c'e' (unico modo affidabile, visto
 // che in orizzontale le colonne sono elastiche e non le sa nemmeno il
 // CSS finche' non misura); al primo render ripiega sulle costanti.
+//
+// FIX COLONNE (2026-09-30, bug "tessere sovrapposte" su telefono):
+// prima le colonne si contavano da getComputedStyle().gridTemplateColumns.
+// Quel valore elenca ANCHE le colonne implicite che il browser crea da
+// solo quando una tessera è più larga della griglia (CSS Grid NON riduce
+// lo span: aggiunge colonne larghe 0px). Verificato nel simulatore sul
+// codice di prima: telefono 390px, --ball-misura 90px, colonne vere 3,
+// con una tessera 6x2 in pagina il valore letto era
+// "90px 90px 90px 0px 0px 0px" → 6 colonne. Da lì il giro si
+// autoalimentava: _tagliaEffettiva lasciava gli span a 6,
+// _distribuisciWidgetInPagine metteva due tessere 3x2 sulla stessa riga e
+// la seconda finiva nelle colonne da 0px (larga 22px, fuori schermo).
+// Il primo render partiva comunque da COLONNE_GRIGLIA_WIDGET = 6, che dal
+// 17/09 (1 colonna = 1 diametro) non corrisponde più al telefono.
+// ORA le colonne si calcolano con la stessa formula di
+// repeat(auto-fill, minmax(var(--ball-misura), 1fr)) (vedi .widget-griglia
+// in index.css): floor((larghezza + gap) / (diametro + gap)). Conta solo
+// le colonne VERE, qualunque span abbiano le tessere.
+function _colonneAutoFillWidget(larghezza, diametro, gap) {
+    if (!(larghezza > 0) || !(diametro > 0)) return COLONNE_GRIGLIA_WIDGET;
+    return Math.max(1, Math.floor((larghezza + gap) / (diametro + gap)));
+}
+
 function _misuraPaginaWidget() {
     const grigliaEsistente = document.querySelector('.widget-griglia');
     const paginaEsistente = document.querySelector('.widget-pagina');
+    // Diametro della sfera = lato di una cella, in entrambi gli assi
+    // (grid-auto-rows e minmax delle colonne usano la stessa variabile).
+    const diametro = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--ball-misura')) || 90;
     let colonne = COLONNE_GRIGLIA_WIDGET;
-    let altezzaRiga = 48;
+    let altezzaRiga = diametro; // era 48 fisso: superato dal 17/09 (righe = diametro)
     let spazio = 11.2;
     let altezzaUtile = 0;
 
     if (grigliaEsistente) {
         const st = getComputedStyle(grigliaEsistente);
-        const cols = st.gridTemplateColumns.split(' ').filter(Boolean).length;
-        if (cols > 0) colonne = cols;
         const riga = parseFloat(st.gridAutoRows);
         if (riga > 0) altezzaRiga = riga;
         const g = parseFloat(st.rowGap);
         if (g >= 0) spazio = g;
+        const gapColonne = parseFloat(st.columnGap) || 0;
+        const larghezza = grigliaEsistente.clientWidth
+            - (parseFloat(st.paddingLeft) || 0)
+            - (parseFloat(st.paddingRight) || 0);
+        colonne = _colonneAutoFillWidget(larghezza, parseFloat(st.getPropertyValue('--ball-misura')) || diametro, gapColonne);
+    } else {
+        // Primo render: la griglia non c'è ancora. Larghezza della pagina
+        // meno il padding laterale di .widget-pagina (0.9rem per lato) e
+        // gap di .widget-griglia (0.7rem) — stessi valori di index.css.
+        const pagine = document.getElementById('phoneWidgetPagine');
+        const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+        if (pagine && pagine.clientWidth) {
+            colonne = _colonneAutoFillWidget(pagine.clientWidth - 1.8 * rem, diametro, 0.7 * rem);
+        }
     }
     if (paginaEsistente) {
         const st = getComputedStyle(paginaEsistente);
@@ -139,6 +177,22 @@ function _tagliaEffettiva(w, misura) {
     col = Math.min(col, misura.colonne);
     row = Math.min(row, misura.righe);
     return { col, row };
+}
+
+// TAGLIA D'ASPETTO (FIX COLONNE 2026-09-30, decisione Claudio "una per
+// riga"). _tagliaEffettiva qui sopra dà lo SPAN vero nella griglia (quante
+// colonne occupa davvero: sul telefono al massimo 3). Ma l'ASPETTO della
+// tessera (larga / alta / grande, icona, incisione, corpo ricco) si è
+// sempre deciso come se il telefono avesse 6 colonne — prima per via delle
+// colonne fantasma, e su quello sono stati disegnati e approvati i mockup.
+// Qui lo si rende esplicito: stessa taglia, ma con almeno
+// COLONNE_GRIGLIA_WIDGET (6) colonne a disposizione. Risultato: una
+// tessera 6x2 sul telefono occupa tutta la larghezza (span 3) e si
+// presenta da "larga" come sempre; una 3x2 occupa anch'essa tutta la
+// larghezza ma resta "piccola"; due tessere non si affiancano più oltre lo
+// schermo. Su PC (13 colonne) aspetto e span coincidono, come prima.
+function _tagliaAspettoWidget(w, misura) {
+    return _tagliaEffettiva(w, { colonne: Math.max(misura.colonne, COLONNE_GRIGLIA_WIDGET), righe: misura.righe });
 }
 
 // Distribuisce i widget nelle pagine rispettando la capienza.

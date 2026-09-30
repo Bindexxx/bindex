@@ -101,17 +101,33 @@ function _onResizeHandlePointerDown(e) {
     if (!tile || !grid || !w) return;
     const tileRect = tile.getBoundingClientRect();
     const gridStyle = getComputedStyle(grid);
-    const numColonneGriglia = gridStyle.gridTemplateColumns.split(' ').filter(Boolean).length;
     const gap = parseFloat(gridStyle.columnGap) || 0;
     const rowGap = parseFloat(gridStyle.rowGap) || 0;
 
-    // Dimensione di UNA cella dedotta dalla tessera stessa (che oggi
-    // occupa 1-2 celle in ciascun asse): più affidabile che ricalcolare a
-    // mano le colonne in px.
-    const _ta = _leggiTaglia(w.size);
-    const colSpanAttuale = _ta.col;
+    // FIX COLONNE (2026-09-30, decisione Claudio "una per riga"): prima le
+    // colonne si contavano da gridTemplateColumns, che include le colonne
+    // implicite da 0px create da una tessera più larga della griglia (vedi
+    // _misuraPaginaWidget in ui/paginainiziale-paginazione.ui.js) — il
+    // massimo trascinabile dipendeva quindi da cosa c'era in pagina.
+    // ORA il ridimensionamento ragiona sempre a PASSI LOGICI: tante colonne
+    // quante quelle vere, ma mai meno di COLONNE_GRIGLIA_WIDGET (6). Sul
+    // telefono (3 colonne vere) si continua a scegliere da 1 a 6 come prima;
+    // quanto spazio occupa davvero lo decide poi il render (tessera larga al
+    // massimo quanto lo schermo, vedi _tagliaAspettoWidget).
+    const colonneVere = _misuraPaginaWidget().colonne;
+    const numColonneGriglia = Math.max(colonneVere, COLONNE_GRIGLIA_WIDGET);
+    const larghezzaGriglia = grid.clientWidth
+        - (parseFloat(gridStyle.paddingLeft) || 0)
+        - (parseFloat(gridStyle.paddingRight) || 0);
+    // Larghezza di UN passo logico: la griglia divisa in numColonneGriglia
+    // parti (con i loro spazi). Dove le colonne vere sono 6 o più coincide
+    // con la cella vera, come prima.
+    const cellW = Math.max(1, (larghezzaGriglia + gap) / numColonneGriglia - gap);
+
+    // Altezza di una cella dedotta dalla tessera stessa (le righe non hanno
+    // colonne fantasma: lì il calcolo di prima resta valido).
+    const _ta = _tagliaEffettiva(w, _misuraPaginaWidget());
     const rowSpanAttuale = _ta.row;
-    const cellW = (tileRect.width - gap * (colSpanAttuale - 1)) / colSpanAttuale;
     const cellH = (tileRect.height - rowGap * (rowSpanAttuale - 1)) / rowSpanAttuale;
 
     _resizeState = {
