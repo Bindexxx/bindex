@@ -126,6 +126,9 @@ let _locDati = { voci: [], binder: {}, copertine: {} };
 let _locSelezione = new Set();
 let _locModale = null;
 let _locOccupato = false;
+// RESTYLE FASE 3g: ordine delle tessere ('valore' | 'carte' | 'az') e modalità Seleziona.
+let _locOrd = 'valore';
+let _locSelezionando = false;
 let _locModaleResizeHandler = null;
 
 function _locSistema(nome) { return _LOC_SISTEMA.includes(String(nome).trim().toUpperCase()); }
@@ -195,6 +198,34 @@ function _locAssicuraStile() {
         .loc-nome { font-size:.8rem; font-weight:700; color:var(--text-dark); text-align:center; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:100%; }
         .loc-meta { font-size:.68rem; color:var(--text-muted); text-align:center; line-height:1.25; }
         .loc-meta b { color:var(--text-dark); font-weight:650; }
+        .loc-testa { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+        .loc-btn { display:inline-flex; align-items:center; justify-content:center; gap:7px; padding:10px 16px; border-radius:999px; border:1px solid var(--border-color); background:var(--card-bg); color:var(--text-dark); font-family:inherit; font-weight:800; font-size:.85rem; cursor:pointer; }
+        .loc-btn-pieno { background:var(--primary); border-color:var(--primary); color:#fff; }
+        .loc-riga-sopra { display:flex; align-items:center; justify-content:space-between; gap:10px; margin:2px 0 12px; }
+        .loc-riga-sopra .pg-sotto { margin:0; flex:1; min-width:0; }
+        .loc-chips { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:14px; }
+        .loc-chip { padding:7px 13px; border-radius:999px; border:1px solid var(--border-color); background:var(--card-bg); color:var(--text-muted); font-weight:800; font-size:.8rem; cursor:pointer; }
+        .loc-chip.attivo { background:var(--primary-light); border-color:var(--primary); color:var(--primary); }
+        .loc-barra { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px; }
+        .loc-barra button { padding:8px 14px; border-radius:999px; border:1px solid var(--border-color); background:var(--card-bg); color:var(--text-dark); font-family:inherit; font-weight:800; font-size:.8rem; cursor:pointer; }
+        .loc-barra-hint { width:100%; font-size:.78rem; color:var(--text-muted); }
+        .loc-grid.loc-rest { grid-template-columns:repeat(2, 1fr); gap:12px; }
+        @container (min-width:780px) { .loc-grid.loc-rest { grid-template-columns:repeat(auto-fill, minmax(200px, 1fr)); } }
+        #location { container-type:inline-size; }
+        .loc-grid.loc-rest .loc-tile { background:var(--card-bg); border:1px solid var(--border-color); border-radius:18px; padding:14px 12px 14px; gap:6px; position:relative; }
+        .loc-grid.loc-rest .loc-tile:hover { border-color:var(--primary); }
+        .loc-grid.loc-rest .loc-tile.loc-sel { background:var(--primary-light); border-color:var(--primary); }
+        .loc-grid.loc-rest .loc-tile.loc-vuota { background:rgba(211,47,47,.08); border-color:rgba(211,47,47,.5); }
+        .loc-grid.loc-rest .loc-cover { width:84px; aspect-ratio:1 / 1; border-radius:16px; background:var(--primary-light); box-shadow:none; }
+        .loc-grid.loc-rest .loc-cover > i.loc-ico { font-size:1.9rem; color:var(--text-muted); }
+        .loc-grid.loc-rest .loc-nome { font-size:.95rem; font-weight:800; }
+        .loc-grid.loc-rest .loc-meta { font-size:.78rem; }
+        .loc-bar { width:100%; height:7px; border-radius:999px; background:var(--primary-light); overflow:hidden; margin-top:2px; }
+        .loc-bar > span { display:block; height:100%; border-radius:999px; background:var(--primary); }
+        .loc-grid.loc-rest .loc-lock { top:10px; right:10px; background:transparent; }
+        .loc-grid.loc-rest .loc-check { top:10px; right:10px; }
+        .loc-grid.loc-rest .loc-attesa { top:10px; left:10px; }
+        .loc-grid.loc-rest .loc-badge-vuota { position:absolute; left:12px; top:10px; right:auto; bottom:auto; border-radius:999px; padding:3px 10px; }
         #locGestisciModal.modal-overlay { align-items:stretch; justify-content:stretch; padding:0; }
         #locGestisciModal .modal-content { max-width:none; width:100%; height:100%; max-height:none; }
         #locGestisciModal .loc-mcover { width:120px; margin:0 auto 0.8rem; aspect-ratio:63 / 88; border-radius:12px; background:var(--border-color); display:flex; align-items:center; justify-content:center; overflow:hidden; box-shadow:0 4px 14px rgba(0,0,0,.2); position:relative; }
@@ -525,10 +556,12 @@ function _locAggiornaSelezioneUI() {
     });
     const barra = document.getElementById('locBarra');
     if (!barra) return;
+    if (!_locSelezionando) { barra.innerHTML = ''; return; }
     const nSel = _locSelezione.size;
     const scelte = _locDati.voci.filter(v => _locModificabile(v.nome));
     const tutteSel = scelte.length > 0 && scelte.every(v => _locSelezione.has(v.nome));
     barra.innerHTML = `
+        <div class="loc-barra-hint">Tocca le location da spostare o eliminare in blocco.</div>
         <button onclick="_locSelezionaTutte()">${tutteSel ? 'Deseleziona tutte' : 'Seleziona tutte'}</button>
         ${nSel > 0 ? `
         <button onclick="_locSpostaSelezionate()"><i class="fa-solid fa-arrow-right"></i> Sposta carte (${nSel})</button>
@@ -537,10 +570,36 @@ function _locAggiornaSelezioneUI() {
 }
 
 // ── Disegno (sincrono, da _locDati) ─────────────────────────────────────
+// RESTYLE BINDEX FASE 3g (2026-10-01, tavola "Location"): riepilogo, pulsante
+// Seleziona (le spunte compaiono solo in quella modalità), ordini
+// "Per valore / Per numero di carte / A → Z", tessere a scheda con barra del
+// valore. Il tocco apre ancora il modale "Gestisci" (invariato).
+function _locOrdina() {
+    const voci = _locDati.voci;
+    const conCarte = (v) => (v.n > 0 ? 1 : 0);
+    if (_locOrd === 'az') voci.sort((a, b) => String(a.nome).localeCompare(String(b.nome)));
+    else if (_locOrd === 'carte') voci.sort((a, b) => b.n - a.n || b.valore - a.valore || String(a.nome).localeCompare(String(b.nome)));
+    else voci.sort((a, b) => conCarte(b) - conCarte(a) || b.valore - a.valore || b.n - a.n || String(a.nome).localeCompare(String(b.nome)));
+}
+
+function _locImpostaOrdine(o) { _locOrd = o; _locDisegna(); }
+
+function _locToggleSeleziona() {
+    _locSelezionando = !_locSelezionando;
+    if (!_locSelezionando) _locSelezione.clear();
+    _locDisegna();
+}
+
+function _locClicTessera(i) {
+    if (_locSelezionando) { _locToggleSel(i); return; }
+    _locApriGestione(i);
+}
+
 function _locDisegna() {
     const container = document.getElementById('locationContenuto');
     if (!container) return;
     _locAssicuraStile();
+    _locOrdina();
     const voci = _locDati.voci;
 
     if (voci.length === 0) {
@@ -548,7 +607,7 @@ function _locDisegna() {
             <div class="page-header">
                 <span class="page-title">Location</span>
             </div>
-            <p style="text-align:center; color:var(--text-muted); font-size:0.85rem; padding:1.5rem 0 0.5rem;">Nessuna carta ha ancora una location.</p>
+            <div class="stato-vuoto"><i class="fa-solid fa-map-pin"></i><br>Nessuna carta ha ancora una location.</div>
             <div class="pg-bottoni" style="justify-content:center;">
                 <button class="primario" onclick="_locAggiungi()">+ Crea la prima location</button>
             </div>
@@ -556,9 +615,9 @@ function _locDisegna() {
         return;
     }
 
-    const nVuote = voci.filter(v => v.n === 0 && _locModificabile(v.nome)).length;
-    // "Più valore": la location col valore più alto (nessuna se tutte a 0).
+    // "Più preziosa": la location col valore più alto (nessuna se tutte a 0).
     const top = voci.reduce((m, v) => (v.valore > (m ? m.valore : 0) ? v : m), null);
+    const maxValore = Math.max(0, ...voci.map(v => v.valore));
 
     const tessere = voci.map((v, i) => {
         const { nome, n, valore } = v;
@@ -569,9 +628,9 @@ function _locDisegna() {
         const url = _locDati.copertine[nome];
         const sel = _locSelezione.has(nome);
         const cover = url
-            ? `<img src="${_locAttr(url)}" alt="${_locAttr(nome)}" loading="lazy" onerror="this.remove();">`
+            ? `<img src="${_locAttr(url)}" alt="${_locAttr(nome)}" loading="lazy" onerror="this.outerHTML='<i class=&quot;fa-solid ${_locIconaFallback(nome)} loc-ico&quot;></i>';">`
             : `<i class="fa-solid ${_locIconaFallback(nome)} loc-ico"></i>`;
-        const check = modificabile
+        const check = (modificabile && _locSelezionando)
             ? `<label class="loc-check" title="Seleziona" onclick="event.stopPropagation();"><input type="checkbox" ${sel ? 'checked' : ''} onclick="event.stopPropagation(); _locToggleSel(${i})"></label>`
             : (sistema ? '<span class="loc-lock" title="Contenitore di sistema"><i class="fa-solid fa-lock"></i></span>' : '');
         const attesa = (b && b.nome_in_attesa)
@@ -579,35 +638,35 @@ function _locDisegna() {
         const badge = vuota ? '<span class="loc-badge-vuota">VUOTA</span>' : '';
         const meta = vuota
             ? '<div class="loc-meta">0 carte</div>'
-            : `<div class="loc-meta"><b>${n}</b> ${n === 1 ? 'carta' : 'carte'}<br>${_locEur(valore)}</div>`;
+            : (nome === '?' && n === 0
+                ? '<div class="loc-meta">0 carte<br>in attesa di una location</div>'
+                : `<div class="loc-meta"><b>${n}</b> ${n === 1 ? 'carta' : 'carte'} &middot; ${_locEur(valore)}</div>`);
+        const perc = maxValore > 0 ? Math.max(valore > 0 ? 3 : 0, Math.round((valore / maxValore) * 100)) : 0;
+        const barra = (!vuota && !(nome === '?' && n === 0)) ? `<div class="loc-bar"><span style="width:${perc}%;"></span></div>` : '';
         return `
-            <div class="loc-tile${vuota ? ' loc-vuota' : ''}${sel ? ' loc-sel' : ''}" data-i="${i}" title="${_locAttr(nome)}" onclick="_locApriGestione(${i})">
-                <div class="loc-cover">${cover}${check}${attesa}${badge}</div>
+            <div class="loc-tile${vuota ? ' loc-vuota' : ''}${sel ? ' loc-sel' : ''}" data-i="${i}" title="${_locAttr(nome)}" onclick="_locClicTessera(${i})">
+                ${badge}${check}${attesa}
+                <div class="loc-cover">${cover}</div>
                 <div class="loc-nome">${escapeHtml(nome)}</div>
                 ${meta}
+                ${barra}
             </div>`;
     }).join('');
 
-    const tileVuote = nVuote > 0
-        ? `<div style="background:rgba(211,47,47,.12);"><b style="color:var(--danger);">${nVuote}</b><span>Vuote</span></div>` : '';
+    const chip = (o, etichetta) => `<span class="loc-chip${_locOrd === o ? ' attivo' : ''}" onclick="_locImpostaOrdine('${o}')">${etichetta}</span>`;
     container.innerHTML = `
-        <div class="page-header">
-            <span class="page-title">Location</span>
-            <span class="page-azione attiva" onclick="_locAggiungi()">+ Nuova location</span>
-        </div>
         <div class="pg-pagina">
-            <div class="pg-intro">
-                <div class="pg-grande">${voci.length}</div>
-                <div class="pg-sotto">${top ? `più valore: ${escapeHtml(top.nome)} (${_locEur(top.valore)})` : 'nessuna location con un valore'}</div>
+            <div class="page-header loc-testa">
+                <span class="page-title">Location</span>
+                <button type="button" class="loc-btn loc-btn-pieno" onclick="_locAggiungi()"><i class="fa-solid fa-plus"></i> Nuova location</button>
             </div>
-            <div class="pg-stat">
-                <div><b>${voci.length}</b><span>Location totali</span></div>
-                <div><b>${top ? escapeHtml(top.nome) : '—'}</b><span>Più valore${top ? ` (${_locEur(top.valore)})` : ''}</span></div>
-                ${tileVuote}
+            <div class="loc-riga-sopra">
+                <div class="pg-sotto"><b>${voci.length} location</b>${top ? ` &middot; la più preziosa è ${escapeHtml(top.nome)}` : ''}</div>
+                <button type="button" class="loc-btn" onclick="_locToggleSeleziona()"><i class="fa-solid ${_locSelezionando ? 'fa-square-check' : 'fa-square-check'}"></i> ${_locSelezionando ? 'Fine' : 'Seleziona'}</button>
             </div>
-            <div class="pg-sotto">Tocca una tessera per gestirla. Con le spunte scegli più location e le sposti o le elimini in blocco.</div>
-            <div class="pg-bottoni" id="locBarra"></div>
-            <div class="loc-grid">${tessere}</div>
+            <div class="loc-chips">${chip('valore', 'Per valore')}${chip('carte', 'Per numero di carte')}${chip('az', 'A → Z')}</div>
+            <div class="loc-barra" id="locBarra"></div>
+            <div class="loc-grid loc-rest">${tessere}</div>
         </div>
     `;
     _locAggiornaSelezioneUI();
@@ -625,6 +684,8 @@ async function renderPaginaLocation(opzioni) {
     const mantieni = !!(opzioni && opzioni.mantieni === true);
     if (!mantieni) {
         _locSelezione.clear();
+        _locSelezionando = false;
+        _locOrd = 'valore';
         _locChiudiModale();
         container.innerHTML = '<p style="text-align:center; color:var(--text-muted); font-size:0.85rem; padding:1rem 0;">Caricamento…</p>';
     }
