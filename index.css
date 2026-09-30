@@ -2172,6 +2172,80 @@
         .pp-var-testo.pp-su { color: var(--success); }
         .pp-var-testo.pp-giu { color: var(--danger); }
 
+        /* ── Pagina In primo piano (RESTYLE BINDEX FASE 3d) ────────────────
+           Podio 1-2-3 + griglia con classifica; Salite/Scese con fascia
+           colorata. Scoped a #primopiano: le classi .pp-pag-* e .pg-filtro
+           restano quelle di prima per tutto il resto. */
+        #primopiano { container-type: inline-size; }
+        #primopiano .pp-pagina { padding-bottom: 4.5rem; }
+        #primopiano .pg-filtri { gap: 6px; flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none; }
+        #primopiano .pg-filtri::-webkit-scrollbar { display: none; }
+        #primopiano .pg-filtro {
+            font-size: 0.82rem; font-weight: 700; padding: 8px 14px; white-space: nowrap; flex: 0 0 auto;
+        }
+        #primopiano .pg-filtro.attivo { background: var(--primary-light); border-color: var(--primary); color: var(--primary); }
+        #primopiano .pp-testa { display: flex; justify-content: space-between; align-items: baseline; margin-top: 16px; }
+        #primopiano .pp-testa span { font-size: 1.25rem; font-weight: 800; color: var(--text-dark); }
+        #primopiano .pp-testa b { font-size: 1.15rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+        #primopiano .pp-testa .pp-su { color: #2e7d32; }
+        #primopiano .pp-testa .pp-giu { color: #d32f2f; }
+        body.dark-mode #primopiano .pp-testa .pp-su { color: #81c784; }
+        body.dark-mode #primopiano .pp-testa .pp-giu { color: #ef9a9a; }
+
+        #primopiano .pp-podio { display: flex; align-items: flex-end; gap: 10px; margin-top: 16px; }
+        #primopiano .pp-podio-voce {
+            flex: 1 1 0; min-width: 0; cursor: pointer; text-align: center;
+            background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 16px;
+            padding: 12px 8px 12px; display: flex; flex-direction: column; align-items: center; gap: 4px;
+        }
+        #primopiano .pp-podio-voce.pp-rango-1 { order: 2; padding-top: 16px; padding-bottom: 16px; }
+        #primopiano .pp-podio-voce.pp-rango-2 { order: 1; }
+        #primopiano .pp-podio-voce.pp-rango-3 { order: 3; }
+        #primopiano .pp-podio-voce .pp-pag-foto { width: 78%; }
+        #primopiano .pp-podio-voce.pp-rango-1 .pp-pag-foto { width: 88%; }
+        #primopiano .pp-podio-prezzo { font-size: 1.05rem; color: var(--text-dark); font-variant-numeric: tabular-nums; }
+        #primopiano .pp-podio-sotto { font-size: 0.72rem; color: var(--text-muted); line-height: 1.3; }
+        #primopiano .pp-medaglia {
+            position: absolute; top: -6px; left: -6px; z-index: 2; width: 28px; height: 28px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 0.85rem; color: #fff;
+            box-shadow: 0 0 0 2px var(--card-bg), 0 1px 4px rgba(0,0,0,0.3);
+        }
+        #primopiano .pp-medaglia-1 { background: #c9971a; }
+        #primopiano .pp-medaglia-2 { background: #9a97a4; }
+        #primopiano .pp-medaglia-3 { background: #b07040; }
+
+        #primopiano .pp-pag-griglia { gap: 14px 10px; margin-top: 14px; }
+        #primopiano .pp-pag-tile { align-items: stretch; padding: 0; gap: 4px; }
+        #primopiano .pp-pag-tile:hover { background-color: transparent; }
+        #primopiano .pp-pag-foto { position: relative; width: 100%; }
+        #primopiano .pp-pag-cover { width: 100%; margin: 0; border-radius: 8px; }
+        #primopiano .pp-pag-nome { text-align: left; font-size: 0.9rem; }
+        #primopiano .pp-podio-voce .pp-pag-nome { text-align: center; }
+        #primopiano .pp-podio-voce .pp-pag-nome { white-space: normal; line-height: 1.2; }
+        #primopiano .pp-pag-valori { align-items: flex-start; flex-direction: row; flex-wrap: wrap; gap: 4px; font-size: 0.78rem; }
+        #primopiano .pp-pag-valori b { font-size: 0.92rem; }
+        #primopiano .pp-pag-copie { top: 4px; right: 4px; }
+        #primopiano .pp-rango {
+            position: absolute; top: 4px; left: 4px; z-index: 2; background: rgba(20, 16, 30, 0.72); color: #fff;
+            font-size: 0.68rem; font-weight: 800; padding: 2px 7px; border-radius: 999px;
+        }
+        #primopiano .pp-fascia {
+            position: absolute; left: 4px; right: 4px; bottom: 4px; z-index: 2; text-align: center; color: #fff;
+            font-weight: 800; font-size: 0.82rem; padding: 4px 2px; border-radius: 7px; white-space: nowrap; overflow: hidden;
+        }
+        #primopiano .pp-fascia-su { background: #2e7d32; }
+        #primopiano .pp-fascia-giu { background: #d32f2f; }
+        #primopiano .pp-piede { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-top: 12px; font-size: 0.8rem; color: var(--text-muted); }
+        #primopiano .pp-piede a { color: var(--primary); font-weight: 700; cursor: pointer; white-space: nowrap; }
+
+        @container (min-width: 780px) {
+            #primopiano .pp-pagina { max-width: 1240px; }
+            #primopiano .pp-podio { gap: 18px; }
+            #primopiano .pp-podio-voce { padding: 18px 12px; }
+            #primopiano .pp-podio-voce .pp-pag-foto { width: 46%; }
+            #primopiano .pp-podio-voce.pp-rango-1 .pp-pag-foto { width: 54%; }
+        }
+
         /* Overlay dettaglio: .container viene agganciata al rettangolo
            schermo della cornice — non spostata nel DOM (zero rischio sui
            selettori esistenti). Geometria (top/left/width/height/border-
