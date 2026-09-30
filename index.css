@@ -5310,6 +5310,92 @@
         .ric-motivo:has(input:checked) { border-color: var(--primary); box-shadow: 0 0 0 1px var(--primary) inset; }
         .ric-motivo input { accent-color: var(--primary); width: 18px; height: 18px; flex: 0 0 auto; }
 
+        /* ── Pagina Variazione valore (RESTYLE BINDEX FASE 3c) ─────────────
+           Periodo + scomposizione a gradini + movimenti per giorno; PC
+           (pagina larga) = movimenti a sinistra, dettaglio a destra. Le
+           classi dei pulsanti/filtri sono duplicate qui (scoped a
+           #variazione), come per Match e Richieste. */
+        #variazione { container-type: inline-size; }
+        #variazione .var-pagina { max-width: 1240px; margin: 0; padding-bottom: 4.5rem; }
+        #variazione .var-testa { display: flex; flex-direction: column; gap: 12px; margin-bottom: 14px; }
+        #variazione .var-grande { font-size: 2.3rem; font-weight: 800; line-height: 1.1; color: var(--text-dark); font-variant-numeric: tabular-nums; }
+        #variazione .bx-su { color: #2e7d32; }
+        #variazione .bx-giu { color: #d32f2f; }
+        body.dark-mode #variazione .bx-su { color: #81c784; }
+        body.dark-mode #variazione .bx-giu { color: #ef9a9a; }
+        #variazione .match-tabs { display: flex; gap: 6px; padding: 4px; border-radius: 14px; background: var(--primary-light); }
+        #variazione .match-tabbtn {
+            flex: 1; text-align: center; padding: 10px 6px; border-radius: 11px; font-weight: 800; font-size: 0.82rem;
+            cursor: pointer; border: none; font-family: inherit; background: transparent; color: var(--text-muted);
+        }
+        #variazione .match-tabbtn.attivo { background: var(--card-bg); color: var(--text-dark); box-shadow: 0 1px 4px rgba(0,0,0,0.12); }
+        #variazione .var-layout { display: flex; flex-direction: column; gap: 14px; }
+        #variazione .var-sinistra { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+        #variazione .var-dettaglio { display: none; }
+        #variazione .var-scheda { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 18px; padding: 16px; }
+        #variazione .var-titolo { font-weight: 800; font-size: 1.02rem; color: var(--text-dark); margin-bottom: 12px; }
+        #variazione .var-gradino { margin-bottom: 10px; }
+        #variazione .var-gradino-testa { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; font-size: 0.9rem; color: var(--text-dark); }
+        #variazione .var-gradino-testa small { color: var(--text-muted); }
+        #variazione .var-gradino-testa i { width: 18px; text-align: center; margin-right: 4px; }
+        #variazione .var-gradino-testa b { font-variant-numeric: tabular-nums; white-space: nowrap; }
+        #variazione .var-gradino-estremo .var-gradino-testa b:first-child { font-weight: 800; }
+        #variazione .var-pista { position: relative; height: 16px; border-radius: 9px; background: var(--primary-light); margin-top: 5px; overflow: hidden; }
+        #variazione .var-barra { position: absolute; top: 0; bottom: 0; border-radius: 9px; }
+        #variazione .var-barra-su { background: #2e7d32; }
+        #variazione .var-barra-giu { background: #d32f2f; }
+        #variazione .var-barra-neutra { background: #b9b6c4; }
+        #variazione .var-barra-oggi { background: var(--primary); }
+        #variazione .ric-filtri { display: flex; gap: 6px; flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px; margin-bottom: 4px; scrollbar-width: none; }
+        #variazione .ric-filtri::-webkit-scrollbar { display: none; }
+        #variazione .ric-filtro {
+            font: inherit; font-size: 0.78rem; font-weight: 700; padding: 7px 12px; border-radius: 999px; white-space: nowrap; flex: 0 0 auto;
+            border: 1px solid var(--border-color); background: var(--card-bg); color: var(--text-muted); cursor: pointer;
+        }
+        #variazione .ric-filtro.attivo { background: var(--primary-light); border-color: var(--primary); color: var(--primary); }
+        #variazione .var-giorno { font-size: 0.74rem; font-weight: 800; letter-spacing: 0.8px; text-transform: uppercase; color: var(--text-muted); padding: 14px 0 4px; }
+        #variazione .var-riga { display: flex; align-items: center; gap: 12px; padding: 10px 6px; border-radius: 12px; cursor: pointer; }
+        #variazione .var-riga.sel { background: var(--primary-light); }
+        #variazione .var-img { width: 44px; height: 61px; border-radius: 5px; object-fit: cover; display: block; box-shadow: 0 2px 6px rgba(0,0,0,0.25); background: var(--primary-light); }
+        #variazione .var-ico {
+            width: 44px; height: 61px; border-radius: 5px; flex: 0 0 auto; display: flex; align-items: center; justify-content: center;
+            background: var(--primary-light); color: var(--primary); font-size: 1.05rem;
+        }
+        #variazione .var-ico-rimossa { background: transparent; border: 1px dashed var(--border-color); color: var(--text-muted); }
+        #variazione .var-riga-testo { flex: 1; min-width: 0; }
+        #variazione .var-riga-nome { font-weight: 800; font-size: 0.95rem; color: var(--text-dark); }
+        #variazione .var-riga-meta { font-size: 0.78rem; color: var(--text-muted); line-height: 1.35; }
+        #variazione .var-riga-delta { font-weight: 800; font-size: 0.95rem; white-space: nowrap; font-variant-numeric: tabular-nums; }
+        #variazione .var-det-card { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 18px; padding: 18px; position: sticky; top: 8px; }
+        #variazione .var-det-testa { display: flex; gap: 16px; align-items: flex-start; }
+        #variazione .var-det-testa .var-img, #variazione .var-det-testa .var-ico { width: 110px; height: 153px; flex: 0 0 auto; }
+        #variazione .var-det-testo { min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+        #variazione .var-det-nome { font-size: 1.35rem; font-weight: 800; color: var(--text-dark); line-height: 1.15; }
+        #variazione .var-chip-tipo { font-size: 0.74rem; font-weight: 700; padding: 4px 10px; border-radius: 999px; background: var(--primary-light); color: var(--primary); }
+        #variazione .var-det-prezzi { display: flex; align-items: baseline; gap: 10px; margin-top: 4px; font-variant-numeric: tabular-nums; color: var(--text-muted); }
+        #variazione .var-det-prezzi b { font-size: 1.5rem; color: var(--text-dark); }
+        #variazione .var-det-prezzi s { font-size: 1.05rem; }
+        #variazione .var-det-delta { font-weight: 800; font-size: 0.95rem; }
+        #variazione .var-det-delta-solo { font-size: 1.5rem; margin-top: 4px; }
+        #variazione .var-det-info { display: flex; gap: 12px; align-items: center; padding: 12px 0; border-top: 1px solid var(--border-color); margin-top: 12px; }
+        #variazione .var-det-info > i { width: 36px; height: 36px; border-radius: 10px; flex: 0 0 auto; display: flex; align-items: center; justify-content: center; background: var(--primary-light); color: var(--primary); }
+        #variazione .var-det-info b { display: block; font-size: 0.9rem; color: var(--text-dark); }
+        #variazione .var-det-info span { font-size: 0.78rem; color: var(--text-muted); }
+        #variazione .var-det-azioni { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+        #variazione .ric-btn {
+            font: inherit; font-size: 0.82rem; font-weight: 700; padding: 10px 14px; border-radius: 11px; flex: 1 1 auto; justify-content: center;
+            border: 1px solid var(--border-color); background: var(--card-bg); color: var(--text-dark); cursor: pointer; display: inline-flex; align-items: center; gap: 7px;
+        }
+        #variazione .ric-btn-pieno { background: var(--primary); border-color: var(--primary); color: #fff; }
+
+        @container (min-width: 780px) {
+            #variazione .var-testa { flex-direction: row; align-items: flex-end; justify-content: space-between; }
+            #variazione .var-periodi { width: 280px; flex: 0 0 auto; }
+            #variazione .var-grande { font-size: 3rem; }
+            #variazione .var-layout { display: grid; grid-template-columns: minmax(0, 1fr) 380px; column-gap: 18px; align-items: start; }
+            #variazione .var-dettaglio { display: block; }
+        }
+
         /* Modale "Richiedi a …" (più oggetti in una richiesta) */
         .richiedi-modal { max-width: 560px; width: 94%; text-align: left; }
         .richiedi-head { display: flex; align-items: center; gap: 14px; margin-bottom: 16px; padding-right: 30px; }
