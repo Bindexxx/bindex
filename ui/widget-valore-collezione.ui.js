@@ -88,7 +88,7 @@ CATALOGO_WIDGET.valore_collezione = {
                 .map(c => ({ nome: c.name || '—', valore: Number(c.price) || 0, id: c.id, immagine: c.immagine, rarita: c.rarita }));
             const media = coll.length ? valore / coll.length : 0;
             return {
-                righe: [`€ ${valore.toLocaleString('it-IT', { maximumFractionDigits: 0 })}`],
+                righe: [formattaEuroTondo(valore)], // restyle FASE 2: "1.520 €"
                 dati: { valore, media, pezzi: coll.length, top }
             };
         },
@@ -100,6 +100,31 @@ CATALOGO_WIDGET.valore_collezione = {
         // 'def.tab' — vedi _eseguiAzioneWidget).
         tab: 'valore',
 };
+
+// Variazione su una finestra di N giorni (restyle FASE 2). righe = storico
+// ordinato per giorno (almeno 2). Parte dall'ultimo giorno misurato che sta
+// ALMENO N giorni prima di oggi, o dal primo disponibile se lo storico è
+// più corto: 'giorni' dice quanti giorni copre davvero.
+function _variazioneFinestra(righe, n) {
+    const ultimo = righe[righe.length - 1];
+    const limite = new Date(ultimo.giorno); limite.setDate(limite.getDate() - n);
+    let iInizio = 0;
+    for (let i = 0; i < righe.length - 1; i++) {
+        if (new Date(righe[i].giorno) <= limite) iInizio = i;
+    }
+    const inizio = righe[iInizio];
+    const dentro = righe.slice(iInizio + 1);
+    const variazione = (Number(ultimo.valore_totale) || 0) - (Number(inizio.valore_totale) || 0);
+    const aggiunte = dentro.reduce((t, r) => t + (Number(r.valore_aggiunte) || 0), 0);
+    const carteAggiunte = dentro.reduce((t, r) => t + (Number(r.carte_aggiunte) || 0), 0);
+    const pezziInMeno = (Number(inizio.pezzi_totali) || 0) - (Number(ultimo.pezzi_totali) || 0);
+    const giorni = Math.max(1, Math.round((new Date(ultimo.giorno) - new Date(inizio.giorno)) / 86400000));
+    return {
+        variazione, aggiunte, carteAggiunte, giorni,
+        mercato: pezziInMeno > 0 ? null : variazione - aggiunte,
+        pezziInMeno: Math.max(0, pezziInMeno),
+    };
+}
 
 // ── VOCE DI CATALOGO "VARIAZIONE VALORE" ─────────────────────────────
 CATALOGO_WIDGET.variazione_valore = {
@@ -134,19 +159,25 @@ CATALOGO_WIDGET.variazione_valore = {
             }
 
             const c = storicoValoreConfronta(righe);
-            const eur = (v) => (v >= 0 ? '+' : '−') + formattaEuro(Math.abs(Number(v) || 0)); // formato unico, audit 2026-09-25 C2
-            const testo = [eur(c.variazione)];
-            if (c.carteAggiunte > 0) testo.push(`${c.carteAggiunte} cart${c.carteAggiunte === 1 ? 'a aggiunta' : 'e aggiunte'}`);
-
+            // RESTYLE BINDEX FASE 2 (2026-09-30, tavola "Variazione = +X € in
+            // 7 giorni + mercato/aggiunte"): finestra di 7 giorni invece del
+            // solo confronto con il giorno prima. Stessa logica di
+            // storicoValoreConfronta, estesa alla finestra: aggiunte = somma
+            // di valore_aggiunte dei giorni nella finestra, mercato = il
+            // resto; se nel frattempo sono usciti dei pezzi il resto NON è
+            // attendibile come movimento dei prezzi e non si mostra (stesso
+            // principio della migration 36). "Scambi" delle tavole richiede
+            // movimenti_collezione (una query in più): resta alla pagina.
+            const s7 = _variazioneFinestra(righe, 7);
             return {
-                righe: testo,
-                badge: false,
+                righe: [`${formattaEuroVariazione(s7.variazione)} in ${s7.giorni} giorn${s7.giorni === 1 ? 'o' : 'i'}`],
                 // 'ok' o 'allerta' accendono il semaforo della sfera: qui
                 // NON si usano. Un calo di valore non e' un problema da
                 // risolvere e non deve far agitare la ball come fa un
                 // errore in coda.
                 dati: {
                     ...c,
+                    settimana: s7,
                     serie: righe.map(r => Number(r.valore_totale) || 0),
                     valoreOggi: Number(righe[righe.length - 1].valore_totale) || 0,
                     giorniMisurati: righe.length,

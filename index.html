@@ -282,9 +282,11 @@
          l'input di testo riusa lo stile generico input[type="text"] già
          definito nel foglio, nessuna CSS nuova per il campo. -->
     <div id="vetrinaRicercaModal" class="modal-overlay" onclick="_chiudiRicercaCartaVetrina()">
-        <div class="modal-content" style="max-width: 360px;" onclick="event.stopPropagation()">
+        <!-- Restyle FASE 2 (2026-09-30): un po' più larga per i
+             suggerimenti a griglia (4 per riga), titolo come nella tavola. -->
+        <div class="modal-content" style="max-width: 480px;" onclick="event.stopPropagation()">
             <button class="close-modal-btn" onclick="_chiudiRicercaCartaVetrina()"><i class="fa-solid fa-xmark"></i></button>
-            <h3 style="font-weight: 800; margin-bottom: 0.8rem;"><i class="fa-solid fa-star" style="color: var(--primary);"></i> Scegli la carta</h3>
+            <h3 style="font-weight: 800; margin-bottom: 0.8rem;"><i class="fa-solid fa-star" style="color: var(--primary);"></i> Scegli la carta della Vetrina</h3>
             <input type="text" id="vetrinaRicercaInput" placeholder="Cerca per nome o codice..." oninput="_filtraRicercaCartaVetrina(this.value)" style="width:100%; margin-bottom:0.6rem;">
             <div id="vetrinaRicercaLista" style="max-height:50vh; overflow-y:auto;"></div>
         </div>

@@ -1259,11 +1259,14 @@
             position: absolute; top: 0.5rem; right: 0.5rem;
             min-width: 20px; height: 20px; padding: 0 4px;
             border-radius: 10px;
-            background: var(--primary); color: #fff;
+            /* RESTYLE BINDEX FASE 2 (2026-09-30): rosso fisso — il badge
+               ora esiste solo per le azioni ('azioni' nel preview, vedi
+               renderWidgetHome), mai per i conteggi. Prima var(--primary). */
+            background: #d32f2f; color: #fff;
             font-size: 0.68rem; font-weight: 800;
             display: flex; align-items: center; justify-content: center;
         }
-        .widget-tile-allerta .widget-badge { background: var(--danger); }
+        .widget-tile-allerta .widget-badge { background: #d32f2f; }
 
         /* Miniatura carta dentro i widget con anteprima immagine (Claudio:
            "sì, miniature anche in home") — bordo colorato in base alla
@@ -1700,6 +1703,114 @@
         }
         .ball-ui .ball-azione:active { opacity: .75; }
 
+        /* ── RESTYLE BINDEX FASE 2 (2026-09-30): mattoncini delle tavole ──
+           Copertine come binder veri (_ballCopertine): una riga sola, quelle
+           che non ci stanno spariscono (overflow nascosto, niente a capo). */
+        .ball-ui .ball-cov { display: flex; gap: 8px; margin-top: 4px; overflow: hidden; height: 46px; padding-top: 2px; }
+        .ball-ui .ball-cov i {
+            flex: none; width: 34px; height: 42px; border-radius: 3px 6px 6px 3px;
+            box-shadow: 0 2px 6px rgba(0,0,0,.2); position: relative; display: block;
+        }
+        .ball-ui .ball-cov i::before {
+            content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 5px;
+            background: rgba(0,0,0,.25); border-radius: 3px 0 0 3px;
+        }
+        .ball-ui .ball-cov i b {
+            position: absolute; right: 3px; bottom: 3px; font-size: 9px; color: #fff;
+            text-shadow: 0 1px 2px rgba(0,0,0,.4);
+        }
+        /* Ripiano con i prodotti (_ballRipiano). */
+        .ball-ui .ball-ripiano {
+            height: 10px; border-radius: 3px; background: #b9804a;
+            box-shadow: 0 4px 0 rgba(0,0,0,.15); position: relative; margin-top: 32px; width: 100%;
+        }
+        .ball-ui .ball-ripiano b { position: absolute; bottom: 10px; width: 20px; border-radius: 3px; box-shadow: 0 1px 3px rgba(0,0,0,.2); }
+        /* Medaglie (Achievement): colore fisso per rarità. */
+        .ball-ui .ball-medaglie { display: flex; gap: 6px; margin-top: 4px; overflow: hidden; height: 32px; }
+        .ball-ui .ball-medaglia {
+            flex: none; width: 30px; height: 30px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 13px; color: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.25);
+        }
+        .ball-ui .ball-medaglia.r-leggendaria { background: #b8860b; }
+        .ball-ui .ball-medaglia.r-rara { background: #8a8f98; }
+        .ball-ui .ball-medaglia.r-comune { background: #9a5a2a; }
+        /* Fila di miniature con didascalia (Richieste, Collezione). */
+        .ball-ui .ball-th { display: flex; gap: 6px; margin-top: 4px; align-items: center; overflow: hidden; }
+        .ball-ui .ball-th img {
+            flex: none; width: 30px; height: 42px; border-radius: 4px; object-fit: cover;
+            box-shadow: 0 1px 4px rgba(0,0,0,.2); background: var(--bg-color);
+        }
+        .ball-ui .ball-th span { font-size: 12.5px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+        /* Chip di sola lettura (Collezione: Carte/Sealed/Wishlist). */
+        .ball-ui .ball-chips { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 2px; }
+        .ball-ui .ball-chips span {
+            font-size: 12px; font-weight: 700; border-radius: 999px; padding: 3px 10px;
+            background: var(--primary-light); color: var(--primary); white-space: nowrap;
+        }
+        /* Elenco con miniatura, nome, data e prezzo (Ultime aggiunte). */
+        .ball-ui .ball-ul { display: flex; flex-direction: column; width: 100%; }
+        .ball-ui .ball-ul > div {
+            display: flex; align-items: center; gap: 10px; padding: 6px 0;
+            border-bottom: 1px solid var(--border-color); font-size: 13px;
+        }
+        .ball-ui .ball-ul > div:last-child { border-bottom: 0; }
+        .ball-ui .ball-ul img, .ball-ui .ball-ul .vuota {
+            flex: none; width: 28px; height: 39px; border-radius: 4px; object-fit: cover;
+            box-shadow: 0 1px 3px rgba(0,0,0,.2); background: var(--bg-color);
+        }
+        .ball-ui .ball-ul .n { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+        .ball-ui .ball-ul .n b { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text-dark); font-weight: 600; }
+        .ball-ui .ball-ul .n small { color: var(--text-muted); font-size: 11.5px; }
+        .ball-ui .ball-ul > div > b { font-variant-numeric: tabular-nums; color: var(--text-dark); white-space: nowrap; }
+        /* Vetrina: suggerimenti nella scelta della carta (4 per riga). */
+        .vetrina-sugg-tit { font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); margin: 0.4rem 0 0.5rem; }
+        .vetrina-sugg { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-bottom: 0.6rem; }
+        .vetrina-sugg-c { display: flex; flex-direction: column; gap: 3px; font-size: 12px; cursor: pointer; min-width: 0; }
+        .vetrina-sugg-c img, .vetrina-sugg-c .vuota {
+            width: 100%; aspect-ratio: 63 / 88; object-fit: cover; display: block; border-radius: 7px;
+            box-shadow: 0 2px 8px rgba(0,0,0,.2); background: var(--bg-color);
+        }
+        .vetrina-sugg-c b { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text-dark); }
+        .vetrina-sugg-c span { color: var(--text-muted); }
+        /* Centro operativo: schede con icona e freccia. */
+        .ball-ui .ball-co { display: flex; flex-direction: column; gap: 8px; width: 100%; }
+        .ball-ui .ball-co-it {
+            display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 14px;
+            background: var(--card-bg); border: 1px solid var(--border-color);
+        }
+        .ball-ui .ball-co-it.al { box-shadow: inset 3px 0 0 #d32f2f; }
+        .ball-ui .ball-co-ic {
+            width: 32px; height: 32px; border-radius: 10px; flex: none;
+            display: flex; align-items: center; justify-content: center; font-size: 13px;
+        }
+        .ball-ui .ball-co-ic.r { background: rgba(211,47,47,.14); color: #d32f2f; }
+        .ball-ui .ball-co-ic.g { background: rgba(46,125,50,.14); color: #2e7d32; }
+        .ball-ui .ball-co-ic.p { background: var(--primary-light); color: var(--primary); }
+        .ball-ui .ball-co-it .n { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+        .ball-ui .ball-co-it .n b { font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text-dark); }
+        .ball-ui .ball-co-it .n span { font-size: 11.5px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .ball-ui .ball-co-it .th { display: flex; padding-left: 6px; }
+        .ball-ui .ball-co-it .th img {
+            width: 22px; height: 31px; border-radius: 3px; object-fit: cover; margin-left: -6px;
+            box-shadow: 0 1px 3px rgba(0,0,0,.3); border: 1.5px solid var(--card-bg);
+        }
+        .ball-ui .ball-co-it > i.fa-chevron-right { color: var(--text-muted); font-size: 11px; }
+        .ball-ui .ball-co-sez { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); margin-top: 4px; }
+        .ball-ui .ball-co-vuoto { font-size: 13px; color: var(--text-muted); padding: 6px 2px; }
+        .ball-ui .ball-co-vuoto i { color: var(--success, #2e7d32); margin-right: 4px; }
+        .ball-ui .ball-co-foot { display: flex; gap: 8px; margin-top: 2px; }
+        .ball-ui .ball-co-foot > div {
+            flex: 1; min-width: 0; border-radius: 12px; padding: 8px 10px;
+            background: color-mix(in srgb, var(--text-dark) 4%, transparent);
+            font-size: 12px; display: flex; flex-direction: column; gap: 5px; color: var(--text-muted);
+        }
+        .ball-ui .ball-co-foot b { font-size: 13px; color: var(--text-dark); }
+        .ball-ui .ball-co-dot {
+            display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #2e7d32;
+            margin-right: 5px; box-shadow: 0 0 0 3px rgba(46,125,50,.2);
+        }
+
         /* Widget non ancora collegati (segnaposto gacha): il testo si
            smorza, così si distingue a colpo d'occhio da un dato vero. */
         .ball-ui .ball-attesa { color: var(--text-muted); font-weight: 500; }
@@ -1990,15 +2101,21 @@
             width: var(--pp-w); height: auto; aspect-ratio: auto;
             align-self: stretch; min-height: 0;
         }
+        /* RESTYLE BINDEX FASE 2 (2026-09-30, tavola In primo piano): ×N
+           sull'angolo in ALTO A DESTRA (era a sinistra), variazione come
+           fascia piena verde/rossa in basso con testo bianco "+14,00 €". */
         .ball-ui .pp-copie {
-            position: absolute; left: 2px; top: 2px; z-index: 1;
+            position: absolute; right: 3px; top: 3px; z-index: 2;
             background: rgba(0,0,0,.68); color: #fff;
             font-size: 0.55rem; font-weight: 700; line-height: 1.3;
             padding: 1px 4px; border-radius: 4px;
         }
-        .ball-ui .ball-mini-badge.pp-var { max-width: calc(100% - 4px); overflow: hidden; white-space: nowrap; }
-        .ball-ui .ball-mini-badge.pp-su { color: #6be59a; }
-        .ball-ui .ball-mini-badge.pp-giu { color: #ff8a80; }
+        .ball-ui .ball-mini-badge.pp-var {
+            left: 2px; right: 2px; bottom: 2px; max-width: none; text-align: center;
+            overflow: hidden; white-space: nowrap; font-weight: 800; color: #fff; border-radius: 5px; z-index: 2;
+        }
+        .ball-ui .ball-mini-badge.pp-su { background: #2e7d32; color: #fff; }
+        .ball-ui .ball-mini-badge.pp-giu { background: #d32f2f; color: #fff; }
         /* Stessa altezza minima di --pp-tit + --pp-h + --pp-sotto (20 + 76,7
            + 10): var() non e' ammessa nelle condizioni di @container, il
            numero va tenuto allineato a mano. */

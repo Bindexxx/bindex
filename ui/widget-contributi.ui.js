@@ -60,7 +60,9 @@
     // aggiungere qui un elenco per utente: il vincolo vive nella RPC, ma
     // romperlo comincerebbe da questa voce.
 CATALOGO_WIDGET.contributi = {
-        titolo: 'Contributi al gruppo', icona: 'fa-hands-helping',
+        // Restyle FASE 2 (2026-09-30): titolo corto, come nelle tavole
+        // ("Contributi al gruppo" non stava accanto alla sfera).
+        titolo: 'Contributi', icona: 'fa-hands-helping',
         // Due numeri affiancati piu' la barra della quota: sotto questa
         // altezza la barra finisce appiccicata ai numeri.
         tagliaDefault: '6x4',
@@ -74,13 +76,11 @@ CATALOGO_WIDGET.contributi = {
             // DATO ASSENTE != TRE ZERI. Qui la RPC non ha risposto: non si
             // puo' dire "zero", che sarebbe un'affermazione sul lavoro
             // fatto dal gruppo.
-            if (!d) return { righe: ['Contributi al gruppo'], badge: false, dati: null };
+            if (!d) return { righe: ['Dati non disponibili'], dati: null };
+            // Nessun badge: un conteggio di contributi non è un'azione.
+            const perc = d.gruppo ? Math.round((d.miei / d.gruppo) * 100) : null;
             return {
-                righe: [`${d.miei} cart${d.miei === 1 ? 'a' : 'e'} per il gruppo`],
-                // Sarebbe un conteggio di contributi, non di notifiche: un
-                // pallino permanente sull'icona. Stessa scelta di
-                // carte_recenti e prezzi_recenti.
-                badge: false,
+                righe: [perc != null ? `${perc}% dei controlli` : `${d.miei} cart${d.miei === 1 ? 'a' : 'e'} per il gruppo`],
                 dati: d,
             };
         },

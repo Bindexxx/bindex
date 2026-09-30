@@ -31,7 +31,8 @@
 
 // ── VOCE DI CATALOGO "VISUALIZZAZIONE" ───────────────────────────────
 CATALOGO_WIDGET.visualizzazione = {
-        titolo: 'Visualizzazione', icona: 'fa-images',
+        // Restyle FASE 2 (2026-09-30): "Collezione" (id e tab invariati).
+        titolo: 'Collezione', icona: 'fa-images',
         preview: () => {
             const collezione = carteReali.filter(c => c.stato === 'collezione');
             const n = collezione.length;
@@ -57,7 +58,17 @@ CATALOGO_WIDGET.visualizzazione = {
             });
             const aggiunteRecenti = serie.reduce((a, b) => a + b, 0);
 
-            return { righe: [`${n} carte totali`], dati: { totale: n, ultime, serie, aggiunteRecenti } };
+            // Restyle FASE 2 (tavola "Collezione = carte · valore,
+            // Carte/Sealed/Wishlist, ultime 4"): valore (Σ prezzo × qty, stessa
+            // formula di Valore collezione) e i tre conteggi, tutto in memoria.
+            const valore = collezione.reduce((t, c) => t + (Number(c.price) || 0) * (Number(c.qty) || 1), 0);
+            const nSealed = (typeof prodottiSealedReali !== 'undefined' && Array.isArray(prodottiSealedReali)) ? prodottiSealedReali.length : 0;
+            const nWishlist = carteReali.filter(c => c.tabella === 'wishlist').length;
+
+            return {
+                righe: [`${n} carte · ${formattaEuro(valore)}`],
+                dati: { totale: n, valore, nSealed, nWishlist, ultime, serie, aggiunteRecenti },
+            };
         },
 };
 
@@ -77,12 +88,17 @@ CATALOGO_WIDGET.carte_recenti = {
         const quando = (c) => c.createdAt
             ? new Date(c.createdAt).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' })
             : '—';
+        // Restyle FASE 2 (tavola "Ultime aggiunte = una lista"): quante
+        // negli ultimi 7 giorni, e per ogni voce anche la data "umana" e il
+        // prezzo. Nessun badge (non è un'azione).
+        const setteGiorniFa = Date.now() - 7 * 86400000;
+        const in7 = collezione.filter(c => c.createdAt && new Date(c.createdAt).getTime() >= setteGiorniFa).length;
         return {
-            righe: ultime.slice(0, 3).map(c => `${c.name || '—'} · ${quando(c)}`),
-            // Vedi la nota in 'primo_piano': niente immagine, cosi' la
-            // sfera c'e' sempre. E niente numerino: sarebbe il giorno.
-            badge: false,
-            dati: { lista: ultime.map(c => ({ id: c.id, nome: c.name, quando: quando(c), immagine: c.immagine, rarita: c.rarita })) },
+            righe: [in7 ? `${in7} negli ultimi 7 giorni` : `ultima: ${ultime[0].name || '—'}`],
+            dati: {
+                in7,
+                lista: ultime.map(c => ({ id: c.id, nome: c.name, quando: quando(c), creataIl: c.createdAt, prezzo: Number(c.price) || 0, immagine: c.immagine, rarita: c.rarita })),
+            },
         };
     },
     tab: 'visualizzazione',

@@ -124,7 +124,10 @@ CATALOGO_WIDGET.missioni = {
                 const voci = pool.map(m => ({ titolo: m.titolo, fatta: idFatte.has(m.id), ricompensa: m.ricompensa }));
                 const fatte = voci.filter(v => v.fatta).length;
                 return {
-                    righe: [`${fatte}/${pool.length} missioni completate oggi`],
+                    // Restyle FASE 2: stato corto accanto alla sfera. Nessun
+                    // badge: i premi si assegnano da soli, non c'è niente da
+                    // riscuotere (vedi widget-dafare).
+                    righe: [`${fatte} di ${pool.length} oggi`],
                     dati: { fatte, totali: pool.length, voci },
                 };
             } catch (e) {

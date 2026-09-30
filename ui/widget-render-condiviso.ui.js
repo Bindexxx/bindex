@@ -333,17 +333,27 @@ function _ballParticelle() {
 // L'arco della pancia regge ~84 unità: "Visualizzazione" (15 caratteri) ci
 // starebbe solo a un corpo illeggibile. Il titolo per esteso resta quello
 // vero del catalogo e ricompare su 2x1/1x2/2x2, dove il testo sta fuori.
+// RESTYLE BINDEX FASE 2 (2026-09-30, tavola "Tessere piccole · nomi incisi
+// corti"): 'In vetrina' → 'In primo piano' ("Vetrina" è la location e lo
+// scaffale Sealed), 'Visualizza' → 'Collezione', 'Preferita' → 'Vetrina';
+// aggiunti i widget che non c'erano e ricadevano sul titolo lungo del
+// catalogo (Contributi al gruppo, Match trovati...).
 const _ballTITOLI_BREVI = {
     variazione_valore: 'Variazione',
-    primo_piano: 'In vetrina',
+    primo_piano: 'In primo piano',
     carte_recenti: 'Recenti',
     prezzi_recenti: 'Controlli',
-    visualizzazione: 'Visualizza',
+    visualizzazione: 'Collezione',
+    contributi: 'Contributi',
+    richieste: 'Richieste',
+    chat: 'Chat',
+    achievement: 'Achievement',
+    scaffali: 'Scaffali',
     inserimento: 'Inserisci',
     prezzi: 'Prezzi',
     binder: 'Binders',
     sealed: 'Sealed',
-    ultima_carta: 'Preferita',
+    ultima_carta: 'Vetrina',
     carta_del_giorno: 'Del giorno',
     gruppo_attivo: 'Gruppo',
     location: 'Location',
