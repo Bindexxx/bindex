@@ -23,7 +23,8 @@
             if (error) { console.error('Errore caricamento location:', error.message); return; }
 
             const valorePrecedente = select.value;
-            select.innerHTML = '<option value="">— nessuna, usa quella di ogni riga —</option>';
+            select.innerHTML = '<option value="">per riga</option>';
+            if (tipoLocation === 'carta') { _insLocationNomi = (data || []).map(r => r.nome); _insAggiornaSelectRighe(); }
             (data || []).forEach(r => {
                 const opt = document.createElement('option');
                 opt.value = r.nome;
@@ -53,6 +54,9 @@
             input.value = '';
             await caricaSelectLocationComune();
             document.getElementById('selectLocationComune').value = nome;
+            const box = document.getElementById('insNuovaLocationBox');
+            if (box) box.style.display = 'none';
+            insLocationComuneCambiata();
         }
 
 
@@ -143,16 +147,14 @@
             if (_tipoInserimento === 'sealed') {
                 pannelloLoc.style.display = 'none';
             } else {
-                pannelloLoc.style.display = 'flex';
+                pannelloLoc.style.display = '';
                 const selectLoc = document.getElementById('selectLocationComune');
                 if (_destinazioneInserimento === 'wishlist') _impostaLocationComuneFissa(selectLoc, 'WISHLIST');
                 else selectLoc.value = '';
             }
 
-            const btn = document.getElementById('btnSalvaCarte');
-            if (_destinazioneInserimento === 'wishlist') btn.innerHTML = '<i class="fa-solid fa-bookmark"></i> Salva in Wishlist';
-            else if (_tipoInserimento === 'sealed') btn.innerHTML = '<i class="fa-solid fa-box-archive"></i> Salva Prodotti Sealed';
-            else btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Salva Carte';
+            insAggiornaBottone();
+            document.querySelectorAll('#entryTableBody tr').forEach(_insSommario);
         }
 
 
@@ -239,6 +241,7 @@
             }
 
             clearEntryDraft();
+            insAggiornaPagina();
             alert(`✅ ${righeDb.length} cart${righeDb.length === 1 ? 'a inviata' : 'e inviate'} nella coda persistente!\n\nApri l'estensione sulla sezione "Aggiungi Carte" per farle processare — non si perdono, restano lì in attesa finché qualcuno non le lavora.`);
         }
 
@@ -332,12 +335,13 @@
                 }
             });
             prefEntryDraftSet(JSON.stringify(draft));
+            insAggiornaBottone();
             
             const label = document.getElementById('autosaveLabel');
             if(label) {
-                label.innerHTML = `<i class="fa-solid fa-check" style="color:var(--success)"></i> Salvato`;
+                label.innerHTML = `<i class="fa-solid fa-check" style="color:var(--success)"></i> Bozza salvata`;
                 setTimeout(() => {
-                    label.innerHTML = `<i class="fa-solid fa-floppy-disk"></i> Salva automatico attivo`;
+                    label.innerHTML = `<i class="fa-solid fa-floppy-disk"></i> Bozza salvata automaticamente<span class="ins-solo-pc"> · Invio = riga sotto</span>`;
                 }, 1200);
             }
         }
@@ -353,6 +357,9 @@
                 const tbody = document.getElementById('entryTableBody');
                 tbody.innerHTML = '';
                 draft.forEach(item => addNewEntryRow(item));
+                const ultima = tbody.lastElementChild;
+                if (!ultima || ultima.querySelector('td:nth-child(1) input').value.trim()) addNewEntryRow();
+                insAggiornaBottone();
                 return true;
             } catch(e) {
                 return false;
@@ -371,7 +378,7 @@
             const tbody = document.getElementById('entryTableBody');
             tbody.innerHTML = '';
             addNewEntryRow();
-            addNewEntryRow();
+            insAggiornaBottone();
         }
 
 
@@ -388,51 +395,173 @@
             const qtyVal = data ? (data.qty || 1) : 1;
             const locVal = data ? (data.loc || '?') : '?';
             const notesVal = data ? (data.notes || '') : '';
+            const opz = (lista, v) => lista.map(x => `<option value="${x}" ${v === x ? 'selected' : ''}>${x}</option>`).join('');
 
+            // RESTYLE: 10 celle come sempre (salvataggio e bozza le leggono
+            // per posizione). Telefono = scheda che si apre/chiude; PC = riga.
             tr.innerHTML = `
-                <td data-label="Nome/Codice"><input type="text" placeholder="Nome/Codice" value="${escapeHtml(nameVal)}" oninput="handleEntryInput(this)" onkeydown="handleEntryCodiceKeydown(event, this)"></td>
-                <td data-label="Lingua">
-                    <select onchange="handleEntryInput(this)">
-                        <option value="IT" ${langVal === 'IT' ? 'selected' : ''}>IT</option>
-                        <option value="EN" ${langVal === 'EN' ? 'selected' : ''}>EN</option>
-                        <option value="KOR" ${langVal === 'KOR' ? 'selected' : ''}>KOR</option>
-                        <option value="JP" ${langVal === 'JP' ? 'selected' : ''}>JP</option>
-                    </select>
+                <td data-label="Nome/Codice" class="ins-td-nome">
+                    <input type="text" placeholder="+ Scrivi nome o codice..." value="${escapeHtml(nameVal)}" oninput="handleEntryInput(this)" onkeydown="handleEntryCodiceKeydown(event, this)">
+                    <div class="ins-sommario"></div>
+                    <div class="ins-gia"></div>
                 </td>
-                <td data-label="Cond.">
-                    <select onchange="handleEntryInput(this)">
-                        <option value="NM" ${condVal === 'NM' ? 'selected' : ''}>NM</option>
-                        <option value="EX" ${condVal === 'EX' ? 'selected' : ''}>EX</option>
-                        <option value="GD" ${condVal === 'GD' ? 'selected' : ''}>GD</option>
-                    </select>
-                </td>
-                <td data-label="REV" style="text-align: center;"><input type="checkbox" ${revVal} onchange="handleEntryInput(this)"></td>
-                <td data-label="1st" style="text-align: center;"><input type="checkbox" ${firstVal} onchange="handleEntryInput(this)"></td>
-                <td data-label="SIG" style="text-align: center;" title="Ancora sigillata nella bustina originale"><input type="checkbox" ${sigVal} onchange="handleEntryInput(this)"></td>
-                <td data-label="Quantità">
+                <td data-label="Lingua" class="ins-td-sel"><select onchange="handleEntryInput(this)">${opz(['IT', 'EN', 'KOR', 'JP'], langVal)}</select></td>
+                <td data-label="Cond." class="ins-td-sel"><select onchange="handleEntryInput(this)">${opz(['NM', 'EX', 'GD'], condVal)}</select></td>
+                <td data-label="REV" class="ins-td-chip"><label class="ins-chip"><input type="checkbox" ${revVal} onchange="handleEntryInput(this)">Reverse</label></td>
+                <td data-label="1st" class="ins-td-chip"><label class="ins-chip"><input type="checkbox" ${firstVal} onchange="handleEntryInput(this)">1ª ed.</label></td>
+                <td data-label="SIG" class="ins-td-chip" title="Ancora sigillata nella bustina originale"><label class="ins-chip"><input type="checkbox" ${sigVal} onchange="handleEntryInput(this)">Sigillata</label></td>
+                <td data-label="Quantità" class="ins-td-qty">
                     <div class="qty-control">
                         <button type="button" class="qty-btn" onclick="stepEntryQty(this, -1)">-</button>
                         <input type="number" value="${qtyVal}" min="1" class="qty-input" oninput="handleEntryInput(this)">
                         <button type="button" class="qty-btn" onclick="stepEntryQty(this, 1)">+</button>
                     </div>
+                    <button type="button" class="ins-apri" onclick="insApriRiga(this)" aria-label="Apri o chiudi la riga"><i class="fa-solid fa-chevron-down"></i></button>
                 </td>
-                <td data-label="Location">
-                    <select onchange="handleEntryInput(this)">
-                        <option value="?" ${locVal === '?' ? 'selected' : ''}>?</option>
-                        <option value="BULK" ${locVal === 'BULK' ? 'selected' : ''}>BULK</option>
-                        <option value="1025" ${locVal === '1025' ? 'selected' : ''}>1025</option>
-                        <option value="TOPLOADER" ${locVal === 'TOPLOADER' ? 'selected' : ''}>TOPLOADER</option>
-                        <option value="BINDER" ${locVal === 'BINDER' ? 'selected' : ''}>BINDER</option>
-                        <option value="WISHLIST" ${locVal === 'WISHLIST' ? 'selected' : ''}>WISHLIST</option>
-                    </select>
-                </td>
-                <td data-label="Note"><input type="text" placeholder="Note" value="${escapeHtml(notesVal)}" oninput="handleEntryInput(this)"></td>
-                <td style="text-align: center;">
-                    <button type="button" class="btn-danger" onclick="removeEntryRow(this)"><i class="fa-solid fa-trash"></i></button>
+                <td data-label="Location" class="ins-td-sel ins-td-loc"><select onchange="handleEntryInput(this)">${_insOpzioniLocation(locVal)}</select></td>
+                <td data-label="Note" class="ins-td-note"><input type="text" placeholder="Nota (facoltativa)" value="${escapeHtml(notesVal)}" oninput="handleEntryInput(this)"></td>
+                <td class="ins-td-togli">
+                    <button type="button" class="ins-togli" onclick="removeEntryRow(this)" title="Togli riga"><i class="fa-solid fa-trash"></i><span class="ins-solo-tel"> Togli riga</span></button>
                 </td>
             `;
 
             tbody.appendChild(tr);
+            _insSommario(tr);
+        }
+
+
+        // ── RESTYLE: righe compatte, location, pulsante "Salva N carte" ─────
+        let _insLocationNomi = [];
+
+        function _insOpzioniLocation(valore) {
+            const nomi = ['?', ..._insLocationNomi.filter(n => n !== '?')];
+            if (valore && !nomi.includes(valore)) nomi.push(valore);
+            if (!nomi.includes('WISHLIST')) nomi.push('WISHLIST');
+            return nomi.map(n => `<option value="${escapeHtml(n)}" ${n === valore ? 'selected' : ''}>${escapeHtml(n === '?' ? '? (da decidere)' : n)}</option>`).join('');
+        }
+
+        function _insAggiornaSelectRighe() {
+            document.querySelectorAll('#entryTableBody td:nth-child(8) select').forEach(sel => {
+                const v = sel.value;
+                sel.innerHTML = _insOpzioniLocation(v);
+                sel.value = v;
+            });
+        }
+
+        // "IT · NM · Reverse · Binder B" + "hai già ×N in …" (dalla collezione in memoria)
+        function _insSommario(tr) {
+            if (!tr || !tr.querySelector('.ins-sommario')) return;
+            const nome = tr.querySelector('td:nth-child(1) input').value.trim();
+            tr.classList.toggle('ins-vuota', !nome);
+            const comune = document.getElementById('selectLocationComune')?.value || '';
+            const loc = comune || tr.querySelector('td:nth-child(8) select').value;
+            const parti = [tr.querySelector('td:nth-child(2) select').value, tr.querySelector('td:nth-child(3) select').value];
+            if (tr.querySelector('td:nth-child(4) input').checked) parti.push('Reverse');
+            if (tr.querySelector('td:nth-child(5) input').checked) parti.push('1ª ed.');
+            if (tr.querySelector('td:nth-child(6) input').checked) parti.push('Sigillata');
+            if (loc && loc !== '?') parti.push(loc);
+            tr.querySelector('.ins-sommario').textContent = parti.join(' · ');
+            const gia = tr.querySelector('.ins-gia');
+            const n = nome.toLowerCase();
+            const uguali = n.length >= 3 && typeof carteReali !== 'undefined'
+                ? carteReali.filter(c => c.tabella === 'carte' && c.stato === 'collezione' &&
+                    ((c.name && c.name.toLowerCase() === n) || (c.code && n.includes(c.code.toLowerCase()) && c.name && n.includes(c.name.toLowerCase().split(' ')[0]))))
+                : [];
+            if (uguali.length) {
+                const tot = uguali.reduce((t, c) => t + (Number(c.qty) || 1), 0);
+                const dove = [...new Set(uguali.map(c => c.location).filter(Boolean))].join(', ');
+                gia.innerHTML = `<i class="fa-solid fa-circle-info"></i> hai già ×${tot}${dove ? ' in ' + escapeHtml(dove) : ''}`;
+            } else gia.innerHTML = '';
+        }
+
+        function insApriRiga(btn) {
+            const tr = btn.closest('tr');
+            const aperta = !tr.classList.contains('aperta');
+            document.querySelectorAll('#entryTableBody tr.aperta').forEach(r => r.classList.remove('aperta'));
+            tr.classList.toggle('aperta', aperta);
+        }
+
+        function insLocationComuneCambiata() {
+            document.querySelectorAll('#entryTableBody tr').forEach(_insSommario);
+        }
+
+        function insMostraNuovaLocation() {
+            const box = document.getElementById('insNuovaLocationBox');
+            if (!box) return;
+            box.style.display = box.style.display === 'none' ? '' : 'none';
+            if (box.style.display === '') document.getElementById('inputNuovaLocationComune')?.focus();
+        }
+
+        function insAggiornaBottone() {
+            const btn = document.getElementById('btnSalvaCarte');
+            if (!btn || btn.disabled) return;
+            const sealed = _tipoInserimento === 'sealed';
+            const corpo = sealed ? '#entryTableBodySealed' : '#entryTableBody';
+            const n = [...document.querySelectorAll(`${corpo} tr td:nth-child(1) input`)].filter(i => i.value.trim()).length;
+            const cosa = sealed ? `${n} prodott${n === 1 ? 'o' : 'i'}` : `${n} cart${n === 1 ? 'a' : 'e'}`;
+            const ico = _destinazioneInserimento === 'wishlist' ? 'fa-bookmark' : 'fa-paper-plane';
+            btn.innerHTML = `<i class="fa-solid ${ico}"></i> ${n ? `Salva ${cosa}` : 'Salva'}${_destinazioneInserimento === 'wishlist' ? ' in Wishlist' : ''}`;
+        }
+
+        // Telefono: la riga su cui stai scrivendo si apre, le altre restano compatte.
+        document.addEventListener('focusin', (e) => {
+            const tr = e.target.closest && e.target.closest('#entryTableBody tr');
+            if (!tr || tr.classList.contains('aperta')) return;
+            if (e.target.closest('.ins-apri')) return;
+            document.querySelectorAll('#entryTableBody tr.aperta').forEach(r => r.classList.remove('aperta'));
+            tr.classList.add('aperta');
+        });
+
+        // Avviso "N carte da correggere" e riquadro "Ultimo invio" (le righe
+        // dell'ultimo invio = inviate entro 3 minuti dalla più recente).
+        async function insAggiornaPagina() {
+            const userId = await authGetUserId();
+            if (!userId) return;
+            const [{ count }, coda, corr] = await Promise.all([
+                correzioniManualiConta(userId),
+                codaCarteUltimoInvio(userId),
+                correzioniManualiLista(userId),
+            ]);
+            const avviso = document.getElementById('insAvvisoCorrezioni');
+            if (avviso) {
+                avviso.style.display = count ? '' : 'none';
+                const t = document.getElementById('insAvvisoTesto');
+                if (t) t.textContent = `${count} cart${count === 1 ? 'a' : 'e'} da correggere`;
+            }
+            const righe = (coda && coda.data) || [];
+            const correzioni = (corr && corr.data) || [];
+            const tutti = [
+                ...righe.map(r => ({ nome: r.nome, location: r.location, destinazione: r.destinazione, quando: r.creato_il, stato: r.stato === 'completato' ? 'fatta' : (r.stato === 'errore' ? 'errore' : 'cerca') })),
+                ...correzioni.map(r => ({ nome: r.nome, location: r.location, destinazione: r.destinazione, quando: r.creato_il, stato: 'correggere' })),
+            ].sort((a, b) => new Date(b.quando) - new Date(a.quando));
+            const html = _insUltimoInvioHtml(tutti);
+            ['insUltimoTel', 'insUltimoPc'].forEach(id => { const el = document.getElementById(id); if (el) el.innerHTML = html; });
+        }
+
+        function insMostraUltimo(btn) {
+            const box = btn.closest('.ins-ultimo');
+            box.classList.toggle('aperto');
+            btn.textContent = box.classList.contains('aperto') ? 'Nascondi ▴' : 'Mostra ▾';
+        }
+
+        function _insUltimoInvioHtml(tutti) {
+            if (!tutti.length) return '';
+            const primo = new Date(tutti[0].quando).getTime();
+            const invio = tutti.filter(r => primo - new Date(r.quando).getTime() <= 3 * 60000);
+            const fatte = invio.filter(r => r.stato === 'fatta').length;
+            const cerca = invio.filter(r => r.stato === 'cerca').length;
+            const corr = invio.filter(r => r.stato === 'correggere' || r.stato === 'errore').length;
+            const ora = new Date(primo).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+            const oggi = new Date(primo).toDateString() === new Date().toDateString();
+            const quando = (oggi ? '' : new Date(primo).toLocaleDateString('it-IT', { day: 'numeric', month: 'short' }) + ' ') + ora;
+            const pill = { fatta: r => `<span class="ins-pill ok">${r.destinazione === 'wishlist' ? 'In wishlist' : 'In collezione'}</span>`, cerca: () => '<span class="ins-pill att">In cerca…</span>',
+                correggere: () => '<span class="ins-pill ko">da correggere</span>', errore: () => '<span class="ins-pill ko">non riuscita</span>' };
+            const righe = invio.map(r => `<div class="ins-ultimo-riga"><div><b>${escapeHtml(r.nome || '—')}</b><span>${escapeHtml(r.location || '')}</span></div>${pill[r.stato](r)}</div>`).join('');
+            return `
+                <div class="ins-ultimo-testa"><b>Ultimo invio</b><span>${oggi ? 'oggi ' : ''}${quando} · ${invio.length} cart${invio.length === 1 ? 'a' : 'e'}</span></div>
+                <div class="ins-ultimo-pista"><div style="width:${invio.length ? (fatte / invio.length * 100).toFixed(0) : 0}%"></div></div>
+                <div class="ins-ultimo-sotto"><span>${fatte} fatt${fatte === 1 ? 'a' : 'e'}${cerca ? ` · ${cerca} in cerca` : ''}${corr ? ` · <b class="ins-ko">${corr} da correggere</b>` : ''}</span><button type="button" class="ins-solo-tel" onclick="insMostraUltimo(this)">Mostra ▾</button></div>
+                <div class="ins-ultimo-lista">${righe}</div>`;
         }
 
 
@@ -448,7 +577,8 @@
         function handleEntryInput(element) {
             const row = element.closest('tr');
             const tbody = document.getElementById('entryTableBody');
-            if (row === tbody.lastElementChild) {
+            _insSommario(row);
+            if (row === tbody.lastElementChild && row.querySelector('td:nth-child(1) input').value.trim()) {
                 addNewEntryRow();
             }
             saveEntryDraft();
@@ -583,6 +713,7 @@
             if (row === tbody.lastElementChild) {
                 addNewEntryRowSealed();
             }
+            insAggiornaBottone();
         }
 
 

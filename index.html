@@ -523,95 +523,89 @@
 
         <!-- SEZIONE 2: INSERIMENTO CARTE (LOCATION DEFAULT: ?) -->
         <div id="inserimento" class="view-section">
-            <div class="card-panel">
-                <div style="margin-bottom: 0.9rem; font-weight: 800; font-size: 1.05rem; color: var(--text-dark); display: flex; justify-content: space-between; align-items: center;">
-                    <span><i class="fa-solid fa-table-list" style="color: var(--primary);"></i> Inserimento Rapido</span>
-                    <button type="button" class="btn-secondary" onclick="clearEntryDraft()" style="padding: 0.3rem 0.6rem; font-size: 0.75rem;">
-                        <i class="fa-solid fa-eraser"></i> Svuota Bozza
-                    </button>
+            <!-- RESTYLE BINDEX (2026-10-01, tavole "Inserimento"): righe compatte
+                 (telefono: schede che si aprono; PC: tabella), Collezione/Wishlist
+                 e Carte/Sealed, "Location per tutte", "Ultimo invio". La
+                 struttura delle righe (10 celle) è quella di sempre: salvataggio
+                 e bozza in ui/entry.ui.js leggono le celle per posizione. -->
+            <div class="card-panel ins-pagina">
+                <div class="ins-testa">
+                    <span class="page-title">Inserimento</span>
+                    <button type="button" class="ins-svuota" onclick="clearEntryDraft()" title="Svuota la bozza"><i class="fa-solid fa-eraser"></i><span class="ins-solo-pc"> Svuota bozza</span></button>
+                </div>
+                <div class="ins-avviso" id="insAvvisoCorrezioni" style="display:none;" onclick="document.getElementById('pannelloCarteProblemi').scrollIntoView({ behavior: 'smooth' })">
+                    <i class="fa-solid fa-triangle-exclamation"></i><span id="insAvvisoTesto"></span><u>Apri</u>
                 </div>
 
-                <div style="margin-bottom: 0.4rem; font-size: 0.72rem; font-weight: 700; color: var(--text-muted);">DESTINAZIONE</div>
-                <div style="display:flex; flex-wrap:wrap; gap:0.5rem; margin-bottom: 0.8rem;">
-                    <button type="button" class="theme-btn active" id="btnDestCollezione" onclick="impostaDestinazioneInserimento('collezione')" style="flex:1; flex-direction:row; gap:0.5rem; min-width:110px;">
-                        <i class="fa-solid fa-box"></i> Colleziona <span class="testo-esteso">(con Location)</span>
-                    </button>
-                    <button type="button" class="theme-btn" id="btnDestWishlist" onclick="impostaDestinazioneInserimento('wishlist')" style="flex:1; flex-direction:row; gap:0.5rem; min-width:110px;">
-                        <i class="fa-solid fa-bookmark"></i> Wishlist <span class="testo-esteso">(voglio comprarla)</span>
-                    </button>
-                </div>
-
-                <div style="margin-bottom: 0.4rem; font-size: 0.72rem; font-weight: 700; color: var(--text-muted);">TIPO PRODOTTO</div>
-                <div style="display:flex; flex-wrap:wrap; gap:0.5rem; margin-bottom: 1rem;">
-                    <button type="button" class="theme-btn active" id="btnTipoCarta" onclick="impostaTipoInserimento('carta')" style="flex:1; flex-direction:row; gap:0.5rem; min-width:110px;">
-                        <i class="fa-solid fa-clone"></i> Carta singola
-                    </button>
-                    <button type="button" class="theme-btn" id="btnTipoSealed" onclick="impostaTipoInserimento('sealed')" style="flex:1; flex-direction:row; gap:0.5rem; min-width:110px;">
-                        <i class="fa-solid fa-box-archive"></i> Sealed <span class="testo-esteso">(ETB, box, UPC...)</span>
-                    </button>
-                </div>
-
-                <div id="pannelloLocationComune" style="display:flex; flex-wrap:wrap; gap:0.6rem; align-items:flex-end; margin-bottom: 1rem; padding: 0.8rem; background: var(--bg-color); border: 1px solid var(--border-color); border-radius: 10px;">
-                    <div style="flex: 1; min-width: 180px;">
-                        <label style="display:block; font-size: 0.72rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.3rem;">LOCATION COMUNE (sovrascrive quelle delle righe)</label>
-                        <select id="selectLocationComune" class="filter-select" style="width: 100%;">
-                            <option value="">— nessuna, usa quella di ogni riga —</option>
+                <div class="ins-comandi">
+                    <div class="ins-seg">
+                        <button type="button" class="ins-segbtn active" id="btnDestCollezione" onclick="impostaDestinazioneInserimento('collezione')"><i class="fa-solid fa-box ins-solo-pc"></i> Collezione</button>
+                        <button type="button" class="ins-segbtn" id="btnDestWishlist" onclick="impostaDestinazioneInserimento('wishlist')"><i class="fa-solid fa-bookmark ins-solo-pc"></i> Wishlist</button>
+                    </div>
+                    <div class="ins-seg">
+                        <button type="button" class="ins-segbtn active" id="btnTipoCarta" onclick="impostaTipoInserimento('carta')"><i class="fa-solid fa-clone ins-solo-pc"></i> Carte</button>
+                        <button type="button" class="ins-segbtn" id="btnTipoSealed" onclick="impostaTipoInserimento('sealed')"><i class="fa-solid fa-box-archive ins-solo-pc"></i> Sealed</button>
+                    </div>
+                    <div id="pannelloLocationComune" class="ins-location">
+                        <i class="fa-solid fa-location-dot"></i>
+                        <label for="selectLocationComune">Location per tutte</label>
+                        <select id="selectLocationComune" onchange="insLocationComuneCambiata()">
+                            <option value="">per riga</option>
                         </select>
+                        <button type="button" class="ins-nuova-loc" onclick="insMostraNuovaLocation()" title="Nuova location"><i class="fa-solid fa-plus"></i></button>
+                        <div class="ins-nuova-box" id="insNuovaLocationBox" style="display:none;">
+                            <input type="text" id="inputNuovaLocationComune" placeholder="Nuova location, es. SCATOLA 4" onkeydown="if(event.key==='Enter'){event.preventDefault(); aggiungiNuovaLocationComune();}">
+                            <button type="button" onclick="aggiungiNuovaLocationComune()">Aggiungi</button>
+                        </div>
                     </div>
-                    <div style="min-width: 160px;">
-                        <label style="display:block; font-size: 0.72rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.3rem;">NUOVA LOCATION</label>
-                        <input type="text" id="inputNuovaLocationComune" placeholder="es. SCATOLA 4" onkeydown="if(event.key==='Enter'){event.preventDefault(); aggiungiNuovaLocationComune();}">
-                    </div>
-                    <button type="button" class="btn-secondary" onclick="aggiungiNuovaLocationComune()" style="padding: 0.6rem 0.9rem;">
-                        <i class="fa-solid fa-plus"></i> Aggiungi
-                    </button>
                 </div>
 
-                <table id="tabellaInserimento">
-                    <thead>
-                        <tr>
-                            <th style="width: 22%;">NOME / CODICE</th>
-                            <th style="width: 10%;">LINGUA</th>
-                            <th style="width: 10%;">COND.</th>
-                            <th style="width: 6%; text-align: center;">REV</th>
-                            <th style="width: 6%; text-align: center;">1st</th>
-                            <th style="width: 6%; text-align: center;" title="Ancora sigillata nella bustina originale">SIG</th>
-                            <th style="width: 15%; text-align: center;">Q.TÀ</th>
-                            <th style="width: 13%;" class="colonna-location">LOCATION</th>
-                            <th style="width: 8%;">NOTE</th>
-                            <th style="width: 4%;"></th>
-                        </tr>
-                    </thead>
-                    <tbody id="entryTableBody"></tbody>
-                </table>
+                <div class="ins-layout">
+                    <div class="ins-sx">
+                        <div class="ins-ultimo ins-solo-tel" id="insUltimoTel"></div>
+                        <div class="ins-tabella-box">
+                            <table id="tabellaInserimento">
+                                <thead>
+                                    <tr>
+                                        <th>Nome / codice</th>
+                                        <th>Lingua</th>
+                                        <th>Cond.</th>
+                                        <th colspan="3">Varianti</th>
+                                        <th class="ins-th-centro">Q.tà</th>
+                                        <th class="colonna-location">Location</th>
+                                        <th>Note</th>
+                                        <th></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="entryTableBody"></tbody>
+                            </table>
 
-                <!-- FASE 1 (2026-09-12): tabella dedicata ai prodotti sealed
-                     (Booster Box, ETB, UPC...) — campi diversi dalle carte,
-                     niente REV/1st/CONDIZIONE (non si applicano a un
-                     prodotto sigillato), niente ricerca automatica su
-                     Cardmarket: inserimento diretto in prodotti_sealed,
-                     prezzo facoltativo/manuale. Nascosta di default,
-                     mostrata da impostaTipoInserimento('sealed'). -->
-                <table id="tabellaInserimentoSealed" style="display:none;">
-                    <thead>
-                        <tr>
-                            <th style="width: 26%;">NOME</th>
-                            <th style="width: 14%;">LINGUA</th>
-                            <th style="width: 18%;">INTEGRITÀ</th>
-                            <th style="width: 12%; text-align: center;">Q.TÀ</th>
-                            <th style="width: 14%;">PREZZO (facolt.)</th>
-                            <th style="width: 12%;">NOTE</th>
-                            <th style="width: 4%;"></th>
-                        </tr>
-                    </thead>
-                    <tbody id="entryTableBodySealed"></tbody>
-                </table>
+                            <!-- FASE 1 (2026-09-12): prodotti sealed, inserimento diretto
+                                 in prodotti_sealed (o wishlist_sealed). -->
+                            <table id="tabellaInserimentoSealed" style="display:none;">
+                                <thead>
+                                    <tr>
+                                        <th>Nome</th>
+                                        <th>Lingua</th>
+                                        <th>Integrità</th>
+                                        <th class="ins-th-centro">Q.tà</th>
+                                        <th>Prezzo (facolt.)</th>
+                                        <th>Note</th>
+                                        <th></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="entryTableBodySealed"></tbody>
+                            </table>
 
-                <div style="margin-top: 1.2rem; display: flex; justify-content: space-between; align-items: center;">
-                    <span class="autosave-status" id="autosaveLabel">
-                        <i class="fa-solid fa-floppy-disk"></i> Salva automatico attivo
-                    </span>
-                    <button class="btn-main" id="btnSalvaCarte" onclick="salvaCarteReali()"><i class="fa-solid fa-paper-plane"></i> Salva Carte</button>
+                            <div class="ins-piede">
+                                <span class="autosave-status" id="autosaveLabel"><i class="fa-solid fa-floppy-disk"></i> Bozza salvata automaticamente<span class="ins-solo-pc"> · Invio = riga sotto</span></span>
+                                <button class="btn-main" id="btnSalvaCarte" onclick="salvaCarteReali()"><i class="fa-solid fa-paper-plane"></i> Salva</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="ins-dx ins-solo-pc-blocco">
+                        <div class="ins-ultimo" id="insUltimoPc"></div>
+                    </div>
                 </div>
             </div>
 

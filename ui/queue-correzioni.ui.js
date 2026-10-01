@@ -28,6 +28,7 @@
 
             const conteggio = (data || []).length;
             _aggiornaPallinoMenu('inserimento', conteggio);
+            if (typeof insAggiornaPagina === 'function') insAggiornaPagina(); // RESTYLE: avviso e "Ultimo invio" in Inserimento
             pannello.style.display = conteggio > 0 ? 'block' : 'none';
             if (conteggio === 0) return;
 

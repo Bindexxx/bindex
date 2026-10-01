@@ -26,6 +26,17 @@ async function codaCarteUltimeRighe(userId, quante = 50) {
         .limit(quante);
 }
 
+// RESTYLE (Inserimento, "Ultimo invio"): le ultime righe inviate con nome,
+// location, destinazione e stato. Solo lettura, propria coda.
+async function codaCarteUltimoInvio(userId, quante = 60) {
+    return supabaseClient
+        .from('coda_carte')
+        .select('nome, location, destinazione, stato, creato_il, completato_il')
+        .eq('owner_id', userId)
+        .order('creato_il', { ascending: false })
+        .limit(quante);
+}
+
 async function correzioniManualiConta(userId) {
     return supabaseClient
         .from('correzioni_manuali_carte')

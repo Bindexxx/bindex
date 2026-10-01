@@ -2825,60 +2825,7 @@
             td:first-child, td:last-child { padding-left: 0; }
             td:first-child::before, td:last-child::before { content: none; }
 
-            /* INSERIMENTO — versione compatta con griglia vera (non flex con
-               percentuali manuali + posizionamento assoluto: si è rivelato
-               fragile, causava sovrapposizioni). Prima di tutto, NEUTRALIZZA
-               esplicitamente le regole generiche pensate per la tabella
-               Visualizzazione (td:first-child/td:last-child con
-               position:absolute, pensate per la casella di selezione) — si
-               applicavano per errore ANCHE al campo Nome/Codice di questa
-               tabella (è "il primo td" anche lui), staccandolo dal flusso
-               normale e sovrapponendolo ad altri campi. Una regola con ID
-               ha priorità più alta e vince sempre su quella generica.
-            */
-            #tabellaInserimento td:first-child, #tabellaInserimento td:last-child {
-                position: static; padding-left: 0; width: auto; justify-content: normal;
-                gap: 0; padding-top: 0; margin-top: 0; border-top: none;
-            }
-            #tabellaInserimento td:first-child::before { content: attr(data-label); }
-
-            #tabellaInserimento tr {
-                display: grid;
-                grid-template-columns: repeat(10, 1fr);
-                gap: 0.5rem 0.5rem;
-                padding: 0.7rem 0.6rem;
-                align-items: end;
-            }
-            #tabellaInserimento td {
-                display: block;
-                padding: 0;
-                min-height: 0;
-            }
-            #tabellaInserimento td::before {
-                content: attr(data-label);
-                position: static;
-                display: block;
-                width: auto;
-                font-weight: 800;
-                font-size: 0.62rem;
-                text-transform: uppercase;
-                letter-spacing: 0.3px;
-                color: var(--text-muted);
-                margin-bottom: 0.15rem;
-            }
-            /* Riga 1: Nome/Codice + cestino accanto (non più in fondo alla card).
-               Riga 2: Lingua, Cond., Rev, 1st, Q.tà tutti insieme (5 campi,
-               2 colonne di griglia ciascuno = 10 in totale, entrano esatti).
-               Riga 3: Location e Note. */
-            #tabellaInserimento td:nth-child(1) { grid-column: 1 / 9; grid-row: 1; } /* Nome/Codice */
-            #tabellaInserimento td:last-child { grid-column: 9 / 11; grid-row: 1; text-align: right; padding-bottom: 0.4rem; } /* Cestino, esplicitamente sulla stessa riga del nome */
-            #tabellaInserimento td:nth-child(2) { grid-column: 1 / 3; grid-row: 2; } /* Lingua */
-            #tabellaInserimento td:nth-child(3) { grid-column: 3 / 5; grid-row: 2; } /* Cond. */
-            #tabellaInserimento td:nth-child(4) { grid-column: 5 / 7; grid-row: 2; text-align: center; } /* Rev */
-            #tabellaInserimento td:nth-child(5) { grid-column: 7 / 9; grid-row: 2; text-align: center; } /* 1st */
-            #tabellaInserimento td:nth-child(6) { grid-column: 9 / 11; grid-row: 2; } /* Q.tà */
-            #tabellaInserimento td:nth-child(7) { grid-column: 1 / 6; grid-row: 3; } /* Location */
-            #tabellaInserimento td:nth-child(8) { grid-column: 6 / 11; grid-row: 3; } /* Note */
+            /* (Inserimento: regole proprie in fondo al file, RESTYLE 2026-10-01) */
         }
 
         tbody tr.interactive-row {
@@ -7616,3 +7563,145 @@
             #wishlist .wl-azione.piena { background: var(--primary); border-color: var(--primary); color: #fff; }
         }
         body.dark-mode #wishlist .wl-gruppo, body.dark-mode #wishlist .wl-det-gruppo { background: rgba(129,199,132,.15); color: #81c784; }
+
+        /* ── Inserimento (RESTYLE, tavole "Inserimento") ──────────────────────
+           Telefono: ogni riga è una scheda compatta che si apre (classe
+           .aperta); l'ultima riga vuota è "+ Scrivi nome o codice...".
+           PC: tabella, con "Ultimo invio" a destra. */
+        #inserimento { container-type: inline-size; }
+        #inserimento .ins-pagina { background: none; border: 0; box-shadow: none; padding: 0 0 4.5rem; max-width: 1240px; overflow: visible; }
+        #inserimento .ins-solo-pc, #inserimento .ins-solo-pc-blocco { display: none !important; }
+        #inserimento .ins-testa { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+        #inserimento .ins-testa .page-title { font-size: 1.5rem; font-weight: 800; letter-spacing: -0.3px; color: var(--text-dark); }
+        #inserimento .ins-svuota { font: inherit; font-weight: 700; font-size: 0.88rem; min-width: 44px; height: 44px; padding: 0 12px; border-radius: 14px; border: 1px solid var(--border-color); background: var(--card-bg); color: var(--text-dark); cursor: pointer; }
+        #inserimento .ins-avviso { display: flex; align-items: center; gap: 12px; padding: 12px 16px; margin-bottom: 12px; border-radius: 14px; background: #fde7e7; border: 1px solid #f4b4b4; color: #c62828; font-weight: 700; cursor: pointer; }
+        #inserimento .ins-avviso span { flex: 1; }
+        body.dark-mode #inserimento .ins-avviso { background: rgba(239,154,154,.12); border-color: rgba(239,154,154,.3); color: #ef9a9a; }
+        #inserimento .ins-comandi { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 12px; }
+        #inserimento .ins-seg { flex: 1 1 140px; display: flex; gap: 4px; padding: 4px; border-radius: 14px; background: var(--primary-light); }
+        #inserimento .ins-segbtn { flex: 1; font: inherit; font-weight: 700; font-size: 0.88rem; padding: 9px 6px; border-radius: 11px; border: 0; background: transparent; color: var(--text-muted); cursor: pointer; white-space: nowrap; }
+        #inserimento .ins-segbtn.active { background: var(--card-bg); color: var(--text-dark); box-shadow: 0 1px 4px rgba(0,0,0,.1); }
+        #inserimento .ins-location { flex: 1 1 100%; position: relative; display: flex; align-items: center; gap: 10px; padding: 0 12px 0 16px; min-height: 48px; border-radius: 14px; border: 1px solid var(--border-color); background: var(--card-bg); flex-wrap: wrap; }
+        #inserimento .ins-location > i { color: var(--text-dark); }
+        #inserimento .ins-location label { color: var(--text-muted); white-space: nowrap; }
+        #inserimento .ins-location select { flex: 1; min-width: 0; border: 0; background: transparent; font: inherit; font-weight: 700; color: var(--text-dark); padding: 10px 0; outline: 0; }
+        #inserimento .ins-nuova-loc { width: 32px; height: 32px; border-radius: 10px; border: 1px solid var(--border-color); background: var(--card-bg); color: var(--primary); cursor: pointer; }
+        #inserimento .ins-nuova-box { flex: 1 1 100%; display: flex; gap: 8px; padding-bottom: 10px; }
+        #inserimento .ins-nuova-box input { flex: 1; min-width: 0; }
+        #inserimento .ins-nuova-box button { font: inherit; font-weight: 700; padding: 8px 14px; border-radius: 10px; border: 0; background: var(--primary); color: #fff; cursor: pointer; }
+        #inserimento .ins-layout, #inserimento .ins-sx { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+        #inserimento .ins-tabella-box { min-width: 0; }
+
+        /* Ultimo invio */
+        #inserimento .ins-ultimo:empty { display: none !important; }
+        #inserimento .ins-ultimo { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 18px; padding: 14px 16px; }
+        #inserimento .ins-ultimo-testa { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+        #inserimento .ins-ultimo-testa b { color: var(--text-dark); }
+        #inserimento .ins-ultimo-testa span { font-size: 0.82rem; color: var(--text-muted); }
+        #inserimento .ins-ultimo-pista { height: 7px; border-radius: 5px; background: var(--primary-light); margin: 10px 0 8px; overflow: hidden; }
+        #inserimento .ins-ultimo-pista div { height: 100%; background: var(--primary); border-radius: 5px; }
+        #inserimento .ins-ultimo-sotto { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 0.82rem; color: var(--text-muted); }
+        #inserimento .ins-ultimo-sotto button { font: inherit; font-weight: 700; border: 0; background: none; color: var(--primary); cursor: pointer; }
+        #inserimento .ins-ko { color: #d32f2f; }
+        #inserimento .ins-ultimo-lista { display: none; margin-top: 8px; }
+        #inserimento .ins-ultimo.aperto .ins-ultimo-lista { display: block; }
+        #inserimento .ins-ultimo-riga { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 9px 0; border-top: 1px solid var(--border-color); }
+        #inserimento .ins-ultimo-riga div { display: flex; flex-direction: column; min-width: 0; }
+        #inserimento .ins-ultimo-riga b { font-size: 0.88rem; color: var(--text-dark); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        #inserimento .ins-ultimo-riga span { font-size: 0.76rem; color: var(--text-muted); }
+        #inserimento .ins-pill { flex: 0 0 auto; font-size: 0.72rem; font-weight: 700; padding: 3px 9px; border-radius: 999px; }
+        #inserimento .ins-pill.ok { background: rgba(46,125,50,0.14); color: #2e7d32; }
+        #inserimento .ins-pill.att { background: var(--primary-light); color: var(--primary); }
+        #inserimento .ins-pill.ko { background: rgba(211,47,47,0.14); color: #d32f2f; }
+
+        /* Righe — telefono */
+        #inserimento table { min-width: 0; width: 100%; border-collapse: separate; border-spacing: 0; }
+        #inserimento thead { position: absolute; top: -9999px; left: -9999px; }
+        #inserimento table, #inserimento tbody { display: block; }
+        #inserimento tbody tr { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 10px; padding: 12px 14px; border: 1px solid var(--border-color); border-radius: 18px; background: var(--card-bg); }
+        #inserimento tbody td { display: block; width: auto; padding: 0; min-height: 0; border: 0; position: static; white-space: normal; }
+        #inserimento tbody td::before { content: none !important; }
+        #inserimento .ins-td-nome { flex: 1 1 calc(100% - 165px); min-width: 0; order: 1; }
+        #inserimento .ins-td-qty { order: 2; }
+        #inserimento .ins-td-sel { order: 3; }
+        #inserimento .ins-td-loc { flex: 1 1 auto; min-width: 45%; }
+        #inserimento .ins-td-loc select { width: 100%; }
+        #inserimento .ins-td-loc select { max-width: 100%; }
+        #inserimento .ins-td-chip { order: 4; }
+        #inserimento .ins-td-note { order: 5; }
+        #inserimento .ins-td-togli { order: 6; }
+        #inserimento .ins-td-nome input { width: 100%; border: 0; background: transparent; padding: 2px 0; font: 800 1.02rem 'Space Grotesk', sans-serif; color: var(--text-dark); outline: 0; box-shadow: none; }
+        #inserimento .ins-sommario { font-size: 0.82rem; color: var(--text-muted); }
+        #inserimento .ins-gia:empty { display: none; }
+        #inserimento .ins-gia { font-size: 0.82rem; font-weight: 700; color: #b07800; margin-top: 2px; }
+        #inserimento .ins-td-qty { display: flex !important; align-items: center; gap: 6px; }
+        #inserimento .qty-control { display: flex; align-items: center; border-radius: 12px; background: var(--primary-light); overflow: hidden; }
+        #inserimento .qty-btn { width: 32px; height: 36px; border: 0; background: transparent; color: var(--primary); font-weight: 800; font-size: 1rem; cursor: pointer; }
+        #inserimento .qty-input { width: 40px; height: 36px; border: 0; border-radius: 0; text-align: center; background: var(--card-bg); font-weight: 800; padding: 0; color: var(--text-dark); -moz-appearance: textfield; }
+        #inserimento .qty-input::-webkit-inner-spin-button { -webkit-appearance: none; }
+        #inserimento .ins-apri { width: 30px; height: 30px; border: 0; background: none; color: var(--text-muted); cursor: pointer; }
+        #inserimento tr.aperta .ins-apri i { transform: rotate(180deg); }
+        #inserimento .ins-td-sel select { font: inherit; font-weight: 700; font-size: 0.85rem; padding: 7px 10px; border-radius: 10px; border: 1px solid var(--border-color); background: var(--card-bg); color: var(--text-dark); }
+        #inserimento .ins-chip { display: inline-flex; align-items: center; font-size: 0.85rem; font-weight: 700; padding: 7px 14px; border-radius: 999px; border: 1px solid var(--border-color); color: var(--text-muted); cursor: pointer; background: var(--card-bg); white-space: nowrap; }
+        #inserimento .ins-chip input { display: none; }
+        #inserimento .ins-chip:has(input:checked) { background: var(--primary-light); border-color: var(--primary); color: var(--primary); }
+        #inserimento .ins-td-note { flex: 1 1 100%; }
+        #inserimento .ins-td-note input { width: 100%; border-radius: 12px; border: 0; background: var(--bg-color, var(--primary-light)); padding: 10px 12px; font: inherit; }
+        #inserimento .ins-td-togli { flex: 1 1 100%; text-align: right; }
+        #inserimento .ins-togli { font: inherit; font-weight: 700; border: 0; background: none; color: #d32f2f; cursor: pointer; }
+        /* chiusa: solo nome, sommario e quantità */
+        #inserimento tbody tr:not(.aperta) td:not(.ins-td-nome):not(.ins-td-qty) { display: none; }
+        #inserimento tbody tr.aperta .ins-sommario { display: none; }
+        /* riga vuota in fondo: "+ Scrivi nome o codice..." */
+        #inserimento tbody tr.ins-vuota { border-style: dashed; background: transparent; }
+        #inserimento tbody tr.ins-vuota td:not(.ins-td-nome) { display: none !important; }
+        #inserimento tbody tr.ins-vuota .ins-td-nome input { font-weight: 500; font-size: 0.95rem; }
+        #inserimento tbody tr.ins-vuota .ins-sommario { display: none; }
+        /* sealed: scheda semplice, sempre aperta */
+        #inserimento #entryTableBodySealed tr td { display: block !important; }
+        #inserimento #entryTableBodySealed td:first-child { flex: 1 1 100%; }
+        #inserimento #entryTableBodySealed td input:not(.qty-input), #inserimento #entryTableBodySealed td select { font: inherit; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--border-color); background: var(--card-bg); }
+        #inserimento #entryTableBodySealed td:first-child input { width: 100%; }
+        #inserimento .ins-piede { position: sticky; bottom: 0.5rem; z-index: 2; display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 10px 10px 10px 16px; border-radius: 18px; border: 1px solid var(--border-color); background: var(--card-bg); box-shadow: 0 6px 20px rgba(0,0,0,.08); }
+        #inserimento .ins-piede .autosave-status { font-size: 0.8rem; color: var(--text-muted); }
+        #inserimento .ins-piede .btn-main { margin: 0; white-space: nowrap; border-radius: 14px; }
+
+        @container (min-width: 780px) {
+            #inserimento .ins-solo-tel { display: none !important; }
+            #inserimento .ins-solo-pc { display: initial !important; }
+            #inserimento .ins-solo-pc-blocco { display: block !important; }
+            #inserimento .ins-comandi { flex-wrap: nowrap; align-items: center; }
+            #inserimento .ins-seg { flex: 0 0 auto; }
+            #inserimento .ins-segbtn { padding: 8px 16px; }
+            #inserimento .ins-location { flex: 0 1 380px; }
+            #inserimento .ins-nuova-box { position: absolute; top: 100%; left: 0; right: 0; z-index: 3; margin-top: 6px; padding: 10px; border-radius: 12px; background: var(--card-bg); border: 1px solid var(--border-color); box-shadow: 0 8px 20px rgba(0,0,0,.1); }
+            #inserimento .ins-layout { display: grid; grid-template-columns: minmax(0, 1fr) 260px; gap: 16px; align-items: start; }
+            #inserimento .ins-tabella-box { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 18px; overflow: hidden; }
+            #inserimento table { display: table; }
+            #inserimento thead { position: static; display: table-header-group; }
+            #inserimento tbody { display: table-row-group; }
+            #inserimento thead th { font-size: 0.68rem; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; color: var(--text-muted); padding: 12px 8px; border-bottom: 1px solid var(--border-color); text-align: left; background: none; }
+            #inserimento .ins-th-centro { text-align: center; }
+            #inserimento tbody tr, #inserimento tbody tr.ins-vuota, #inserimento tbody tr:not(.aperta) { display: table-row; border: 0; border-radius: 0; padding: 0; margin: 0; background: none; }
+            #inserimento tbody tr td, #inserimento tbody tr:not(.aperta) td:not(.ins-td-nome):not(.ins-td-qty), #inserimento tbody tr.ins-vuota td:not(.ins-td-nome) { display: table-cell !important; padding: 8px; border-bottom: 1px solid var(--border-color); vertical-align: middle; }
+            #inserimento .ins-td-nome input { font-size: 0.92rem; padding: 8px 10px; border-radius: 10px; background: var(--primary-light); }
+            #inserimento tbody tr.ins-vuota .ins-td-nome input { background: transparent; border: 1px dashed var(--border-color); }
+            #inserimento .ins-sommario, #inserimento .ins-apri { display: none !important; }
+            #inserimento .ins-gia { font-size: 0.74rem; }
+            #inserimento .ins-td-sel select { padding: 6px 4px; font-size: 0.8rem; min-width: 58px; }
+            #inserimento .ins-td-loc { min-width: 0; }
+            #inserimento .ins-td-loc select { min-width: 104px; width: auto; }
+            #inserimento tbody tr td { padding: 7px 5px !important; }
+            #inserimento .ins-chip { padding: 4px 9px; font-size: 0.74rem; }
+            #inserimento .ins-td-qty .qty-control { justify-content: center; }
+            #inserimento .qty-btn { width: 26px; height: 30px; }
+            #inserimento .qty-input { width: 32px; height: 30px; }
+            #inserimento .ins-td-note input { padding: 7px 10px; font-size: 0.8rem; width: 90px; }
+            #inserimento .ins-td-togli { text-align: center; }
+            #inserimento .ins-piede { position: static; border: 0; border-top: 1px solid var(--border-color); border-radius: 0; box-shadow: none; }
+            #inserimento #entryTableBodySealed tr td:first-child input { min-width: 220px; }
+            #inserimento .ins-td-nome input { min-width: 180px; }
+            #inserimento .ins-td-note input { width: 70px; }
+            #inserimento .ins-ultimo-lista { display: block; }
+            #inserimento .ins-ultimo-riga b { font-size: 0.82rem; }
+        }
