@@ -145,22 +145,32 @@ function _doppioniRaggruppaBox() {
 
 
 // ── PAGINA "DOPPIONI" ────────────────────────────────────────────────
+// RESTYLE BINDEX FASE 3g (2026-10-01, tavola "Doppioni"): riepilogo
+// "N carte doppie · M copie in più · valore extra", interruttore Carte/Box,
+// ricerca, ordini e una riga per gruppo ("×3 · 2 in più", valore e prezzo
+// cad.). Il tocco sulla riga apre il dettaglio ESISTENTE (carta a tutto
+// schermo + pannello per spostare le copie): la logica di spostamento/split
+// non è toccata.
 async function renderPaginaDoppioni() {
     const container = document.getElementById('doppioniContenuto');
     if (!container) return;
+
+    // I box servono già caricati per il raggruppamento (come la pagina Sealed).
+    try { await caricaProdottiSealedReali(); } catch (e) { console.error('[doppioni] box:', e); }
 
     _doppioniModalita = 'carte';
     _doppioniGruppiCarte = _doppioniRaggruppaCarte();
     _doppioniGruppiBox = _doppioniRaggruppaBox();
 
     container.innerHTML = `
-        <div class="page-header">
-            <span class="page-title">Doppioni</span>
-        </div>
-        <div class="pg-pagina">
-            <div class="pg-filtri" id="doppioniToggleModalita">
-                <span class="pg-filtro attivo" data-mod="carte" onclick="_doppioniCambiaModalita('carte')"><i class="fa-solid fa-id-card"></i> Carte</span>
-                <span class="pg-filtro" data-mod="box" onclick="_doppioniCambiaModalita('box')"><i class="fa-solid fa-box-archive"></i> Box</span>
+        <div class="dp-pagina">
+            <div class="page-header">
+                <span class="page-title">Doppioni</span>
+            </div>
+            <p class="pg-sotto" id="doppioniRiepilogo" style="margin:-6px 0 12px;"></p>
+            <div class="dp-seg" id="doppioniToggleModalita">
+                <span class="dp-seg-voce attivo" data-mod="carte" onclick="_doppioniCambiaModalita('carte')">Carte</span>
+                <span class="dp-seg-voce" data-mod="box" onclick="_doppioniCambiaModalita('box')">Box</span>
             </div>
             <div id="doppioniCorpo"></div>
         </div>
@@ -171,23 +181,25 @@ async function renderPaginaDoppioni() {
 function _doppioniCambiaModalita(modalita) {
     if (modalita !== 'carte' && modalita !== 'box') return;
     _doppioniModalita = modalita;
-    document.querySelectorAll('#doppioniToggleModalita .pg-filtro').forEach(el => {
+    document.querySelectorAll('#doppioniToggleModalita .dp-seg-voce').forEach(el => {
         el.classList.toggle('attivo', el.dataset.mod === modalita);
     });
     _doppioniRenderCorpo();
 }
 
-// Ricostruisce ricerca+filtri+griglia per la modalità attiva — stato
-// (ricerca/ordinamento) INDIPENDENTE tra Carte e Box, come richiesto.
+// Ricostruisce riepilogo+ricerca+filtri+elenco per la modalità attiva —
+// stato (ricerca/ordinamento) INDIPENDENTE tra Carte e Box, come richiesto.
 function _doppioniRenderCorpo() {
     const corpo = document.getElementById('doppioniCorpo');
     if (!corpo) return;
 
     const gruppi = _doppioniModalita === 'carte' ? _doppioniGruppiCarte : _doppioniGruppiBox;
     const ordinamento = _doppioniModalita === 'carte' ? _doppioniOrdinamentoCarte : _doppioniOrdinamentoBox;
+    const riep = document.getElementById('doppioniRiepilogo');
 
     if (gruppi.length === 0) {
-        corpo.innerHTML = `<p style="text-align:center; color:var(--text-muted); font-size:0.85rem; padding:2rem 0;">Nessun doppione tra i ${_doppioniModalita === 'carte' ? 'le carte' : 'i box'} al momento.</p>`;
+        if (riep) riep.textContent = '';
+        corpo.innerHTML = `<div class="stato-vuoto"><i class="fa-solid fa-clone"></i><br>Nessun doppione tra ${_doppioniModalita === 'carte' ? 'le carte' : 'i box'} al momento.</div>`;
         return;
     }
 
@@ -195,24 +207,18 @@ function _doppioniRenderCorpo() {
     const copieExtra = gruppi.reduce((t, g) => t + (g.qtyTotale - 1), 0);
     const valoreExtra = gruppi.reduce((t, g) => t + g.prezzoUnitario * (g.qtyTotale - 1), 0);
     const eur = (v) => formattaEuro(v); // formato unico "12.345,00 €" (decisione Claudio 2026-09-25)
+    const nome = _doppioniModalita === 'carte' ? (titoli === 1 ? 'carta doppia' : 'carte doppie') : (titoli === 1 ? 'box doppio' : 'box doppi');
+    if (riep) riep.innerHTML = `<b>${titoli} ${nome}</b> &middot; ${copieExtra} cop${copieExtra === 1 ? 'ia' : 'ie'} in più &middot; valore extra ${eur(valoreExtra)}`;
 
     corpo.innerHTML = `
-        <div class="pg-intro">
-            <div class="pg-grande">${titoli}</div>
-            <div class="pg-sotto">${copieExtra} copie extra · valore ${eur(valoreExtra)}</div>
+        <div class="dp-cerca"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="Cerca tra i doppioni…" oninput="_doppioniCercaInput(this.value)" value="${escapeHtml(_doppioniModalita === 'carte' ? _doppioniRicercaCarte : _doppioniRicercaBox)}"></div>
+        <div class="dp-chips" id="doppioniChips">
+            <span class="dp-chip ${ordinamento === 'quantita' ? 'attivo' : ''}" data-ord="quantita" onclick="_doppioniImpostaOrdinamento('quantita')">Quantità</span>
+            <span class="dp-chip ${ordinamento === 'valore' ? 'attivo' : ''}" data-ord="valore" onclick="_doppioniImpostaOrdinamento('valore')">Valore</span>
+            <span class="dp-chip ${ordinamento === 'alfabetico' ? 'attivo' : ''}" data-ord="alfabetico" onclick="_doppioniImpostaOrdinamento('alfabetico')">A → Z</span>
         </div>
-        <div class="pg-stat">
-            <div><b>${titoli}</b><span>Doppioni</span></div>
-            <div><b>${copieExtra}</b><span>Copie extra</span></div>
-            <div><b>${eur(valoreExtra)}</b><span>Valore extra</span></div>
-        </div>
-        <input type="text" class="pg-cerca" placeholder="Cerca tra i doppioni..." oninput="_doppioniCercaInput(this.value)" value="${escapeHtml(_doppioniModalita === 'carte' ? _doppioniRicercaCarte : _doppioniRicercaBox)}">
-        <div class="pg-filtri">
-            <span class="pg-filtro ${ordinamento === 'quantita' ? 'attivo' : ''}" data-ord="quantita" onclick="_doppioniImpostaOrdinamento('quantita')">Quantità</span>
-            <span class="pg-filtro ${ordinamento === 'valore' ? 'attivo' : ''}" data-ord="valore" onclick="_doppioniImpostaOrdinamento('valore')">Valore</span>
-            <span class="pg-filtro ${ordinamento === 'alfabetico' ? 'attivo' : ''}" data-ord="alfabetico" onclick="_doppioniImpostaOrdinamento('alfabetico')">Alfabetico</span>
-        </div>
-        <div class="doppioni-grid" id="doppioniGriglia"></div>
+        <p class="dp-suggerimento">Tocca una riga per vedere la ${_doppioniModalita === 'carte' ? 'carta a tutto schermo' : 'scheda'} e spostare le copie.</p>
+        <div id="doppioniGriglia"></div>
     `;
     _doppioniRenderGriglia();
 }
@@ -220,7 +226,7 @@ function _doppioniRenderCorpo() {
 function _doppioniImpostaOrdinamento(ordine) {
     if (_doppioniModalita === 'carte') _doppioniOrdinamentoCarte = ordine;
     else _doppioniOrdinamentoBox = ordine;
-    document.querySelectorAll('#doppioniCorpo > .pg-filtri .pg-filtro').forEach(el => {
+    document.querySelectorAll('#doppioniChips .dp-chip').forEach(el => {
         el.classList.toggle('attivo', el.dataset.ord === ordine);
     });
     _doppioniRenderGriglia();
@@ -232,12 +238,6 @@ function _doppioniCercaInput(valore) {
     _doppioniRenderGriglia();
 }
 
-// Tessera compatta: formula 58.2%/63:88 di .binders-contenitori-grid
-// (stessa dimensione delle carte nei Binder, come richiesto), classe
-// dedicata .doppioni-grid/.doppioni-tile (CSS in index.html) — non riusa
-// .binders-contenitori-grid direttamente, stesso principio già scelto per
-// Condividi/Achievement nella sessione precedente (non aggiungere un
-// terzo/quarto consumer a una classe condivisa, Regola d'Oro #1).
 function _doppioniRenderGriglia() {
     const griglia = document.getElementById('doppioniGriglia');
     if (!griglia) return;
@@ -252,29 +252,37 @@ function _doppioniRenderGriglia() {
     else gruppi.sort((a, b) => a.nome.localeCompare(b.nome));
 
     if (gruppi.length === 0) {
-        griglia.innerHTML = '<p style="text-align:center; color:var(--text-muted); font-size:0.82rem; padding:1.2rem 0; grid-column:1/-1;">Nessuna carta corrisponde alla ricerca.</p>';
+        griglia.innerHTML = '<p style="text-align:center; color:var(--text-muted); font-size:0.82rem; padding:1.2rem 0;">Nessun risultato per la ricerca.</p>';
         return;
     }
 
     const eur = (v) => formattaEuro(v); // formato unico "12.345,00 €" (decisione Claudio 2026-09-25)
 
     // L'indice è nell'array ORIGINALE (non filtrato/ordinato) della
-    // modalità attiva, non nella lista visualizzata qui — così il click
-    // resta valido anche se ricerca/ordinamento cambiano dopo l'apertura.
+    // modalità attiva: il tocco resta valido anche se ricerca/ordinamento
+    // cambiano dopo l'apertura.
     const arrayOriginale = _doppioniModalita === 'carte' ? _doppioniGruppiCarte : _doppioniGruppiBox;
 
     griglia.innerHTML = gruppi.map(g => {
         const indiceReale = arrayOriginale.indexOf(g);
-        const immagineSrc = g.immagine ? (_urlImmagineVisualizzabile(g.immagine, 200) || '') : '';
+        const immagineSrc = g.immagine ? (_urlImmagineVisualizzabile(g.immagine, 120) || '') : '';
         const fig = immagineSrc
-            ? `<img class="doppioni-cover" src="${immagineSrc}" alt="" onerror="this.style.display='none';">`
-            : '<div class="doppioni-cover doppioni-cover-vuota"><i class="fa-solid fa-image"></i></div>';
+            ? `<img src="${immagineSrc}" alt="" loading="lazy" onerror="this.remove();">`
+            : `<i class="fa-solid ${g.tipo === 'carte' ? 'fa-image' : 'fa-box'}"></i>`;
+        const prima = g.righe[0] || {};
+        const dettaglio = g.tipo === 'carte'
+            ? [prima.lang, prima.cond].filter(Boolean).join(' · ')
+            : [prima.codice, prima.lingua].filter(Boolean).join(' · ');
         return `
-            <div class="doppioni-tile" onclick="_doppioniApriDettaglio(${indiceReale})">
-                ${fig}
-                <div class="doppioni-moltiplicatore">×${g.qtyTotale}</div>
-                <div class="doppioni-nome">${escapeHtml(g.nome)}</div>
-                <div class="doppioni-valori"><span>${eur(g.prezzoUnitario)} cad.</span><b>${eur(g.valoreStack)}</b></div>
+            <div class="dp-riga" onclick="_doppioniApriDettaglio(${indiceReale})">
+                <div class="dp-fig dp-fig-${g.tipo}">${fig}</div>
+                <div class="dp-riga-testo">
+                    <b>${escapeHtml(g.nome)}</b>
+                    <span>${escapeHtml(dettaglio)}</span>
+                    <span class="dp-badge">×${g.qtyTotale} · ${g.qtyTotale - 1} in più</span>
+                </div>
+                <div class="dp-riga-destra"><b>${eur(g.valoreStack)}</b><span>${eur(g.prezzoUnitario)} cad.</span></div>
+                <i class="fa-solid fa-chevron-right dp-freccia"></i>
             </div>`;
     }).join('');
 }

@@ -72,15 +72,51 @@ CATALOGO_WIDGET.sealed = {
 };
 
 // ── PAGINA "SEALED" ──────────────────────────────────────────────────
+// RESTYLE BINDEX FASE 3g (2026-10-01, tavole "Sealed"): tre riquadri
+// (prodotti, valore, scaffali), ricerca, ordini, una riga per prodotto con
+// "codice · ×N · in Scambio" e lo scaffale dove sta; il tocco apre i
+// DETTAGLI (prima apriva direttamente la modifica). "Aggiungi" porta
+// all'Inserimento già sulla scheda Sealed.
 let _sealedProdottiComputati = [];
 let _sealedOrdinamento = 'valore';
 let _sealedRicercaTesto = '';
+let _sealedAssoc = [];        // scaffale_prodotti dell'utente
+let _sealedDettaglioId = null;
+
+// Scaffali e associazioni: stesse letture della pagina Scaffali, servono
+// per "dove si trova" e "in Scambio". Aggiorna anche le cache globali che
+// usa la finestra della quantità offerta (ui/scaffali.ui.js).
+async function _sealedCaricaContesto(userId) {
+    const [rs, ra] = await Promise.all([scaffaliList(userId), scaffaleProdottiTuttiUtente(userId)]);
+    if (rs.error) console.error('[sealed] scaffali:', rs.error.message);
+    if (ra.error) console.error('[sealed] associazioni:', ra.error.message);
+    _scaffaliElenco = rs.data || [];
+    _sealedAssoc = ra.data || [];
+    const scambio = _scaffaliElenco.find(x => x.tipo === 'scambio');
+    _scaffaleScambioId = scambio ? scambio.id : null;
+    _quantitaOfferteScambioSealed = {};
+    if (scambio) _sealedAssoc.filter(r => String(r.scaffale_id) === String(scambio.id))
+        .forEach(r => { _quantitaOfferteScambioSealed[String(r.prodotto_id)] = r.quantita_offerta; });
+    _prodottiSealedCache = prodottiSealedReali.map(p => ({ id: p.id, nome: p.name, codice: p.codice, qty: p.qty, prezzo: p.price, immagine: p.immagine }));
+}
+
+function _sealedScaffaliDi(prodottoId) {
+    return _sealedAssoc.filter(r => String(r.prodotto_id) === String(prodottoId))
+        .map(r => _scaffaliElenco.find(x => String(x.id) === String(r.scaffale_id))).filter(Boolean);
+}
 
 function _sealedCalcola() {
     const righe = prodottiSealedReali.map(p => {
         const qty = Number(p.qty) || 1;
         const prezzoUnitario = Number(p.price) || 0;
-        return { id: p.id, nome: p.name || '—', immagine: p.immagine || null, qty, prezzoUnitario, valoreTotale: prezzoUnitario * qty };
+        const scaffali = _sealedScaffaliDi(p.id);
+        const normali = scaffali.filter(x => x.tipo !== 'scambio');
+        return {
+            id: p.id, nome: p.name || '—', codice: p.codice || '', immagine: p.immagine || null, qty, prezzoUnitario,
+            valoreTotale: prezzoUnitario * qty,
+            inScambio: Number(_quantitaOfferteScambioSealed[String(p.id)]) || 0,
+            scaffale: normali.length ? normali.map(x => _scaNomeScaffale(x)).join(', ') : '',
+        };
     });
     _sealedProdottiComputati = righe;
     return {
@@ -89,58 +125,64 @@ function _sealedCalcola() {
     };
 }
 
+function _sealedApriInserimento() {
+    switchTab('inserimento', document.getElementById('mNav-inserimento'));
+    impostaTipoInserimento('sealed');
+}
+
 async function renderPaginaSealed() {
     const container = document.getElementById('sealedContenuto');
     if (!container) return;
+    _sealedDettaglioId = null;
 
     // Ricarica sempre all'apertura pagina — coerente col fatto che
     // l'inserimento (ui/entry.ui.js) scrive direttamente in prodotti_sealed
     // senza passare da caricaProdottiSealedReali() in automatico.
     await caricaProdottiSealedReali();
+    const userId = await authGetUserId();
+    if (userId) await _sealedCaricaContesto(userId);
 
     _sealedOrdinamento = 'valore';
     _sealedRicercaTesto = '';
     const { totale, valore } = _sealedCalcola();
     const eur = (v) => formattaEuro(v); // formato unico "12.345,00 €" (decisione Claudio 2026-09-25)
+    const testa = `
+        <div class="page-header sl-testa">
+            <span class="page-title">Sealed</span>
+            <button type="button" class="sl-btn sl-btn-pieno" onclick="_sealedApriInserimento()"><i class="fa-solid fa-plus"></i> Aggiungi</button>
+        </div>`;
 
     if (totale === 0) {
-        container.innerHTML = `
-            <div class="page-header">
-                <span class="page-title">Sealed</span>
-            </div>
-            <p style="text-align:center; color:var(--text-muted); font-size:0.85rem; padding:2rem 0;">Nessun prodotto sealed al momento.</p>
-        `;
+        container.innerHTML = `${testa}
+            <div class="stato-vuoto"><i class="fa-solid fa-box"></i><br>Nessun prodotto sealed al momento.</div>`;
         return;
     }
 
+    const nScaffali = new Set(_sealedAssoc.filter(r => { const x = _scaffaliElenco.find(y => String(y.id) === String(r.scaffale_id)); return x && x.tipo !== 'scambio'; }).map(r => r.scaffale_id)).size;
     container.innerHTML = `
-        <div class="page-header">
-            <span class="page-title">Sealed</span>
+        <div class="sl-pagina" id="sealedVistaElenco">
+            ${testa}
+            <div class="sl-stat">
+                <div><i class="fa-solid fa-box"></i><b>${totale}</b><span>prodott${totale === 1 ? 'o' : 'i'}</span></div>
+                <div><i class="fa-solid fa-coins"></i><b>${eur(valore)}</b><span>valore</span></div>
+                <div><i class="fa-solid fa-box-archive"></i><b>${nScaffali}</b><span>scaffal${nScaffali === 1 ? 'e' : 'i'}</span></div>
+            </div>
+            <div class="sl-cerca"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="Cerca tra i sealed…" oninput="_sealedCercaInput(this.value)"></div>
+            <div class="sl-chips">
+                <span class="sl-chip attivo" data-ord="valore" onclick="_sealedImpostaOrdinamento('valore')">Valore</span>
+                <span class="sl-chip" data-ord="quantita" onclick="_sealedImpostaOrdinamento('quantita')">Quantità</span>
+                <span class="sl-chip" data-ord="alfabetico" onclick="_sealedImpostaOrdinamento('alfabetico')">A → Z</span>
+            </div>
+            <div id="sealedElenco"></div>
         </div>
-        <div class="pg-pagina">
-            <div class="pg-intro">
-                <div class="pg-grande">${totale}</div>
-                <div class="pg-sotto">valore totale ${eur(valore)}</div>
-            </div>
-            <div class="pg-stat">
-                <div><b>${totale}</b><span>Prodotti</span></div>
-                <div><b>${eur(valore)}</b><span>Valore totale</span></div>
-            </div>
-            <input type="text" class="pg-cerca" placeholder="Cerca tra i prodotti sealed..." oninput="_sealedCercaInput(this.value)">
-            <div class="pg-filtri">
-                <span class="pg-filtro attivo" data-ord="valore" onclick="_sealedImpostaOrdinamento('valore')">Valore</span>
-                <span class="pg-filtro" data-ord="quantita" onclick="_sealedImpostaOrdinamento('quantita')">Quantità</span>
-                <span class="pg-filtro" data-ord="alfabetico" onclick="_sealedImpostaOrdinamento('alfabetico')">Alfabetico</span>
-            </div>
-            <div class="pg-elenco" id="sealedElenco"></div>
-        </div>
+        <div class="sl-pagina" id="sealedVistaDettaglio" style="display:none;"></div>
     `;
     _sealedRenderElenco();
 }
 
 function _sealedImpostaOrdinamento(ordine) {
     _sealedOrdinamento = ordine;
-    document.querySelectorAll('.pg-filtri .pg-filtro').forEach(el => {
+    document.querySelectorAll('#sealed .sl-chip').forEach(el => {
         el.classList.toggle('attivo', el.dataset.ord === ordine);
     });
     _sealedRenderElenco();
@@ -149,6 +191,11 @@ function _sealedImpostaOrdinamento(ordine) {
 function _sealedCercaInput(valore) {
     _sealedRicercaTesto = (valore || '').toLowerCase();
     _sealedRenderElenco();
+}
+
+function _sealedFigHtml(immagine, grande) {
+    const src = immagine ? (_urlImmagineVisualizzabile(immagine, grande ? 320 : 120) || '') : '';
+    return `<div class="sl-fig${grande ? ' sl-fig-grande' : ''}">${src ? `<img src="${src}" alt="" onerror="this.remove();">` : '<i class="fa-solid fa-box"></i>'}</div>`;
 }
 
 function _sealedRenderElenco() {
@@ -170,17 +217,142 @@ function _sealedRenderElenco() {
     }
 
     elenco.innerHTML = righe.map(r => {
-        const immagineSrc = r.immagine ? (_urlImmagineVisualizzabile(r.immagine, 96) || '') : '';
-        const fig = immagineSrc
-            ? `<img class="pg-fig" src="${immagineSrc}" alt="" onerror="this.style.display='none';">`
-            : '<div class="pg-fig"></div>';
+        const sotto = [r.codice || null, `×${r.qty}`, r.inScambio > 0 ? 'in Scambio' : null].filter(Boolean).join(' · ');
         return `
-            <div class="pg-riga" data-tocca onclick="apriModificaSealed('${r.id}');">
-                ${fig}
-                <div class="pg-testo"><b>${escapeHtml(r.nome)}</b><span>×${r.qty} · ${eur(r.prezzoUnitario)} cad.</span></div>
-                <div class="pg-destra"><b>${eur(r.valoreTotale)}</b>totale</div>
+            <div class="sl-riga" onclick="_sealedApriDettaglio('${escapeJsAttr(String(r.id))}')">
+                ${_sealedFigHtml(r.immagine)}
+                <div class="sl-riga-testo"><b>${escapeHtml(r.nome)}</b><span>${escapeHtml(sotto)}</span></div>
+                <div class="sl-riga-destra"><b>${eur(r.valoreTotale)}</b><span>${r.scaffale ? escapeHtml(r.scaffale) : 'nessuno scaffale'}</span></div>
+                <i class="fa-solid fa-chevron-right sl-freccia"></i>
             </div>`;
     }).join('');
+}
+
+// ── Dettagli del prodotto ────────────────────────────────────────────
+function _sealedDataLunga(iso) {
+    if (!iso) return null;
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return null;
+    return d.toLocaleDateString('it-IT', { day: 'numeric', month: 'short', year: 'numeric' }).replace(/\./g, '');
+}
+
+function _sealedApriDettaglio(id) {
+    const p = prodottiSealedReali.find(x => String(x.id) === String(id));
+    if (!p) return;
+    _sealedDettaglioId = id;
+    const el = document.getElementById('sealedVistaElenco');
+    const det = document.getElementById('sealedVistaDettaglio');
+    if (!el || !det) return;
+    el.style.display = 'none';
+    det.style.display = '';
+    _sealedRenderDettaglio();
+    const scroller = document.getElementById('sealed');
+    if (scroller) scroller.scrollTop = 0;
+}
+
+function _sealedChiudiDettaglio() {
+    _sealedDettaglioId = null;
+    const el = document.getElementById('sealedVistaElenco');
+    const det = document.getElementById('sealedVistaDettaglio');
+    if (det) det.style.display = 'none';
+    if (el) el.style.display = '';
+}
+
+function _sealedRenderDettaglio() {
+    const det = document.getElementById('sealedVistaDettaglio');
+    const p = prodottiSealedReali.find(x => String(x.id) === String(_sealedDettaglioId));
+    if (!det || !p) return;
+    const eur = (v) => formattaEuro(v);
+    const qty = Number(p.qty) || 1;
+    const integrita = { sigillato_integro: 'Sigillato integro', sigillato: 'Sigillato', aperto: 'Aperto' }[p.integrita] || String(p.integrita || '').replace(/_/g, ' ');
+    const lingue = { IT: 'Italiano', EN: 'Inglese', JP: 'Giapponese', DE: 'Tedesco', FR: 'Francese', ES: 'Spagnolo' };
+    const sopra = [p.setEspansione || p.codice, lingue[p.lingua] || p.lingua, integrita].filter(Boolean).join(' · ');
+
+    // Guadagno sull'acquisto: SOLO se c'è il prezzo d'acquisto.
+    let guadagno = '';
+    if (p.prezzoAcquisto != null && p.prezzoAcquisto > 0 && p.price) {
+        const diff = (p.price - p.prezzoAcquisto) * qty;
+        const perc = Math.round(((p.price - p.prezzoAcquisto) / p.prezzoAcquisto) * 100);
+        const su = diff >= 0;
+        guadagno = `<div class="sl-guadagno ${su ? 'su' : 'giu'}">${su ? '+' : '−'}${eur(Math.abs(diff))} sull’acquisto (${su ? '+' : '−'}${Math.abs(perc)}%)</div>`;
+    }
+    const origine = p.prezzoCardmarket != null && Number(p.prezzoCardmarket) === Number(p.price)
+        ? 'calcolato su Cardmarket' : 'prezzo impostato da te';
+
+    const righeInfo = [
+        ['Cardmarket', p.prezzoCardmarket != null ? eur(p.prezzoCardmarket) : null],
+        ['Acquisto', p.prezzoAcquisto != null ? eur(p.prezzoAcquisto) : null],
+        ['Acquisito il', _sealedDataLunga(p.dataAcquisizione)],
+        ['Quantità', qty > 1 ? `×${qty} (totale ${eur((p.price || 0) * qty)})` : null],
+        ['Note', p.note ? escapeHtml(p.note) : null],
+    ].filter(r => r[1]).map(r => `<div class="sl-info-riga"><span>${r[0]}</span><b>${r[1]}</b></div>`).join('');
+
+    const scaffali = _sealedScaffaliDi(p.id);
+    const normali = scaffali.filter(x => x.tipo !== 'scambio');
+    const offerte = Number(_quantitaOfferteScambioSealed[String(p.id)]) || 0;
+    const dove = normali.map(x => `
+        <div class="sl-dove" onclick="_sealedVaiAScaffale('${escapeJsAttr(String(x.id))}')">
+            <div class="sl-dove-icona"><i class="fa-solid ${x.tipo === 'vetrina' ? 'fa-star' : 'fa-box-archive'}"></i></div>
+            <b>${escapeHtml(_scaNomeScaffale(x))}</b>
+        </div>`).join('') + `
+        <div class="sl-dove">
+            <div class="sl-dove-icona"><i class="fa-solid fa-right-left"></i></div>
+            <b>Scambio</b><span>${offerte > 0 ? `${offerte} offert${offerte === 1 ? 'o' : 'i'}` : 'non offerto'}</span>
+        </div>`;
+
+    det.innerHTML = `
+        <div class="page-header sl-testa">
+            <button type="button" class="sl-indietro" onclick="_sealedChiudiDettaglio()" aria-label="Torna ai sealed"><i class="fa-solid fa-chevron-left"></i></button>
+            <span class="page-title" style="flex:1; min-width:0; font-size:1.2rem;">${escapeHtml(p.name || '—')}</span>
+        </div>
+        <div class="sl-det-testa">
+            ${_sealedFigHtml(p.immagine, true)}
+            <div class="sl-det-prezzi">
+                <div class="sl-det-sopra">${escapeHtml(sopra)}</div>
+                <div class="sl-det-prezzo">${eur(p.price || 0)}</div>
+                ${guadagno}
+                <div class="sl-det-origine">${origine}</div>
+            </div>
+        </div>
+        <div class="sl-info">${righeInfo}</div>
+        <div class="sl-sezione">Dove si trova</div>
+        ${dove}
+        <div class="sl-azioni">
+            <button type="button" class="sl-btn sl-btn-pieno" onclick="apriModificaSealed('${escapeJsAttr(String(p.id))}')"><i class="fa-solid fa-pen"></i> Modifica</button>
+            <button type="button" class="sl-btn" onclick="_sealedOffriInScambio()"><i class="fa-solid fa-right-left"></i> ${offerte > 0 ? 'In Scambio: ' + offerte : 'Offri in Scambio'}</button>
+        </div>`;
+}
+
+// "Offri in Scambio": stessa finestra della quantità usata dagli Scaffali.
+// Se lo scaffale Scambio non esiste ancora lo crea (scaffaleScambioGarantisci).
+async function _sealedOffriInScambio() {
+    if (!_sealedDettaglioId) return;
+    if (!_scaffaleScambioId) {
+        const userId = await authGetUserId();
+        const { data, error } = await scaffaleScambioGarantisci(userId);
+        if (error || !data) { alert('Errore: impossibile preparare lo Scambio.'); return; }
+        _scaffaleScambioId = data.id;
+    }
+    apriModaleQuantitaScambioSealed(_sealedDettaglioId);
+}
+
+function _sealedVaiAScaffale(scaffaleId) {
+    apriDettaglioWidget('scaffali', null);
+    setTimeout(() => { if (typeof apriScaffaleDettaglio === 'function') apriScaffaleDettaglio(scaffaleId); }, 600);
+}
+
+// Dopo una modifica (scheda sealed o quantità offerta): ricalcola e, se il
+// dettaglio è aperto, lo ridisegna.
+async function _sealedRinfrescaDopoModifica() {
+    if (!document.getElementById('sealedVistaElenco')) { if (document.getElementById('sealedContenuto')) renderPaginaSealed(); return; }
+    const aperto = _sealedDettaglioId;
+    await caricaProdottiSealedReali();
+    const userId = await authGetUserId();
+    if (userId) await _sealedCaricaContesto(userId);
+    _sealedCalcola();
+    _sealedRenderElenco();
+    if (aperto && prodottiSealedReali.some(x => String(x.id) === String(aperto))) _sealedRenderDettaglio();
+    else if (aperto) _sealedChiudiDettaglio();
 }
 
 
@@ -313,8 +485,7 @@ async function salvaModificaSealed() {
     })();
 
     chiudiModificaSealed();
-    await caricaProdottiSealedReali();
-    if (typeof renderPaginaSealed === 'function') renderPaginaSealed();
+    await _sealedRinfrescaDopoModifica();
 }
 
 
@@ -350,6 +521,5 @@ async function eliminaSealed(id) {
             if (errMov) console.error('Log movimenti (eliminazione sealed):', errMov.message);
         })();
     }
-    await caricaProdottiSealedReali();
-    if (typeof renderPaginaSealed === 'function') renderPaginaSealed();
+    await _sealedRinfrescaDopoModifica();
 }

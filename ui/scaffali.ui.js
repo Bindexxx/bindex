@@ -606,6 +606,8 @@ async function _applicaQuantitaScambioSealed(prodottoId, quantita) {
     }
 
     _aggiornaBottoneScambioSealed(prodottoId);
+    // RESTYLE FASE 3g: se i dettagli Sealed sono aperti, si ridisegnano.
+    if (typeof _sealedDettaglioId !== 'undefined' && _sealedDettaglioId && typeof _sealedRinfrescaDopoModifica === 'function') _sealedRinfrescaDopoModifica();
 
     // Se lo Scaffale Scambio è aperto proprio ora, la cache locale
     // (_scaffaleAttivoProdottiIds) è disallineata — stesso motivo di
