@@ -3418,6 +3418,34 @@
             min-height: 0;
             margin-top: 0;
         }
+        /* RESTYLE BINDEX FASE 3j (2026-10-01): proporzioni 5:7 della carta.
+           Misurato nel simulatore: su telefono #flipCardInner veniva
+           stirato in altezza (364x818 invece di 5:7) perché la scena è
+           flex e l'altezza si allungava ignorando aspect-ratio — il retro
+           (sleeve/carta_retro.png) risultava ingrandito e tagliato. Qui la
+           scena centra la carta e la larghezza deriva dall'altezza
+           disponibile. Su PC il riquadro con padding non era 5:7 (484x694):
+           larghezza ricalcolata in modo che sia la CARTA, non il riquadro
+           col padding, a stare a 5:7. Regole solo di dimensione: nessun
+           cambio a JS, flip, chiusura o sleeve. */
+        #immagineModalContent.modal-content-flip-fullscreen #flipCardScene {
+            align-items: center;
+            justify-content: center;
+        }
+        @media (max-width: 699px) {
+            #immagineModalContent.modal-content-flip-fullscreen .flip-card-inner {
+                flex: 0 0 auto;
+                height: auto;
+                aspect-ratio: 5 / 7;
+                width: min(100%, calc((100dvh - 1.5rem) * 5 / 7));
+            }
+        }
+        @media (min-width: 700px) {
+            #immagineModalContent.modal-content-flip-fullscreen {
+                aspect-ratio: auto;
+                width: calc((min(92vh, 92dvh) - 2.5rem) * 5 / 7 + 2.5rem);
+            }
+        }
         /* FASE 2 (backcarte) — EDITOR RETRO CARTA PERSONALIZZATO ───────────
            Portato da modalita-crea-la-tua-sleeve.html (pacchetto backcarte),
            namespace "cardback-" per non toccare nessuna classe esistente.
