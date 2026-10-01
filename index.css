@@ -7111,6 +7111,7 @@
         /* In griglia su PC si ordina dalla barra (non c'è la tabella). */
         @container pagina (min-width: 780px) {
             body.coll-griglia-attiva .coll-ordina-pc { display: inline-flex !important; }
+        }
         /* ── RESTYLE BINDEX FASE 9: Polvere = Shop (ui/shop.ui.js) ───────── */
         #shopContenuto { padding-bottom: 2rem; }
         .sh-in-arrivo { margin: 0 0 0.8rem; }
