@@ -274,7 +274,7 @@
                     const nomeAttr = escapeJsAttr(m.mio_nome || '');
                     const personaAttr = escapeJsAttr((m.altro_nickname || '').trim() || 'qualcuno del gruppo');
                     bottone = `<button class="btn-secondary" style="padding:0.35rem 0.7rem; font-size:0.78rem; white-space:nowrap;"
-                        onclick="apriRichiediMatch('${m.altro_owner_id}', '${oggettoId}', '${tipoRichiesta}', '${nomeAttr}', '${personaAttr}')">
+                        onclick="apriRichiediMatch('${m.altro_owner_id}', '${oggettoId}', '${tipoRichiesta}', '${nomeAttr}', '${personaAttr}', ${Number(m.altro_prezzo) || 0})">
                         <i class="fa-solid fa-paper-plane"></i> Richiedi</button>`;
                 }
 
@@ -321,6 +321,17 @@
         // _matchRichiediSelezionate); al termine chiama
         // _matchRichiestaInviata() lì per togliere le righe dalla selezione.
         let _matchRichiestaPendente = null; // { ownerId, nomeAltro, voci:[{chiave,tipo,oggettoId,nome,code,img,prezzo,qty}] }
+
+        // Ponte per il pannello Match delle schede Scambio/Wishlist (caricaMatch,
+        // sopra): la FASE 3b (PR #6) aveva tolto apriRichiediMatch ma il bottone
+        // "Richiedi" di quel pannello la chiama ancora → ReferenceError.
+        // Stessa firma di prima, apre il modale nuovo con UNA voce.
+        function apriRichiediMatch(ownerId, oggettoId, tipo, nomeOggetto, nomeAltro, prezzo) {
+            apriRichiediMatchMulti(ownerId, nomeAltro, [{
+                chiave: `pannello_${oggettoId}`, tipo, oggettoId,
+                nome: nomeOggetto || '', code: '', img: null, prezzo: Number(prezzo) || 0,
+            }]);
+        }
 
         function apriRichiediMatchMulti(ownerId, nomeAltro, voci) {
             if (!ownerId || !voci || !voci.length) return;
