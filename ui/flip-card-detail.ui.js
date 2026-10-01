@@ -151,6 +151,7 @@
             btnDoppione.onclick = (e) => { e.stopPropagation(); _mostraSceltaGestisciDoppione(card.id); };
 
             document.getElementById('immagineModal').style.display = 'flex';
+            _flipCardInCornice(); // RESTYLE: su telefono dentro lo schermo della cornice
 
             // Mostra prima il fronte, poi gira da sola dopo una breve pausa.
             if (_flipCardTimeout) clearTimeout(_flipCardTimeout);
@@ -246,4 +247,26 @@
             const indice = _carteBinderAttivoCache.findIndex(c => String(c.id) === String(cardId));
             _binderPagina = indice >= 0 ? Math.floor(indice / perPagina) : 0;
             renderBinderContenuto();
+        }
+
+        // RESTYLE BINDEX (2026-10-01, opzione 2 approvata): sul telefono la
+        // carta a tutto schermo resta DENTRO lo schermo della cornice, sotto
+        // la barra di stato (che resta visibile), invece di coprire tutto il
+        // browser. Solo posizione e misure del modale: flip, sleeve, chiusura
+        // e bottoni invariati. Su PC nessun cambio. Il reset sta in
+        // chiudiImmagineIngrandita() (ui/modals.ui.js).
+        function _flipCardInCornice() {
+            const modale = document.getElementById('immagineModal');
+            const contenuto = document.getElementById('immagineModalContent');
+            const schermo = document.getElementById('phoneScreen');
+            if (!modale || !contenuto || !schermo || window.innerWidth >= 700) return;
+            const r = schermo.getBoundingClientRect();
+            if (r.width < 200 || r.height < 300) return; // cornice non visibile: resta a tutto schermo
+            const barra = schermo.querySelector('.csb-bar');
+            const rb = barra ? barra.getBoundingClientRect() : null;
+            const alto = rb && rb.height ? Math.max(r.top, rb.bottom) : r.top;
+            const altezza = r.bottom - alto;
+            Object.assign(modale.style, { top: alto + 'px', left: r.left + 'px', width: r.width + 'px', height: altezza + 'px', right: 'auto', bottom: 'auto' });
+            modale.classList.add('flip-in-cornice');
+            contenuto.style.setProperty('--fc-altezza', altezza + 'px');
         }
