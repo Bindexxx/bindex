@@ -80,6 +80,7 @@ async function caricaCatalogo() {
     // è già dichiarata in ui/binder-flipbook.ui.js (assegnazione, non "let").
     const selezionabile = _binderPubblicoESelezionabile();
     _libroSelezionabile = selezionabile;
+    _libroPrezzoObiettivo = _binderInfo.tipo === 'wishlist';
     document.body.classList.toggle('binder-pubblico-selezionabile', selezionabile);
     const barraTotale = document.getElementById('barraTotale');
     if (barraTotale) barraTotale.style.display = selezionabile ? 'flex' : 'none';
@@ -323,7 +324,7 @@ function _flipCardAggiornaAggiungi() {
     btn.disabled = q >= card.qtyDisponibile;
     btn.innerHTML = q > 0
         ? `<i class="fa-solid fa-check"></i> Nella scelta (${q}) — aggiungi un'altra`
-        : `<i class="fa-solid fa-plus"></i> Aggiungi alla scelta`;
+        : `<i class="fa-solid fa-plus"></i> ${_binderInfo && _binderInfo.tipo === 'wishlist' ? "Ce l'ho" : 'Aggiungi alla scelta'}`;
 }
 function flipCardAggiungiAllaScelta() {
     if (_flipCardIdAperta == null) return;

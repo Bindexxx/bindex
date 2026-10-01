@@ -529,45 +529,6 @@
         }
 
 
-        /* ═══ RESTYLE BINDEX FASE 6 — binder pubblico ═══ */
-        .bx-slot-prezzo {
-            position: absolute; left: 4px; top: 4px; z-index: 3;
-            background: rgba(20,16,30,0.85); color: #fff; font-size: 0.6rem; font-weight: 800;
-            padding: 0.1rem 0.35rem; border-radius: 999px; font-family: 'JetBrains Mono', monospace;
-        }
-        .bx-slot-azione {
-            position: absolute; right: 4px; bottom: 4px; z-index: 4;
-            display: flex; align-items: center; gap: 2px;
-        }
-        .bx-slot-azione-attiva { background: var(--primary); border-radius: 999px; padding: 1px; color: #fff; }
-        .bx-slot-btn {
-            width: 22px; height: 22px; border-radius: 50%; border: none; cursor: pointer;
-            background: var(--primary); color: #fff; font-weight: 800; font-size: 0.9rem; line-height: 1;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.35); display: flex; align-items: center; justify-content: center;
-        }
-        .bx-slot-azione-attiva .bx-slot-btn { box-shadow: none; background: rgba(255,255,255,0.22); }
-        .bx-slot-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-        .bx-slot-n { min-width: 14px; text-align: center; font-size: 0.7rem; font-weight: 800; }
-        .bx-slot-lucchetto {
-            position: absolute; right: 4px; bottom: 4px; z-index: 4; width: 22px; height: 22px; border-radius: 50%;
-            background: #777; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 0.65rem;
-        }
-        .binder-slot-riservato { filter: grayscale(1); }
-        .binder-slot-selected { outline: 2px solid var(--primary); outline-offset: -2px; }
-
-        /* Carta a tutto schermo (tocco = flip), con "Aggiungi alla scelta" */
-        .bx-carta-schermo {
-            position: relative; width: min(92%, 420px); max-height: 96%;
-            display: flex; flex-direction: column; align-items: center; gap: 0.8rem;
-        }
-        .bx-carta-schermo #flipCardScene { width: min(100%, calc((100dvh - 190px) * 5 / 7)); }
-        .bx-carta-chiudi { position: absolute; top: -0.2rem; right: -0.2rem; color: #fff; background: rgba(0,0,0,0.5); width: 34px; height: 34px; border-radius: 50%; z-index: 30; }
-        .bx-carta-aggiungi { width: 100%; justify-content: center; padding: 0.85rem 1rem; font-size: 0.9rem; }
-        @media (max-width: 520px) {
-            .bx-testo-copia { display: none; }
-            .btn-copia { padding: 0.7rem 0.85rem; }
-        }
-
         /* AGGIORNATO (STEP 5 restyle "cornice Pokédex", 2026-09-17) —
            stesso trattamento di scaffali-pubblico.html, vedi commento lì. */
         .barra-totale, #immagineModal, #loginPubblicoModal { position: absolute !important; }

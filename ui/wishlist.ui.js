@@ -12,6 +12,7 @@
 // non ha selezione). Assegnazione, non "let": la variabile è già
 // dichiarata in ui/binder-flipbook.ui.js, caricato prima di questo file.
 _libroSelezionabile = true;
+_libroPrezzoObiettivo = true; // RESTYLE BINDEX FASE 6b: bollino "max X" sulle tasche
 
 // A16: flip-modal — mostra prima il fronte (immagine reale), poi gira da
 // sola dopo una breve pausa rivelando nome/codice/prezzo/obiettivo/note.
@@ -41,6 +42,8 @@ function apriFlipCard(id) {
     renderRetroCartaViewer(card);
 
     document.getElementById('immagineModal').style.display = 'flex';
+    _flipCardIdAperta = card.id;
+    _flipCardAggiornaAggiungi();
 
     if (_flipCardTimeout) clearTimeout(_flipCardTimeout);
     _flipCardTimeout = setTimeout(() => inner.classList.add('flipped'), 500);
@@ -53,7 +56,31 @@ function _cbdTestoVariazione(card) {
     return (card.prezzoObiettivo !== undefined && card.prezzoObiettivo !== null) ? ('Obiettivo: ' + formattaEuro(card.prezzoObiettivo)) : '';
 }
 
+// RESTYLE BINDEX FASE 6b: "N carte · N pz." e "Ce l'ho" sulla carta a schermo.
+function _testoConteggioSelezione(distinte, pezzi) {
+    return `${distinte} cart${distinte === 1 ? 'a' : 'e'} · ${pezzi} pz.`;
+}
+let _flipCardIdAperta = null;
+function _flipCardAggiornaAggiungi() {
+    const btn = document.getElementById('flipCardAggiungi');
+    if (!btn) return;
+    const card = carte.find(c => String(c.id) === String(_flipCardIdAperta));
+    if (!card) { btn.style.display = 'none'; return; }
+    const q = selezioni[card.id] || 0;
+    btn.style.display = '';
+    btn.disabled = q >= card.qtyDisponibile;
+    btn.innerHTML = q > 0
+        ? `<i class="fa-solid fa-check"></i> Nella scelta (${q}) — aggiungi un'altra`
+        : `<i class="fa-solid fa-plus"></i> Ce l'ho`;
+}
+function flipCardAggiungiAllaScelta() {
+    if (_flipCardIdAperta == null) return;
+    modificaQty(_flipCardIdAperta, 1);
+    _flipCardAggiornaAggiungi();
+}
+
 function chiudiImmagineIngrandita() {
+    _flipCardIdAperta = null;
     document.getElementById('immagineModal').style.display = 'none';
     document.getElementById('flipCardInner').classList.remove('flipped');
     if (_flipCardTimeout) { clearTimeout(_flipCardTimeout); _flipCardTimeout = null; }
@@ -144,7 +171,7 @@ async function caricaCatalogo() {
         `${carte.length} cart${carte.length === 1 ? 'a desiderata' : 'e desiderate'}`;
 
     renderLista();
-    impostaModalitaBinderPubblico('elenco');
+    impostaModalitaBinderPubblico('libro'); // RESTYLE BINDEX FASE 6b: si apre sul Libro
 }
 
 function renderLista() {

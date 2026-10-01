@@ -580,9 +580,9 @@
 
     <!-- MODALE IMMAGINE INGRANDITA / FLIP-CARD -->
     <div id="immagineModal" style="display:none; inset:0; background:rgba(0,0,0,0.7); z-index:200; align-items:center; justify-content:center;" onclick="chiudiImmagineIngrandita()">
-        <div style="max-width:320px; width:90%; background:var(--card-bg); border-radius:16px; padding:1rem; position:relative;" onclick="event.stopPropagation()">
-            <button class="close-modal-btn" onclick="chiudiImmagineIngrandita()"><i class="fa-solid fa-xmark"></i></button>
-            <div id="flipCardScene" style="margin-top:0.5rem;">
+        <div class="bx-carta-schermo" onclick="event.stopPropagation()">
+            <button class="close-modal-btn bx-carta-chiudi" onclick="chiudiImmagineIngrandita()" aria-label="Chiudi"><i class="fa-solid fa-xmark"></i></button>
+            <div id="flipCardScene">
                 <div class="flip-card-inner" id="flipCardInner" onclick="toggleFlipCard()">
                     <div class="flip-card-face flip-card-front">
                         <img id="flipCardFrontImg" src="" alt="">
@@ -639,6 +639,7 @@
                     </div>
                 </div>
             </div>
+            <button type="button" class="bx-carta-aggiungi" id="flipCardAggiungi" onclick="flipCardAggiungiAllaScelta()" style="display:none;"></button>
         </div>
     </div>
 
@@ -707,7 +708,7 @@
             <div class="barra-totale-value" id="totaleSelezionate">0,00 €</div>
         </div>
         <button class="btn-copia" id="btnCopiaRiepilogo" onclick="copiaRiepilogoAttivo()" disabled>
-            <i class="fa-solid fa-copy"></i> Copia riepilogo
+            <i class="fa-solid fa-copy"></i> <span class="bx-testo-copia">Copia riepilogo</span>
         </button>
     </div>
 
