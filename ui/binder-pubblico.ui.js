@@ -68,6 +68,9 @@ async function caricaCatalogo() {
     _binderInfo = { nome: nomeBinder, tipo: info[0].tipo, location_valore: info[0].location_valore, layout: info[0].layout, colore: info[0].colore || null };
     document.title = 'CardSync Pro — ' + nomeBinder;
     document.getElementById('titoloBinder').textContent = nomeBinder;
+    // RESTYLE BINDEX FASE 8: "di <nickname>" (mai l'email) — campo restituito da sql/82; assente prima dello SQL.
+    const elProprietario = document.getElementById('proprietarioBinder');
+    if (elProprietario && info[0].nickname) { elProprietario.textContent = 'di ' + info[0].nickname; elProprietario.style.display = ''; }
 
     // Missioni/Traguardi Fase 2 — fire-and-forget, non deve mai bloccare o
     // rallentare il caricamento della pagina per il visitatore. La RPC

@@ -99,6 +99,8 @@ async function caricaCatalogo() {
     const nomeScaffale = _scaffaleInfo.nome || (_scaffaleInfo.tipo === 'scambio' ? 'Scambio' : 'Scaffale');
     document.title = 'CardSync Pro — ' + nomeScaffale;
     document.getElementById('titoloScaffale').textContent = nomeScaffale;
+    const elProprietario = document.getElementById('proprietarioScaffale');
+    if (elProprietario && _scaffaleInfo.nickname) { elProprietario.textContent = 'di ' + _scaffaleInfo.nickname; elProprietario.style.display = ''; }
 
     // Fase 3, Step 4: barra totale/selezione SOLO per tipo='scambio' — le
     // altre viste (libero/vetrina) restano una vetrina di sola lettura,
