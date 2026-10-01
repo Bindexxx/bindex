@@ -306,6 +306,7 @@ async function apriBinderDettaglio(binderId) {
 
     await _caricaCarteBinderAttivo(binder);
     renderBinderContenuto();
+    _binderSincronizzaTesta();
     await caricaDesignBinderAttivo(); // copertina + sleeve del binder appena aperto
 }
 
@@ -504,14 +505,14 @@ async function _caricaCarteBinderAttivo(binder) {
     if (binder.tipo === 'location') {
         _carteBinderAttivoCache = carteReali
             .filter(c => c.tabella === 'carte' && c.stato === 'collezione' && c.location === binder.location_valore)
-            .map(c => ({ id: c.id, name: c.name || c.nome, immagine: c.immagine, qty: c.qty, createdAt: c.createdAt }));
+            .map(c => ({ id: c.id, name: c.name || c.nome, immagine: c.immagine, qty: c.qty, createdAt: c.createdAt, code: c.code, lang: c.lang, cond: c.cond, price: c.price }));
         return;
     }
 
     if (binder.tipo === 'wishlist') {
         const { data, error } = await wishlistQueryTutte(userId);
         if (error) { console.error('_caricaCarteBinderAttivo (wishlist):', error.message); _carteBinderAttivoCache = []; return; }
-        _carteBinderAttivoCache = (data || []).map(r => ({ id: r.id, name: r.nome, immagine: r.immagine, qty: r.qty, createdAt: r.created_at }));
+        _carteBinderAttivoCache = (data || []).map(r => ({ id: r.id, name: r.nome, immagine: r.immagine, qty: r.qty, createdAt: r.created_at, code: r.codice || '', lang: r.lingua || '', cond: r.condizione || '', price: r.prezzo != null ? Number(r.prezzo) : 0 }));
         return;
     }
 
@@ -529,7 +530,7 @@ async function _caricaCarteBinderAttivo(binder) {
     const idsNelBinder = new Set((righe || []).map(r => String(r.carta_id)));
     _carteBinderAttivoCache = carteReali
         .filter(c => c.tabella === 'carte' && c.stato === 'collezione' && idsNelBinder.has(String(c.id)))
-        .map(c => ({ id: c.id, name: c.name || c.nome, immagine: c.immagine, qty: c.qty, createdAt: c.createdAt, quantitaOfferta: usaQuantita ? mappaQuantita[String(c.id)] : undefined }));
+        .map(c => ({ id: c.id, name: c.name || c.nome, immagine: c.immagine, qty: c.qty, createdAt: c.createdAt, code: c.code, lang: c.lang, cond: c.cond, price: c.price, quantitaOfferta: usaQuantita ? mappaQuantita[String(c.id)] : undefined }));
 }
 
 function renderBinderContenuto() {
@@ -560,6 +561,23 @@ function renderBinderContenuto() {
     }
 }
 
+// RESTYLE BINDEX FASE 4b: sottotitolo "N carte · valore · globo", scheda
+// Libro|Elenco evidenziata e Condividi solo sui pubblici. Legge solo la
+// cache già caricata, nessuna query.
+function _binderSincronizzaTesta() {
+    const binder = _bindersElenco.find(b => String(b.id) === String(_binderAttivo));
+    const sotto = document.getElementById('binderDettaglioSotto');
+    if (sotto && binder) {
+        const n = _carteBinderAttivoCache.length;
+        const valore = _carteBinderAttivoCache.reduce((t, c) => t + (Number(c.price) || 0) * (Number(c.qty) || 1), 0);
+        sotto.innerHTML = `${n} cart${n === 1 ? 'a' : 'e'}${valore > 0 ? ' · ' + formattaEuro(valore) : ''}${binder.stato_pubblicazione === 'pubblico' ? ' · <i class="fa-solid fa-globe"></i>' : ''}`;
+    }
+    const cond = document.getElementById('binderCondividiBtn');
+    if (cond) cond.style.display = (binder && binder.stato_pubblicazione === 'pubblico') ? '' : 'none';
+    const effettiva = _carteBinderAttivoCache.length > SOGLIA_BINDER_SOLO_ELENCO ? 'elenco' : _binderModalita;
+    document.querySelectorAll('#binderSegm button').forEach(b => b.classList.toggle('active', b.dataset.m === effettiva));
+}
+
 async function impostaModalitaBinder(modalita) {
     if (modalita !== 'immagini' && modalita !== 'elenco') return;
     _binderModalita = modalita;
@@ -568,7 +586,7 @@ async function impostaModalitaBinder(modalita) {
         const { error } = await userSettingsUpsertBinderModalita(userId, modalita);
         if (error) console.error('impostaModalitaBinder:', error.message);
     }
-    if (_binderAttivo) renderBinderContenuto();
+    if (_binderAttivo) { renderBinderContenuto(); _binderSincronizzaTesta(); }
 }
 
 // Adattata dal vecchio renderBinder(): stessa paginazione/layout, ma legge
@@ -819,6 +837,14 @@ function _aggiornaBottoniScambioToggle(id) {
 // (#binderElencoBody) — stessi campi, stessa occhiata, DOM separato.
 // Se in futuro renderViewTable() viene generalizzata per accettare un
 // contenitore target, questa funzione può sparire in favore di quella.
+let _binderElencoFiltro = '';
+function _binderElencoImpostaFiltro(testo) {
+    _binderElencoFiltro = String(testo || '');
+    renderBinderElenco();
+    const inp = document.getElementById('binderElencoCerca');
+    if (inp) { inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length); }
+}
+
 function renderBinderElenco() {
     const contenitore = document.getElementById('binderElencoBody');
     const binderGridEl = document.getElementById('binderGrid');
@@ -836,32 +862,33 @@ function renderBinderElenco() {
         return;
     }
 
-    const carte = _carteBinderAttivoCache.slice().sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+    // RESTYLE BINDEX FASE 4b: ricerca + righe con miniatura (lente), nome,
+    // "codice · lingua · condizione · ×N" e prezzo. Tocco su riga o miniatura
+    // = carta a tutto schermo con flip (imperativo del restyle), sempre con
+    // la sleeve di QUESTO binder.
+    const testo = (_binderElencoFiltro || '').toLowerCase();
+    const carte = _carteBinderAttivoCache
+        .filter(c => !testo || String(c.name || '').toLowerCase().includes(testo) || String(c.code || '').toLowerCase().includes(testo))
+        .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
 
-    contenitore.innerHTML = carte.map(card => {
+    const righe = carte.map(card => {
         const idAttr = String(card.id).replace(/'/g, "\\'");
         const idBinderAttr = String(_binderAttivo).replace(/'/g, "\\'");
-        const nomeAttr = escapeHtml(card.name || '');
-        const immagineSrc = _urlImmagineVisualizzabile(card.immagine);
-        // Coerenza col libro (sessione Opus, 2026-08-25): passa direttamente
-        // a apriFlipCardHome con il binderId, non a apriImmagineIngrandita
-        // (che non accetta il parametro) — così anche in modalità elenco si
-        // vede la sleeve del binder corrente, non il retro di sistema.
-        const thumb = immagineSrc
-            ? `<img src="${immagineSrc}" alt="" class="riga-compatta-thumb" loading="lazy" onclick="apriFlipCardHome('${idAttr}', { binderId: '${idBinderAttr}' })" onerror="this.style.display='none';">`
-            : '';
+        const immagineSrc = _urlImmagineVisualizzabile(card.immagine, 120);
+        const meta = [card.code, card.lang, card.cond].filter(Boolean).map(escapeHtml).join(' · ') + (card.qty > 1 ? ` · ×${card.qty}` : '');
         return `
-            <div class="riga-compatta">
-                <div class="riga-compatta-top">
-                    ${thumb}
-                    <span class="riga-compatta-nome">
-                        <span class="riga-compatta-nome-testo">${nomeAttr}</span>
-                    </span>
-                    ${card.qty > 1 ? `<span class="riga-compatta-prezzo">×${card.qty}</span>` : ''}
-                    ${permettiRimozione ? `<button class="riga-compatta-menu-btn" onclick="rimuoviDalBinderExtra('${idAttr}')" title="Rimuovi dal Binder"><i class="fa-solid fa-xmark"></i></button>` : ''}
-                </div>
+            <div class="bn-riga" onclick="apriFlipCardHome('${idAttr}', { binderId: '${idBinderAttr}' })">
+                <span class="bn-thumb">${immagineSrc ? `<img src="${immagineSrc}" alt="" loading="lazy" onerror="this.style.display='none';">` : ''}<i class="fa-solid fa-magnifying-glass-plus bn-lente"></i></span>
+                <span class="bn-riga-testo"><b>${escapeHtml(card.name || '')}</b><small>${meta}</small></span>
+                <span class="bn-riga-prezzo">${card.price > 0 ? formattaEuro(card.price) : '—'}</span>
+                ${permettiRimozione ? `<button class="riga-compatta-menu-btn" onclick="event.stopPropagation(); rimuoviDalBinderExtra('${idAttr}')" title="Rimuovi dal Binder"><i class="fa-solid fa-xmark"></i></button>` : ''}
             </div>`;
     }).join('');
+
+    contenitore.innerHTML = `
+        <div class="bn-ricerca-el"><i class="fa-solid fa-magnifying-glass"></i><input type="text" id="binderElencoCerca" placeholder="Cerca nel binder" value="${escapeHtml(_binderElencoFiltro || '')}" oninput="_binderElencoImpostaFiltro(this.value)"></div>
+        <div class="bn-lista">${righe || '<p class="bn-vuoto-el">Nessuna carta con questo nome.</p>'}</div>
+        <p class="bn-hint-el">Tocca una carta per vederla a tutto schermo</p>`;
 
     document.getElementById('binderPagination').style.display = 'none';
     document.getElementById('binderEmptyMsg').style.display = 'none';

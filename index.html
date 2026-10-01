@@ -684,14 +684,22 @@
                          "ogni binder ha le sue impostazioni", niente più da
                          scrollare per arrivare al contenuto. Stessi id di prima,
                          solo spostati: nessuna funzione JS toccata. -->
-                    <div id="binderDettaglioHeader" style="display:flex; align-items:center; gap:0.6rem; margin-bottom:1rem;">
-                        <button type="button" class="btn-secondary" style="padding:0.5rem 0.8rem; font-size:0.8rem;" onclick="tornaAllaGrigliaBinders()" title="Torna a Binders" aria-label="Torna a Binders">
-                            <i class="fa-solid fa-arrow-left"></i> <span>Binders</span>
-                        </button>
-                        <h4 id="binderDettaglioTitolo" style="margin:0; font-size:1rem; font-weight:800; color:var(--text-dark);"></h4>
-                        <button type="button" class="btn-secondary" style="padding:0.5rem 0.7rem; margin-left:auto;" onclick="apriImpostazioniBinderAttivo()" title="Impostazioni binder" aria-label="Impostazioni binder">
-                            <i class="fa-solid fa-gear"></i>
-                        </button>
+                    <!-- RESTYLE BINDEX FASE 4b: indietro a icona, titolo con
+                         "N carte · valore · globo", condividi (solo se pubblico)
+                         e impostazioni; sotto la scheda Libro | Elenco.
+                         Stessi id di prima per titolo e impostazioni. -->
+                    <div id="binderDettaglioHeader" class="bn-det-testa">
+                        <button type="button" class="bn-icona-btn" onclick="tornaAllaGrigliaBinders()" title="Torna a Binders" aria-label="Torna a Binders"><i class="fa-solid fa-arrow-left"></i></button>
+                        <div class="bn-det-titoli">
+                            <h4 id="binderDettaglioTitolo"></h4>
+                            <p id="binderDettaglioSotto"></p>
+                        </div>
+                        <button type="button" class="bn-icona-btn" id="binderCondividiBtn" style="display:none;" onclick="apriImpostazioniBinderAttivo()" title="Condividi" aria-label="Condividi"><i class="fa-solid fa-share-nodes"></i></button>
+                        <button type="button" class="bn-icona-btn" onclick="apriImpostazioniBinderAttivo()" title="Impostazioni binder" aria-label="Impostazioni binder"><i class="fa-solid fa-gear"></i></button>
+                    </div>
+                    <div class="bn-segm" id="binderSegm">
+                        <button type="button" data-m="immagini" onclick="impostaModalitaBinder('immagini')"><i class="fa-solid fa-book-open"></i> Libro</button>
+                        <button type="button" data-m="elenco" onclick="impostaModalitaBinder('elenco')"><i class="fa-solid fa-list"></i> Elenco</button>
                     </div>
 
                     <p id="binderSoglioAvviso" style="display:none; font-size:0.75rem; color:var(--text-muted); background:var(--bg-color); border-radius:8px; padding:0.5rem 0.7rem; margin-bottom:0.8rem;"></p>
