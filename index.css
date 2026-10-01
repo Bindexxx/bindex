@@ -7768,3 +7768,83 @@
             #scaffali #scaffaleDettaglioWrap .sc-indietro { display: none; }
             #scaffali .sc-riga.sel { border-color: var(--primary); background: var(--primary-light); }
         }
+
+/* ── MISSIONI — tavole OK-missioni / PC-missioni (2026-10-01) ──────────
+   Telefono: testata con "Traguardi", anello + riepilogo, tab a pillola,
+   righe con avanzamento e premio a destra, card in fondo. PC (pagina
+   >= 780px): tre colonne Oggi/Settimana/Mese affiancate, card in fondo
+   affiancate, "Completate di recente". Tutto sotto #missioni. */
+#missioni { container-type: inline-size; }
+#missioni .page-header { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+#missioni .msn-btn-traguardi {
+    display: inline-flex; align-items: center; gap: 7px; flex: 0 0 auto;
+    background: var(--card-bg); color: var(--text-dark); border: 1px solid var(--border-color);
+    border-radius: 12px; padding: 8px 14px; font: inherit; font-size: 0.85rem; font-weight: 700; cursor: pointer;
+}
+#missioni .msn-btn-traguardi i { color: var(--text-dark); }
+#missioni .msn-solo-pc { display: none; }
+#missioni .msn-riepilogo { margin-bottom: 1rem; }
+#missioni .msn-riepilogo-sotto { font-size: 0.8rem; color: var(--text-muted); margin-top: 3px; }
+#missioni .msn-tabs {
+    display: flex; gap: 4px; padding: 4px; border-radius: 14px;
+    background: var(--primary-light); margin-bottom: 0.4rem;
+}
+#missioni .msn-tab {
+    flex: 1; position: relative; border: 0; background: transparent; cursor: pointer;
+    font: inherit; font-size: 0.85rem; font-weight: 600; color: var(--text-muted);
+    padding: 8px 6px; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+}
+#missioni .msn-tab.active { background: var(--card-bg); color: var(--text-dark); font-weight: 700; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+#missioni .msn-tab-pallino, #missioni .msn-pallino-in-riga {
+    position: static; display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--danger);
+}
+#missioni .msn-riga { cursor: pointer; padding: 12px 2px; gap: 12px; align-items: center; }
+#missioni .msn-riga-testo-riga2 { font-size: 0.74rem; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+#missioni .msn-check { width: 24px; height: 24px; }
+#missioni .msn-destra { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; flex: 0 0 auto; font-size: 0.74rem; color: var(--text-muted); font-variant-numeric: tabular-nums; text-align: right; max-width: 40%; }
+#missioni .msn-destra b { color: var(--text-dark); font-weight: 700; }
+#missioni .msn-premio-preso {
+    flex: 0 0 auto; display: inline-flex; align-items: center; gap: 5px; white-space: nowrap;
+    background: color-mix(in srgb, var(--success) 14%, transparent); color: var(--success);
+    border-radius: 999px; padding: 5px 10px; font-size: 0.74rem; font-weight: 700;
+}
+#missioni .msn-nuova { margin-left: 6px; font-size: 0.66rem; font-weight: 700; color: #fff; background: var(--success); border-radius: 999px; padding: 1px 7px; vertical-align: 2px; }
+#missioni .msn-riga-dettaglio { padding: 0 0.2rem 0.7rem 2.3rem; font-size: 0.76rem; color: var(--text-muted); line-height: 1.4; }
+#missioni .msn-vuoto { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 2rem 0.6rem; }
+#missioni .msn-vuoto i { font-size: 1.3rem; }
+#missioni .msn-vuoto b { color: var(--text-dark); font-size: 0.85rem; }
+#missioni .msn-vuoto span { font-size: 0.74rem; }
+#missioni .msn-card-titolo { justify-content: space-between; font-size: 0.72rem; }
+#missioni .msn-card-premio { text-transform: none; font-weight: 600; letter-spacing: 0; }
+#missioni .msn-card-nome { font-weight: 700; color: var(--text-dark); margin: 6px 0 9px; font-size: 0.95rem; }
+#missioni .msn-card-streak { display: flex; align-items: center; gap: 14px; }
+#missioni .msn-fuoco { font-size: 1.7rem; line-height: 1; }
+#missioni .msn-fuoco.spento { filter: grayscale(1); opacity: .5; }
+#missioni .msn-card-streak .msn-card-streak-numero { font-size: 1rem; margin: 0; }
+#missioni .msn-card-streak .msn-card-sotto { margin-top: 2px; }
+
+@container (min-width: 780px) {
+    #missioni .msn-solo-tel { display: none; }
+    #missioni .msn-solo-pc { display: block; }
+    #missioni .msn-colonne { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; align-items: stretch; }
+    #missioni .msn-colonna {
+        background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 16px;
+        padding: 0.9rem 1rem 0.4rem; display: flex; flex-direction: column; min-width: 0;
+    }
+    #missioni .msn-colonna .pg-elenco { flex: 1; display: flex; flex-direction: column; }
+    #missioni .msn-colonna .msn-vuoto { flex: 1; justify-content: center; }
+    #missioni .msn-colonna-testa { display: flex; align-items: center; gap: 7px; margin-bottom: 4px; font-size: 0.9rem; color: var(--text-dark); }
+    #missioni .msn-colonna-scade { margin-left: auto; font-size: 0.74rem; color: var(--text-muted); }
+    #missioni .msn-fondo { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; }
+    #missioni .msn-fondo > .msn-card { margin-top: 16px; }
+    #missioni .msn-fondo > .msn-card:only-child { grid-column: 1 / -1; }
+    #missioni .msn-recenti { margin-top: 16px; }
+    #missioni .msn-recenti-testa { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px; }
+    #missioni .msn-recenti-testa b { color: var(--text-dark); font-size: 0.9rem; }
+    #missioni .msn-recenti-testa span { font-size: 0.74rem; color: var(--text-muted); }
+    #missioni .msn-recenti-griglia { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+    #missioni .msn-recente { border: 1px solid var(--border-color); border-radius: 12px; padding: 10px 12px; display: flex; flex-direction: column; gap: 3px; }
+    #missioni .msn-recente span { font-size: 0.72rem; color: var(--text-muted); }
+    #missioni .msn-recente b { color: var(--text-dark); font-size: 0.9rem; }
+    #missioni .msn-recente em { font-style: normal; font-size: 0.74rem; font-weight: 700; color: var(--success); }
+}

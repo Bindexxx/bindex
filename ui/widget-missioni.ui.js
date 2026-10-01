@@ -206,19 +206,23 @@ async function renderPaginaMissioni() {
 // Ridisegna riepilogo + tab + elenco dalla cache già raccolta — nessuna
 // query. Chiamata sia dal primo render (sopra) sia da _missioniCambiaTab()
 // al cambio tab.
+//
+// RESTYLE TAVOLA (2026-10-01, tavole OK-missioni / PC-missioni): testata
+// con bottone "Traguardi", anello di oggi con riepilogo dei premi, righe
+// con avanzamento "1/3" e premio "+5 ✧"; su PC (pagina larga >= 780px,
+// container query su #missioni) le tre finestre stanno affiancate in tre
+// colonne invece che nei tab, e in fondo c'è "Completate di recente".
+// NESSUN bottone "Riscuoti": i premi si assegnano da soli (decisione di
+// Claudio) — una missione fatta mostra il premio già preso in verde.
 function _missioniRenderPagina() {
     const container = document.getElementById('missioniListaOggi');
     if (!container || !_missioniCache) return;
     const { dati, idNuove, gruppi } = _missioniCache;
 
-    // Il riepilogo (anello + testo + streak) si riferisce SEMPRE a "Oggi",
-    // indipendentemente dal tab selezionato sotto — coerente col mockup
-    // scelto (Variante C): i tab servono a sfogliare le finestre, il
-    // riepilogo in cima resta un ancoraggio fisso. Calcolato con
-    // MOTORE_MISSIONI.valuta() sullo stesso pool mostrato nelle righe
-    // (non da dati.missioni_completate_periodo, che riflette le righe già
-    // scritte su DB): stessa fonte di verità di ciò che l'utente vede
-    // spuntato, zero rischio di disallineamento fra numero e spunte.
+    // Il riepilogo si riferisce SEMPRE a "Oggi", indipendentemente dal tab
+    // selezionato sotto. Calcolato con MOTORE_MISSIONI.valuta() sullo
+    // stesso pool mostrato nelle righe: stessa fonte di verità di ciò che
+    // l'utente vede spuntato.
     const poolOggi = gruppi.oggi;
     const completateOggi = poolOggi.filter(m => MOTORE_MISSIONI.valuta(m, dati)).length;
     const totaleOggi = poolOggi.length;
@@ -229,69 +233,169 @@ function _missioniRenderPagina() {
     const offsetAnello = CIRCONFERENZA * (1 - percentOggi / 100);
 
     let titoloRiepilogo;
-    if (totaleOggi === 0) {
-        titoloRiepilogo = 'Nessuna missione oggi disponibile';
-    } else if (completateOggi >= totaleOggi) {
-        titoloRiepilogo = 'Tutte le missioni di oggi completate!';
-    } else {
-        const mancanti = totaleOggi - completateOggi;
-        titoloRiepilogo = mancanti === 1 ? 'Ancora 1 missione oggi' : `Ancora ${mancanti} missioni oggi`;
-    }
+    if (totaleOggi === 0) titoloRiepilogo = 'Nessuna missione oggi disponibile';
+    else if (completateOggi >= totaleOggi) titoloRiepilogo = 'Tutte le missioni di oggi completate!';
+    else if (completateOggi === 0) titoloRiepilogo = 'Si comincia!';
+    else titoloRiepilogo = completateOggi === 1 ? '1 missione fatta oggi' : `${completateOggi} missioni fatte oggi`;
+    const mancanti = totaleOggi - completateOggi;
+    const sottoRiepilogo = mancanti <= 0 ? 'torna domani per le nuove' : (mancanti === 1 ? 'ancora 1 missione oggi' : `ancora ${mancanti} missioni oggi`);
+
+    // Polvere già presa oggi (solo premi di tipo polvere: gli altri tipi
+    // non hanno un numero da sommare) — per la riga sotto il titolo su PC.
+    const tutte = [...gruppi.oggi, ...gruppi.settimana, ...gruppi.mese];
+    const polverePresa = tutte.filter(m => MOTORE_MISSIONI.valuta(m, dati))
+        .reduce((s, m) => s + (m.ricompensa && m.ricompensa.tipo === 'polvere' ? (m.ricompensa.quantita || 0) : 0), 0);
 
     // Streak = giorni consecutivi CON ACCESSO (vedi commento in testa al
-    // file) — dati.giorni_consecutivi è già calcolato da raccogliDati(),
-    // nessuna query qui. Mostrato SOLO nella card "Costanza" in fondo
-    // (_missioniStreakCardHtml sotto) — tolto da qui (2026-09-25, Claudio:
-    // "la serie è mostrata due volte, è ridondante") per non duplicarlo nel
-    // riepilogo in cima.
+    // file) — dati.giorni_consecutivi è già calcolato da raccogliDati().
     const streak = dati.giorni_consecutivi || 0;
 
+    const pcSotto = [sottoRiepilogo];
+    if (polverePresa > 0) pcSotto.push(`+${polverePresa} ✧ presi`);
+    if (streak > 1) pcSotto.push(`serie di ${streak} giorni 🔥`);
+
     const riepilogoHtml = `
-        <div class="msn-riepilogo" style="margin-bottom:1.1rem;">
-            <div class="msn-ring">
-                <svg width="62" height="62">
-                    <circle cx="31" cy="31" r="${RAGGIO_ANELLO}" stroke="var(--primary-light)" stroke-width="6" fill="none"></circle>
-                    <circle cx="31" cy="31" r="${RAGGIO_ANELLO}" stroke="var(--primary)" stroke-width="6" fill="none" stroke-linecap="round" stroke-dasharray="${CIRCONFERENZA.toFixed(1)}" stroke-dashoffset="${offsetAnello.toFixed(1)}"></circle>
-                </svg>
-                <div class="msn-ring-testo">${completateOggi}/${totaleOggi}</div>
-            </div>
-            <div>
-                <div class="msn-riepilogo-titolo">${escapeHtml(titoloRiepilogo)}</div>
+        <div class="msn-testa">
+            <div class="msn-riepilogo">
+                <div class="msn-ring">
+                    <svg width="62" height="62">
+                        <circle cx="31" cy="31" r="${RAGGIO_ANELLO}" stroke="var(--primary-light)" stroke-width="6" fill="none"></circle>
+                        <circle cx="31" cy="31" r="${RAGGIO_ANELLO}" stroke="var(--primary)" stroke-width="6" fill="none" stroke-linecap="round" stroke-dasharray="${CIRCONFERENZA.toFixed(1)}" stroke-dashoffset="${offsetAnello.toFixed(1)}"></circle>
+                    </svg>
+                    <div class="msn-ring-testo">${completateOggi}/${totaleOggi}</div>
+                </div>
+                <div style="min-width:0;">
+                    <div class="msn-riepilogo-titolo">${escapeHtml(titoloRiepilogo)}</div>
+                    <div class="msn-riepilogo-sotto msn-solo-tel">${escapeHtml(sottoRiepilogo)}</div>
+                    <div class="msn-riepilogo-sotto msn-solo-pc">${escapeHtml(pcSotto.join(' · '))}</div>
+                </div>
             </div>
         </div>`;
 
+    const scadenze = _missioniScadenze();
     const tabsDef = [
-        { chiave: 'oggi', pool: gruppi.oggi },
-        { chiave: 'settimana', pool: gruppi.settimana },
-        { chiave: 'mese', pool: gruppi.mese },
+        { chiave: 'oggi', pool: gruppi.oggi, scade: scadenze.oggi, vuoto: 'Nessuna missione di oggi' },
+        { chiave: 'settimana', pool: gruppi.settimana, scade: scadenze.settimana, vuoto: 'Nessuna missione della settimana' },
+        { chiave: 'mese', pool: gruppi.mese, scade: scadenze.mese, vuoto: 'Nessuna missione del mese' },
     ];
     const tabsHtml = tabsDef.map(t => {
         const daFare = t.pool.some(m => !MOTORE_MISSIONI.valuta(m, dati));
         const attiva = t.chiave === _missioniTabAttiva;
-        return `<button class="binder-modalita-btn${attiva ? ' active' : ''}" style="position:relative;" onclick="_missioniCambiaTab('${t.chiave}')">${_MISSIONI_TAB_LABEL[t.chiave]}${daFare ? '<span class="msn-tab-pallino"></span>' : ''}</button>`;
+        return `<button class="msn-tab${attiva ? ' active' : ''}" onclick="_missioniCambiaTab('${t.chiave}')">${_MISSIONI_TAB_LABEL[t.chiave]}${daFare ? '<span class="msn-tab-pallino"></span>' : ''}</button>`;
     }).join('');
 
-    const poolAttivo = (tabsDef.find(t => t.chiave === _missioniTabAttiva) || tabsDef[0]).pool;
-    const righeHtml = poolAttivo.length
-        ? poolAttivo.map(m => _righeMissioneHtml(m, dati, idNuove.has(m.id))).join('')
-        : `<div class="msn-vuoto">Nessuna missione in questa categoria al momento.</div>`;
+    const elencoHtml = (t) => t.pool.length
+        ? t.pool.map(m => _righeMissioneHtml(m, dati, idNuove.has(m.id))).join('')
+        : `<div class="msn-vuoto"><i class="fa-regular fa-calendar"></i><b>${escapeHtml(t.vuoto)}</b><span>Per ora non ce ne sono: appena arrivano le trovi qui</span></div>`;
 
-    // Due blocchi in fondo alla pagina (2026-09-25, richiesta esplicita di
-    // Claudio: "troppo spazio vuoto" sotto una lista corta) — riempiono lo
-    // spazio residuo di #phoneScreen (altezza fissa "a schermo", non si
-    // adatta al contenuto) con informazioni utili invece di aria vuota.
-    // Entrambi letti da 'dati', già raccolto da MOTORE_MISSIONI: zero query
-    // in più.
+    // Telefono: un solo elenco (tab attivo). PC: tre colonne, tutte visibili.
+    const tabAttivo = tabsDef.find(t => t.chiave === _missioniTabAttiva) || tabsDef[0];
+    const colonneHtml = tabsDef.map(t => {
+        const daFare = t.pool.some(m => !MOTORE_MISSIONI.valuta(m, dati));
+        return `
+        <div class="msn-colonna">
+            <div class="msn-colonna-testa"><b>${_MISSIONI_TAB_LABEL[t.chiave]}</b>${daFare ? '<span class="msn-pallino-in-riga"></span>' : ''}<span class="msn-colonna-scade">${escapeHtml(t.scade)}</span></div>
+            <div class="pg-elenco">${elencoHtml(t)}</div>
+        </div>`;
+    }).join('');
+
     const prossimoHtml = _missioniProssimoTraguardoHtml(dati);
     const streakCardHtml = _missioniStreakCardHtml(streak);
 
     container.innerHTML = `
         ${riepilogoHtml}
-        <div class="binder-modalita-toggle">${tabsHtml}</div>
-        <div class="pg-elenco">${righeHtml}</div>
-        ${prossimoHtml}
-        ${streakCardHtml}
+        <div class="msn-solo-tel">
+            <div class="msn-tabs">${tabsHtml}</div>
+            <div class="pg-elenco">${elencoHtml(tabAttivo)}</div>
+        </div>
+        <div class="msn-solo-pc msn-colonne">${colonneHtml}</div>
+        <div class="msn-fondo">
+            ${prossimoHtml}
+            ${streakCardHtml}
+        </div>
+        <div class="msn-solo-pc" id="msnRecenti">${_missioniCache.recentiHtml || ''}</div>
     `;
+    if (_missioniCache.recentiHtml === undefined) _missioniCaricaRecenti();
+}
+
+// Scritte di scadenza delle tre finestre ("scade tra 6 h", "scade
+// domenica", "ottobre"), calcolate dall'ora del dispositivo — stessi
+// confini di MOTORE_MISSIONI.periodoCorrente() (giorno locale, settimana
+// lunedì-domenica, mese di calendario).
+function _missioniScadenze() {
+    const ora = new Date();
+    const mezzanotte = new Date(ora.getFullYear(), ora.getMonth(), ora.getDate() + 1);
+    const ore = Math.max(0, Math.floor((mezzanotte - ora) / 3600000));
+    const oggi = ore >= 1 ? `scade tra ${ore} h` : 'scade tra poco';
+    const settimana = ora.getDay() === 0 ? 'scade stasera' : 'scade domenica';
+    const mese = ora.toLocaleDateString('it-IT', { month: 'long' });
+    return { oggi, settimana, mese };
+}
+
+// "Completate di recente" (solo PC, tavola PC-missioni): gli ultimi giorni
+// e la settimana scorsa, quante missioni del loro pool sono state fatte e
+// quanta polvere hanno dato. Una sola query (missioniCompletateIdPerPeriodi,
+// già usata dalla tessera Home) per tutti i periodi insieme; i pool dei
+// giorni passati sono ricalcolati con la stessa estrazione deterministica
+// del motore. Fatta DOPO il primo disegno, così la pagina non aspetta.
+async function _missioniCaricaRecenti() {
+    if (!_missioniCache) return;
+    const cache = _missioniCache;
+    cache.recentiHtml = '';
+    try {
+        const userId = await authGetUserId();
+        if (!userId) return;
+        const oggi = new Date();
+        const giorni = [];
+        for (let i = 1; i <= 6; i++) {
+            const d = new Date(oggi.getFullYear(), oggi.getMonth(), oggi.getDate() - i);
+            giorni.push({ data: d, periodo: MOTORE_MISSIONI.periodoCorrente('giornaliera', d).periodo });
+        }
+        const setPassata = new Date(oggi.getFullYear(), oggi.getMonth(), oggi.getDate() - 7);
+        const periodoSett = MOTORE_MISSIONI.periodoCorrente('settimanale', setPassata).periodo;
+        const { data, error } = await missioniCompletateIdPerPeriodi(userId, [...giorni.map(g => g.periodo), periodoSett]);
+        if (error) throw error;
+        const fattePer = {};
+        (data || []).forEach(r => { (fattePer[r.periodo] = fattePer[r.periodo] || new Set()).add(r.missione_id); });
+
+        const polvere = (pool, fatte) => pool.filter(m => fatte.has(m.id))
+            .reduce((s, m) => s + (m.ricompensa && m.ricompensa.tipo === 'polvere' ? (m.ricompensa.quantita || 0) : 0), 0);
+        const box = [];
+        giorni.forEach((g, i) => {
+            const fatte = fattePer[g.periodo];
+            if (!fatte) return;
+            const pool = MOTORE_MISSIONI.missioniDelGiorno(userId, g.periodo);
+            const n = pool.filter(m => fatte.has(m.id)).length;
+            if (!n) return;
+            const etichetta = i === 0 ? 'ieri' : g.data.toLocaleDateString('it-IT', { weekday: 'long' });
+            box.push({ etichetta, testo: `${n} su ${pool.length}`, polvere: polvere(pool, fatte) });
+        });
+        const fatteSett = fattePer[periodoSett];
+        if (fatteSett) {
+            const pool = MOTORE_MISSIONI.missioniDellaSettimana(userId, periodoSett);
+            const n = pool.filter(m => fatteSett.has(m.id)).length;
+            if (n) box.push({ etichetta: 'settimana scorsa', testo: `${n} su ${pool.length} settimanali`, polvere: polvere(pool, fatteSett) });
+        }
+        const recenti = box.slice(0, 4);
+        if (!recenti.length) return;
+        const totale = recenti.reduce((s, b) => s + b.polvere, 0);
+        cache.recentiHtml = `
+            <div class="msn-card msn-recenti">
+                <div class="msn-recenti-testa"><b>Completate di recente</b><span>ultimi 7 giorni${totale ? ` · +${totale} ✧` : ''}</span></div>
+                <div class="msn-recenti-griglia">${recenti.map(b => `
+                    <div class="msn-recente">
+                        <span>${escapeHtml(b.etichetta)}</span>
+                        <b>${escapeHtml(b.testo)}</b>
+                        ${b.polvere ? `<em>+${b.polvere} ✧</em>` : ''}
+                    </div>`).join('')}
+                </div>
+            </div>`;
+    } catch (e) {
+        console.error('[missioni] completate di recente:', e);
+    }
+    if (_missioniCache !== cache) return;
+    const el = document.getElementById('msnRecenti');
+    if (el) el.innerHTML = cache.recentiHtml;
 }
 
 // Card "Prossimo traguardo" (2026-09-25): il traguardo NON ancora sbloccato
@@ -313,6 +417,9 @@ function _missioniProssimoTraguardo(dati) {
         if (riscossi.has(t.id)) continue;
         const valoreAttuale = dati[t.metrica];
         if (valoreAttuale === undefined) continue;
+        // Già raggiunto ma non ancora in traguardi_riscossi: lo assegna il
+        // prossimo giro del motore — non è un "prossimo" traguardo.
+        if (valoreAttuale >= t.valore) continue;
         // Percentuale mostrata cappata al 99%: se un traguardo è già >=100%
         // ma non ancora risulta in traguardi_riscossi, è solo questione del
         // prossimo giro di MOTORE_MISSIONI.valutaEAssegna() (o del prossimo
@@ -330,37 +437,57 @@ function _missioniProssimoTraguardoHtml(dati) {
     if (!migliore) return ''; // tutti i traguardi a soglia numerica già sbloccati, o dato mancante — nessun blocco, nessun errore
     const { t, valoreAttuale, percent } = migliore;
     // Arrotondato SOLO per la visualizzazione (es. valore_collezione è una
-    // somma di prezzi, quasi mai un numero intero) — il calcolo di percent
-    // sopra usa già il valore reale non arrotondato.
+    // somma di prezzi, quasi mai un numero intero).
     const valoreVisualizzato = Math.round(valoreAttuale);
+    const avanzamento = t.metrica === 'valore_collezione'
+        ? `valore collezione ${valoreVisualizzato} € su ${t.valore} €`
+        : `${valoreVisualizzato} su ${t.valore}`;
+    const premio = _missioniPremioBreve(t.ricompensa);
     return `
-        <div class="msn-card msn-card-cliccabile" onclick="apriDettaglioWidget('achievement', event)">
-            <div class="msn-card-titolo"><i class="fa-solid fa-trophy" style="color:#f2c230;"></i> Prossimo traguardo</div>
-            <div style="font-weight:700; color:var(--text-dark); margin:5px 0 7px; font-size:0.9rem;">${escapeHtml(t.titolo)}</div>
+        <div class="msn-card msn-card-cliccabile" onclick="apriDettaglioWidget('achievement', event)" title="Tocca per vedere tutti i traguardi">
+            <div class="msn-card-titolo">Prossimo traguardo${premio ? `<span class="msn-card-premio">${escapeHtml(premio)}</span>` : ''}</div>
+            <div class="msn-card-nome">${escapeHtml(t.titolo)}</div>
             <div class="pg-barra-track" style="margin-bottom:5px;"><div class="pg-barra-fill" style="width:${percent}%;"></div></div>
-            <div class="msn-card-sotto">${valoreVisualizzato}/${t.valore} — tocca per vedere tutti i traguardi</div>
+            <div class="msn-card-sotto">${escapeHtml(avanzamento)}</div>
         </div>`;
 }
 
-// Card "Costanza" (2026-09-25): versione più grande/evidente dello stesso
-// streak già mostrato nel riepilogo in cima — richiesta esplicita di
-// Claudio per riempire lo spazio in fondo. Stesso dato (streak, calcolato
-// dal chiamante), nessuna query aggiuntiva qui.
+// Card "Costanza": stesso streak calcolato dal chiamante (giorni di fila
+// con accesso), nessuna query aggiuntiva qui.
 function _missioniStreakCardHtml(streak) {
     if (streak > 0) {
         const testo = streak === 1 ? '1 giorno di fila' : `${streak} giorni di fila`;
+        const prossimo = streak + 1;
+        const ordinali = ['', 'primo', 'secondo', 'terzo', 'quarto', 'quinto', 'sesto', 'settimo'];
+        const sotto = prossimo < ordinali.length ? `torna domani per il ${ordinali[prossimo]}` : 'torna domani per non perdere la serie';
         return `
-        <div class="msn-card">
-            <div class="msn-card-titolo"><i class="fa-solid fa-fire" style="color:#f5a524;"></i> Costanza</div>
-            <div class="msn-card-streak-numero">${testo}</div>
-            <div class="msn-card-sotto">Torna domani per non perdere la serie!</div>
+        <div class="msn-card msn-card-streak">
+            <span class="msn-fuoco">🔥</span>
+            <div><div class="msn-card-streak-numero">${testo}</div><div class="msn-card-sotto">${sotto}</div></div>
         </div>`;
     }
     return `
-        <div class="msn-card">
-            <div class="msn-card-titolo"><i class="fa-solid fa-fire" style="color:var(--text-muted);"></i> Costanza</div>
-            <div class="msn-card-sotto">Accedi ogni giorno per iniziare una nuova serie.</div>
+        <div class="msn-card msn-card-streak">
+            <span class="msn-fuoco spento">🔥</span>
+            <div><div class="msn-card-streak-numero">Nessuna serie</div><div class="msn-card-sotto">accedi ogni giorno per iniziarne una</div></div>
         </div>`;
+}
+
+// Premio in forma corta per la colonna destra delle righe ("+5 ✧"); per i
+// premi senza numero di polvere usa il testo breve già esistente.
+function _missioniPremioBreve(ricompensa) {
+    if (!ricompensa) return '';
+    if (ricompensa.tipo === 'polvere') return `+${ricompensa.quantita || 1} ✧`;
+    return _ricompensaTestoBreve(ricompensa);
+}
+
+// Avanzamento "1/3" di una missione a soglia numerica; null per le
+// missioni a scatto singolo (operatore '==') dove un conteggio non ha senso.
+function _missioniAvanzamento(m, dati) {
+    if (m.operatore !== '>=' || typeof m.valore !== 'number' || m.valore <= 1) return null;
+    const v = Number(dati[m.metrica]);
+    if (!isFinite(v)) return null;
+    return `${Math.min(Math.round(v), m.valore)}/${m.valore}`;
 }
 
 // Cambio tab (Oggi/Settimana/Mese) — usa la cache, nessuna
@@ -383,31 +510,38 @@ function _missioniCambiaTab(chiave) {
 // sottotitolo, non solo nel blocco espanso).
 function _righeMissioneHtml(m, dati, appenaCompletata) {
     const soddisfatta = MOTORE_MISSIONI.valuta(m, dati);
-    const badgeNuova = appenaCompletata ? `<span class="badge" style="background-color:var(--success); color:#fff;">Nuovo!</span>` : '';
+    const badgeNuova = appenaCompletata ? `<span class="msn-nuova">Nuovo!</span>` : '';
     const idBase = 'missioneDettaglio-' + m.id;
+    const avanzamento = soddisfatta ? null : _missioniAvanzamento(m, dati);
+    const premio = _missioniPremioBreve(m.ricompensa);
+    // Restyle tavola: descrizione sempre visibile sotto il titolo, a destra
+    // avanzamento + premio. Fatta → premio in pillola verde ("preso", si
+    // assegna da solo). Il tap apre comunque il dettaglio con la ricompensa
+    // completa (richiesta di Claudio 2026-08-31, invariata).
+    const destra = soddisfatta
+        ? `<span class="msn-premio-preso" title="Premio già assegnato"><i class="fa-solid fa-check"></i> ${escapeHtml(premio)}</span>`
+        : `<div class="msn-destra">${avanzamento ? `<span>${avanzamento}</span>` : ''}<b>${escapeHtml(premio)}</b></div>`;
     return `
-        <div>
-            <div class="pg-riga" style="cursor:pointer; padding:14px 6px; gap:13px;" onclick="_toggleDettaglioMissione('${m.id}')">
+        <div class="msn-riga-blocco">
+            <div class="pg-riga msn-riga" onclick="_toggleDettaglioMissione('${m.id}')">
                 <div class="msn-check${soddisfatta ? ' fatta' : ''}">${soddisfatta ? '<i class="fa-solid fa-check"></i>' : ''}</div>
                 <div style="flex:1; min-width:0;">
                     <div class="msn-riga-testo-riga1${soddisfatta ? ' fatta' : ''}">${escapeHtml(m.titolo)}${badgeNuova}</div>
-                    <div class="msn-riga-testo-riga2">${escapeHtml(_ricompensaTestoBreve(m.ricompensa))}</div>
+                    <div class="msn-riga-testo-riga2">${escapeHtml(m.descrizione || '')}</div>
                 </div>
-                <i class="fa-solid fa-chevron-down" id="${idBase}-chevron" style="font-size:0.7rem; color:var(--text-muted); transition:transform 0.2s; flex-shrink:0;"></i>
+                ${destra}
             </div>
-            <div id="${idBase}" style="display:none; padding:0 0.2rem 0.6rem 2.6rem; font-size:0.78rem; color:var(--text-muted); line-height:1.4;">
-                ${escapeHtml(m.descrizione || m.titolo)}
+            <div id="${idBase}" class="msn-riga-dettaglio" style="display:none;">
+                ${escapeHtml(_testoRicompensa(m.ricompensa))}
             </div>
         </div>`;
 }
 
 function _toggleDettaglioMissione(id) {
     const dettaglio = document.getElementById('missioneDettaglio-' + id);
-    const chevron = document.getElementById('missioneDettaglio-' + id + '-chevron');
     if (!dettaglio) return;
     const aperto = dettaglio.style.display !== 'none';
     dettaglio.style.display = aperto ? 'none' : 'block';
-    if (chevron) chevron.style.transform = aperto ? 'rotate(0deg)' : 'rotate(180deg)';
 }
 
 // Testo BREVE della ricompensa (senza prefisso "Ricompensa:"), usato come
