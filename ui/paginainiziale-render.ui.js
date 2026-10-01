@@ -98,8 +98,8 @@ async function renderWidgetHome() {
         const menuSpostaAperto = _menuSpostaWidgetApertoId === w.instanceId;
         const controlliEdit = _editModeWidget ? `
             <div class="widget-edit-controls" onclick="event.stopPropagation()">
-                <button type="button" onclick="_toggleMenuSpostaWidget('${w.instanceId}', event)" title="Sposta"><i class="fa-solid fa-ellipsis-vertical"></i></button>
                 <button type="button" onclick="_nascondiWidget('${w.instanceId}')" title="Rimuovi dalla home" class="widget-edit-remove"><i class="fa-solid fa-xmark"></i></button>
+                <button type="button" onclick="_toggleMenuSpostaWidget('${w.instanceId}', event)" title="Sposta"><i class="fa-solid fa-ellipsis-vertical"></i></button>
             </div>
             <div class="widget-menu-sposta${menuSpostaAperto ? ' aperto' : ''}" id="menuSposta_${w.instanceId}" onclick="event.stopPropagation()">
                 <button type="button" onclick="_spostaWidgetNellaPagina('${w.instanceId}', -1)"><i class="fa-solid fa-arrow-up"></i> Sposta su</button>
@@ -303,7 +303,11 @@ async function renderWidgetHome() {
     }));
 
     let tileAggiungi = '';
-    if (_editModeWidget && visibili.length < MAX_WIDGET_VISIBILI) {
+    // RESTYLE BINDEX (tavola "Modifica home"): niente tessera "Aggiungi"
+    // in mezzo ai widget — si aggiunge dalla barra in cima ("＋ Aggiungi
+    // widget"). Il codice resta, spento, per tornare indietro al volo.
+    const _TESSERA_AGGIUNGI = false;
+    if (_TESSERA_AGGIUNGI && _editModeWidget && visibili.length < MAX_WIDGET_VISIBILI) {
         tileAggiungi = `
             <div class="widget-tile widget-tile-aggiungi widget-col-3 widget-row-2 wf-piccolo" onclick="_apriPickerAggiungiWidget()">
                 <i class="fa-solid fa-plus widget-tile-icon"></i>
