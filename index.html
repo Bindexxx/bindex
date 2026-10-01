@@ -379,6 +379,53 @@
 
         <!-- SEZIONE TABELLA VISUALIZZAZIONE / SCAMBI / WISHLIST -->
         <div id="visualizzazione" class="view-section">
+
+            <!-- RESTYLE BINDEX (2026-10-01): testata della pagina Collezione,
+                 visibile SOLO nella tab Collezione (body.coll-attiva, vedi
+                 ui/collezione-vista.ui.js). I comandi scrivono nei campi
+                 vecchi qui sotto (#searchInput, #filterLocation, #filterLang),
+                 che restano la fonte letta da filterTable(). -->
+            <div id="collTesta" class="coll-testa">
+                <div class="coll-titolo-riga">
+                    <h2 class="coll-titolo">Collezione</h2>
+                    <div class="coll-conti-pc">
+                        <span><b id="collNumOggetti">0</b> oggetti</span>
+                        <span><b id="collNumValore">0,00 €</b> valore</span>
+                        <span><b id="collNumLocation">0</b> location</span>
+                        <span class="coll-nota-wish" id="collNotaWishlist" style="display:none;">la wishlist non entra nel valore</span>
+                    </div>
+                    <div class="coll-tipi coll-solo-pc">
+                        <button type="button" class="coll-tipo" data-tipo="carte" onclick="collToggleTipo('carte')"><i class="fa-solid fa-clone"></i> Carte <span class="coll-spunta">✓</span></button>
+                        <button type="button" class="coll-tipo" data-tipo="sealed" onclick="collToggleTipo('sealed')"><i class="fa-solid fa-box"></i> Sealed <span class="coll-spunta">✓</span></button>
+                        <button type="button" class="coll-tipo" data-tipo="wishlist" onclick="collToggleTipo('wishlist')"><i class="fa-solid fa-bookmark"></i> Wishlist <span class="coll-spunta">✓</span></button>
+                    </div>
+                    <button type="button" class="coll-btn coll-solo-tel" onclick="collApriFiltri()"><i class="fa-solid fa-sliders"></i> Filtri <span class="coll-num-filtri" id="collNumFiltri" style="display:none;">0</span></button>
+                </div>
+                <div class="coll-conti-tel">
+                    <div class="coll-conto"><i class="fa-solid fa-layer-group"></i><b data-specchio="collNumOggetti">0</b><span>oggetti</span></div>
+                    <div class="coll-conto"><i class="fa-solid fa-coins"></i><b data-specchio="collNumValore">0,00 €</b><span>valore</span></div>
+                    <div class="coll-conto"><i class="fa-solid fa-location-dot"></i><b data-specchio="collNumLocation">0</b><span>location</span></div>
+                </div>
+                <div class="coll-tipi coll-solo-tel">
+                    <button type="button" class="coll-tipo" data-tipo="carte" onclick="collToggleTipo('carte')"><i class="fa-solid fa-clone"></i> Carte <span class="coll-spunta">✓</span></button>
+                    <button type="button" class="coll-tipo" data-tipo="sealed" onclick="collToggleTipo('sealed')"><i class="fa-solid fa-box"></i> Sealed <span class="coll-spunta">✓</span></button>
+                    <button type="button" class="coll-tipo" data-tipo="wishlist" onclick="collToggleTipo('wishlist')"><i class="fa-solid fa-bookmark"></i> Wishlist <span class="coll-spunta">✓</span></button>
+                </div>
+                <div class="coll-barra">
+                    <label class="coll-cerca"><i class="fa-solid fa-magnifying-glass"></i>
+                        <input type="search" id="collCercaInput" placeholder="Cerca carta o codice..." oninput="collCerca(this.value)" autocomplete="off"></label>
+                    <button type="button" class="coll-btn coll-solo-pc" onclick="collApriFiltri()"><i class="fa-solid fa-sliders"></i> Filtri <span class="coll-num-filtri" data-specchio="collNumFiltri" style="display:none;">0</span></button>
+                    <button type="button" class="coll-btn coll-ordina-pc" onclick="collCambiaOrdine()"><i class="fa-solid fa-arrow-down-wide-short"></i> Ordina: <span data-specchio="collOrdineTesto">prezzo ↓</span></button>
+                    <button type="button" class="coll-btn coll-vista-btn" data-vista="lista" onclick="collImpostaVista('lista')" aria-label="Vista elenco"><i class="fa-solid fa-list"></i></button>
+                    <button type="button" class="coll-btn coll-vista-btn" data-vista="griglia" onclick="collImpostaVista('griglia')" aria-label="Vista griglia"><i class="fa-solid fa-table-cells-large"></i></button>
+                </div>
+                <div class="coll-filtri" id="collFiltri" style="display:none;">
+                    <select id="collFiltroLoc" onchange="collCambiaFiltro('filterLocation', this.value)"></select>
+                    <select id="collFiltroLang" onchange="collCambiaFiltro('filterLang', this.value)"></select>
+                    <button type="button" class="coll-btn" onclick="collAzzeraFiltri()">Azzera</button>
+                </div>
+                <button type="button" class="coll-ordina-tel" onclick="collCambiaOrdine()">Ordina: <span id="collOrdineTesto">prezzo ↓</span></button>
+            </div>
             
             <div class="stats-grid" id="statsGrid">
                 <div class="stat-card">
@@ -467,6 +514,10 @@
 
             <!-- VISTA COMPATTA — solo mobile, solo tab Visualizzazione -->
             <div id="viewCardsCompact" style="display:none;"></div>
+
+            <!-- RESTYLE BINDEX: corpo della pagina Collezione (lista, griglia,
+                 tabella PC + dettagli) — ui/collezione-vista.ui.js -->
+            <div id="collCorpo"></div>
 
         </div>
 
@@ -2838,6 +2889,7 @@
     <script src="ui/cards-modifica.ui.js"></script>
     <script src="ui/cards-selezione.ui.js"></script>
     <script src="ui/cards-filtro.ui.js"></script>
+    <script src="ui/collezione-vista.ui.js"></script>
     <script src="ui/home.ui.js"></script>
     <script src="ui/flip-card-detail.ui.js"></script>
     <script src="ui/account.ui.js"></script>

@@ -6885,3 +6885,184 @@
         .fp-scegli { display: inline-flex; align-items: center; gap: 0.5rem; cursor: pointer; }
         .fp-scegli input { display: none; }
         .fp-errore { color: var(--danger, #c62828); font-size: 0.8rem; margin-top: 0.5rem; }
+
+        /* ── RESTYLE BINDEX: pagina Collezione (ui/collezione-vista.ui.js) ──
+           Tavole OK-vis_lista-l / OK-vis_griglia-l (telefono), PC-coll-l /
+           PC-coll-griglia / PC-coll-tutti-l (PC, @container ≥780px). Vale
+           solo con body.coll-attiva (tab Collezione): le altre tab che
+           condividono #visualizzazione restano come prima. */
+        .coll-testa { display: none; }
+        body.coll-attiva #visualizzazione .coll-testa { display: block; margin-bottom: 0.9rem; }
+        body.coll-attiva #visualizzazione #statsGrid,
+        body.coll-attiva #visualizzazione .toolbar,
+        body.coll-attiva #visualizzazione #rigaToggleTipo { display: none !important; }
+        .coll-solo-pc, .coll-conti-pc, .coll-ordina-pc { display: none !important; }
+
+        .coll-titolo-riga { display: flex; align-items: center; gap: 0.8rem; margin-bottom: 0.9rem; }
+        .coll-titolo { font: 800 1.7rem 'Space Grotesk', sans-serif; margin: 0; color: var(--text-dark); flex: 1; }
+        .coll-btn {
+            display: inline-flex; align-items: center; justify-content: center; gap: 0.45rem;
+            height: 44px; min-width: 44px; padding: 0 0.95rem; border-radius: 14px;
+            border: 1px solid var(--border-color); background: var(--card-bg); color: var(--text-dark);
+            font: 600 0.9rem 'Space Grotesk', sans-serif; cursor: pointer; white-space: nowrap;
+        }
+        .coll-btn.attivo { background: var(--primary); border-color: var(--primary); color: #fff; }
+        .coll-num-filtri {
+            min-width: 18px; height: 18px; border-radius: 9px; padding: 0 5px;
+            background: var(--primary); color: #fff; font-size: 0.7rem; display: inline-flex; align-items: center; justify-content: center;
+        }
+        .coll-conti-tel { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.6rem; margin-bottom: 0.8rem; }
+        .coll-conto {
+            background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 16px;
+            padding: 0.75rem 0.8rem; display: flex; flex-direction: column; gap: 0.15rem; min-width: 0;
+        }
+        .coll-conto i { color: var(--primary); font-size: 1rem; }
+        .coll-conto b { font: 700 1.2rem 'Space Grotesk', sans-serif; color: var(--text-dark); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .coll-conto span { color: var(--text-muted); font-size: 0.8rem; }
+        @container pagina (max-width: 420px) { .coll-conto b { font-size: 1rem; } }
+        .coll-tabella tr.sel .coll-chip:not(.wish) { background: var(--card-bg); }
+        .coll-tipi { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; margin-bottom: 0.8rem; }
+        .coll-tipo {
+            height: 40px; border-radius: 14px; border: 1px solid var(--border-color);
+            background: var(--card-bg); color: var(--text-muted); font: 600 0.88rem 'Space Grotesk', sans-serif;
+            display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem; cursor: pointer; white-space: nowrap;
+        }
+        .coll-tipo .coll-spunta { display: none; }
+        .coll-tipo.attivo { border: 2px solid var(--primary); background: var(--primary-light); color: var(--primary); }
+        .coll-tipo.attivo .coll-spunta { display: inline; }
+        .coll-barra { display: flex; gap: 0.5rem; align-items: center; margin-bottom: 0.7rem; }
+        .coll-cerca {
+            flex: 1; min-width: 0; height: 44px; display: flex; align-items: center; gap: 0.55rem; padding: 0 0.9rem;
+            background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 14px; color: var(--text-muted);
+        }
+        .coll-cerca input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; color: var(--text-dark); font-size: 0.92rem; }
+        .coll-filtri { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.7rem; }
+        .coll-filtri select {
+            flex: 1; min-width: 130px; height: 40px; border-radius: 12px; border: 1px solid var(--border-color);
+            background: var(--card-bg); color: var(--text-dark); padding: 0 0.6rem;
+        }
+        .coll-ordina-tel {
+            border: 1px solid var(--border-color); background: var(--card-bg); color: var(--text-muted);
+            border-radius: 999px; padding: 0.35rem 0.85rem; font: 600 0.82rem 'Space Grotesk', sans-serif; cursor: pointer;
+        }
+        .coll-vuoto { text-align: center; color: var(--text-muted); padding: 2rem 0; }
+
+        /* miniatura con lente: apre SEMPRE la carta a tutto schermo */
+        .coll-mini, .coll-dett-img, .coll-tessera-img {
+            position: relative; display: flex; align-items: center; justify-content: center;
+            background: var(--primary-light); border: 0; padding: 0; cursor: pointer; flex: 0 0 auto;
+        }
+        .coll-mini { width: 40px; height: 56px; border-radius: 6px; }
+        .coll-mini.piccola { width: 34px; height: 48px; }
+        .coll-mini img, .coll-dett-img img, .coll-tessera-img img {
+            position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: inherit; z-index: 1;
+        }
+        .coll-segnaposto { color: var(--primary); opacity: .55; }
+        .coll-lente {
+            position: absolute; right: -6px; bottom: -6px; z-index: 2; width: 20px; height: 20px; border-radius: 50%;
+            background: #fff; color: var(--primary); font-size: 0.6rem; display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 1px 4px rgba(0,0,0,.2);
+        }
+        .coll-nome { font-weight: 700; color: var(--text-dark); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .coll-meta { color: var(--text-muted); font-size: 0.8rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .coll-chip {
+            display: inline-block; padding: 0.2rem 0.55rem; border-radius: 8px; background: var(--primary-light);
+            color: var(--primary); font-size: 0.75rem; font-weight: 700; white-space: nowrap; max-width: 110px; overflow: hidden; text-overflow: ellipsis;
+        }
+        .coll-chip.wish { background: var(--danger-bg); color: var(--danger); }
+        .coll-var { color: var(--text-muted); font-size: 0.8rem; font-weight: 600; white-space: nowrap; }
+        .coll-var.su { color: var(--success); }
+        .coll-var.giu { color: var(--danger); }
+        .coll-obiettivo { color: var(--text-muted); font-size: 0.78rem; white-space: nowrap; }
+
+        /* telefono: lista */
+        .coll-riga { border-bottom: 1px solid var(--border-color); padding: 0.7rem 0.15rem; cursor: pointer; }
+        .coll-riga-top { display: flex; align-items: center; gap: 0.75rem; }
+        .coll-riga-testo { flex: 1; min-width: 0; }
+        .coll-riga .coll-nome { font-size: 0.98rem; }
+        .coll-riga.e-wish .coll-nome, .coll-tabella tr.e-wish .coll-nome { color: var(--text-muted); }
+        .coll-prezzo { text-align: right; font-weight: 700; color: var(--text-dark); white-space: nowrap; display: flex; flex-direction: column; align-items: flex-end; gap: 0.1rem; }
+        .coll-azioni { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.65rem; }
+        .coll-azioni button, .coll-azioni a {
+            display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.45rem 0.7rem; border-radius: 10px;
+            border: 1px solid var(--border-color); background: var(--card-bg); color: var(--text-dark);
+            font-size: 0.8rem; font-weight: 600; cursor: pointer; text-decoration: none;
+        }
+        .coll-azioni i { color: var(--text-muted); }
+        .coll-azioni .coll-elimina, .coll-azioni .coll-elimina i { color: var(--danger); }
+
+        /* griglia */
+        .coll-griglia { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.9rem 0.6rem; }
+        .coll-tessera { display: flex; flex-direction: column; gap: 0.2rem; background: none; border: 0; padding: 0; text-align: left; cursor: pointer; min-width: 0; color: var(--text-dark); }
+        .coll-tessera-img { width: 100%; aspect-ratio: 63 / 88; border-radius: 10px; }
+        .coll-tessera-img .coll-segnaposto { font-size: 1.6rem; }
+        .coll-tessera.e-wish .coll-tessera-img { opacity: .6; }
+        .coll-tessera-nome { font-weight: 700; font-size: 0.86rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 0.25rem; }
+        .coll-tessera-sotto { display: flex; justify-content: space-between; gap: 0.3rem; font-size: 0.76rem; color: var(--text-muted); }
+        .coll-tessera-sotto span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .coll-tessera-sotto b { color: var(--text-muted); white-space: nowrap; order: -1; }
+
+        /* PC: tabella + dettagli */
+        .coll-pc { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 1rem; align-items: start; }
+        .coll-tabella-box { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 18px; overflow: hidden; }
+        .coll-tabella { width: 100%; border-collapse: collapse; }
+        .coll-tabella th {
+            text-align: left; font-size: 0.7rem; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted);
+            padding: 0.8rem 0.6rem; border-bottom: 1px solid var(--border-color); white-space: nowrap; cursor: default; user-select: none;
+        }
+        .coll-tabella th[onclick] { cursor: pointer; }
+        .coll-tabella th.attiva { color: var(--primary); }
+        .coll-th-pigro { opacity: .45; }
+        .coll-tabella td { padding: 0.55rem 0.6rem; border-bottom: 1px solid var(--border-color); font-size: 0.88rem; vertical-align: middle; }
+        .coll-tabella tbody tr { cursor: pointer; }
+        .coll-tabella tbody tr:hover { background: var(--bg-color); }
+        .coll-tabella tbody tr.sel { background: var(--primary-light); }
+        .coll-tabella .num { text-align: right; }
+        .coll-tabella .forte { font-weight: 700; white-space: nowrap; }
+        .coll-td-check { width: 36px; }
+        .coll-td-carta { display: flex; align-items: center; gap: 0.75rem; min-width: 0; max-width: 340px; }
+        .coll-td-carta > div { min-width: 0; }
+        .coll-td-nota { color: var(--primary); text-align: center; }
+        .coll-td-nota .vuota { color: var(--text-muted); opacity: .45; }
+        .coll-td-menu { color: var(--text-muted); text-align: center; width: 36px; }
+        .coll-dettaglio {
+            position: sticky; top: 0.5rem; background: var(--card-bg); border: 1px solid var(--border-color);
+            border-radius: 18px; padding: 1.1rem; min-height: 360px;
+        }
+        .coll-dettaglio-vuoto { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 0.5rem; min-height: 320px; color: var(--text-muted); }
+        .coll-dettaglio-vuoto i { font-size: 2rem; }
+        .coll-dettaglio-vuoto b { font-size: 1.05rem; }
+        .coll-dett-img { width: 150px; aspect-ratio: 63 / 88; border-radius: 12px; margin: 0 auto 0.8rem; }
+        .coll-dett-img .coll-segnaposto { font-size: 2rem; }
+        .coll-dett-nome { font: 800 1.15rem 'Space Grotesk', sans-serif; color: var(--text-dark); text-align: center; }
+        .coll-dettaglio > .coll-meta { text-align: center; margin-bottom: 0.4rem; }
+        .coll-dett-prezzo { display: flex; justify-content: center; align-items: baseline; gap: 0.6rem; margin-bottom: 0.8rem; }
+        .coll-dett-prezzo > span:first-child { font: 800 1.3rem 'Space Grotesk', sans-serif; color: var(--text-dark); }
+        .coll-campi { display: grid; grid-template-columns: 1fr 1fr; gap: 0.4rem; margin-bottom: 0.4rem; }
+        .coll-campo { background: var(--bg-color); border-radius: 10px; padding: 0.45rem 0.6rem; display: flex; flex-direction: column; min-width: 0; }
+        .coll-campo span { font-size: 0.68rem; text-transform: uppercase; letter-spacing: .05em; color: var(--text-muted); }
+        .coll-campo b { font-size: 0.88rem; color: var(--text-dark); overflow: hidden; text-overflow: ellipsis; }
+        .coll-campo.editabile { cursor: pointer; }
+        .coll-campo.editabile:hover { outline: 1px solid var(--primary); }
+        .coll-note b { white-space: normal; font-weight: 500; }
+        .coll-azioni-pc { margin-top: 0.8rem; }
+
+        @container pagina (min-width: 780px) {
+            .coll-solo-tel, .coll-conti-tel, .coll-ordina-tel { display: none !important; }
+            .coll-solo-pc { display: inline-flex !important; }
+            .coll-conti-pc { display: flex !important; }
+            .coll-ordina-pc { display: none !important; }
+            .coll-titolo-riga { margin-bottom: 0.8rem; }
+            .coll-titolo { flex: 0 0 auto; }
+            .coll-conti-pc { flex: 1; gap: 1.2rem; align-items: baseline; color: var(--text-muted); font-size: 0.95rem; min-width: 0; flex-wrap: wrap; }
+            .coll-conti-pc b { color: var(--text-dark); font: 700 1.05rem 'Space Grotesk', sans-serif; }
+            .coll-nota-wish { font-size: 0.82rem; }
+            .coll-tipi.coll-solo-pc { display: flex !important; gap: 0.5rem; margin: 0; }
+            .coll-tipo { padding: 0 0.9rem; }
+            .coll-griglia { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 1.1rem 1rem; }
+            .coll-tessera-sotto b { order: 0; color: var(--text-dark); }
+        }
+        /* In griglia su PC si ordina dalla barra (non c'è la tabella). */
+        @container pagina (min-width: 780px) {
+            body.coll-griglia-attiva .coll-ordina-pc { display: inline-flex !important; }
+        }
