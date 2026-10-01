@@ -37,6 +37,9 @@
 --     a supabase_auth_admin (il ruolo con cui Supabase Auth chiama l'hook,
 --     come da documentazione Supabase) e tolto a PUBLIC/anon/authenticated.
 --  F) _shop_gruppo (SQL 91): search_path fissato.
+--  G) (a parte, fuori transazione, deciso il 2026-10-01) cancellata la
+--     tabella di backup activity_log_accessi_duplicati_bak (vedi fondo
+--     file). NON recuperabile col ROLLBACK.
 --
 -- PER ANNULLARE: sql/92_sicurezza_terzo_giro_ROLLBACK.sql
 -- ============================================================================
@@ -279,6 +282,9 @@ revoke execute on function public.handle_password_verification_attempt(event jso
 alter function public._shop_gruppo(p_categoria text, p_stile jsonb) set search_path = public;
 
 commit;
+
+-- ── G) tabella di backup rimasta da una vecchia pulizia (vedi 77) ────────
+drop table if exists public.activity_log_accessi_duplicati_bak;
 
 -- ============================================================================
 -- VERIFICA (eseguire DOPO, sola lettura). Risultato atteso: ZERO righe.
