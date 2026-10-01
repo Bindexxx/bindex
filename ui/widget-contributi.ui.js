@@ -146,70 +146,54 @@ async function renderPaginaContributi() {
     }
 
     // DATO ASSENTE — stessa distinzione della tessera: non e' un errore
-    // "zero", e' proprio l'assenza di risposta (RPC caduta, non
-    // autenticato). Stesso testo/stile di errore di renderPaginaValoreCollezione.
+    // "zero", e' proprio l'assenza di risposta (RPC caduta, non autenticato).
     if (!d) {
         container.innerHTML = `
             <div class="page-header">
                 <span class="page-title">Contributi al gruppo</span>
             </div>
-            <p style="text-align:center; color:var(--text-muted); font-size:0.85rem; padding:1rem 0;">Dati non disponibili al momento.</p>
+            <div class="stato-vuoto"><i class="fa-solid fa-triangle-exclamation"></i><br>Dati non disponibili al momento.</div>
         `;
         return;
     }
 
-    // Stesso ramo "tre zeri legittimi" della tessera (_ballCORPI.contributi
-    // in widget-render-corpi.ui.js): qui niente calcolo di percentuale,
-    // niente "0% del lavoro del gruppo" che si legge come un rimprovero.
-    // AGGIUNTA (mockup approvato da Claudio, sessione 2026-09-24): icona
-    // grande fa-hands-helping al posto dello spazio vuoto sotto la barra
-    // — stessa icona già assegnata al widget nel catalogo qui sopra,
-    // Font Awesome caricato globalmente in index.html (riga 14).
-    const barraHtml = !d.gruppo
-        ? `<div class="pg-barra-track"><div class="pg-barra-fill" style="width:0%"></div></div>
-           <div class="pg-sotto" style="text-align:center; margin-top:6px;">Primi contributi in arrivo.</div>
-           <div style="text-align:center; padding:22px 0 6px;"><i class="fa-solid fa-hands-helping" style="font-size:2.75rem; color:var(--primary-light);"></i></div>`
-        : (() => {
-            const perc = Math.round((d.miei / d.gruppo) * 100);
-            // AGGIUNTA (mockup approvato): sopra il 50% una frase invece
-            // del numero secco — resta un dato AGGREGATO (miei/gruppo),
-            // non tocca il vincolo INTERMEDIO: nessun nome, nessun
-            // confronto con una persona specifica del gruppo.
-            const etichetta = perc > 50
-                ? 'Stai facendo più della metà del lavoro del gruppo'
-                : `${perc}% del lavoro del gruppo`;
-            return `<div class="pg-barra-track"><div class="pg-barra-fill" style="width:${perc}%"></div></div>
-                    <div class="pg-sotto" style="text-align:center; margin-top:6px;">${etichetta}</div>`;
-        })();
-
-    // AGGIUNTA (mockup approvato): tre passi "come funziona" al posto
-    // della sola riga di testo — stesso var(--primary)/var(--primary-light)
-    // del tema, nessuna classe CSS nuova.
-    const passo = (n, testo) => `
-        <div style="display:flex; gap:8px; align-items:flex-start; font-size:0.78rem; color:var(--text-dark); margin-bottom:6px;">
-            <span style="flex-shrink:0; width:18px; height:18px; border-radius:50%; background:var(--primary-light); color:var(--primary-dark); font-size:0.68rem; font-weight:700; display:flex; align-items:center; justify-content:center; margin-top:1px;">${n}</span>
-            <span>${testo}</span>
-        </div>`;
-    const comeFunzionaHtml = passo(1, 'Attiva "Aiuta il gruppo" nell\'estensione')
-        + passo(2, "L'estensione lavora in autonomia la coda di un altro")
-        + passo(3, 'Ogni carta lavorata per un altro conta qui sotto');
+    // RESTYLE BINDEX FASE 3i (2026-10-01, tavola "Contributi al gruppo"):
+    // anello con la quota, frase, due riquadri, "Come funziona" e la scheda
+    // "Aiuta il gruppo". Dato AGGREGATO (miei/gruppo): mai nomi né confronti
+    // con una persona, come da vincolo di visibilità intermedia.
+    // "Tre zeri" = stato reale finché nessuno lavora righe altrui: niente
+    // "0% del gruppo", che si leggerebbe come un rimprovero.
+    const perc = d.gruppo ? Math.round((d.miei / d.gruppo) * 100) : null;
+    const anello = perc == null
+        ? `<div class="ct-anello ct-vuoto"><div class="ct-anello-dentro"><i class="fa-solid fa-hands-helping"></i></div></div>`
+        : `<div class="ct-anello" style="--ct-perc:${Math.min(100, perc)};"><div class="ct-anello-dentro"><b>${perc}%</b><span>del gruppo</span></div></div>`;
+    const frase = perc == null
+        ? `<b>Primi contributi in arrivo</b><span>Quando lavori la coda di qualcun altro, compare qui.</span>`
+        : (perc > 50
+            ? `<b>${d.miei} cart${d.miei === 1 ? 'a' : 'e'} su ${d.gruppo}</b><span>Stai facendo più della metà del lavoro del gruppo.</span>`
+            : `<b>${d.miei} cart${d.miei === 1 ? 'a' : 'e'} su ${d.gruppo}</b><span>controllate da te per il gruppo, sul totale lavorato per altri.</span>`);
+    const passo = (n, testo) => `<div class="ct-passo"><span>${n}</span><p>${testo}</p></div>`;
 
     container.innerHTML = `
-        <div class="page-header">
-            <span class="page-title">Contributi al gruppo</span>
-        </div>
-        <div class="pg-pagina">
-            <div class="pg-intro">
-                <div class="pg-sotto">Quando lavori la coda di carte di qualcun altro del gruppo con "Aiuta il gruppo" attivo nell'estensione, conta come contributo qui sotto. Lavorare le tue righe non conta.</div>
+        <div class="ct-pagina">
+            <div class="page-header">
+                <span class="page-title">Contributi al gruppo</span>
             </div>
-            <div class="pg-titoletto">Come funziona</div>
-            ${comeFunzionaHtml}
-            <div class="pg-stat">
-                <div><b>${d.miei}</b><span>Cart${d.miei === 1 ? 'a' : 'e'} lavorate per altri</span></div>
-                <div><b>${d.personeAiutate}</b><span>Person${d.personeAiutate === 1 ? 'a' : 'e'} aiutate</span></div>
+            <div class="ct-quota">${anello}<div class="ct-frase">${frase}</div></div>
+            <div class="ct-stat">
+                <div><b>${d.miei}</b><span>cart${d.miei === 1 ? 'a lavorata' : 'e lavorate'} per altri</span></div>
+                <div><b>${d.personeAiutate}</b><span>person${d.personeAiutate === 1 ? 'a aiutata' : 'e aiutate'}</span></div>
             </div>
-            <div class="pg-titoletto">Quota sul lavoro del gruppo</div>
-            ${barraHtml}
+            <div class="ct-scheda">
+                <h4>Come funziona</h4>
+                ${passo(1, 'Attiva “Aiuta il gruppo” nell’estensione')}
+                ${passo(2, 'L’estensione lavora da sola la coda di un altro')}
+                ${passo(3, 'Ogni carta lavorata per un altro conta qui. Le tue righe non contano.')}
+            </div>
+            <div class="ct-scheda ct-aiuta">
+                <div class="ct-aiuta-ico"><i class="fa-solid fa-hands-helping"></i></div>
+                <div><b>Aiuta il gruppo</b><span>Si attiva dall’estensione, in Impostazioni › Gruppo e connessioni.</span></div>
+            </div>
         </div>
     `;
 }

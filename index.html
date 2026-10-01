@@ -655,17 +655,24 @@
              che unico per utente — vedi ui/binder.ui.js per la logica. -->
         <div id="binder" class="view-section">
             <div class="settings-card">
-                <div id="binderTestataHub">
-                    <h3 style="margin-bottom: 0.3rem; color: var(--text-dark); display: flex; align-items: center; gap: 0.6rem; font-size: 1.15rem; font-weight: 800;">
-                        <i class="fa-solid fa-layer-group" style="color: var(--primary);"></i> Binders
-                    </h3>
-                    <p style="font-size: 0.78rem; color: var(--text-muted); margin-bottom: 1.2rem;">
-                        Un binder per ogni Location, uno per la Wishlist, e uno tutto tuo da riempire come vuoi.
-                    </p>
+                <!-- RESTYLE BINDEX FASE 4a: titolo a sinistra, ricerca a destra,
+                     riepilogo sotto (compilato da renderGrigliaBinders). -->
+                <div id="binderTestataHub" class="bn-testata">
+                    <div class="bn-testata-riga">
+                        <div>
+                            <h3 class="bn-titolo">Binders</h3>
+                            <p class="bn-riepilogo" id="bindersRiepilogo"></p>
+                        </div>
+                        <button type="button" class="bn-cerca-btn" onclick="bindersToggleRicerca()" aria-label="Cerca un binder"><i class="fa-solid fa-magnifying-glass"></i></button>
+                    </div>
+                    <div id="bindersRicercaBox" class="bn-ricerca" style="display:none;">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                        <input type="text" id="bindersRicercaInput" placeholder="Cerca un binder" oninput="bindersImpostaFiltro(this.value)">
+                    </div>
                 </div>
 
                 <!-- Griglia dei contenitori -->
-                <div id="bindersContenitoriGrid" class="binders-contenitori-grid"></div>
+                <div id="bindersContenitoriGrid" class="bn-pagina"></div>
 
                 <!-- Dettaglio del binder aperto -->
                 <div id="binderDettaglioWrap" style="display:none;">
@@ -677,14 +684,22 @@
                          "ogni binder ha le sue impostazioni", niente più da
                          scrollare per arrivare al contenuto. Stessi id di prima,
                          solo spostati: nessuna funzione JS toccata. -->
-                    <div id="binderDettaglioHeader" style="display:flex; align-items:center; gap:0.6rem; margin-bottom:1rem;">
-                        <button type="button" class="btn-secondary" style="padding:0.5rem 0.8rem; font-size:0.8rem;" onclick="tornaAllaGrigliaBinders()" title="Torna a Binders" aria-label="Torna a Binders">
-                            <i class="fa-solid fa-arrow-left"></i> <span>Binders</span>
-                        </button>
-                        <h4 id="binderDettaglioTitolo" style="margin:0; font-size:1rem; font-weight:800; color:var(--text-dark);"></h4>
-                        <button type="button" class="btn-secondary" style="padding:0.5rem 0.7rem; margin-left:auto;" onclick="apriImpostazioniBinderAttivo()" title="Impostazioni binder" aria-label="Impostazioni binder">
-                            <i class="fa-solid fa-gear"></i>
-                        </button>
+                    <!-- RESTYLE BINDEX FASE 4b: indietro a icona, titolo con
+                         "N carte · valore · globo", condividi (solo se pubblico)
+                         e impostazioni; sotto la scheda Libro | Elenco.
+                         Stessi id di prima per titolo e impostazioni. -->
+                    <div id="binderDettaglioHeader" class="bn-det-testa">
+                        <button type="button" class="bn-icona-btn" onclick="tornaAllaGrigliaBinders()" title="Torna a Binders" aria-label="Torna a Binders"><i class="fa-solid fa-arrow-left"></i></button>
+                        <div class="bn-det-titoli">
+                            <h4 id="binderDettaglioTitolo"></h4>
+                            <p id="binderDettaglioSotto"></p>
+                        </div>
+                        <button type="button" class="bn-icona-btn" id="binderCondividiBtn" style="display:none;" onclick="apriImpostazioniBinderAttivo()" title="Condividi" aria-label="Condividi"><i class="fa-solid fa-share-nodes"></i></button>
+                        <button type="button" class="bn-icona-btn" onclick="apriImpostazioniBinderAttivo()" title="Impostazioni binder" aria-label="Impostazioni binder"><i class="fa-solid fa-gear"></i></button>
+                    </div>
+                    <div class="bn-segm" id="binderSegm">
+                        <button type="button" data-m="immagini" onclick="impostaModalitaBinder('immagini')"><i class="fa-solid fa-book-open"></i> Libro</button>
+                        <button type="button" data-m="elenco" onclick="impostaModalitaBinder('elenco')"><i class="fa-solid fa-list"></i> Elenco</button>
                     </div>
 
                     <p id="binderSoglioAvviso" style="display:none; font-size:0.75rem; color:var(--text-muted); background:var(--bg-color); border-radius:8px; padding:0.5rem 0.7rem; margin-bottom:0.8rem;"></p>
@@ -1473,7 +1488,7 @@
                     </h3>
                     <div class="setting-row">
                         <div>
-                            <h4 style="font-size: 0.9rem; font-weight: 700;">Sezione all'apertura</h4>
+                            <h4 style="font-size: 0.9rem; font-weight: 700;">Pagina all'apertura</h4>
                             <p style="font-size: 0.75rem; color: var(--text-muted);">Da quale scheda vuoi partire ogni volta che apri il sito</p>
                         </div>
                         <select class="filter-select" id="tabPredefinitaSelect" onchange="salvaTabPredefinita(this.value)">
@@ -1505,7 +1520,9 @@
                         <i class="fa-solid fa-bug" style="color: var(--primary);"></i> Hai trovato un Caterpie?
                     </h3>
                     <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 1rem;">Se qualcosa non funziona come dovrebbe, probabilmente hai incontrato un Caterpie selvatico (cioè un bug). Catturalo segnalandolo:</p>
-                    <button class="btn-secondary" onclick="segnalaCaterpie()"><i class="fa-solid fa-bug"></i> Segnala un Caterpie</button>
+                    <!-- RESTYLE BINDEX FASE 3i: descrizione scritta qui, non più in un prompt() del browser -->
+                    <textarea id="bugDescrizione" rows="5" maxlength="1500" placeholder="Cosa non funzionava come dovrebbe?" style="width:100%; box-sizing:border-box; margin-bottom:0.8rem; border-radius:12px; padding:0.7rem; font:inherit;"></textarea>
+                    <button class="btn-main" onclick="(async()=>{const t=document.getElementById('bugDescrizione'); if(!t||!t.value.trim()) return; await segnalaCaterpie(t.value); t.value='';})()"><i class="fa-solid fa-bug"></i> Segnala un Caterpie</button>
                 </div>
             </div>
 
@@ -1637,9 +1654,10 @@
                              controllo qui non avrebbe senso e resta
                              nascosto. -->
                         <div id="binderPubblicazioneWrap" style="display:none; margin-bottom:1rem; align-items:center; gap:0.6rem;">
-                            <label style="display:inline-flex; align-items:center; gap:0.5rem; cursor:pointer; font-size:0.82rem; font-weight:700;">
+                            <label class="bn-interruttore">
+                                <span class="bn-int-testo"><b>Pubblico</b><small>Chi ha il link può sfogliarlo</small></span>
                                 <input type="checkbox" id="binderPubblicazioneCheckbox" onchange="impostaPubblicazioneBinderAttivo(this.checked)">
-                                Rendi pubblico (link condivisibile)
+                                <span class="bn-switch"></span>
                             </label>
                         </div>
 
@@ -1674,10 +1692,10 @@
                         <!-- Layout griglia immagini — nascosto via JS in modalità elenco -->
                         <div class="binder-layout-switcher" style="display:flex; align-items:center; gap:0.6rem; flex-wrap:wrap; margin-top:0.8rem;">
                             <div style="display:flex; gap:0.4rem;">
-                                <button type="button" class="binder-layout-btn" data-layout="2x2" onclick="cambiaLayoutBinder('2x2')">2×2</button>
-                                <button type="button" class="binder-layout-btn" data-layout="3x3" onclick="cambiaLayoutBinder('3x3')">3×3</button>
-                                <button type="button" class="binder-layout-btn" data-layout="3x4" onclick="cambiaLayoutBinder('3x4')">4×3</button>
-                                <button type="button" class="binder-layout-btn" data-layout="4x4" onclick="cambiaLayoutBinder('4x4')">4×4</button>
+                                <button type="button" class="binder-layout-btn" data-layout="2x2" onclick="cambiaLayoutBinder('2x2')"><span class="bn-mini bn-mini-2x2"><b></b><b></b><b></b><b></b></span><span>2×2</span></button>
+                                <button type="button" class="binder-layout-btn" data-layout="3x3" onclick="cambiaLayoutBinder('3x3')"><span class="bn-mini bn-mini-3x3"><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b></span><span>3×3</span></button>
+                                <button type="button" class="binder-layout-btn" data-layout="3x4" onclick="cambiaLayoutBinder('3x4')"><span class="bn-mini bn-mini-3x4"><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b></span><span>4×3</span></button>
+                                <button type="button" class="binder-layout-btn" data-layout="4x4" onclick="cambiaLayoutBinder('4x4')"><span class="bn-mini bn-mini-4x4"><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b></span><span>4×4</span></button>
                             </div>
                             <span style="font-size:0.72rem; color:var(--text-muted);">Per aggiungere carte al tuo binder personale, usa "Aggiungi al Binder" da Visualizzazione.</span>
                         </div>
@@ -2598,6 +2616,15 @@
                  partire già nello stato corretto (campo vuoto = bottone
                  disabilitato) invece di lasciarlo abilitato finché
                  l'utente non tocca l'input. -->
+            <!-- RESTYLE BINDEX FASE 3i: frasi pronte fisse (tocco = invio
+                 diretto, passa dagli stessi filtri di _chatInviaMessaggioClick).
+                 "Mostra il mio Scambio" con anteprima richiede un tipo di
+                 messaggio nuovo sul DB: rimandato alla FASE 8. -->
+            <div class="chat-frasi" id="chatFrasi">
+                <button type="button" onclick="_chatInviaFrase('Ce l\'hai ancora?')">Ce l'hai ancora?</button>
+                <button type="button" onclick="_chatInviaFrase('Mi interessa, come facciamo?')">Mi interessa</button>
+                <button type="button" onclick="_chatInviaFrase('Grazie mille!')">Grazie!</button>
+            </div>
             <div class="chat-input-bar">
                 <input type="text" id="chatInput" class="chat-input-campo" maxlength="2000" placeholder="Scrivi un messaggio…" oninput="_chatSuInputCambiato()" onkeydown="if(event.key==='Enter'){_chatInviaMessaggioClick();}">
                 <button class="btn-main chat-invia-btn" id="chatInviaBtn" onclick="_chatInviaMessaggioClick()" disabled><i class="fa-solid fa-paper-plane"></i></button>

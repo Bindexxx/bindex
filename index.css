@@ -3418,6 +3418,34 @@
             min-height: 0;
             margin-top: 0;
         }
+        /* RESTYLE BINDEX FASE 3j (2026-10-01): proporzioni 5:7 della carta.
+           Misurato nel simulatore: su telefono #flipCardInner veniva
+           stirato in altezza (364x818 invece di 5:7) perché la scena è
+           flex e l'altezza si allungava ignorando aspect-ratio — il retro
+           (sleeve/carta_retro.png) risultava ingrandito e tagliato. Qui la
+           scena centra la carta e la larghezza deriva dall'altezza
+           disponibile. Su PC il riquadro con padding non era 5:7 (484x694):
+           larghezza ricalcolata in modo che sia la CARTA, non il riquadro
+           col padding, a stare a 5:7. Regole solo di dimensione: nessun
+           cambio a JS, flip, chiusura o sleeve. */
+        #immagineModalContent.modal-content-flip-fullscreen #flipCardScene {
+            align-items: center;
+            justify-content: center;
+        }
+        @media (max-width: 699px) {
+            #immagineModalContent.modal-content-flip-fullscreen .flip-card-inner {
+                flex: 0 0 auto;
+                height: auto;
+                aspect-ratio: 5 / 7;
+                width: min(100%, calc((100dvh - 1.5rem) * 5 / 7));
+            }
+        }
+        @media (min-width: 700px) {
+            #immagineModalContent.modal-content-flip-fullscreen {
+                aspect-ratio: auto;
+                width: calc((min(92vh, 92dvh) - 2.5rem) * 5 / 7 + 2.5rem);
+            }
+        }
         /* FASE 2 (backcarte) — EDITOR RETRO CARTA PERSONALIZZATO ───────────
            Portato da modalita-crea-la-tua-sleeve.html (pacchetto backcarte),
            namespace "cardback-" per non toccare nessuna classe esistente.
@@ -4380,6 +4408,128 @@
         #prezziagg .pa-destra { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; text-align: right; }
         #prezziagg .pa-destra b { font-size: 0.95rem; color: var(--text-dark); white-space: nowrap; }
         #prezziagg .pa-destra span { font-size: 0.8rem; font-weight: 800; white-space: nowrap; }
+
+        /* ═══════════════════════════════════════════════════════════════
+           PAGINA CONTRIBUTI — RESTYLE BINDEX FASE 3i (2026-10-01)
+           ═══════════════════════════════════════════════════════════════ */
+        #contributi .ct-pagina { max-width: 720px; padding-bottom: 4.5rem; }
+        #contributi .ct-quota { display: flex; align-items: center; gap: 18px; margin: 6px 0 16px; }
+        #contributi .ct-anello { width: 120px; height: 120px; flex: 0 0 120px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+            background: conic-gradient(var(--primary) calc(var(--ct-perc, 0) * 1%), var(--primary-light) 0); }
+        #contributi .ct-anello-dentro { width: 92px; height: 92px; border-radius: 50%; background: var(--bg-color); display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        #contributi .ct-anello-dentro b { font-size: 1.6rem; color: var(--text-dark); line-height: 1; }
+        #contributi .ct-anello-dentro span { font-size: 0.72rem; color: var(--text-muted); }
+        #contributi .ct-vuoto .ct-anello-dentro i { font-size: 2rem; color: var(--primary); opacity: .55; }
+        #contributi .ct-frase { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+        #contributi .ct-frase b { font-size: 1.2rem; color: var(--text-dark); }
+        #contributi .ct-frase span { font-size: 0.88rem; color: var(--text-muted); line-height: 1.35; }
+        #contributi .ct-stat { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+        #contributi .ct-stat > div { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 16px; padding: 14px; display: flex; flex-direction: column; gap: 2px; }
+        #contributi .ct-stat b { font-size: 1.6rem; color: var(--text-dark); }
+        #contributi .ct-stat span { font-size: 0.8rem; color: var(--text-muted); }
+        #contributi .ct-scheda { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 18px; padding: 16px; margin-bottom: 14px; }
+        #contributi .ct-scheda h4 { margin: 0 0 12px; font-size: 1rem; color: var(--text-dark); }
+        #contributi .ct-passo { display: flex; gap: 12px; align-items: flex-start; margin-bottom: 10px; }
+        #contributi .ct-passo span { flex: 0 0 26px; width: 26px; height: 26px; border-radius: 50%; background: var(--primary-light); color: var(--primary); font-weight: 800; font-size: 0.8rem; display: flex; align-items: center; justify-content: center; }
+        #contributi .ct-passo p { margin: 2px 0 0; font-size: 0.9rem; color: var(--text-dark); line-height: 1.35; }
+        #contributi .ct-aiuta { display: flex; align-items: center; gap: 14px; }
+        #contributi .ct-aiuta-ico { width: 52px; height: 52px; border-radius: 50%; background: var(--primary-light); color: var(--primary); display: flex; align-items: center; justify-content: center; font-size: 1.2rem; flex: 0 0 52px; }
+        #contributi .ct-aiuta b { display: block; font-size: 1rem; color: var(--text-dark); }
+        #contributi .ct-aiuta span { font-size: 0.82rem; color: var(--text-muted); }
+
+        /* ═══ RESTYLE BINDEX FASE 4a — pagina Binders (elenco copertine) ═══ */
+        #binder:not(.binder-dettaglio-attivo) > .settings-card { background: none; box-shadow: none; border: none; padding: 0; max-width: none; }
+        #binder { container-type: inline-size; }
+        #binder .bn-testata-riga { display:flex; align-items:flex-start; justify-content:space-between; gap:1rem; }
+        #binder .bn-titolo { margin:0; font-size:1.7rem; font-weight:800; color:var(--text-dark); }
+        #binder .bn-riepilogo { margin:0.3rem 0 0; font-size:0.9rem; color:var(--text-muted); }
+        #binder .bn-riepilogo b { color:var(--text-dark); font-size:1.05rem; }
+        #binder .bn-cerca-btn { width:46px; height:40px; border:none; border-radius:14px; background:var(--primary); color:#fff; font-size:1rem; cursor:pointer; flex-shrink:0; }
+        #binder .bn-ricerca { display:flex; align-items:center; gap:0.6rem; margin-top:0.8rem; padding:0.55rem 0.9rem; border-radius:14px; background:var(--card-bg); border:1px solid var(--border-color); color:var(--text-muted); }
+        #binder .bn-ricerca input { flex:1; border:none; background:transparent; font:inherit; color:var(--text-dark); outline:none; min-width:0; }
+        #binder .bn-pagina { display:block; margin-top:0.6rem; }
+        #binder .bn-sez { margin:1.1rem 0 0.5rem; font-size:0.72rem; font-weight:800; letter-spacing:0.08em; color:var(--text-muted); }
+        #binder .bn-righe { display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:0.9rem 0.8rem; }
+        #binder .bn-tessera { cursor:pointer; min-width:0; padding:0.3rem; border-radius:14px; border:2px solid transparent; }
+        #binder .bn-tessera.selezionata { border-color:var(--primary); background:color-mix(in srgb, var(--primary) 8%, transparent); }
+        #binder .bn-nome { margin-top:0.45rem; font-weight:800; font-size:0.95rem; color:var(--text-dark); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        #binder .bn-sotto { font-size:0.74rem; color:var(--text-muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        #binder .bn-legenda { margin:1.2rem 0 0; font-size:0.78rem; color:var(--text-muted); }
+        #binder .bn-cop { position:relative; width:100%; aspect-ratio:63/80; border-radius:12px; overflow:hidden; background:linear-gradient(160deg, var(--bn-colore), color-mix(in srgb, var(--bn-colore) 62%, #000)); box-shadow:0 4px 12px rgba(0,0,0,0.18); display:flex; align-items:center; justify-content:center; }
+        #binder .bn-dorso { position:absolute; left:0; top:0; bottom:0; width:13%; background:linear-gradient(90deg, rgba(0,0,0,0.28), rgba(0,0,0,0.06)); }
+        #binder .bn-icona { font-size:clamp(1.4rem, 9cqw, 2.4rem); color:rgba(255,255,255,0.92); margin-bottom:1.2rem; }
+        #binder .bn-foto { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
+        #binder .bn-globo { position:absolute; top:7px; right:7px; width:24px; height:24px; border-radius:50%; background:rgba(0,0,0,0.45); color:#fff; font-size:0.8rem; display:flex; align-items:center; justify-content:center; }
+        #binder .bn-etichetta { position:absolute; left:16%; right:8%; bottom:8px; padding:0.28rem 0.5rem; border-radius:8px; background:rgba(255,255,255,0.93); color:#14142a; font-size:0.72rem; font-weight:800; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        #binder .bn-anteprima { display:none; }
+        @container (min-width: 780px) {
+            #binder .bn-pagina { display:grid; grid-template-columns:minmax(0,1fr) 340px; gap:1.2rem; align-items:start; }
+            #binder .bn-colonna { background:var(--card-bg); border-radius:20px; padding:0.4rem 1.2rem 1.2rem; }
+            #binder .bn-righe { grid-template-columns:repeat(auto-fill, minmax(150px, 1fr)); }
+            #binder .bn-anteprima { display:flex; flex-direction:column; gap:0.7rem; background:var(--card-bg); border-radius:20px; padding:1.1rem; position:sticky; top:0.5rem; }
+            #binder .bn-anteprima.bn-vuota { color:var(--text-muted); font-size:0.85rem; }
+            #binder .bn-ant-testa { display:flex; gap:0.9rem; align-items:flex-start; }
+            #binder .bn-ant-testa .bn-cop { width:110px; flex-shrink:0; }
+            #binder .bn-ant-testa h4 { margin:0.2rem 0 0.2rem; font-size:1.3rem; font-weight:800; color:var(--text-dark); }
+            #binder .bn-ant-testa p { margin:0.15rem 0; font-size:0.85rem; color:var(--text-muted); }
+            #binder .bn-chip-riga { display:flex; gap:0.35rem; flex-wrap:wrap; margin-top:0.5rem !important; }
+            #binder .bn-chip-riga span { background:color-mix(in srgb, var(--primary) 12%, transparent); color:var(--primary); border-radius:999px; padding:0.2rem 0.6rem; font-size:0.74rem; font-weight:700; }
+            #binder .bn-nota { font-size:0.78rem; color:var(--text-muted); margin:0.4rem 0 0; }
+        }
+
+        /* RESTYLE BINDEX FASE 4c: bollino "⇄ N" del binder Scambio (era un'etichetta "Offerte: N") */
+        .binder-slot-scambio-badge { border:none; cursor:pointer; font:inherit; display:inline-flex; align-items:center; gap:0.25rem; }
+
+        /* ═══ RESTYLE BINDEX FASE 4d — impostazioni binder ═══ */
+        #binderImpostazioniModal .settings-card .binder-modalita-toggle:not(#binderImpostazioniTabs) { display:none; } /* Libro|Elenco ora sta nella pagina del binder */
+        #binderImpostazioniModal .bn-interruttore { display:flex; align-items:center; justify-content:space-between; gap:1rem; width:100%; cursor:pointer; position:relative; }
+        #binderImpostazioniModal .bn-int-testo { display:flex; flex-direction:column; }
+        #binderImpostazioniModal .bn-int-testo b { font-size:1rem; color:var(--text-dark); }
+        #binderImpostazioniModal .bn-int-testo small { font-size:0.8rem; color:var(--text-muted); font-weight:400; }
+        #binderImpostazioniModal .bn-interruttore input { position:absolute; opacity:0; pointer-events:none; }
+        #binderImpostazioniModal .bn-switch { position:relative; width:48px; height:28px; border-radius:999px; background:var(--border-color); flex-shrink:0; transition:background 0.15s; }
+        #binderImpostazioniModal .bn-switch::after { content:''; position:absolute; top:3px; left:3px; width:22px; height:22px; border-radius:50%; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,0.3); transition:left 0.15s; }
+        #binderImpostazioniModal .bn-interruttore input:checked + .bn-switch { background:var(--primary); }
+        #binderImpostazioniModal .bn-interruttore input:checked + .bn-switch::after { left:23px; }
+        #binderPubblicazioneWrap { display:block; }
+        #binderImpostazioniModal .binder-layout-btn { display:flex; flex-direction:column; align-items:center; gap:0.4rem; padding:0.7rem 0.4rem; min-width:64px; }
+        #binderImpostazioniModal .bn-mini { display:grid; gap:2px; width:34px; padding:4px; border-radius:6px; background:color-mix(in srgb, var(--text-muted) 12%, transparent); }
+        #binderImpostazioniModal .bn-mini b { aspect-ratio:5/7; border-radius:1.5px; background:var(--text-muted); opacity:0.6; }
+        #binderImpostazioniModal .bn-mini-2x2 { grid-template-columns:repeat(2,1fr); }
+        #binderImpostazioniModal .bn-mini-3x3 { grid-template-columns:repeat(3,1fr); }
+        #binderImpostazioniModal .bn-mini-3x4 { grid-template-columns:repeat(4,1fr); }
+        #binderImpostazioniModal .bn-mini-4x4 { grid-template-columns:repeat(4,1fr); }
+        #binderImpostazioniModal .binder-layout-btn.active .bn-mini { background:rgba(255,255,255,0.25); }
+        #binderImpostazioniModal .binder-layout-btn.active .bn-mini b { background:#fff; opacity:1; }
+
+        /* ═══ RESTYLE BINDEX FASE 4b — binder aperto: testata, scheda Libro|Elenco, Elenco ═══
+           La testata non è più sovrapposta al libro: sta nel flusso, e il
+           libro (#binderLibroWrap, flex:1) occupa lo spazio che resta — il
+           motore legge l'altezza reale del wrap, nessuna funzione _libro*
+           toccata. */
+        #binder.binder-dettaglio-attivo #binderDettaglioHeader.bn-det-testa {
+            position: static; display:flex; align-items:center; gap:0.6rem; margin:0 0 0.7rem; pointer-events:auto;
+        }
+        #binder .bn-icona-btn { width:44px; height:44px; flex-shrink:0; border:1px solid var(--border-color); border-radius:50%; background:var(--card-bg); color:var(--text-dark); font-size:1rem; cursor:pointer; display:flex; align-items:center; justify-content:center; }
+        #binder .bn-det-titoli { flex:1; min-width:0; }
+        #binder.binder-dettaglio-attivo #binderDettaglioTitolo { font-size:1.3rem !important; font-weight:800; margin:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        #binder .bn-det-titoli p { margin:0.1rem 0 0; font-size:0.85rem; color:var(--text-muted); }
+        #binder .bn-segm { max-width:460px; display:flex; gap:0.25rem; padding:0.25rem; border-radius:16px; background:color-mix(in srgb, var(--primary) 10%, transparent); margin:0 0 0.7rem; }
+        #binder .bn-segm button { flex:1; border:none; background:transparent; border-radius:12px; padding:0.6rem; font:inherit; font-weight:700; color:var(--text-muted); cursor:pointer; display:flex; align-items:center; justify-content:center; gap:0.45rem; }
+        #binder .bn-segm button.active { background:var(--card-bg); color:var(--text-dark); box-shadow:0 1px 4px rgba(0,0,0,0.12); }
+        #binder .bn-ricerca-el { display:flex; align-items:center; gap:0.6rem; padding:0.65rem 0.9rem; border-radius:14px; background:var(--card-bg); border:1px solid var(--border-color); color:var(--text-muted); margin-bottom:0.8rem; }
+        #binder .bn-ricerca-el input { flex:1; min-width:0; border:none; background:transparent; font:inherit; color:var(--text-dark); outline:none; }
+        #binder .bn-lista { background:var(--card-bg); border-radius:18px; padding:0.3rem 0.8rem; }
+        #binder .bn-riga { display:flex; align-items:center; gap:0.8rem; padding:0.7rem 0; border-bottom:1px solid var(--border-color); cursor:pointer; }
+        #binder .bn-riga:last-child { border-bottom:none; }
+        #binder .bn-thumb { position:relative; width:42px; height:58px; flex-shrink:0; border-radius:6px; background:var(--border-color); }
+        #binder .bn-thumb img { width:100%; height:100%; object-fit:cover; border-radius:6px; display:block; }
+        #binder .bn-lente { position:absolute; right:-8px; bottom:-8px; width:22px; height:22px; border-radius:50%; background:var(--card-bg); color:var(--text-muted); font-size:0.65rem; display:flex; align-items:center; justify-content:center; box-shadow:0 1px 4px rgba(0,0,0,0.2); }
+        #binder .bn-riga-testo { flex:1; min-width:0; display:flex; flex-direction:column; }
+        #binder .bn-riga-testo b { font-size:1rem; color:var(--text-dark); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        #binder .bn-riga-testo small { font-size:0.8rem; color:var(--text-muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        #binder .bn-riga-prezzo { font-weight:800; color:var(--text-dark); white-space:nowrap; }
+        #binder .bn-hint-el, #binder .bn-vuoto-el { text-align:center; font-size:0.8rem; color:var(--text-muted); margin:0.9rem 0 0; }
 
         /* Toggle modalità immagini/elenco — preferenza per-utente, vedi
            impostaModalitaBinder() in ui/binder.ui.js */
@@ -6445,6 +6595,10 @@
             color: var(--text-dark);
         }
         .chat-input-campo:focus { outline: none; border-color: var(--primary); }
+        /* RESTYLE BINDEX FASE 3i: frasi pronte */
+        .chat-frasi { display:flex; gap:0.4rem; flex-wrap:wrap; padding:0.5rem 0.9rem 0; }
+        .chat-frasi button { border:1.5px solid var(--primary); background:transparent; color:var(--primary); border-radius:999px; padding:0.4rem 0.8rem; font:inherit; font-size:0.8rem; font-weight:600; cursor:pointer; }
+        .chat-frasi button:active { background:var(--primary); color:#fff; }
         .chat-invia-btn { width: 40px; height: 40px; border-radius: 50%; flex-shrink: 0; padding: 0; }
 
         /* ═══════════════════════════════════════════════════════════════

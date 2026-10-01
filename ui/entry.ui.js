@@ -253,8 +253,8 @@
         // console F12. Se l'insert fallisce (es. offline) il testo viene
         // copiato negli appunti (audit 2026-09-25: prima un mailto verso un
         // indirizzo finto), per non perdere comunque la segnalazione.
-        async function segnalaCaterpie() {
-            const descrizione = prompt('🐛 Un Caterpie selvatico appare! Descrivi cosa hai visto (cosa NON funzionava come dovrebbe):');
+        async function segnalaCaterpie(descrizioneDaPannello) {
+            const descrizione = (typeof descrizioneDaPannello === 'string') ? descrizioneDaPannello : prompt('🐛 Un Caterpie selvatico appare! Descrivi cosa hai visto (cosa NON funzionava come dovrebbe):');
             if (!descrizione || !descrizione.trim()) return;
 
             const userId = await authGetUserId();
