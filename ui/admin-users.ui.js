@@ -23,7 +23,7 @@ function statoUtente(u) {
   if (u.deleted_at) return { key: 'deleted', label: 'eliminato' };
   if (u.banned_until && new Date(u.banned_until) > new Date()) {
     const perma = u.banned_until.startsWith('9999') || u.banned_until === 'infinity';
-    return { key: 'banned', label: perma ? 'perma-ban' : ('bannato fino al ' + fmtData(u.banned_until)) };
+    return { key: 'banned', label: perma ? 'ban per sempre' : ('bannato fino al ' + fmtData(u.banned_until)) };
   }
   return { key: 'active', label: 'attivo' };
 }
@@ -71,7 +71,7 @@ function renderUtenti() {
       const ruoloAttuale = btn.dataset.role;
       const nuovoRuolo = ruoloAttuale === 'admin' ? 'user' : 'admin';
       const utente = ultimaListaUtenti.find(u => u.id === id);
-      if (!confirm(`Confermi: cambiare il ruolo di "${utente.username}" in "${nuovoRuolo}"?`)) return;
+      if (!await adminDialog({ titolo: 'Cambiare ruolo?', testo: `"${utente.username}" diventerà "${nuovoRuolo}".`, conferma: 'Conferma' })) return;
       btn.disabled = true;
 
       const { error } = await adminCambiaRuolo(id, nuovoRuolo);
@@ -98,7 +98,7 @@ async function apriModaleUtente(userId) {
   const logCont = document.getElementById('modal-activity-log');
   if (logCont) {
     if (!log || log.length === 0) {
-      logCont.innerHTML = '<div class="empty-state">Nessuna attività registrata (funzione di raccolta log non ancora collegata a sito/estensione).</div>';
+      logCont.innerHTML = '<div class="empty-state">Nessuna attività registrata.</div>';
     } else {
       logCont.innerHTML = log.map(l => `<div class="log-line">${l.action} <span class="lmeta">— ${l.source} · ${fmtData(l.created_at)}</span></div>`).join('');
     }
@@ -120,7 +120,7 @@ async function apriModaleUtente(userId) {
         chatCheck.disabled = true;
         const nuovoValore = chatCheck.checked;
         const azione = nuovoValore ? 'marcare' : 'togliere il segno da';
-        if (!confirm(`Confermi di voler ${azione} "${u.username}" come minorenne? ${nuovoValore ? 'La chat diventerà non disponibile per questo account (sia in invio che in ricezione).' : 'La chat torna disponibile per questo account.'}`)) {
+        if (!await adminDialog({ titolo: 'Utente minorenne', testo: `Confermi di voler ${azione} "${u.username}" come minorenne? ${nuovoValore ? 'La chat diventerà non disponibile per questo account (sia in invio che in ricezione).' : 'La chat torna disponibile per questo account.'}`, conferma: 'Conferma' })) {
           chatCheck.checked = !nuovoValore;
           chatCheck.disabled = false;
           return;
@@ -177,11 +177,16 @@ function renderModaleBody(u) {
 
     <div class="section-title">Ban</div>
     <div class="action-grid">
+      <div class="ban-rapidi">
+        <button class="btn-small btn-ghost" data-act="ban-1">1 giorno</button>
+        <button class="btn-small btn-ghost" data-act="ban-7">7 giorni</button>
+        <button class="btn-small btn-ghost" data-act="ban-30">30 giorni</button>
+      </div>
       <div class="inline-form">
         <input type="number" id="ban-giorni" min="1" placeholder="gg" value="7">
-        <button class="btn-small btn-ghost" data-act="ban-temp">Ban temporaneo</button>
+        <button class="btn-small btn-ghost" data-act="ban-temp">Altro (giorni)</button>
       </div>
-      <button class="btn-small btn-danger" data-act="ban-perma">Perma-ban</button>
+      <button class="btn-small btn-danger" data-act="ban-perma">Ban per sempre</button>
       <button class="btn-small btn-approve" data-act="unban" ${s.key !== 'banned' ? 'disabled' : ''}>Sban</button>
     </div>
 
@@ -216,17 +221,19 @@ function renderModaleBody(u) {
 
 async function gestisciAzioneUtente(u, azione) {
   try {
-    if (azione === 'ban-temp') {
-      const giorni = parseInt(document.getElementById('ban-giorni').value, 10);
+    if (azione === 'ban-temp' || azione === 'ban-1' || azione === 'ban-7' || azione === 'ban-30') {
+      const giorni = azione === 'ban-temp'
+        ? parseInt(document.getElementById('ban-giorni').value, 10)
+        : parseInt(azione.slice(4), 10);
       if (!giorni || giorni < 1) { mostraStatus('Inserisci un numero di giorni valido.', false); return; }
-      if (!confirm(`Bannare "${u.username}" per ${giorni} giorni?`)) return;
+      if (!await adminDialog({ titolo: 'Bannare?', testo: `"${u.username}" sarà bannato per ${giorni} giorni.`, conferma: 'Banna', pericolo: true })) return;
       const until = new Date(Date.now() + giorni * 86400000).toISOString();
       const { error } = await adminBanUtente(u.id, until, `Ban temporaneo (${giorni} giorni)`);
       if (error) throw error;
       mostraStatus('Utente bannato.', true);
     }
     else if (azione === 'ban-perma') {
-      if (!confirm(`Perma-bannare "${u.username}"? Resterà bloccato finché non lo sbanni tu.`)) return;
+      if (!await adminDialog({ titolo: 'Ban per sempre?', testo: `"${u.username}" resterà bloccato finché non lo sbanni tu.`, conferma: 'Banna per sempre', pericolo: true })) return;
       const { error } = await adminBanUtente(u.id, '9999-12-31T23:59:59Z', 'Perma-ban');
       if (error) throw error;
       mostraStatus('Utente perma-bannato.', true);
@@ -237,13 +244,13 @@ async function gestisciAzioneUtente(u, azione) {
       mostraStatus('Ban rimosso.', true);
     }
     else if (azione === 'revoke') {
-      if (!confirm(`Revocare subito tutte le sessioni attive di "${u.username}"?`)) return;
+      if (!await adminDialog({ titolo: 'Chiudere le sessioni?', testo: `Tutte le sessioni attive di "${u.username}" verranno chiuse.`, conferma: 'Chiudi sessioni' })) return;
       const { error } = await adminRevocaSessioni(u.id);
       if (error) throw error;
       mostraStatus('Sessioni revocate.', true);
     }
     else if (azione === 'soft-delete') {
-      if (!confirm(`Eliminare (soft) l'account "${u.username}"? È reversibile con "Ripristina".`)) return;
+      if (!await adminDialog({ titolo: 'Eliminare l\'account?', testo: `L'account "${u.username}" viene disattivato. È reversibile con "Ripristina".`, conferma: 'Elimina', pericolo: true })) return;
       const { error } = await adminSoftDeleteUtente(u.id);
       if (error) throw error;
       mostraStatus('Account eliminato (soft).', true);
@@ -284,8 +291,7 @@ async function gestisciAzioneUtente(u, azione) {
       mostraStatus('Dati anagrafici salvati.', true);
     }
     else if (azione === 'hard-delete') {
-      const conferma = prompt(`⚠️ AZIONE IRREVERSIBILE.\nQuesto cancella DEFINITIVAMENTE l'account "${u.username}" e tutti i suoi dati.\nScrivi esattamente "${u.username}" per confermare:`);
-      if (conferma !== u.username) { mostraStatus('Conferma non corrispondente, azione annullata.', false); return; }
+      if (!await adminDialog({ titolo: '⚠️ Cancellazione definitiva', testo: `Cancella DEFINITIVAMENTE l'account "${u.username}" e tutti i suoi dati. Non si può annullare.`, conferma: 'Cancella per sempre', pericolo: true, scriviPerConfermare: u.username })) return;
       const { error } = await adminHardDeleteUtente(u.id);
       if (error) throw error;
       mostraStatus('Account cancellato definitivamente.', true);

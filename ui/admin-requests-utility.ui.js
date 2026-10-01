@@ -102,7 +102,7 @@ async function _sincronizzaCopiaPubblica(mediaId, slot, ownerUserId) {
 // hanno mai avuto la copia creata automaticamente), o come recupero
 // manuale se una singola copia fallisse silenziosamente.
 document.getElementById('btn-sincronizza-pubbliche').addEventListener('click', async () => {
-  if (!confirm('Ricreare le copie pubbliche per TUTTE le foto già approvate (retro carta + copertine Binder)? Può richiedere qualche secondo per ogni foto.')) return;
+  if (!await adminDialog({ titolo: 'Sincronizzare le copie pubbliche?', testo: 'Ricrea le copie pubbliche di TUTTE le foto già approvate (retro carta + copertine). Può richiedere qualche secondo per ogni foto.', conferma: 'Sincronizza' })) return;
 
   const btn = document.getElementById('btn-sincronizza-pubbliche');
   btn.disabled = true;
@@ -178,8 +178,7 @@ document.getElementById('btn-esporta-log-admin').addEventListener('click', async
 document.getElementById('btn-archivia-gestite').addEventListener('click', async () => {
   const daArchiviare = _ultimeRichiesteCaricate.filter(r => r.status === 'approved' || r.status === 'rejected');
   if (daArchiviare.length === 0) { mostraStatus('Nessuna richiesta già gestita da archiviare con i filtri attuali.', false); return; }
-  if (!confirm(`Stai per archiviare ${daArchiviare.length} richieste già gestite (corrispondenti ai filtri attuali). Non saranno più visibili nel pannello, ma restano nel database. Continuare?`)) return;
-  if (!confirm('Conferma definitiva: procedere con l\'archiviazione?')) return;
+  if (!await adminDialog({ titolo: 'Archiviare le richieste gestite?', testo: `${daArchiviare.length} richieste già gestite (secondo i filtri attuali) non saranno più visibili nel pannello, ma restano nel database. Non è reversibile da qui.`, conferma: 'Archivia', pericolo: true })) return;
 
   const ids = daArchiviare.map(r => r.id);
   const { error } = await adminArchiviaRichieste(ids);
