@@ -347,7 +347,7 @@ async function renderPaginaChat() {
         const iniziale = (r.label || '?').trim().charAt(0).toUpperCase() || '?';
         return `
         <div class="pg-riga" ${rigaAttrs} style="${r.bloccato ? 'opacity:.6;' : ''}">
-            <div class="chat-avatar piccolo">${escapeHtml(iniziale)}</div>
+            <div class="chat-avatar piccolo" data-avatar-utente="${r.ownerAltro}">${escapeHtml(iniziale)}</div>
             <div style="flex:1; min-width:0;">
                 <div style="font-weight:700; font-size:0.85rem; display:flex; align-items:center; gap:0.4rem;">
                     ${escapeHtml(r.label)}
@@ -357,6 +357,7 @@ async function renderPaginaChat() {
             </div>
         </div>`;
     }).join('') + '</div>' + bloccatiHtml;
+    if (typeof fotoProfiloApplica === 'function') fotoProfiloApplica(container); // foto profilo (sql/90)
 }
 
 // Sezione "Utenti bloccati" dell'inbox — SOLO sblocco (bloccare resta nel
@@ -451,7 +452,12 @@ async function apriChat(ownerAltro, personaLabel) {
     // AGGIUNTO (2026-09-24, restyle): iniziale del nome nell'avatar
     // circolare dell'header — stesso trattamento visivo delle righe
     // dell'inbox (_chatRigaAvatarHtml sotto).
-    if (avatar) avatar.textContent = label.trim().charAt(0).toUpperCase() || '?';
+    if (avatar) {
+        avatar.textContent = label.trim().charAt(0).toUpperCase() || '?';
+        avatar.style.backgroundImage = ''; avatar.classList.remove('con-foto');
+        avatar.dataset.avatarUtente = ownerAltro;
+        if (typeof fotoProfiloApplica === 'function') fotoProfiloApplica(avatar.parentNode);
+    }
     // Nuova conversazione aperta: azzera la cache dei messaggi già
     // renderizzati, altrimenti un id di un'altra conversazione potrebbe
     // (per pura coincidenza di UUID, praticamente impossibile ma comunque

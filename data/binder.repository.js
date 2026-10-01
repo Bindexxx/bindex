@@ -285,3 +285,28 @@ function storageDefaultAssetPublicUrl(path) {
 async function storageListDefaultAssets(prefix) {
     return supabaseClient.storage.from('default-assets').list(prefix);
 }
+
+// ── FOTO PROFILO (sql/90) ───────────────────────────────────────────────
+async function fotoProfiloMia(userId) {
+    return supabaseClient.from('user_media').select('*')
+        .eq('user_id', userId).eq('slot', 'profilo').is('binder_id', null).is('scaffale_id', null).maybeSingle();
+}
+async function fotoProfiloInserisci(payload) {
+    return supabaseClient.from('user_media').insert(payload).select().single();
+}
+async function fotoProfiloAggiorna(id, payload) {
+    return supabaseClient.from('user_media').update(payload).eq('id', id).select().single();
+}
+async function fotoProfiloUpload(path, blob) {
+    return supabaseClient.storage.from('user-media').upload(path, blob, { upsert: true, contentType: 'image/jpeg' });
+}
+async function fotoProfiloRimuoviFile(path) {
+    return supabaseClient.storage.from('user-media').remove([path]);
+}
+// Percorsi delle foto profilo APPROVATE di altri utenti + URL firmati.
+async function fotoProfiloLeggiAltri(userIds) {
+    return supabaseClient.rpc('leggi_foto_profilo', { p_user_ids: userIds });
+}
+async function fotoProfiloUrlFirmati(paths) {
+    return supabaseClient.storage.from('user-media').createSignedUrls(paths, 3600);
+}

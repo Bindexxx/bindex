@@ -34,6 +34,7 @@ function _impostazioniApri(pagina) {
         const checkbox = document.getElementById('suoniAppToggle');
         if (checkbox) checkbox.checked = prefSuoniWidgetGet();
     }
+    if (pagina === 'account' && typeof fotoProfiloRenderImpostazioni === 'function') fotoProfiloRenderImpostazioni();
     if (pagina === 'connessioni') {
         _connessioniRicontrolla();
         _impostazioniAggiornaDiagnostica();

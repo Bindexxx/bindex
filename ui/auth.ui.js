@@ -311,6 +311,8 @@
             _aggiornaControlliApriApp();
             // FASE 8c: link "?apri=foto" dal QR della pagina Foto carte su PC.
             if (typeof fotoApriDaLinkSeRichiesto === 'function') fotoApriDaLinkSeRichiesto();
+            // Foto profilo nella barra in alto (sql/90), dopo che la barra è montata.
+            if (typeof fotoProfiloAggiornaBarra === 'function') setTimeout(fotoProfiloAggiornaBarra, 1500);
         }
 
 // RESTYLE BINDEX FASE 5: occhio sul campo password dell'accesso. Cambia solo
