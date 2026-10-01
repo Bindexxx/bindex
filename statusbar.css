@@ -1447,3 +1447,33 @@ body.dark-mode #phoneScreen .csb-root {
   box-shadow: 0 0 0 3px rgba(46, 157, 74, 0.18);
   animation: none;
 }
+
+/* Bindex (2026-10-01, tavola OK-tendina): "Scegli le scorciatoie" sotto
+   la griglia delle scorciatoie. */
+.csb-quick-edit {
+  grid-column: 1 / -1;
+  justify-self: end;
+  appearance: none;
+  border: 0;
+  background: none;
+  color: var(--primary, #6a3df0);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 2px 4px;
+  cursor: pointer;
+}
+
+/* Bindex (2026-10-01, tavola PC-banner-bd): banner in basso a destra sugli
+   schermi larghi, se scelto in Impostazioni → Notifiche e suoni. */
+@media (min-width: 900px) {
+  body.banner-basso #phoneScreen .csb-heads {
+    top: auto;
+    bottom: 28px;
+    left: auto;
+    right: 28px;
+    width: min(420px, calc(100% - 56px));
+    transform: translateY(calc(100% + 40px));
+  }
+  body.banner-basso #phoneScreen .csb-heads.is-visible { transform: translateY(0); }
+}

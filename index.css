@@ -8015,10 +8015,113 @@ body.dark-mode #achievement { --ach-legg-bg: #4a3a12; --ach-rara-bg: #173450; --
     #impostazioni .imp-menu button.attivo { background: var(--primary-light); color: var(--primary); }
     #impostazioni .imp-gruppi:not(.cercando) .imp-gruppo:not(.attivo) { display: none; }
     #impostazioni .imp-gruppo-titolo { font-size: 1.1rem; text-transform: none; letter-spacing: 0; color: var(--text-dark); margin: 0; padding: 14px 14px 0; }
-    #impostazioni .imp-gruppo { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 16px; max-width: 760px; }
-    #impostazioni .imp-gruppo > .imp-card { border: 0; border-radius: 16px; background: transparent; }
+    #impostazioni .imp-gruppo.attivo, #impostazioni .imp-gruppi.cercando .imp-gruppo { display: grid; grid-template-columns: minmax(0, 1fr) minmax(260px, 340px); gap: 16px; align-items: start; }
+    #impostazioni .imp-gruppo:not(:has(.imp-lato)) { grid-template-columns: minmax(0, 760px); }
+    #impostazioni .imp-gruppi.cercando .imp-lato { display: none; }
+    #impostazioni .imp-gruppi.cercando .imp-gruppo { grid-template-columns: minmax(0, 760px); }
+    #impostazioni .imp-principale { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 16px; min-width: 0; }
+    #impostazioni .imp-principale > .imp-card { border: 0; border-radius: 16px; background: transparent; }
+    #impostazioni .imp-lato { margin-top: 0; position: sticky; top: 0; }
+    #impostazioni .imp-voce-pc { display: flex; }
     #impostazioni .imp-voce.espandibile { cursor: default; border-bottom: 0; padding-bottom: 4px; }
     #impostazioni .imp-voce.espandibile .imp-freccia { display: none; }
     #impostazioni .imp-corpo { display: flex; padding-left: 46px; }
     #impostazioni .imp-profilo + .imp-corpo { padding-left: 0; }
 }
+
+/* ── IMPORTA DA CSV — tavole PC-imp-acc / PC-csv / PC-csv-prog (2026-10-01) */
+#impostazioni .imp-nuovo { font-size: 0.62rem; font-weight: 700; color: var(--primary); background: var(--primary-light); border-radius: 999px; padding: 1px 7px; vertical-align: 2px; margin-left: 4px; }
+#impostazioni.imp-csv-aperto > .page-header, #impostazioni.imp-csv-aperto > .imp-sotto, #impostazioni.imp-csv-aperto > .imp-layout { display: none; }
+#importCsvVista:empty { display: none; }
+#importCsvVista .csv-testa { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 12px; margin-bottom: 14px; }
+#importCsvVista .csv-testa .page-title { font-size: 1.5rem; font-weight: 800; color: var(--text-dark); }
+#importCsvVista .csv-testa p { font-size: 0.8rem; color: var(--text-muted); margin: 2px 0 0; }
+#importCsvVista .csv-passi { display: flex; gap: 14px; flex-wrap: wrap; }
+#importCsvVista .csv-passi span { display: inline-flex; align-items: center; gap: 7px; font-size: 0.82rem; color: var(--text-muted); }
+#importCsvVista .csv-passi b { width: 24px; height: 24px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 0.72rem; background: var(--primary-light); color: var(--primary); }
+#importCsvVista .csv-passi .attivo { color: var(--text-dark); font-weight: 700; }
+#importCsvVista .csv-passi .attivo b { background: var(--primary); color: #fff; }
+#importCsvVista .csv-passi .fatto b { background: var(--success); color: #fff; }
+#importCsvVista .csv-passi .fatto { color: var(--text-dark); }
+#importCsvVista .csv-card { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 16px; padding: 16px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+#importCsvVista .csv-card h4 { margin: 0; font-size: 0.95rem; font-weight: 800; color: var(--text-dark); }
+#importCsvVista .csv-passo1 { max-width: 560px; }
+#importCsvVista .csv-drop { border: 2px dashed color-mix(in srgb, var(--primary) 45%, transparent); border-radius: 14px; padding: 28px 16px; display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; color: var(--text-muted); transition: background .15s; }
+#importCsvVista .csv-drop.sopra { background: var(--primary-light); }
+#importCsvVista .csv-drop i { font-size: 2rem; color: var(--primary); }
+#importCsvVista .csv-drop b { font-size: 1rem; color: var(--text-dark); }
+#importCsvVista .csv-nota { font-size: 0.76rem; color: var(--text-muted); margin: 0; }
+#importCsvVista .csv-errore { font-size: 0.8rem; color: var(--danger); margin: 0; }
+#importCsvVista .csv-azioni-riga { display: flex; gap: 8px; flex-wrap: wrap; }
+#importCsvVista .csv-layout { display: flex; flex-direction: column; gap: 14px; }
+#importCsvVista .csv-sx { display: flex; flex-direction: column; gap: 14px; }
+#importCsvVista .csv-col { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 8px; }
+#importCsvVista .csv-col-file { font-family: ui-monospace, monospace; font-size: 0.8rem; background: var(--primary-light); border-radius: 8px; padding: 8px 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-dark); }
+#importCsvVista .csv-col i { color: var(--text-muted); font-size: 0.75rem; }
+#importCsvVista .csv-col select { margin: 0; padding: 7px 8px; border-radius: 8px; font: inherit; font-size: 0.82rem; }
+#importCsvVista .csv-seg { display: flex; gap: 4px; padding: 4px; border-radius: 12px; background: var(--primary-light); }
+#importCsvVista .csv-seg button { flex: 1; border: 0; background: transparent; padding: 8px; border-radius: 9px; font: inherit; font-size: 0.84rem; font-weight: 600; color: var(--text-muted); cursor: pointer; }
+#importCsvVista .csv-seg button.attivo { background: var(--card-bg); color: var(--text-dark); font-weight: 700; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+#importCsvVista .csv-controllo-testa { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+#importCsvVista .csv-controllo-testa span { display: flex; gap: 10px; flex-wrap: wrap; font-size: 0.78rem; font-weight: 700; }
+#importCsvVista em { font-style: normal; }
+#importCsvVista .c-ok { color: var(--success); }
+#importCsvVista .c-gia { color: var(--primary); }
+#importCsvVista .c-avviso { color: #c98a00; }
+#importCsvVista .c-saltata { color: var(--text-muted); }
+#importCsvVista .csv-tabella-wrap { overflow-x: auto; }
+#importCsvVista .csv-tabella { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+#importCsvVista .csv-tabella th { text-align: left; font-size: 0.66rem; letter-spacing: .05em; text-transform: uppercase; color: var(--text-muted); background: var(--primary-light); padding: 7px 8px; font-weight: 700; }
+#importCsvVista .csv-tabella td { padding: 8px; border-bottom: 1px solid var(--border-color); color: var(--text-dark); white-space: nowrap; }
+#importCsvVista .csv-tabella td.csv-nome { font-weight: 700; white-space: normal; min-width: 120px; }
+#importCsvVista .csv-tabella td.csv-nota-riga { white-space: normal; font-size: 0.74rem; min-width: 160px; }
+#importCsvVista .csv-tabella .st-ok i { color: var(--success); }
+#importCsvVista .csv-tabella .st-gia { background: color-mix(in srgb, var(--primary) 6%, transparent); }
+#importCsvVista .csv-tabella .st-gia i, #importCsvVista .csv-tabella .st-gia .csv-nota-riga { color: var(--primary); }
+#importCsvVista .csv-tabella .st-gia.esclusa td:not(:first-child):not(.csv-nota-riga) { opacity: .5; }
+#importCsvVista .csv-tabella .st-avviso { background: color-mix(in srgb, #f2b01e 12%, transparent); }
+#importCsvVista .csv-tabella .st-avviso i, #importCsvVista .csv-tabella .st-avviso .csv-nota-riga { color: #b07800; }
+#importCsvVista .csv-tabella .st-saltata td { color: var(--text-muted); text-decoration: line-through; }
+#importCsvVista .csv-tabella .st-saltata td:first-child { text-decoration: none; }
+#importCsvVista .csv-altre { align-self: flex-start; border: 0; background: none; color: var(--text-muted); font: inherit; font-size: 0.78rem; cursor: pointer; padding: 0; }
+#importCsvVista .csv-salta { display: flex; align-items: center; gap: 8px; font-size: 0.82rem; color: var(--text-muted); padding: 10px 0; border-top: 1px solid var(--border-color); cursor: pointer; }
+#importCsvVista .csv-salta input { width: auto; accent-color: var(--primary); }
+#importCsvVista .csv-salta b { color: var(--text-dark); }
+#importCsvVista .csv-piede { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding-top: 12px; border-top: 1px solid var(--border-color); }
+#importCsvVista .csv-piede .csv-nota { flex: 1 1 240px; }
+#importCsvVista .csv-prog { display: flex; flex-direction: column; gap: 8px; padding-top: 12px; border-top: 1px solid var(--border-color); }
+#importCsvVista .csv-prog-testa { display: flex; justify-content: space-between; gap: 10px; font-size: 0.84rem; color: var(--text-dark); }
+#importCsvVista .csv-prog-testa span { font-size: 0.76rem; color: var(--text-muted); }
+@container (min-width: 780px) {
+    #importCsvVista .csv-layout { display: grid; grid-template-columns: minmax(300px, 0.75fr) 2fr; align-items: start; }
+}
+
+/* ── IMPOSTAZIONI — voci nuove, anteprime e prove (2026-10-01) ──────── */
+#impostazioni .imp-voce-pc { display: none; }
+@container (min-width: 780px) { #impostazioni .imp-voce-pc { display: flex; } }
+#impostazioni .imp-lato { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 16px; padding: 14px; display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
+#impostazioni .imp-lato-testa { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+#impostazioni .imp-lato-testa b { font-size: 0.92rem; color: var(--text-dark); }
+#impostazioni .imp-lato-testa span { font-size: 0.72rem; color: var(--text-muted); }
+#impostazioni .imp-anteprima { background: var(--primary-light); border-radius: 12px; padding: 16px 10px; display: flex; flex-wrap: wrap; justify-content: center; gap: 14px 10px; min-height: 90px; align-items: center; }
+#impostazioni .imp-ball { --ball: var(--imp-ball, 56px); display: flex; flex-direction: column; align-items: center; gap: 4px; position: relative; }
+#impostazioni .imp-ball .pkdx-icon-wrap { position: relative; width: var(--ball); height: var(--ball); }
+#impostazioni .imp-ball-nome { font-size: 0.68rem; font-weight: 700; color: var(--text-dark); }
+#impostazioni .imp-prova-cattura { min-height: 130px; }
+#impostazioni .imp-prova-cattura .imp-ball { --ball: 84px; }
+#impostazioni .imp-lato > .btn-main { align-self: center; }
+#impostazioni .imp-banner-finto { display: flex; align-items: center; gap: 12px; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 14px; padding: 12px; box-shadow: 0 6px 18px rgba(0,0,0,.08); }
+#impostazioni .imp-banner-finto > div { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+#impostazioni .imp-banner-finto b { font-size: 0.84rem; color: var(--text-dark); }
+#impostazioni .imp-banner-finto span:not(.imp-banner-ico) { font-size: 0.76rem; color: var(--text-muted); }
+#impostazioni .imp-banner-finto em { font-style: normal; font-size: 0.7rem; color: var(--text-muted); }
+#impostazioni .imp-banner-ico { width: 32px; height: 32px; border-radius: 50%; background: var(--primary); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; flex: 0 0 auto; }
+#impostazioni .imp-lato .imp-bottoni { flex-wrap: wrap; }
+#impostazioni .imp-scorciatoie { display: grid; grid-template-columns: repeat(auto-fill, minmax(128px, 1fr)); gap: 6px; }
+#impostazioni .imp-scorciatoia { display: flex; align-items: center; gap: 8px; border: 1px solid var(--border-color); border-radius: 10px; padding: 8px 10px; font-size: 0.82rem; font-weight: 600; color: var(--text-muted); cursor: pointer; }
+#impostazioni .imp-scorciatoia.on { border-color: var(--primary); background: var(--primary-light); color: var(--primary); }
+#impostazioni .imp-scorciatoia input { width: auto; margin: 0; accent-color: var(--primary); }
+#impostazioni .imp-scorciatoia-glifo { width: 16px; text-align: center; }
+
+/* Badge a pallino (Impostazioni → Home → Badge sulle sfere) */
+body.badge-pallino .widget-badge { font-size: 0 !important; min-width: 12px !important; width: 12px !important; height: 12px !important; padding: 0 !important; }

@@ -228,9 +228,11 @@ async function _connessioniRicontrolla() {
 }
 
 function _impostazioniTornaHub() {
+    if (typeof importCsvChiudi === 'function') importCsvChiudi(); // riaprendo si riparte dalle impostazioni (non durante un invio)
     const cerca = document.getElementById('impCerca');
     if (cerca && cerca.value) { cerca.value = ''; _impostazioniCerca(''); }
     _impostazioniProfiloRiepilogo();
+    _impostazioniCompila();
     if (_impostazioniEPC()) {
         // PC: a destra non resta mai vuoto — si riparte da Aspetto.
         _impostazioniApri('aspetto');
@@ -239,4 +241,186 @@ function _impostazioniTornaHub() {
     // Telefono: tutto l'elenco, voci con più campi chiuse, dall'inizio.
     document.querySelectorAll('#impostazioni .imp-voce.espandibile.aperta').forEach(v => v.classList.remove('aperta'));
     _impostazioniAlMostrare('notifiche');
+}
+
+// ── VOCI NUOVE DELLE TAVOLE (2026-10-01) ───────────────────────────────
+// Sfere e skin, scorciatoie della tendina, badge a numero/pallino, banner
+// (quali e dove), suono, vibrazione, anteprime e prove. Tutte preferenze
+// di QUESTO dispositivo (data/preferences.repository.js e le impostazioni
+// interne di CSBar in statusbar.js). _scorciatoieAggiorna e
+// _impSincronizzaControlli stanno in ui/paginainiziale-polling-avvio.ui.js.
+
+const _IMP_SUONI_ETICHETTE = { pokeball: 'Poké Ball', gameboy: 'Game Boy', cristallo: 'Cristallo', tamburo: 'Tamburo', nessuno: 'Nessuno' };
+const _IMP_ANTEPRIMA_HOME = ['valore_collezione', 'prezzi_recenti', 'missioni', 'chat', 'match', 'wishlist_obiettivi'];
+
+// Riempie i controlli nuovi con lo stato vero (chiamata all'apertura).
+function _impostazioniCompila() {
+    const badge = document.getElementById('impBadgeStile');
+    if (badge) badge.value = !prefBadgeWidgetGet() ? 'nascosto' : prefBadgeStileGet();
+    const banner = document.getElementById('impBanner');
+    if (banner) banner.value = prefBannerGet();
+    const pos = document.getElementById('impBannerPos');
+    if (pos) pos.value = prefBannerPosGet();
+    const suono = document.getElementById('impSuono');
+    if (suono && typeof CSBar !== 'undefined' && CSBar.getSounds) {
+        suono.innerHTML = CSBar.getSounds().map(id => `<option value="${id}">${escapeHtml(_IMP_SUONI_ETICHETTE[id] || id)}</option>`).join('');
+        suono.value = CSBar.getSound();
+    }
+    const vib = document.getElementById('impVibrazione');
+    if (vib && typeof CSBar !== 'undefined' && CSBar.getSetting) vib.checked = CSBar.getSetting('vibrazione');
+    _impScorciatoieRender();
+    _impAnteprime();
+}
+
+// Sfere e skin: si attivano dallo Zaino dello Shop (stessi dati, nessun
+// doppione qui).
+function _impApriZaino() {
+    apriDettaglioWidget('shop');
+    setTimeout(() => { if (typeof shopScheda === 'function') shopScheda('zaino'); }, 400);
+}
+
+// ── Scorciatoie della tendina ──
+function _impScorciatoieRender() {
+    const box = document.getElementById('impScorciatoieLista');
+    const n = document.getElementById('impScorciatoieN');
+    if (typeof _SCORCIATOIE_TENDINA === 'undefined') return;
+    const scelte = prefScorciatoieGet();
+    if (n) n.textContent = String(scelte.filter(id => _SCORCIATOIE_TENDINA[id]).length);
+    if (!box) return;
+    // Prima quelle scelte (nel loro ordine), poi le altre.
+    const ordine = [...scelte.filter(id => _SCORCIATOIE_TENDINA[id]), ...Object.keys(_SCORCIATOIE_TENDINA).filter(id => !scelte.includes(id))];
+    box.innerHTML = ordine.map(id => {
+        const d = _SCORCIATOIE_TENDINA[id];
+        const on = scelte.includes(id);
+        return `<label class="imp-scorciatoia${on ? ' on' : ''}"><input type="checkbox" ${on ? 'checked' : ''} onchange="_impScorciatoieCambia('${id}', this.checked)"><span class="imp-scorciatoia-glifo">${escapeHtml(d.glyph)}</span>${escapeHtml(d.label)}</label>`;
+    }).join('');
+}
+
+function _impScorciatoieCambia(id, on) {
+    let scelte = prefScorciatoieGet().filter(x => x !== id);
+    if (on) scelte.push(id);
+    if (scelte.length > 8) scelte = scelte.slice(-8); // due righe da quattro
+    prefScorciatoieSet(scelte);
+    _impScorciatoieRender();
+    if (typeof _scorciatoieAggiorna === 'function') _scorciatoieAggiorna();
+}
+
+// ── Badge sulle sfere: numero / pallino / nascosto ──
+function _impApplicaBadgeStile() {
+    document.body.classList.toggle('badge-pallino', prefBadgeStileGet() === 'pallino');
+}
+
+function _impBadgeCambia(valore) {
+    if (valore === 'nascosto') toggleBadgeWidget(false);
+    else {
+        prefBadgeStileSet(valore);
+        _impApplicaBadgeStile();
+        toggleBadgeWidget(true);
+    }
+    if (typeof _impSincronizzaControlli === 'function') _impSincronizzaControlli();
+}
+
+// ── Banner ──
+function _impBannerCambia(valore) { prefBannerSet(valore); }
+
+function _impApplicaBannerPos() {
+    document.body.classList.toggle('banner-basso', prefBannerPosGet() === 'basso');
+}
+
+function _impBannerPosCambia(valore) {
+    prefBannerPosSet(valore);
+    _impApplicaBannerPos();
+    _impProvaBanner();
+}
+
+function _impProvaBanner() {
+    if (typeof CSBar === 'undefined' || !CSBar.provaBanner) return;
+    CSBar.provaBanner({ title: 'Irene ti ha scritto', text: 'Ce l\'hai ancora il Moonbreon?', icon: '●' });
+}
+
+// ── Suono e vibrazione (impostazioni interne della tendina) ──
+function _impSuonoCambia(valore) {
+    if (typeof CSBar !== 'undefined' && CSBar.setSound) CSBar.setSound(valore, true);
+}
+
+function _impProvaSuono() {
+    if (typeof CSBar !== 'undefined' && CSBar.playSound) CSBar.playSound();
+}
+
+function _impVibrazioneCambia(on) {
+    if (typeof CSBar === 'undefined' || !CSBar.setSetting) return;
+    CSBar.setSetting('vibrazione', on);
+    if (on) { try { if (navigator.vibrate) navigator.vibrate(25); } catch (_) { /* non supportata */ } }
+    if (typeof _scorciatoieAggiorna === 'function') _scorciatoieAggiorna();
+}
+
+// ── Anteprime (sfere vere, stesso disegno della Home) ──
+function _impBallHtml(id, opz) {
+    const o = opz || {};
+    if (typeof _ballSvgCache !== 'function') return '';
+    const asp = (typeof _ballASPETTO !== 'undefined' && _ballASPETTO[id]) || { emblema: 'piu', colore: null };
+    const def = (typeof CATALOGO_WIDGET !== 'undefined' && CATALOGO_WIDGET[id]) || { titolo: '' };
+    const inciso = o.scritte && prefScritteBallGet() ? ((typeof _ballTITOLI_BREVI !== 'undefined' && _ballTITOLI_BREVI[id]) || def.titolo) : null;
+    const badge = o.badge != null && prefBadgeWidgetGet() ? `<div class="widget-badge">${o.badge}</div>` : '';
+    return `<div class="imp-ball" data-id="${id}">
+        <div class="pkdx-icon-wrap"><div class="pkdx-ball">
+            <span class="pkdx-ball-glow"></span>
+            <span class="pkdx-dust"></span>
+            <span class="ball-shadow"></span>
+            <div class="pkdx-ball-body">${_ballSvgCache(asp.emblema, asp.colore, inciso)}</div>
+            <div class="ball-glass"><div class="ball-sweep"></div></div>
+            <span class="pkdx-lock-ring"></span>
+            <span class="pkdx-lock-ring ring-2"></span>
+            ${typeof _ballParticelle === 'function' ? _ballParticelle() : ''}
+        </div>${badge}</div>
+        ${o.etichetta ? `<span class="imp-ball-nome">${escapeHtml(def.titolo || '')}</span>` : ''}
+    </div>`;
+}
+
+function _impAnteprime() {
+    if (typeof _ballSvutaCache === 'function') _ballSvutaCache(); // colori/scritte appena cambiati
+    const aspetto = document.getElementById('impAnteprimaAspetto');
+    if (aspetto) {
+        const misura = parseInt(document.getElementById('temaDiametroWidget')?.value, 10) || 90;
+        aspetto.classList.add('ball-ui');
+        aspetto.style.setProperty('--imp-ball', Math.min(misura, 80) + 'px');
+        aspetto.innerHTML = ['missioni', 'chat', 'match'].map(id => _impBallHtml(id, {})).join('');
+        const nota = document.getElementById('impAnteprimaAspettoNota');
+        const testo = document.getElementById('temaDiametroAnteprimaTesto');
+        if (nota) nota.textContent = `Sfere da ${misura} px. ${testo ? testo.textContent : ''}`.trim();
+    }
+    const home = document.getElementById('impAnteprimaHome');
+    if (home) {
+        home.classList.add('ball-ui');
+        const badge = [null, 3, 1, 2, 1, null];
+        home.innerHTML = _IMP_ANTEPRIMA_HOME.map((id, i) => _impBallHtml(id, { scritte: true, badge: badge[i], etichetta: true })).join('');
+    }
+    const prova = document.getElementById('impProvaCattura');
+    if (prova && !prova.dataset.inCorso) {
+        prova.classList.add('ball-ui');
+        prova.innerHTML = _impBallHtml('missioni', {});
+    }
+}
+
+// Prova la cattura sulla sfera del pannello, anche con l'animazione spenta
+// (è una prova): stessa _ballGiocaCattura della Home.
+async function _impProvaCattura() {
+    const prova = document.getElementById('impProvaCattura');
+    if (!prova || prova.dataset.inCorso || typeof _ballGiocaCattura !== 'function') return;
+    _impAnteprime();
+    const tile = prova.querySelector('.imp-ball');
+    if (!tile) return;
+    prova.dataset.inCorso = '1';
+    const anim = prefAnimWidgetGet(), cattura = prefAnimCatturaGet();
+    try {
+        if (!anim) prefAnimWidgetSet(true);
+        if (!cattura) prefAnimCatturaSet(true);
+        await _ballGiocaCattura(tile);
+    } catch (e) {
+        console.error('[impostazioni] prova cattura:', e);
+    } finally {
+        prefAnimWidgetSet(anim);
+        prefAnimCatturaSet(cattura);
+        delete prova.dataset.inCorso;
+    }
 }
