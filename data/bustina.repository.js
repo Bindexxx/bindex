@@ -74,6 +74,18 @@ async function polvereSaldoLeggi() {
     return supabaseClient.rpc('polvere_saldo');
 }
 
+// RESTYLE BINDEX FASE 8e: polvere guadagnata da una certa data (solo
+// movimenti positivi di inventario_ricompense, tipo 'polvere'). La policy
+// RLS "utenti leggono le proprie ricompense" limita già alle righe
+// dell'utente loggato: nessun filtro owner_id necessario.
+async function polvereGuadagnataDa(isoDa) {
+    return supabaseClient.from('inventario_ricompense')
+        .select('quantita')
+        .eq('tipo', 'polvere')
+        .gt('quantita', 0)
+        .gte('ottenuto_il', isoDa);
+}
+
 // ── Album e catalogo (tabelle, sola lettura — RLS le copre già) ────────
 
 // Le carte possedute dall'utente. owner_id esplicito nel filtro anche se

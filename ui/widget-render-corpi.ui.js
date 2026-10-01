@@ -317,7 +317,9 @@ const _ballCORPI = {
         return {
             inline: '<p class="ball-k-tit">Polvere</p>' +
                 `<div class="ball-k-big ball-k-mono">${d.saldo.toLocaleString('it-IT')} ✧</div>` +
-                '<span class="ball-k-lab">il tuo saldo</span>',
+                (d.settimana > 0
+                    ? `<span class="ball-k-lab">+${d.settimana.toLocaleString('it-IT')} ✧ questa settimana</span>`
+                    : '<span class="ball-k-lab">il tuo saldo</span>'),
             blocco: '<span class="ball-k-lab">Si guadagna con missioni, traguardi e doppioni della bustina</span>',
         };
     },
