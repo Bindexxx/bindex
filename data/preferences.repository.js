@@ -97,6 +97,8 @@ function prefRiduciAnimazioniSet(ridotte) { localStorage.setItem(CHIAVE_RIDUCI_A
 // appartenesse davvero — scelta deliberata, vedi ui/phone.ui.js.
 function prefWidgetLayoutGet(userId) { return localStorage.getItem('cardsyncWidgetLayout_' + userId); }
 function prefWidgetLayoutSet(userId, layoutJson) { localStorage.setItem('cardsyncWidgetLayout_' + userId, layoutJson); }
+// RESTYLE BINDEX: "Ripristina disposizione della home" — toglie il layout salvato su questo dispositivo.
+function prefWidgetLayoutRemove(userId) { localStorage.removeItem('cardsyncWidgetLayout_' + userId); }
 
 // Suoni retro leggeri della home a widget (apertura/chiusura dettaglio,
 // notifiche push) — per-dispositivo come le altre, default attivi ma

@@ -211,6 +211,7 @@ async function renderGrigliaBinders() {
                 </div>
                 <button type="button" class="btn-main" onclick="apriBinderDettaglio('${idAttr}')"><i class="fa-solid fa-book-open"></i> Apri binder</button>
                 <button type="button" class="btn-secondary" onclick="bindersImpostazioniDa('${idAttr}')"><i class="fa-solid fa-gear"></i> Impostazioni</button>
+                ${b.stato_pubblicazione === 'pubblico' ? `<button type="button" class="btn-secondary" onclick="bindersApriCondividi('${idAttr}')"><i class="fa-solid fa-share-nodes"></i> Link e QR</button>` : ''}
                 ${b.tipo === 'location' ? '<p class="bn-nota">I binder Location si riempiono da soli con le carte di quella location.</p>' : ''}
             </aside>`;
         } else {
@@ -1527,4 +1528,20 @@ function _libroPointerUp() {
         _libro.animando = false;
         _libroDisegnaStatico();
     }, LIBRO_DURATA_GIRO_MS + 40);
+}
+
+// RESTYLE BINDEX: dal pannello di anteprima (PC) apre la pagina Condividi già
+// posizionata su questo binder — da lì Copia link, QR e Condividi… (flusso
+// già esistente, nessuna logica di link duplicata qui).
+async function bindersApriCondividi(binderId) {
+    if (typeof apriDettaglioWidget !== 'function') return;
+    apriDettaglioWidget('condividi', null);
+    const key = 'b:' + binderId;
+    for (let i = 0; i < 30; i++) { // fino a ~3 s: renderPaginaCondividi è asincrona
+        if (typeof _condividiElementi !== 'undefined' && Array.isArray(_condividiElementi) && _condividiElementi.find(e => e.key === key)) {
+            if (typeof _condividiScegli === 'function') _condividiScegli(key);
+            return;
+        }
+        await new Promise(r => setTimeout(r, 100));
+    }
 }

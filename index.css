@@ -3872,6 +3872,12 @@
 
         /* LOGIN OVERLAY */
         .auth-field { text-align: left; margin-bottom: 0.8rem; }
+        .auth-input-wrap { position: relative; }
+        .auth-input-wrap .auth-input-ico { position: absolute; left: 0.95rem; top: 50%; transform: translateY(-50%); font-size: 0.85rem; color: var(--text-muted); pointer-events: none; }
+        .auth-input-wrap input { padding-left: 2.5rem !important; }
+        .auth-input-wrap input[type="password"], .auth-input-wrap input.auth-pw-visibile { padding-right: 2.6rem !important; }
+        .auth-occhio { position: absolute; right: 0.4rem; top: 50%; transform: translateY(-50%); background: none; border: 0; cursor: pointer; color: var(--text-muted); padding: 0.45rem 0.6rem; font-size: 0.9rem; }
+        .auth-occhio:hover { color: var(--primary); }
         .auth-field label { display: block; font-size: 0.75rem; font-weight: 700; margin-bottom: 0.3rem; color: var(--text-muted); }
         #authError { display: none; color: var(--danger); font-size: 0.78rem; margin-bottom: 0.8rem; font-weight: 600; }
 
@@ -5123,6 +5129,16 @@
         .cd-chip-priv { background: var(--border-color); color: var(--text-muted); }
         .cd-riga.cd-privato .cd-cover { filter: saturate(.55) brightness(.92); }
 
+        /* RESTYLE BINDEX: Impostazioni su PC — menu a sinistra, pagina a destra */
+        @container (min-width: 780px) {
+            #impostazioni.active { display: grid; grid-template-columns: 280px minmax(0, 1fr); gap: 1.4rem; align-items: start; }
+            #impostazioni #impostazioniHub { grid-column: 1; grid-row: 1; position: sticky; top: 0; }
+            #impostazioni > [id^="impostazioniPagina-"] { grid-column: 2; grid-row: 1; }
+            #impostazioni #impostazioniHub .settings-card,
+            #impostazioni > [id^="impostazioniPagina-"] .settings-card { max-width: none; margin: 0 0 1rem; }
+            #impostazioni > [id^="impostazioniPagina-"] > .setting-row[onclick="_impostazioniTornaHub()"] { display: none; }
+            #impostazioni #impostazioniHub .setting-row.imp-attiva { background: color-mix(in srgb, var(--primary) 12%, transparent); border-radius: 10px; padding-left: 0.6rem; padding-right: 0.6rem; }
+        }
         @container (min-width: 780px) {
             #condividi .cd-pagina { display: grid; grid-template-columns: minmax(300px, 380px) 1fr; gap: 22px; align-items: start; }
             #condividi .cd-griglia-tel { display: none; }
