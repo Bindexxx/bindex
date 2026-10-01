@@ -32,3 +32,16 @@ async function pubblicoInviaRichiestaScambio(proprietarioId, righe) {
 async function pubblicoScaffaleScambioDaOwner(ownerId) {
     return supabaseClient.rpc('leggi_scaffale_scambio_pubblico', { p_owner_id: ownerId });
 }
+
+// RESTYLE BINDEX FASE 8b (sql/88): richiesta come ospite (anche da anonimo)
+// e stato dal codice RQ — usate da ui/richiesta-ospite.ui.js.
+async function pubblicoInviaRichiestaOspite(proprietarioId, righe, nome, contattoTipo, contatto, messaggio, dispositivo) {
+    return supabaseClient.rpc('invia_richiesta_ospite', {
+        p_proprietario_id: proprietarioId, p_righe: righe, p_nome: nome, p_contatto_tipo: contattoTipo,
+        p_contatto: contatto, p_messaggio: messaggio, p_dispositivo: dispositivo,
+    });
+}
+
+async function pubblicoLeggiRichiestaOspite(codice) {
+    return supabaseClient.rpc('leggi_richiesta_ospite', { p_codice: codice });
+}

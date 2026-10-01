@@ -32,6 +32,13 @@ const MOTIVI_ANNULLAMENTO = {
     intervento_amministrativo: 'Intervento amministrativo',
 };
 
+// FASE 8b (sql/88): motivi messi solo dal sistema, mai scelti a mano
+// (per questo non stanno in MOTIVI_ANNULLAMENTO, che alimenta il pannello).
+const MOTIVI_SISTEMA = {
+    scaduta: 'Scaduta dopo 7 giorni senza risposta',
+    bloccato: 'Ospite bloccato',
+};
+
 const STATO_RIGA_LABEL = {
     in_attesa: { testo: 'In attesa', colore: 'var(--text-muted)', cls: 'bx-stato-attesa' },
     accettata: { testo: 'Riservata', colore: 'var(--primary)', cls: 'bx-stato-riservata' },
@@ -50,6 +57,11 @@ async function apriPaginaRichieste(mantieni) {
     if (typeof _widgetRichiesteSvuotaCache === 'function') _widgetRichiesteSvuotaCache();
     const userId = await authGetUserId();
     if (!userId) return;
+
+    // FASE 8b (sql/88): scadenza delle richieste ospite (7 giorni) e pulizia
+    // dei loro dati, prima di leggere. Un errore qui non blocca la pagina.
+    try { const { error } = await scadiRichiesteOspite(); if (error) console.warn('scadiRichiesteOspite:', error.message); }
+    catch (e) { console.warn('scadiRichiesteOspite:', e); }
 
     if (!mantieni) {
         _richiesteVista = 'ricevute';
@@ -88,6 +100,44 @@ async function apriPaginaRichieste(mantieni) {
 
 function _richiesteNome(ownerId) { return _richiesteNick[ownerId] || 'Un utente del gruppo'; }
 
+// FASE 8b: dati dell'ospite di una richiesta ricevuta (null se è di un utente).
+function _richiestaOspite(riga) {
+    const rs = riga && riga.richieste_scambio;
+    return (rs && rs.codice_rq) ? rs : null;
+}
+// Nome mostrato per un gruppo: nickname dell'utente, oppure nome dell'ospite
+// (cancellato dal DB quando la richiesta si chiude → "Ospite").
+function _richiesteNomeGruppo(g) {
+    if (g.ospite) return g.ospite.ospite_nome || 'Ospite';
+    return _richiesteNome(g.altro);
+}
+function _richiesteAvatarHtml(g, nome) {
+    return g.ospite
+        ? `<div class="match-avatar ric-avatar-ospite" title="Ospite"><i class="fa-solid fa-user"></i></div>`
+        : `<div class="match-avatar">${escapeHtml(nome.charAt(0).toUpperCase())}</div>`;
+}
+// Link "Apri" per il contatto dell'ospite (null se non si può costruire).
+function _richiesteLinkContatto(tipo, contatto) {
+    const c = String(contatto || '').trim();
+    if (!c) return null;
+    const handle = c.replace(/^@/, '');
+    if (tipo === 'whatsapp') {
+        let num = c.replace(/[^0-9]/g, '');
+        if (num.length === 10 && num.charAt(0) === '3') num = '39' + num; // numero italiano senza prefisso
+        return num.length >= 8 ? 'https://wa.me/' + num : null;
+    }
+    if (tipo === 'telegram') return /^[A-Za-z0-9_]{3,64}$/.test(handle) ? 'https://t.me/' + handle : null;
+    if (tipo === 'instagram') return /^[A-Za-z0-9_.]{1,64}$/.test(handle) ? 'https://instagram.com/' + handle : null;
+    if (tipo === 'email') return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(c) ? 'mailto:' + c : null;
+    return null;
+}
+const _RICHIESTE_CONTATTI = {
+    whatsapp: { etichetta: 'WhatsApp', icona: 'fa-brands fa-whatsapp' },
+    telegram: { etichetta: 'Telegram', icona: 'fa-brands fa-telegram' },
+    instagram: { etichetta: 'Instagram', icona: 'fa-brands fa-instagram' },
+    email: { etichetta: 'Email', icona: 'fa-solid fa-envelope' },
+};
+
 function cambiaVistaRichieste(vista) {
     _richiesteVista = vista;
     _richiesteFiltro = 'tutte';
@@ -109,7 +159,8 @@ function _richiesteRaggruppa(righe, eRicevute) {
         mappa.get(id).push(r);
     });
     return [...mappa.entries()].map(([id, rr]) => {
-        const altro = eRicevute ? rr[0].richiedente_id : rr[0].proprietario_id;
+        const ospite = eRicevute ? _richiestaOspite(rr[0]) : null;
+        const altro = eRicevute ? (rr[0].richiedente_id || ('ospite:' + id)) : rr[0].proprietario_id;
         const quando = (rr[0].richieste_scambio && rr[0].richieste_scambio.creato_il) || rr[0].creato_il;
         const conta = (st) => rr.filter(r => r.stato_riga === st).length;
         const attesa = conta('in_attesa'), riservate = conta('accettata');
@@ -120,7 +171,7 @@ function _richiesteRaggruppa(righe, eRicevute) {
         if (attesa) chip = { cls: 'bx-stato-attesa', testo: `${attesa} in attesa` };
         else if (riservate) chip = { cls: 'bx-stato-riservata', testo: riservate === 1 ? 'Riservata' : `${riservate} riservate` };
         else { const st = STATO_RIGA_LABEL[rr[0].stato_riga] || { testo: rr[0].stato_riga, cls: '' }; chip = { cls: st.cls, testo: st.testo }; }
-        return { id, righe: rr, altro, quando, attesa, riservate, totale, chip, chiusa: !attesa && !riservate };
+        return { id, righe: rr, altro, ospite, quando, attesa, riservate, totale, chip, chiusa: !attesa && !riservate };
     }).sort((x, y) => new Date(y.quando) - new Date(x.quando));
 }
 
@@ -185,11 +236,11 @@ function renderPaginaRichieste() {
     if (!gruppi.length) _richiesteSel = null;
 
     const elenco = gruppi.map(g => {
-        const nome = _richiesteNome(g.altro);
+        const nome = _richiesteNomeGruppo(g);
         const n = g.righe.length;
         return `<div class="ric-riga ${g.id === _richiesteSel ? 'sel' : ''}" onclick="_richiesteApri('${escapeJsAttr(String(g.id))}')">
-            <div class="match-avatar">${escapeHtml(nome.charAt(0).toUpperCase())}</div>
-            <div class="match-mtesto"><div class="match-persona-nome">${escapeHtml(nome)}${(eRicevute && g.attesa) ? ' <span class="match-punto"></span>' : ''}</div>
+            ${_richiesteAvatarHtml(g, nome)}
+            <div class="match-mtesto"><div class="match-persona-nome">${escapeHtml(nome)}${g.ospite ? ' <span class="ric-chip-ospite">OSPITE</span>' : ''}${(eRicevute && g.attesa) ? ' <span class="match-punto"></span>' : ''}</div>
                 <div class="match-persona-sotto">${_richiesteData(g.quando)} · ${n} oggett${n === 1 ? 'o' : 'i'}${g.totale ? ` · ${formattaEuro(g.totale)}` : ''}</div></div>
             <span class="bx-stato ${g.chip.cls}">${g.chip.testo}</span><i class="fa-solid fa-chevron-right match-freccia"></i></div>`;
     }).join('') || '<p class="match-vuoto">Nessuna richiesta in questo gruppo.</p>';
@@ -209,12 +260,36 @@ function renderPaginaRichieste() {
 }
 
 function _richiesteDettaglioHtml(g, eRicevute) {
-    const nome = _richiesteNome(g.altro);
+    const nome = _richiesteNomeGruppo(g);
     const nomeJs = escapeJsAttr(nome);
     const n = g.righe.length;
-    const titolo = eRicevute ? `Richiesta di ${escapeHtml(nome)}` : `La tua richiesta a ${escapeHtml(nome)}`;
-    const sotto = `${_richiesteData(g.quando, true)} · ${n} oggett${n === 1 ? 'o' : 'i'}${eRicevute ? ' dal tuo Scambio' : ''}${g.totale ? ` · ${formattaEuro(g.totale)}` : ''}${(!eRicevute && g.attesa) ? ` · aspetta che ${escapeHtml(nome)} accetti` : ''}`;
-    const comeFunziona = eRicevute ? `
+    const titolo = g.ospite
+        ? `${escapeHtml(nome)} <span class="ric-chip-ospite">OSPITE</span>`
+        : (eRicevute ? `Richiesta di ${escapeHtml(nome)}` : `La tua richiesta a ${escapeHtml(nome)}`);
+    const sotto = `${_richiesteData(g.quando, true)} · ${n} oggett${n === 1 ? 'o' : 'i'}${eRicevute && !g.ospite ? ' dal tuo Scambio' : ''}${g.totale ? ` · ${formattaEuro(g.totale)}` : ''}${g.ospite ? ` · ${escapeHtml(g.ospite.codice_rq)}` : ''}${(!eRicevute && g.attesa) ? ` · aspetta che ${escapeHtml(nome)} accetti` : ''}`;
+    // FASE 8b: riquadro contatto + messaggio dell'ospite.
+    let ospiteHtml = '';
+    if (g.ospite) {
+        const o = g.ospite;
+        const c = _RICHIESTE_CONTATTI[o.ospite_contatto_tipo];
+        let contatto;
+        if (o.ospite_contatto_tipo === 'persona') {
+            contatto = `<div class="ric-contatto"><span class="ric-contatto-ico"><i class="fa-solid fa-handshake"></i></span>
+                <div class="ric-contatto-testo"><b>Di persona</b><span>Nessun contatto lasciato · quando vi vedete chiedigli il codice <b>${escapeHtml(o.codice_rq)}</b></span></div></div>`;
+        } else if (c && o.ospite_contatto) {
+            const link = _richiesteLinkContatto(o.ospite_contatto_tipo, o.ospite_contatto);
+            contatto = `<div class="ric-contatto"><span class="ric-contatto-ico"><i class="${c.icona}"></i></span>
+                <div class="ric-contatto-testo"><b>${c.etichetta} ${escapeHtml(o.ospite_contatto)}</b><span>ospite · rispondigli lì</span></div>
+                <button type="button" class="ric-btn" onclick="_richiesteCopiaContatto('${escapeJsAttr(o.ospite_contatto)}')" title="Copia" aria-label="Copia il contatto"><i class="fa-regular fa-copy"></i></button>
+                ${link ? `<a class="ric-btn ric-btn-pieno" href="${escapeHtml(link)}" target="_blank" rel="noopener noreferrer" title="Apri" aria-label="Apri ${c.etichetta}"><i class="fa-solid fa-arrow-up-right-from-square"></i></a>` : ''}</div>`;
+        } else {
+            contatto = `<div class="ric-contatto"><span class="ric-contatto-ico"><i class="fa-solid fa-user-slash"></i></span>
+                <div class="ric-contatto-testo"><b>Dati dell'ospite cancellati</b><span>La richiesta è chiusa: nome e contatto non si conservano.</span></div></div>`;
+        }
+        ospiteHtml = contatto + (o.ospite_messaggio ? `<div class="ric-messaggio">“${escapeHtml(o.ospite_messaggio)}”</div>` : '');
+    }
+    const comeFunziona = g.ospite ? `
+        <div class="ric-come">Accetti <i class="fa-solid fa-arrow-right"></i> riservata · Concludi <i class="fa-solid fa-arrow-right"></i> la carta esce dalla tua collezione</div>` : eRicevute ? `
         <div class="ric-come"><b>Come funziona:</b>
             <span class="bx-stato bx-stato-attesa">In attesa</span> <i class="fa-solid fa-arrow-right"></i>
             <span class="bx-stato bx-stato-riservata">Riservata</span> <span>(accetti: nessun altro può chiederla)</span> <i class="fa-solid fa-arrow-right"></i>
@@ -239,7 +314,7 @@ function _richiesteDettaglioHtml(g, eRicevute) {
         } else if (!eRicevute && (r.stato_riga === 'in_attesa' || r.stato_riga === 'accettata')) {
             azioni = `<button type="button" class="ric-btn ric-btn-rosso" onclick="_azioneRichiesta('annulla', '${idAttr}')"><i class="fa-solid fa-ban"></i> Annulla</button>`;
         }
-        const motivoTxt = r.motivo_chiusura ? ` · Motivo: ${escapeHtml(MOTIVI_ANNULLAMENTO[r.motivo_chiusura] || r.motivo_chiusura)}` : '';
+        const motivoTxt = r.motivo_chiusura ? ` · Motivo: ${escapeHtml(MOTIVI_ANNULLAMENTO[r.motivo_chiusura] || MOTIVI_SISTEMA[r.motivo_chiusura] || r.motivo_chiusura)}` : '';
         return `
             <div class="ric-oggetto">
                 ${miniatura}
@@ -253,25 +328,36 @@ function _richiesteDettaglioHtml(g, eRicevute) {
     }).join('');
 
     const daConcludere = eRicevute ? g.righe.filter(r => r.stato_riga === 'accettata') : [];
+    const daAccettare = eRicevute ? g.righe.filter(r => r.stato_riga === 'in_attesa') : [];
+    // FASE 8b (Claudio 2026-10-01): "Accetta tutto (N)" su ogni richiesta con 2+ oggetti in attesa.
+    const fondoAccetta = daAccettare.length >= 2 ? `
+        <button type="button" class="ric-btn ric-btn-pieno ric-accetta-tutto" onclick="_richiesteAccettaTutto('${escapeJsAttr(String(g.id))}')"><i class="fa-solid fa-check-double"></i> Accetta tutto (${daAccettare.length})</button>` : '';
     const fondo = daConcludere.length >= 2 ? `
         <div class="ric-fondo">
-            <span>Concludi quando lo scambio è avvenuto davvero: gli oggetti passano a ${escapeHtml(nome)} e non si torna indietro.</span>
+            <span>${g.ospite ? 'Concludi quando lo scambio è avvenuto davvero: gli oggetti escono dalla tua collezione e non si torna indietro.' : `Concludi quando lo scambio è avvenuto davvero: gli oggetti passano a ${escapeHtml(nome)} e non si torna indietro.`}</span>
             <button type="button" class="ric-btn ric-btn-pieno" onclick="_richiesteConcludiTutto('${escapeJsAttr(String(g.id))}')"><i class="fa-solid fa-flag-checkered"></i> Concludi tutto (${daConcludere.length})</button>
         </div>` : '';
+    // Ospite: niente chat (non ha un profilo) → al suo posto "Blocca".
+    const azioneTestata = g.ospite
+        ? ((eRicevute && !g.chiusa) ? `<button type="button" class="match-icobtn ric-blocca" onclick="_richiesteBloccaOspite('${escapeJsAttr(String(g.id))}')" title="Blocca questo ospite" aria-label="Blocca questo ospite"><i class="fa-solid fa-ban"></i><span class="ric-scrivi-txt"> Blocca</span></button>` : '')
+        : `<button type="button" class="match-icobtn match-scrivi" onclick="apriChatPerRichiesta('${g.altro}', '${nomeJs}', '${escapeJsAttr(String(g.id))}')" title="Scrivi a ${escapeHtml(nome)}" aria-label="Scrivi a ${escapeHtml(nome)}"><i class="fa-solid fa-comment"></i><span class="ric-scrivi-txt"> Scrivi a ${escapeHtml(nome)}</span></button>`;
 
     return `
         <div class="ric-card">
             <button type="button" class="ric-indietro" onclick="_richiesteIndietro()"><i class="fa-solid fa-chevron-left"></i> Tutte le richieste</button>
             <div class="match-persona-head ric-testata">
-                <div class="match-avatar">${escapeHtml(nome.charAt(0).toUpperCase())}</div>
+                ${_richiesteAvatarHtml(g, nome)}
                 <div style="flex:1; min-width:0;">
                     <div class="match-persona-nome ric-titolo">${titolo}</div>
                     <div class="match-persona-sotto">${sotto}</div>
                 </div>
-                <button type="button" class="match-icobtn match-scrivi" onclick="apriChatPerRichiesta('${g.altro}', '${nomeJs}', '${escapeJsAttr(String(g.id))}')" title="Scrivi a ${escapeHtml(nome)}" aria-label="Scrivi a ${escapeHtml(nome)}"><i class="fa-solid fa-comment"></i><span class="ric-scrivi-txt"> Scrivi a ${escapeHtml(nome)}</span></button>
+                ${azioneTestata}
             </div>
-            ${comeFunziona}
+            ${ospiteHtml}
+            ${g.ospite ? '' : comeFunziona}
             <div class="ric-oggetti">${righe}</div>
+            ${fondoAccetta}
+            ${g.ospite ? comeFunziona : ''}
             ${fondo}
         </div>`;
 }
@@ -283,12 +369,43 @@ async function _richiesteConcludiTutto(richiestaId) {
     const righe = (_richiesteVista === 'ricevute' ? _richiesteRicevute : _richiesteInviate)
         .filter(r => String(r.richiesta_id || r.id) === String(richiestaId) && r.stato_riga === 'accettata');
     if (!righe.length) return;
-    if (!confirm(`Concludere tutti e ${righe.length} gli oggetti riservati? Gli oggetti verranno trasferiti ora, azione irreversibile.\nIl destinatario li troverà nella Location "?" e potrà spostarli dove vuole.`)) return;
+    const conOspite = !!_richiestaOspite(righe[0]);
+    if (!confirm(conOspite
+        ? `Concludere tutti e ${righe.length} gli oggetti riservati? Escono dalla tua collezione ora, azione irreversibile.`
+        : `Concludere tutti e ${righe.length} gli oggetti riservati? Gli oggetti verranno trasferiti ora, azione irreversibile.\nIl destinatario li troverà nella Location "?" e potrà spostarli dove vuole.`)) return;
     for (const r of righe) {
         const { error } = await concludiRigaRichiesta(r.id, '?');
         if (error) { alert('❌ ' + error.message); break; }
     }
     await apriPaginaRichieste(true);
+}
+
+
+// FASE 8b: "Accetta tutto" — stessa RPC di "Accetta" su ogni oggetto in
+// attesa della richiesta, una conferma sola; si ferma al primo errore.
+async function _richiesteAccettaTutto(richiestaId) {
+    const righe = _richiesteRicevute.filter(r => String(r.richiesta_id || r.id) === String(richiestaId) && r.stato_riga === 'in_attesa');
+    if (!righe.length) return;
+    if (!confirm(`Accettare tutti e ${righe.length} gli oggetti? Diventeranno riservati.`)) return;
+    for (const r of righe) {
+        const { error } = await accettaRigaRichiesta(r.id);
+        if (error) { alert('❌ ' + error.message); break; }
+    }
+    await apriPaginaRichieste(true);
+}
+
+// FASE 8b: Blocca un ospite — il suo dispositivo non potrà più chiederti
+// nulla e le sue richieste aperte verso di te si annullano.
+async function _richiesteBloccaOspite(richiestaId) {
+    if (!confirm('Bloccare questo ospite? Non potrà più inviarti richieste da questo dispositivo e le sue richieste aperte verso di te verranno annullate.')) return;
+    const { error } = await bloccaOspite(richiestaId);
+    if (error) { alert('❌ ' + error.message); return; }
+    await apriPaginaRichieste(true);
+}
+
+async function _richiesteCopiaContatto(testo) {
+    try { await navigator.clipboard.writeText(testo); alert('Contatto copiato.'); }
+    catch (_) { prompt('Copia il contatto:', testo); }
 }
 
 
@@ -315,7 +432,11 @@ async function _azioneRichiesta(azione, rigaId) {
         // vedere né scegliere le Location dell'altro utente — l'oggetto
         // arriva in "?" (Centro Operativo) e il destinatario lo sposta
         // dove vuole. Prima era un prompt() a testo libero.
-        if (!confirm('Concludere lo scambio? L\'oggetto verrà trasferito ora, azione irreversibile.\nIl destinatario lo troverà nella Location "?" e potrà spostarlo dove vuole.')) return;
+        const rigaC = _richiesteRicevute.find(x => String(x.id) === String(rigaId));
+        const msgC = (rigaC && _richiestaOspite(rigaC))
+            ? 'Concludere lo scambio con l\'ospite? L\'oggetto esce dalla tua collezione ora, azione irreversibile.'
+            : 'Concludere lo scambio? L\'oggetto verrà trasferito ora, azione irreversibile.\nIl destinatario lo troverà nella Location "?" e potrà spostarlo dove vuole.';
+        if (!confirm(msgC)) return;
         risultato = await concludiRigaRichiesta(rigaId, '?');
     }
 

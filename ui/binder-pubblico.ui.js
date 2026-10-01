@@ -65,7 +65,7 @@ async function caricaCatalogo() {
 
     const nomeBinder = info[0].nome || 'Binder';
     _ownerUserId = info[0].owner_id;
-    _binderInfo = { nome: nomeBinder, tipo: info[0].tipo, location_valore: info[0].location_valore, layout: info[0].layout, colore: info[0].colore || null };
+    _binderInfo = { nome: nomeBinder, tipo: info[0].tipo, location_valore: info[0].location_valore, layout: info[0].layout, colore: info[0].colore || null, nickname: info[0].nickname || null };
     document.title = 'CardSync Pro — ' + nomeBinder;
     document.getElementById('titoloBinder').textContent = nomeBinder;
     // RESTYLE BINDEX FASE 8: "di <nickname>" (mai l'email) — campo restituito da sql/82; assente prima dello SQL.
@@ -100,6 +100,8 @@ async function caricaCatalogo() {
     _tipoOggettoRichiesta = 'carta';
     const btnRichiedi = document.getElementById('btnRichiediScambio');
     if (btnRichiedi) btnRichiedi.style.display = (_binderInfo.tipo === 'scambio') ? '' : 'none';
+    // FASE 8b: "Hai un codice richiesta? Controlla" (ui/richiesta-ospite.ui.js)
+    if (_binderInfo.tipo === 'scambio' && typeof ospiteMostraControllo === 'function') ospiteMostraControllo();
 
     _caricaCopertinaBinder(binderId); // non bloccante, si aggiorna da sola quando pronta
 
