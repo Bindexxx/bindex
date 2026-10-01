@@ -38,3 +38,9 @@ function binderPubblicoUrlFile(bucket, percorso) {
     const { data } = supabaseClient.storage.from(bucket).getPublicUrl(percorso);
     return data?.publicUrl || null;
 }
+
+// RESTYLE BINDEX FASE 8c (sql/89): foto reali delle carte di un binder
+// pubblico (la funzione restituisce solo quelle di carte pubbliche).
+async function binderPubblicoFotoCarte(cartaIds) {
+    return supabaseClient.rpc('leggi_foto_carte', { p_carta_ids: cartaIds });
+}

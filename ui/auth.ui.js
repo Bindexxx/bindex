@@ -309,6 +309,8 @@
             switchTab(savedTab, navBtn);
 
             _aggiornaControlliApriApp();
+            // FASE 8c: link "?apri=foto" dal QR della pagina Foto carte su PC.
+            if (typeof fotoApriDaLinkSeRichiesto === 'function') fotoApriDaLinkSeRichiesto();
         }
 
 // RESTYLE BINDEX FASE 5: occhio sul campo password dell'accesso. Cambia solo

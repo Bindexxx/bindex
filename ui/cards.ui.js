@@ -371,7 +371,7 @@
                                 ${card.tabella === 'carte' && card.stato === 'collezione' ? `<button class="btn-binder-toggle" data-id="${idAttr}" onclick="event.stopPropagation(); toggleBinderMembership('${idAttr}')"><i class="fa-solid fa-layer-group"></i> ${_idsNelBinder.has(String(card.id)) ? 'Rimuovi dal Binder' : 'Aggiungi al Binder'}</button>` : ''}
                                 ${card.tabella === 'carte' && card.stato === 'collezione' ? `<button class="btn-scambio-toggle" data-id="${idAttr}" onclick="event.stopPropagation(); apriModaleQuantitaScambio('${idAttr}')"><i class="fa-solid fa-right-left"></i> ${_idsInScambio.has(String(card.id)) ? `In Scambio: ${_quantitaOfferteScambio[String(card.id)] ?? 0}` : 'Offri in Scambio'}</button>` : ''}
                                 <button onclick="apriGraficoPrezzo('${idAttr}', '${card.tabella}', '${nomeAttr}')"><i class="fa-solid fa-chart-line"></i> Andamento prezzo</button>
-                                <button onclick="apriFotoDettaglio('${idAttr}', '${card.tabella}', '${nomeAttr}')"><i class="fa-solid fa-camera"></i> Foto dettaglio</button>
+                                ${card.tabella === 'carte' && card.stato === 'collezione' ? `<button onclick="fotoApriCarta('${idAttr}')"><i class="fa-solid fa-camera"></i> Foto reali</button>` : ''}
                                 <button onclick="eliminaCarta('${card.id}')" style="color:var(--danger);"><i class="fa-solid fa-trash"></i> Elimina</button>
                             </div>
                         </div>
@@ -442,7 +442,7 @@
                         ${card.tabella === 'carte' && card.stato === 'collezione' ? `<button class="btn-binder-toggle" data-id="${idAttr}" onclick="event.stopPropagation(); toggleBinderMembership('${idAttr}')"><i class="fa-solid fa-layer-group"></i> ${_idsNelBinder.has(String(card.id)) ? 'Rimuovi dal Binder' : 'Aggiungi al Binder'}</button>` : ''}
                         ${card.tabella === 'carte' && card.stato === 'collezione' ? `<button class="btn-scambio-toggle" data-id="${idAttr}" onclick="event.stopPropagation(); apriModaleQuantitaScambio('${idAttr}')"><i class="fa-solid fa-right-left"></i> ${_idsInScambio.has(String(card.id)) ? `In Scambio: ${_quantitaOfferteScambio[String(card.id)] ?? 0}` : 'Offri in Scambio'}</button>` : ''}
                         <button onclick="apriGraficoPrezzo('${idAttr}', '${card.tabella}', '${nomeAttr}')"><i class="fa-solid fa-chart-line"></i> Andamento</button>
-                        <button onclick="apriFotoDettaglio('${idAttr}', '${card.tabella}', '${nomeAttr}')"><i class="fa-solid fa-camera"></i> Foto</button>
+                        ${card.tabella === 'carte' && card.stato === 'collezione' ? `<button onclick="fotoApriCarta('${idAttr}')"><i class="fa-solid fa-camera"></i> Foto</button>` : ''}
                         <button onclick="eliminaCarta('${card.id}')" style="color:var(--danger);"><i class="fa-solid fa-trash"></i> Elimina</button>
                     </div>
                 </div>
