@@ -349,7 +349,8 @@ function _libroHtmlCopertina() {
     const immagine = _libro.copertinaUrl
         ? `<img src="${_libro.copertinaUrl}" alt="${nome}" onerror="this.remove();">`
         : `<i class="fa-solid ${icona}"></i>`;
-    return `<div class="libro-copertina">${immagine}<div class="libro-copertina-etichetta">${nome}</div></div>`;
+    const col = (_binderInfo && typeof _binderInfo.colore === 'string' && /^#[0-9a-fA-F]{6}$/.test(_binderInfo.colore)) ? _binderInfo.colore : null;
+    return `<div class="libro-copertina"${col ? ` style="background:${col}"` : ''}>${immagine}<div class="libro-copertina-etichetta">${nome}</div></div>`;
 }
 
 function _libroHtmlPagina(indicePagina) {

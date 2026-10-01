@@ -6688,3 +6688,16 @@
             color: var(--text-dark);
         }
         .bx-riquadro > span { font-size: 11px; font-weight: 600; color: var(--text-muted); }
+
+
+/* ═══ RESTYLE BINDEX FASE 8a — scelta colore copertina binder ═══ */
+.bn-colori { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.bn-colore-btn {
+    width: 34px; height: 34px; border-radius: 50%; border: 3px solid transparent; cursor: pointer;
+    box-shadow: 0 0 0 1px var(--border-color); padding: 0;
+}
+.bn-colore-btn.attivo { border-color: var(--text-dark); }
+.bn-colore-auto {
+    border-radius: 999px; padding: 0 0.8rem; width: auto; height: 34px; font-size: 0.75rem; font-weight: 700;
+    background: var(--card-bg); color: var(--text-dark);
+}

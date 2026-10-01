@@ -62,7 +62,7 @@ CATALOGO_WIDGET.condividi = {
             const pub = (x) => x.stato_pubblicazione === 'pubblico';
             const pubbliche = binders.filter(pub).length + scaffali.filter(pub).length;
             const private_ = binders.length + scaffali.length - pubbliche;
-            const copertine = binders.filter(pub).map(x => ({ nome: x.nome || '', pubblico: true }))
+            const copertine = binders.filter(pub).map(x => ({ nome: x.nome || '', colore: x.colore || null, pubblico: true }))
                 .concat(scaffali.filter(pub).map(x => ({ nome: x.nome || '', pubblico: true })));
             return {
                 righe: [pubbliche ? `${pubbliche} cos${pubbliche === 1 ? 'a pubblica' : 'e pubbliche'}` : 'Niente di pubblico'],
