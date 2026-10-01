@@ -148,6 +148,8 @@ async function apriDettaglioWidget(tabId, evt) {
         _impostaOrigineAnimazione(container, evt);
         container.classList.add('container-visibile'); // display: normale, cerchio a 0% (stato di partenza dichiarato in CSS)
         _posizionaContainerNelloSchermo();
+        // Collezione: disegnata a pannello ancora nascosto, va rimisurata.
+        if (tabId === 'visualizzazione' && typeof collezioneRiallinea === 'function') collezioneRiallinea();
         // Un frame di distacco tra "cerchio a 0%" e "aggiungi la classe che
         // lo porta a 150%": necessario perché il browser faccia partire
         // davvero la transizione invece di saltare subito allo stato finale.
