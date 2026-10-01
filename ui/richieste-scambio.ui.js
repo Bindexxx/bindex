@@ -114,7 +114,7 @@ function _richiesteNomeGruppo(g) {
 function _richiesteAvatarHtml(g, nome) {
     return g.ospite
         ? `<div class="match-avatar ric-avatar-ospite" title="Ospite"><i class="fa-solid fa-user"></i></div>`
-        : `<div class="match-avatar">${escapeHtml(nome.charAt(0).toUpperCase())}</div>`;
+        : `<div class="match-avatar" data-avatar-utente="${escapeHtml(String(g.altro))}">${escapeHtml(nome.charAt(0).toUpperCase())}</div>`;
 }
 // Link "Apri" per il contatto dell'ospite (null se non si può costruire).
 function _richiesteLinkContatto(tipo, contatto) {
@@ -257,6 +257,7 @@ function renderPaginaRichieste() {
             </div>
             <div class="ric-dettaglio">${sel ? _richiesteDettaglioHtml(sel, eRicevute) : ''}</div>
         </div>`;
+    if (typeof fotoProfiloApplica === 'function') fotoProfiloApplica(wrap); // foto profilo (sql/90)
 }
 
 function _richiesteDettaglioHtml(g, eRicevute) {

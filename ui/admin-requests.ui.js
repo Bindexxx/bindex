@@ -32,6 +32,7 @@ function _etichettaTipoRichiesta(type, slot) {
     // davvero approvando.
     if (slot === 'card_back') return 'Retro carta';
     if (slot === 'binder_cover') return 'Copertina Binder';
+    if (slot === 'profilo') return 'Foto profilo'; // sql/90
     return 'Foto Binder'; // slot sconosciuto/non ancora caricato — fallback prudente
   }
   return type;

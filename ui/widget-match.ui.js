@@ -333,7 +333,7 @@ function _matchRenderDaDati() {
             : `cerca ${g.righe.length} tu${g.righe.length === 1 ? 'a carta' : 'e carte'} in Scambio`;
         const chip = g.inBudget ? `<span class="bx-stato bx-stato-conclusa">${g.inBudget} ${tab === 'cerchi' ? 'sotto obiettivo' : 'nel budget'}</span>` : '';
         return `<div class="match-mrow ${g.ownerAltro === _matchPersonaSel[tab] ? 'sel' : ''}" onclick="_matchSelezionaPersona('${g.ownerAltro}')">
-            <div class="match-avatar">${escapeHtml(g.label.charAt(0).toUpperCase())}</div>
+            <div class="match-avatar" data-avatar-utente="${g.ownerAltro}">${escapeHtml(g.label.charAt(0).toUpperCase())}</div>
             <div class="match-mtesto"><div class="match-persona-nome">${escapeHtml(g.label)}${g.nuovi ? ' <span class="match-punto"></span>' : ''}</div><div class="match-persona-sotto">${sotto}</div></div>
             ${chip}<i class="fa-solid fa-chevron-right match-freccia"></i></div>`;
     }).join('');
@@ -359,6 +359,7 @@ function _matchRenderDaDati() {
             </div>
             <div class="match-dettaglio">${cards}${cardsNasc}${nascosteTab.length ? `<div class="match-nascoste match-nascoste-tel"><i class="fa-solid fa-eye-slash"></i> ${nascosteTab.length} nascost${nascosteTab.length === 1 ? 'a' : 'e'} · <a href="#" onclick="event.preventDefault(); _matchToggleNascoste()">${_matchMostraNascoste ? 'Nascondi' : 'Mostra'}</a></div>` : ''}</div>
         </div>`;
+    if (typeof fotoProfiloApplica === 'function') fotoProfiloApplica(container); // foto profilo (sql/90)
 }
 
 function _matchCardPersonaHtml(g, eCerchi, nascoste, selPC) {
@@ -374,7 +375,7 @@ function _matchCardPersonaHtml(g, eCerchi, nascoste, selPC) {
     return `
         <div class="match-persona ${nascoste ? 'match-persona-nasc' : ''} ${selPC ? 'match-persona-sel' : ''}" data-owner="${g.ownerAltro}">
             <div class="match-persona-head">
-                <div class="match-avatar">${escapeHtml(g.label.charAt(0).toUpperCase())}</div>
+                <div class="match-avatar" data-avatar-utente="${g.ownerAltro}">${escapeHtml(g.label.charAt(0).toUpperCase())}</div>
                 <div style="flex:1; min-width:0;">
                     <div class="match-persona-nome"><span class="match-tel">${escapeHtml(g.label)}</span><span class="match-pc">${titoloPC}</span></div>
                     <div class="match-persona-sotto">${nascoste ? 'nascoste' : sotto}</div>
