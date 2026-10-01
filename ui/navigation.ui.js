@@ -122,7 +122,10 @@
                 // invece che su location='SCAMBIO'. La location resta
                 // filtrabile (i prodotti sealed hanno comunque una location
                 // fisica), a differenza della wishlist.
-                qrBtn.style.display = 'inline-flex';
+                // RESTYLE BINDEX FASE 6: niente più "Condividi" qui — puntava a
+                // sealed.html (pagina ritirata, il meccanismo sealed/SCAMBIO non
+                // è più popolato). Gli scaffali si condividono dalla loro pagina.
+                qrBtn.style.display = 'none';
                 locFilter.value = '';
                 locFilter.disabled = false;
                 document.getElementById('statLabelCount').innerText = 'Sealed';
