@@ -12,6 +12,7 @@ const elSubmit = document.getElementById('login-submit');
 let _ultimeRichiesteCaricate = [];
 let _mappaUsernameRichieste = {};
 let _mappaAnteprimaFotoRichieste = {};
+let _mappaPrimaRichieste = {}; // request_id -> nome attuale (sql/86), solo rinomine binder/scaffale pending
 let _mappaSlotRichieste = {}; // media_id -> 'card_back' | 'binder_cover'
 let _nascondiGiaGestite = false; // toggle "Nascondi già gestite" (Fase f, solo vista, non tocca il DB)
 let ultimaListaUtenti = [];

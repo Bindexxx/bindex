@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>CardSync Pro — Sealed</title>
+    <title>Bindex — Pagina spostata</title>
 
     <link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -434,96 +434,62 @@
             gap: 0.4rem;
         }
         .btn-reset-filtri:hover { color: var(--primary); }
+    
+        * { box-sizing: border-box; }
+        body { margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 1.5rem;
+               font-family: 'Space Grotesk', sans-serif; background: var(--bg-color); color: var(--text-dark); }
+        .spostata { max-width: 420px; width: 100%; background: var(--card-bg); border: 1px solid var(--border-color);
+                    border-radius: 20px; padding: 2rem 1.5rem; text-align: center; box-shadow: var(--shadow-soft); }
+        .spostata i.grande { font-size: 2.2rem; color: var(--primary); margin-bottom: 0.8rem; }
+        .spostata h1 { font-size: 1.25rem; margin: 0 0 0.5rem; }
+        .spostata p { font-size: 0.9rem; color: var(--text-muted); margin: 0 0 1.2rem; line-height: 1.45; }
+        .spostata a.btn { display: inline-flex; align-items: center; gap: 0.5rem; background: var(--primary); color: #fff;
+                          text-decoration: none; font-weight: 700; padding: 0.7rem 1.2rem; border-radius: 12px; }
+        .spostata a.btn[hidden] { display: none; }
     </style>
 </head>
 <body>
-
-    <header>
-        <div class="logo">
-            <img src="favicon.ico" alt="Favicon">
-            <span>CardSync Pro — Sealed</span>
-        </div>
-        <p>Seleziona i prodotti sealed che ti interessano — il totale si aggiorna da solo.</p>
-    </header>
-
-    <!-- MODALE IMMAGINE INGRANDITA -->
-    <div id="immagineModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:200; align-items:center; justify-content:center;" onclick="chiudiImmagineIngrandita()">
-        <div style="max-width:320px; width:90%; background:var(--card-bg); border-radius:16px; padding:1rem; position:relative;" onclick="event.stopPropagation()">
-            <button onclick="chiudiImmagineIngrandita()" style="position:absolute; top:0.6rem; right:0.6rem; background:none; border:none; font-size:1.2rem; color:var(--text-muted); cursor:pointer;"><i class="fa-solid fa-xmark"></i></button>
-            <img id="immagineIngranditaImg" src="" alt="" style="width:100%; border-radius:12px; margin-top:0.5rem;">
-        </div>
+    <div class="spostata">
+        <i class="fa-solid fa-box-open grande"></i>
+        <h1>Questa pagina si è spostata</h1>
+        <p id="spostataTesto">I prodotti sealed condivisi ora si trovano nello Scaffale Scambio. Cerco quello di chi ti ha mandato il link…</p>
+        <a id="spostataLink" class="btn" href="#" hidden><i class="fa-solid fa-arrow-right"></i> Apri lo Scaffale Scambio</a>
     </div>
 
-    <div class="container">
-        <div class="search-box">
-            <i class="fa-solid fa-magnifying-glass" style="color: var(--text-muted);"></i>
-            <input type="text" id="searchInput" placeholder="Cerca carta o codice..." oninput="renderLista()">
-        </div>
-
-        <button class="btn-filtri" id="btnFiltri" onclick="toggleFiltri()">
-            <i class="fa-solid fa-filter"></i> Filtri
-            <span id="filtriAttiviCount" style="display:none;"></span>
-            <i class="fa-solid fa-chevron-down"></i>
-        </button>
-
-        <div class="pannello-filtri" id="pannelloFiltri">
-            <div class="filtro-gruppo-titolo">Lingua</div>
-            <div id="filtriLinguaPills"></div>
-
-            <div class="filtro-gruppo-titolo" style="margin-top:0.9rem;">Prezzo</div>
-            <div class="price-slider-wrap">
-                <div class="price-slider-track"></div>
-                <div class="price-slider-range" id="priceSliderRange"></div>
-                <input type="range" id="sliderPrezzoMin" oninput="onSliderPrezzoInput('min')">
-                <input type="range" id="sliderPrezzoMax" oninput="onSliderPrezzoInput('max')">
-            </div>
-            <div class="price-slider-labels">
-                <span id="labelPrezzoMin"></span>
-                <span id="labelPrezzoMax"></span>
-            </div>
-
-            <button class="btn-reset-filtri" onclick="resetFiltri()">
-                <i class="fa-solid fa-rotate-left"></i> Reset filtri
-            </button>
-        </div>
-
-        <div id="listaContainer">
-            <div class="stato-caricamento"><i class="fa-solid fa-spinner fa-spin"></i> Caricamento carte disponibili...</div>
-        </div>
-    </div>
-
-    <div class="barra-totale">
-        <div class="barra-totale-info">
-            <div class="barra-totale-count" id="conteggioSelezionate">0 carte selezionate</div>
-            <div class="barra-totale-value" id="totaleSelezionate">0,00 €</div>
-        </div>
-        <button class="btn-copia" id="btnCopiaRiepilogo" onclick="copiaRiepilogo()" disabled>
-            <i class="fa-solid fa-copy"></i> Copia riepilogo
-        </button>
-    </div>
-
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.1"></script><!-- versione esatta, audit 2026-09-25 E1: uguale in tutte le pagine -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.1"></script>
     <script src="config/supabase.js" data-client="pubblico"></script>
-    <script src="data/sealed.repository.js"></script>
-    <script src="state/sealed.state.js"></script>
-    <script src="utils/comuni.js"></script>
-    <script src="data/pubblico.repository.js"></script><!-- chiamate DB di shared-public.js, audit 2026-09-25 B8 -->
-    <script src="utils/shared-public.js"></script>
-    <script src="ui/sealed.ui.js"></script>
+    <script src="data/pubblico.repository.js"></script>
     <script>
+        // Stesso tema scelto dal proprietario nel link (nessun login qui).
+        (function () {
+            const params = new URLSearchParams(window.location.search);
+            const tema = params.get('tema');
+            if (tema === 'verde' || tema === 'pokemon') document.body.classList.add('theme-' + tema);
+            if (params.get('scuro') === '1') document.body.classList.add('dark-mode');
+        })();
 
-        // Fix 26/08/2026: creazione del client Supabase mancante — mai
-        // presente su questa pagina, stesso bug #9 già trovato e corretto
-        // su binder-pubblico.html/scambio.html/wishlist.html. Trovato per
-        // ispezione diretta durante il lavoro sul libro sfogliabile
-        // condiviso, non segnalato da Claudio: verificare se la pagina ha
-        // mai funzionato in questo ambiente di test. config/supabase.js
-        // definisce solo URL/chiave, la creazione spetta a ogni pagina.
-        // supabaseClient ora viene creato in config/supabase.js (data-client="pubblico"), dal 2026-09-25.
-
-        // ── AVVIO ────────────────────────────────────────────────────────
-        applicaTemaCondiviso();
-        caricaCatalogo();
+        (async function () {
+            const params = new URLSearchParams(window.location.search);
+            const testo = document.getElementById('spostataTesto');
+            const link = document.getElementById('spostataLink');
+            const owner = params.get('u');
+            const fallback = 'I prodotti sealed condivisi ora si trovano nello Scaffale Scambio. Chiedi a chi ti ha mandato il link di inviartene uno aggiornato.';
+            if (!owner) { testo.textContent = fallback; return; }
+            try {
+                const { data, error } = await pubblicoScaffaleScambioDaOwner(owner);
+                if (error || !data) { testo.textContent = fallback; return; }
+                const url = new URL('scaffali-pubblico.html', window.location.href);
+                url.searchParams.set('u', owner);
+                url.searchParams.set('scaffale', data);
+                ['tema', 'scuro'].forEach(k => { if (params.get(k)) url.searchParams.set(k, params.get(k)); });
+                link.href = url.href;
+                link.hidden = false;
+                testo.textContent = 'I prodotti sealed condivisi ora si trovano nello Scaffale Scambio.';
+            } catch (e) {
+                console.error('[sealed spostata]', e);
+                testo.textContent = fallback;
+            }
+        })();
     </script>
 </body>
 </html>

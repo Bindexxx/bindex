@@ -74,8 +74,12 @@ async function chatOttieniOCreaConversazione(altroId) {
     return supabaseClient.rpc('ottieni_o_crea_conversazione', { p_altro_id: altroId });
 }
 
-async function chatInviaMessaggio(conversazioneId, testo) {
-    return supabaseClient.rpc('invia_messaggio', { p_conversazione_id: conversazioneId, p_testo: testo });
+async function chatInviaMessaggio(conversazioneId, testo, richiestaId = null) {
+    // RESTYLE BINDEX FASE 8e (sql/83): p_richiesta_id solo se serve — senza,
+    // la chiamata resta identica a prima (funziona anche prima di sql/83).
+    const args = { p_conversazione_id: conversazioneId, p_testo: testo };
+    if (richiestaId) args.p_richiesta_id = richiestaId;
+    return supabaseClient.rpc('invia_messaggio', args);
 }
 
 async function chatSegnaLetti(conversazioneId) {

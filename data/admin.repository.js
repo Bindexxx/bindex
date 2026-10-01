@@ -47,6 +47,12 @@ async function adminProfiliPerIds(ids) {
     return supabaseClient.from('profiles').select('id, username').in('id', ids);
 }
 
+// RESTYLE BINDEX FASE 7/8e (sql/86): nome attuale e proposto di una richiesta
+// di rinomina binder/scaffale (l'admin non legge quelle tabelle per RLS).
+async function adminContestoRichiesta(requestId) {
+    return supabaseClient.rpc('admin_contesto_richiesta', { p_request_id: requestId });
+}
+
 async function adminUserMediaPerIds(ids) {
     return supabaseClient.from('user_media').select('id, storage_path, slot').in('id', ids);
 }

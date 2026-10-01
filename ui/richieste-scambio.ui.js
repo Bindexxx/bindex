@@ -268,7 +268,7 @@ function _richiesteDettaglioHtml(g, eRicevute) {
                     <div class="match-persona-nome ric-titolo">${titolo}</div>
                     <div class="match-persona-sotto">${sotto}</div>
                 </div>
-                <button type="button" class="match-icobtn match-scrivi" onclick="_contattaPersonaMatch('${g.altro}', '${nomeJs}')" title="Scrivi a ${escapeHtml(nome)}" aria-label="Scrivi a ${escapeHtml(nome)}"><i class="fa-solid fa-comment"></i><span class="ric-scrivi-txt"> Scrivi a ${escapeHtml(nome)}</span></button>
+                <button type="button" class="match-icobtn match-scrivi" onclick="apriChatPerRichiesta('${g.altro}', '${nomeJs}', '${escapeJsAttr(String(g.id))}')" title="Scrivi a ${escapeHtml(nome)}" aria-label="Scrivi a ${escapeHtml(nome)}"><i class="fa-solid fa-comment"></i><span class="ric-scrivi-txt"> Scrivi a ${escapeHtml(nome)}</span></button>
             </div>
             ${comeFunziona}
             <div class="ric-oggetti">${righe}</div>
