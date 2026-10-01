@@ -152,6 +152,7 @@ async function apriDettaglioWidget(tabId, evt) {
         if (tabId === 'visualizzazione' && typeof collezioneRiallinea === 'function') collezioneRiallinea();
         if (tabId === 'wishlist' && typeof _wishlistRenderElenco === 'function') _wishlistRenderElenco(); // elenco (telefono) o tabella (PC)
         if (tabId === 'set' && typeof _setUiRender === 'function') _setUiRender(); // elenco (telefono) o elenco + dettaglio (PC)
+        if (tabId === 'impostazioni' && typeof _impostazioniTornaHub === 'function') _impostazioniTornaHub(); // elenco (telefono) o menu + gruppo (PC), misurato ora che è visibile
         // Un frame di distacco tra "cerchio a 0%" e "aggiungi la classe che
         // lo porta a 150%": necessario perché il browser faccia partire
         // davvero la transizione invece di saltare subito allo stato finale.

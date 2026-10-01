@@ -5091,16 +5091,7 @@
         .cd-chip-priv { background: var(--border-color); color: var(--text-muted); }
         .cd-riga.cd-privato .cd-cover { filter: saturate(.55) brightness(.92); }
 
-        /* RESTYLE BINDEX: Impostazioni su PC — menu a sinistra, pagina a destra */
-        @container (min-width: 780px) {
-            #impostazioni.active { display: grid; grid-template-columns: 280px minmax(0, 1fr); gap: 1.4rem; align-items: start; }
-            #impostazioni #impostazioniHub { grid-column: 1; grid-row: 1; position: sticky; top: 0; }
-            #impostazioni > [id^="impostazioniPagina-"] { grid-column: 2; grid-row: 1; }
-            #impostazioni #impostazioniHub .settings-card,
-            #impostazioni > [id^="impostazioniPagina-"] .settings-card { max-width: none; margin: 0 0 1rem; }
-            #impostazioni > [id^="impostazioniPagina-"] > .setting-row[onclick="_impostazioniTornaHub()"] { display: none; }
-            #impostazioni #impostazioniHub .setting-row.imp-attiva { background: color-mix(in srgb, var(--primary) 12%, transparent); border-radius: 10px; padding-left: 0.6rem; padding-right: 0.6rem; }
-        }
+        /* Impostazioni su PC: vedi il blocco "IMPOSTAZIONI — tavole" in fondo al file. */
         @container (min-width: 780px) {
             #condividi .cd-pagina { display: grid; grid-template-columns: minmax(300px, 380px) 1fr; gap: 22px; align-items: start; }
             #condividi .cd-griglia-tel { display: none; }
@@ -7960,4 +7951,74 @@ body.dark-mode #achievement { --ach-legg-bg: #4a3a12; --ach-rara-bg: #173450; --
 #achievement .ach-stella { position: absolute; top: 6px; right: 7px; color: #f2b01e; font-size: 0.8rem; }
 @container (min-width: 780px) {
     #achievement .ach-griglia { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); }
+}
+
+/* ── IMPOSTAZIONI — tavole OK-impostazioni / PC-imp (2026-10-01) ───────
+   Telefono: elenco unico a gruppi (titoletto maiuscolo + card con righe
+   icona/testo/controllo); le voci .espandibile aprono il loro .imp-corpo.
+   PC (>= 780px): menu a sinistra, a destra solo il gruppo .attivo con
+   tutti i corpi aperti. */
+#impostazioni { container-type: inline-size; }
+#impostazioni .imp-solo-pc { display: none; }
+#impostazioni .imp-sotto { font-size: 0.8rem; color: var(--text-muted); margin: -0.4rem 0 0.9rem; }
+#impostazioni .imp-gruppo { margin-bottom: 1.1rem; }
+#impostazioni .imp-gruppo-titolo { font-size: 0.72rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); margin: 0 0 8px 4px; }
+#impostazioni .imp-card { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 16px; padding: 4px 14px; }
+#impostazioni .imp-card + .imp-card { margin-top: 10px; }
+#impostazioni .imp-card-pad { padding: 14px; }
+#impostazioni .imp-card-titolo { font-size: 0.9rem; font-weight: 800; color: var(--text-dark); display: flex; gap: 8px; align-items: center; }
+#impostazioni .imp-voce { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--border-color); cursor: pointer; margin: 0; }
+#impostazioni .imp-card > .imp-voce:last-child, #impostazioni .imp-card > .imp-corpo:last-child, #impostazioni #impostazioniEstensioneGroup > .imp-voce:last-child { border-bottom: 0; }
+#impostazioni .imp-card > .imp-voce.espandibile:nth-last-child(2):not(.aperta) { border-bottom: 0; }
+#impostazioni .imp-ico { width: 34px; height: 34px; border-radius: 10px; flex: 0 0 auto; display: flex; align-items: center; justify-content: center; background: var(--primary-light); color: var(--primary); font-size: 0.9rem; }
+#impostazioni .imp-voce-testo { flex: 1; min-width: 0; }
+#impostazioni .imp-voce-testo h4 { font-size: 0.9rem; font-weight: 700; color: var(--text-dark); margin: 0; }
+#impostazioni .imp-voce-testo p { font-size: 0.74rem; color: var(--text-muted); margin: 2px 0 0; line-height: 1.35; }
+#impostazioni .imp-valore { font-size: 0.78rem; color: var(--text-muted); text-align: right; max-width: 42%; }
+#impostazioni .imp-freccia { color: var(--text-muted); font-size: 0.8rem; transition: transform .2s; }
+#impostazioni .imp-voce.espandibile.aperta .imp-freccia { transform: rotate(90deg); }
+#impostazioni .imp-corpo { display: none; flex-direction: column; gap: 10px; padding: 4px 0 14px; border-bottom: 1px solid var(--border-color); }
+#impostazioni .imp-voce.espandibile.aperta + .imp-corpo { display: flex; }
+#impostazioni .imp-corpo input[type=email], #impostazioni .imp-corpo input[type=password], #impostazioni .imp-corpo input[type=text] { margin: 0; }
+#impostazioni .imp-corpo > .btn-main, #impostazioni .imp-corpo > .btn-secondary { align-self: flex-start; }
+#impostazioni .imp-etichetta { font-size: 0.7rem; font-weight: 700; color: var(--text-muted); margin: 4px 0 -4px; }
+#impostazioni .imp-nota { font-size: 0.74rem; color: var(--text-muted); margin: 0; }
+#impostazioni .imp-sottotitolo { font-size: 0.68rem; font-weight: 800; letter-spacing: .06em; color: var(--text-muted); }
+#impostazioni .imp-spunte { display: flex; flex-direction: column; gap: 0.6rem; }
+#impostazioni .imp-spunte label { display: flex; align-items: center; gap: 0.6rem; font-size: 0.85rem; cursor: pointer; }
+#impostazioni .imp-spunte input[type=checkbox] { width: auto; }
+#impostazioni .imp-slider { display: flex; flex-direction: column; gap: 6px; }
+#impostazioni .imp-slider-riga { display: flex; align-items: center; gap: 12px; }
+#impostazioni .imp-slider-riga input { flex: 1; accent-color: var(--primary); cursor: pointer; }
+#impostazioni .imp-slider-riga span { font-size: 0.8rem; font-weight: 700; color: var(--text-dark); min-width: 48px; text-align: right; }
+#impostazioni .imp-colore { width: 36px; height: 36px; border: 1px solid var(--border-color); border-radius: 10px; padding: 2px; cursor: pointer; background: var(--card-bg); flex: 0 0 auto; }
+#impostazioni .imp-select { max-width: 46%; }
+#impostazioni .imp-btn { padding: 6px 12px; font-size: 0.8rem; white-space: nowrap; }
+#impostazioni .imp-bottoni { display: flex; gap: 6px; flex: 0 0 auto; }
+#impostazioni .imp-conn { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+#impostazioni .imp-conn h4 { font-size: 0.85rem; font-weight: 700; margin: 0; color: var(--text-dark); }
+#impostazioni .imp-conn p { font-size: 0.72rem; color: var(--text-muted); margin: 0; }
+#impostazioni .imp-profilo { padding: 14px 0; }
+#impostazioni .imp-avatar { width: 52px; height: 52px; border-radius: 14px; flex: 0 0 auto; display: flex; align-items: center; justify-content: center; background: var(--primary); color: #fff; font-size: 1.3rem; font-weight: 800; background-size: cover; background-position: center; }
+#impostazioni .imp-profilo h4 { font-size: 1rem; }
+#impostazioni .imp-cerca { display: flex; align-items: center; gap: 8px; border: 1px solid var(--border-color); border-radius: 10px; padding: 0 10px; color: var(--text-muted); margin-bottom: 8px; }
+#impostazioni .imp-cerca input { border: 0; background: transparent; padding: 8px 0; flex: 1; min-width: 0; font: inherit; font-size: 0.82rem; color: var(--text-dark); outline: none; margin: 0; }
+#impostazioni .imp-nascosta { display: none !important; }
+
+@container (min-width: 780px) {
+    #impostazioni .imp-solo-pc { display: block; }
+    #impostazioni .imp-solo-tel { display: none; }
+    #impostazioni .imp-layout { display: grid; grid-template-columns: 250px minmax(0, 1fr); gap: 1.2rem; align-items: start; }
+    #impostazioni .imp-menu { display: flex; flex-direction: column; gap: 2px; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 16px; padding: 12px; position: sticky; top: 0; }
+    #impostazioni .imp-menu button { display: flex; align-items: center; gap: 12px; border: 0; background: transparent; text-align: left; font: inherit; font-size: 0.86rem; font-weight: 600; color: var(--text-dark); padding: 9px 10px; border-radius: 10px; cursor: pointer; }
+    #impostazioni .imp-menu button i { width: 28px; height: 28px; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; background: var(--primary-light); color: var(--primary); font-size: 0.8rem; }
+    #impostazioni .imp-menu button.attivo { background: var(--primary-light); color: var(--primary); }
+    #impostazioni .imp-gruppi:not(.cercando) .imp-gruppo:not(.attivo) { display: none; }
+    #impostazioni .imp-gruppo-titolo { font-size: 1.1rem; text-transform: none; letter-spacing: 0; color: var(--text-dark); margin: 0; padding: 14px 14px 0; }
+    #impostazioni .imp-gruppo { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 16px; max-width: 760px; }
+    #impostazioni .imp-gruppo > .imp-card { border: 0; border-radius: 16px; background: transparent; }
+    #impostazioni .imp-voce.espandibile { cursor: default; border-bottom: 0; padding-bottom: 4px; }
+    #impostazioni .imp-voce.espandibile .imp-freccia { display: none; }
+    #impostazioni .imp-corpo { display: flex; padding-left: 46px; }
+    #impostazioni .imp-profilo + .imp-corpo { padding-left: 0; }
 }
