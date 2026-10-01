@@ -186,6 +186,8 @@ async function renderPaginaPrezziAggiornati() {
     if (!c) return;
     _pagPeriodo = 'oggi';
     _pagCache = {};
+    _pagSelId = null;
+    _pagInvariateAperte = false;
     c.innerHTML = '<p style="text-align:center; color:var(--text-muted); font-size:0.85rem; padding:1rem 0;">Caricamento…</p>';
     try {
         const userId = await authGetUserId();
@@ -228,53 +230,186 @@ function _pagQuando(iso) {
     return d.toLocaleDateString('it-IT', { day: 'numeric', month: 'short' }) + ` alle ${ora}`;
 }
 
+// RESTYLE (tavole PC "Prezzi aggiornati"): riquadri controllate / salite /
+// scese / invariate / effetto sul valore; su PC Salite e Scese con il
+// "prima → ora" e, cliccando una carta, il suo prezzo nel tempo a destra
+// (storico_prezzi, solo lettura). Sul telefono il tocco apre la carta.
+// "Controllate" = carte della collezione con ultimo controllo nel periodo.
+let _pagSelId = null;
+let _pagInvariateAperte = false;
+
+function _pagEPC() {
+    const s = document.getElementById('prezziagg');
+    return !!s && s.clientWidth >= 780;
+}
+
+function _pagTocca(id) {
+    if (!_pagEPC()) { apriFlipCardHome(id); return; }
+    _pagSelId = id;
+    document.querySelectorAll('#prezziagg .pa-riga').forEach(r => r.classList.toggle('sel', r.dataset.id === String(id)));
+    _pagDettaglio();
+}
+
+function _pagMostraInvariate() { _pagInvariateAperte = !_pagInvariateAperte; _pagDisegna(); }
+
+function _pagLineaSvg(valori) {
+    const W = 400, H = 150, pad = 6;
+    let min = Math.min(...valori), max = Math.max(...valori);
+    if (max === min) { max += 1; min -= 1; }
+    const x = i => (i / (valori.length - 1)) * W;
+    const y = v => pad + (1 - (v - min) / (max - min)) * (H - 2 * pad);
+    const linea = 'M' + valori.map((v, i) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' L');
+    return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true">
+        <path d="${linea} L${W},${H} L0,${H} Z" class="pa-g-area"/><path d="${linea}" class="pa-g-linea" vector-effect="non-scaling-stroke"/></svg>`;
+}
+
+async function _pagDettaglio() {
+    const box = document.getElementById('pagDettaglio');
+    if (!box) return;
+    const r = carteReali.find(c => String(c.id) === String(_pagSelId));
+    if (!r) {
+        box.innerHTML = `<div class="pa-invito"><i class="fa-regular fa-hand-pointer"></i><b>Clicca una carta per vedere il suo prezzo nel tempo</b><span>Clicca la miniatura per aprire la carta intera</span></div>`;
+        return;
+    }
+    const base = (_pagCache[_pagPeriodo] || new Map()).get(String(r.id));
+    const delta = base != null ? (Number(r.price) || 0) - base : null;
+    const src = r.immagine ? (_urlImmagineVisualizzabile(r.immagine, 240) || '') : '';
+    const testa = `
+        <div class="pa-det-testa">
+            <span class="bx-lente pa-det-fig" onclick="apriFlipCardHome('${escapeJsAttr(String(r.id))}')">${src ? `<img src="${src}" alt="">` : '<i class="fa-solid fa-image"></i>'}</span>
+            <div class="pa-det-testo">
+                <div class="pa-det-nome">${escapeHtml(r.name || '—')}</div>
+                <div class="pa-det-sotto">${escapeHtml([r.code, r.location].filter(Boolean).join(' · '))}</div>
+                <div class="pa-det-prezzi">${base != null ? `<span>${formattaEuro(base)}</span> → ` : ''}<b>${formattaEuro(r.price)}</b>${delta ? ` <b class="${delta > 0 ? 'pa-su' : 'pa-giu'}">${delta > 0 ? '▲ +' : '▼ −'}${formattaEuro(Math.abs(delta))}</b>` : ''}</div>
+            </div>
+        </div>`;
+    box.innerHTML = `<div class="pa-det">${testa}<div class="pa-det-titolo"><b>Prezzo nel tempo</b><span>ultimi 30 giorni</span></div><div class="pa-det-grafico pa-det-carico">Carico lo storico…</div></div>`;
+    const idRichiesto = r.id;
+    let righe = [];
+    try {
+        const { data } = await storicoPrezziGrafico(r.id, 'carte');
+        righe = data || [];
+    } catch (e) { console.error('[prezzi aggiornati] storico carta:', e); }
+    if (String(_pagSelId) !== String(idRichiesto)) return; // nel frattempo è stata scelta un'altra carta
+    const da = Date.now() - 30 * 86400000;
+    const ultimi = righe.filter(x => new Date(x.registrato_il).getTime() >= da);
+    const serie = ultimi.length >= 2 ? ultimi : righe.slice(-30);
+    const g = box.querySelector('.pa-det-grafico');
+    if (!g) return;
+    if (serie.length < 2) {
+        g.classList.add('pa-det-carico');
+        g.textContent = 'Non ci sono ancora abbastanza controlli per un grafico: lo storico cresce a ogni controllo prezzi.';
+        return;
+    }
+    const valori = serie.map(x => Number(x.prezzo) || 0);
+    const giorno = iso => new Date(iso).toLocaleDateString('it-IT', { day: 'numeric', month: 'short' }).replace('.', '');
+    g.classList.remove('pa-det-carico');
+    g.innerHTML = _pagLineaSvg(valori);
+    g.insertAdjacentHTML('afterend', `
+        <div class="pa-det-assex"><span>${giorno(serie[0].registrato_il)} · ${formattaEuro(valori[0])}</span><span>oggi · ${formattaEuro(valori[valori.length - 1])}</span></div>
+        <div class="pa-det-righe">
+            <span>Controlli</span><b>${righe.length}</b>
+            <span>Minimo / massimo</span><b>${formattaEuro(Math.min(...valori))} / ${formattaEuro(Math.max(...valori))}</b>
+        </div>
+        <div class="pa-det-nota">Clicca la carta per vederla a tutto schermo</div>`);
+}
+
 function _pagDisegna() {
     const c = document.getElementById('prezziaggContenuto');
     if (!c) return;
     const mappa = _pagCache[_pagPeriodo] || new Map();
     const eur = (v) => formattaEuro(v);
+    const inizio = new Date(_pagDaISO(_pagPeriodo));
+    const collezione = carteReali.filter(r => r.stato === 'collezione' && r.tabella === 'carte');
     const righe = [];
-    carteReali.filter(r => r.stato === 'collezione').forEach(r => {
+    collezione.forEach(r => {
         const base = mappa.get(String(r.id));
         if (base == null) return;
         const delta = (Number(r.price) || 0) - base;
         if (Math.abs(delta) < 0.005) return;
-        righe.push({ r, delta });
+        righe.push({ r, delta, base });
     });
+    const cambiate = new Set(righe.map(x => String(x.r.id)));
+    const controllate = collezione.filter(r => r.ultimoControllo && new Date(r.ultimoControllo) >= inizio);
+    const invariate = controllate.filter(r => !cambiate.has(String(r.id)));
+    const nControllate = Math.max(controllate.length, righe.length);
+    const effetto = righe.reduce((t, x) => t + x.delta * (Number(x.r.qty) || 1), 0);
     const salite = righe.filter(x => x.delta > 0).sort((a, b) => b.delta - a.delta);
     const scese = righe.filter(x => x.delta < 0).sort((a, b) => a.delta - b.delta);
+    if (_pagSelId && !carteReali.some(r => String(r.id) === String(_pagSelId))) _pagSelId = null;
 
-    const riga = ({ r, delta }) => {
+    const riga = ({ r, delta, base }) => {
         const src = r.immagine ? (_urlImmagineVisualizzabile(r.immagine, 120) || '') : '';
-        const sotto = [r.code, r.lang, r.cond, (Number(r.qty) || 1) > 1 ? `×${r.qty}` : null].filter(Boolean).join(' · ');
+        const qty = Number(r.qty) || 1;
+        const sotto = [r.code, r.lang, r.cond, qty > 1 ? `×${qty}` : null].filter(Boolean).join(' · ');
+        const sottoPc = [r.location, qty > 1 ? `x${qty}` : null].filter(Boolean).join(' · ');
         const su = delta > 0;
+        const perc = base ? delta / base * 100 : null;
+        const percTxt = perc != null && isFinite(perc) ? `${su ? '+' : '−'}${Math.abs(perc).toFixed(1).replace('.', ',')}%` : '';
+        const segno = su ? '+' : '−';
         return `
-            <div class="pa-riga" onclick="apriFlipCardHome('${escapeJsAttr(String(r.id))}')">
-                <div class="pa-fig">${src ? `<img src="${src}" alt="" loading="lazy" onerror="this.remove();">` : '<i class="fa-solid fa-image"></i>'}</div>
-                <div class="pa-testo"><b>${escapeHtml(r.name || '—')}</b><span>${escapeHtml(sotto)}</span></div>
-                ${r.location ? `<span class="pa-loc">${escapeHtml(r.location)}</span>` : ''}
-                <div class="pa-destra"><b>${eur(Number(r.price) || 0)}</b><span class="${su ? 'pa-su' : 'pa-giu'}">${su ? '▲ +' : '▼ −'}${eur(Math.abs(delta)).replace(' €', '')}</span></div>
+            <div class="pa-riga${String(r.id) === String(_pagSelId) ? ' sel' : ''}" data-id="${escapeHtml(String(r.id))}" onclick="_pagTocca('${escapeJsAttr(String(r.id))}')">
+                <div class="pa-fig" onclick="if (_pagEPC()) { event.stopPropagation(); apriFlipCardHome('${escapeJsAttr(String(r.id))}'); }">${src ? `<img src="${src}" alt="" loading="lazy" onerror="this.remove();">` : '<i class="fa-solid fa-image"></i>'}</div>
+                <div class="pa-testo"><b>${escapeHtml(r.name || '—')}</b><span class="pa-solo-tel">${escapeHtml(sotto)}</span><span class="pa-solo-pc">${escapeHtml(sottoPc)}</span></div>
+                ${r.location ? `<span class="pa-loc pa-solo-tel">${escapeHtml(r.location)}</span>` : ''}
+                <div class="pa-prima pa-solo-pc"><span>${eur(base).replace(' €', '')}</span> → <b>${eur(Number(r.price) || 0)}</b></div>
+                <div class="pa-destra">
+                    <b class="pa-solo-tel">${eur(Number(r.price) || 0)}</b><span class="pa-solo-tel ${su ? 'pa-su' : 'pa-giu'}">${su ? '▲ +' : '▼ −'}${eur(Math.abs(delta)).replace(' €', '')}</span>
+                    <b class="pa-solo-pc ${su ? 'pa-su' : 'pa-giu'}">${segno}${eur(Math.abs(delta))}</b>
+                    <span class="pa-solo-pc ${su ? 'pa-su' : 'pa-giu'}">${percTxt}${qty > 1 ? ` · x${qty} = ${segno}${eur(Math.abs(delta * qty)).replace(' €', '')}` : ''}</span>
+                </div>
             </div>`;
     };
-    const gruppo = (titolo, elenco) => elenco.length ? `<div class="pa-gruppo">${titolo}</div>${elenco.map(riga).join('')}` : '';
+    const rigaInvariata = r => {
+        const src = r.immagine ? (_urlImmagineVisualizzabile(r.immagine, 120) || '') : '';
+        return `<div class="pa-riga pa-riga-inv${String(r.id) === String(_pagSelId) ? ' sel' : ''}" data-id="${escapeHtml(String(r.id))}" onclick="_pagTocca('${escapeJsAttr(String(r.id))}')">
+            <div class="pa-fig">${src ? `<img src="${src}" alt="" loading="lazy" onerror="this.remove();">` : '<i class="fa-solid fa-image"></i>'}</div>
+            <div class="pa-testo"><b>${escapeHtml(r.name || '—')}</b><span>${escapeHtml(r.location || '')}</span></div>
+            <div class="pa-destra"><b>${eur(Number(r.price) || 0)}</b><span>invariata</span></div></div>`;
+    };
+    const blocco = (cls, titolo, elenco, extra) => `
+        <div class="pa-blocco ${cls}">
+            <div class="pa-gruppo"><span>${titolo}</span><small class="pa-solo-pc">prima → ora</small></div>
+            ${elenco.length ? elenco.map(riga).join('') : '<div class="pa-nessuna">Nessuna carta.</div>'}
+            ${extra || ''}
+        </div>`;
+    const invHtml = invariate.length ? `
+        <div class="pa-invariate"><span>${invariate.length} invariat${invariate.length === 1 ? 'a' : 'e'}</span>
+            <button type="button" onclick="_pagMostraInvariate()">${_pagInvariateAperte ? 'Nascondi ↑' : 'Mostra ↓'}</button></div>
+        ${_pagInvariateAperte ? invariate.map(rigaInvariata).join('') : ''}` : '';
     const tab = (p, e) => `<span class="pa-tab${_pagPeriodo === p ? ' attivo' : ''}" onclick="_pagImpostaPeriodo('${p}')">${e}</span>`;
+    const quando = _pagUltimoControllo ? _pagQuando(_pagUltimoControllo) : '';
 
     c.innerHTML = `
         <div class="pa-pagina">
-            <div class="page-header pa-testa">
-                <span class="page-title">Prezzi aggiornati</span>
-                ${_pagUltimoControllo ? `<span class="pa-quando">${_pagQuando(_pagUltimoControllo)}</span>` : ''}
+            <div class="pa-testa">
+                <div class="pa-testa-sx">
+                    <span class="page-title">Prezzi aggiornati</span>
+                    <span class="pa-quando pa-solo-pc">${quando ? `ultimo controllo ${quando}` : 'nessun controllo completato ancora'}${nControllate ? ` · ${nControllate} carte` : ''}</span>
+                </div>
+                ${quando ? `<span class="pa-quando pa-solo-tel">${quando}</span>` : ''}
+                <div class="pa-tabs pa-solo-pc">${tab('oggi', 'Oggi')}${tab('7', '7 giorni')}${tab('30', '30 giorni')}</div>
+                <button type="button" class="pa-btn pa-solo-pc" onclick="apriDettaglioWidget('prezzi', event)">Vai a Prezzi</button>
             </div>
             <div class="pa-stat">
-                <div><b>${righe.length}</b><span>cambiate</span></div>
+                <div><b>${nControllate}</b><span>controllate</span></div>
                 <div><b class="pa-su">${salite.length}</b><span>salite</span></div>
                 <div><b class="pa-giu">${scese.length}</b><span>scese</span></div>
+                <div class="pa-solo-pc-blocco"><b>${invariate.length}</b><span>invariate</span></div>
+                <div class="pa-solo-pc-blocco"><b class="${effetto > 0 ? 'pa-su' : (effetto < 0 ? 'pa-giu' : '')}">${effetto ? formattaEuroVariazione(effetto) : eur(0)}</b><span>effetto sul valore</span></div>
             </div>
-            <div class="pa-tabs">${tab('oggi', 'Oggi')}${tab('7', '7 giorni')}${tab('30', '30 giorni')}</div>
-            ${righe.length === 0
+            <div class="pa-tabs pa-solo-tel">${tab('oggi', 'Oggi')}${tab('7', '7 giorni')}${tab('30', '30 giorni')}</div>
+            ${righe.length === 0 && !invariate.length
                 ? '<div class="stato-vuoto"><i class="fa-solid fa-clock-rotate-left"></i><br>Nessun prezzo è cambiato in questo periodo.</div>'
-                : gruppo('Salite', salite) + gruppo('Scese', scese)}
+                : `<div class="pa-layout">
+                    <div class="pa-colonne">
+                        ${blocco('pa-blocco-su', '<i class="pa-solo-pc">▲ </i>Salite', salite)}
+                        ${blocco('pa-blocco-giu', '<i class="pa-solo-pc">▼ </i>Scese', scese, invHtml)}
+                    </div>
+                    <div class="pa-dettaglio" id="pagDettaglio"></div>
+                </div>`}
         </div>`;
+    _pagDettaglio();
 }
 
 
@@ -329,7 +464,21 @@ const _PZ_STATI_CONTROLLO = {
 };
 let _pzControlliRighe = [];
 
+// RESTYLE (tavole "Controlla prezzi"): righe con stato a icona, "Tipo · N"
+// e orario a destra; prima i controlli in corso.
+function _pzQuandoBreve(iso) {
+    const d = new Date(iso);
+    const oggi = new Date(); const ieri = new Date(); ieri.setDate(oggi.getDate() - 1);
+    const ora = d.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+    if (Date.now() - d.getTime() < 15 * 60000) return 'ora';
+    if (d.toDateString() === oggi.toDateString()) return ora;
+    if (d.toDateString() === ieri.toDateString()) return `ieri ${ora}`;
+    return d.toLocaleDateString('it-IT', { day: 'numeric', month: 'short' }).replace('.', '') + ` ${ora}`;
+}
+
 async function prezziCaricaControlli() {
+    prezziAggiornaScelta();
+    prezziRiepilogo();
     const cont = document.getElementById('pzControlli');
     if (!cont) return;
     const userId = await authGetUserId();
@@ -338,15 +487,115 @@ async function prezziCaricaControlli() {
     if (error) { cont.innerHTML = `<p class="pz-nota">Non riesco a leggere i controlli: ${escapeHtml(error.message)}</p>`; return; }
     _pzControlliRighe = data || [];
     if (_pzControlliRighe.length === 0) { cont.innerHTML = '<p class="pz-nota">Nessun controllo negli ultimi 7 giorni.</p>'; return; }
+    const sottoStato = {
+        completato: () => 'completato',
+        errore: o => o.errore_msg ? escapeHtml(o.errore_msg) : 'non riuscito',
+        in_corso: () => 'in corso · un dispositivo sta leggendo Cardmarket',
+    };
+    const iconaStato = { completato: 'fa-check', errore: 'fa-xmark', in_corso: 'fa-spinner' };
     cont.innerHTML = _pzControlliRighe.map(o => {
-        const [nome, icona] = _PZ_TIPI_CONTROLLO[o.tipo] || [o.tipo, 'fa-tag'];
-        const [etichetta, classe] = _PZ_STATI_CONTROLLO[o.stato] || ['In attesa', 'att'];
-        const quando = new Date(o.creato_il).toLocaleString('it-IT', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+        const [nome] = _PZ_TIPI_CONTROLLO[o.tipo] || [o.tipo];
+        const [, classe] = _PZ_STATI_CONTROLLO[o.stato] || ['In attesa', 'att'];
+        const sotto = (sottoStato[o.stato] || (() => 'in attesa che un dispositivo lo prenda'))(o);
+        const ico = iconaStato[o.stato] || 'fa-hourglass-half';
         const riprova = o.stato === 'errore'
-            ? `<button type="button" class="pz-link" onclick="prezziRiprovaControllo('${o.id}')">Riprova</button>` : '';
-        const errore = (o.stato === 'errore' && o.errore_msg) ? `<div class="pz-nota">${escapeHtml(o.errore_msg)}</div>` : '';
-        return `<div class="pz-controllo"><i class="fa-solid ${icona}"></i><div class="pz-controllo-info"><b>${nome}</b><span>${quando}</span>${errore}</div><span class="pz-stato-pill ${classe}">${etichetta}</span>${riprova}</div>`;
+            ? `<button type="button" class="pz-riprova" onclick="prezziRiprovaControllo('${o.id}')">Riprova</button>` : `<span class="pz-quando">${_pzQuandoBreve(o.completato_il || o.creato_il)}</span>`;
+        return `<div class="pz-controllo"><span class="pz-controllo-ico ${classe}"><i class="fa-solid ${ico}"></i></span><div class="pz-controllo-info"><b>${nome}</b><span>${sotto}</span></div>${riprova}</div>`;
     }).join('');
+}
+
+// ── Scelta: conteggi, chip, "Di chi", pulsante "Controlla N carte" ──────
+function _pzCarteColl() { return carteReali.filter(c => c.tabella === 'carte' && c.stato === 'collezione'); }
+
+function prezziAggiornaScelta() {
+    const coll = document.getElementById('pzCollezione');
+    if (!coll) return;
+    const wish = document.getElementById('pzWishlist'), seal = document.getElementById('pzSealed');
+    const carte = _pzCarteColl();
+    const nLoc = new Set(carte.map(c => c.location).filter(Boolean)).size;
+    const wl = carteReali.filter(c => c.tabella === 'wishlist');
+    const sealed = typeof prodottiSealedReali !== 'undefined' ? prodottiSealedReali : [];
+    const nScaf = document.querySelectorAll('.checkboxScaffalePrezziSealed').length;
+    const set = (id, t) => { const el = document.getElementById(id); if (el) el.textContent = t; };
+    set('pzContaColl', `${carte.length} carte · ${nLoc} location`);
+    set('pzContaWish', `${wl.length} carte`);
+    set('pzContaSealed', `${sealed.length} prodott${sealed.length === 1 ? 'o' : 'i'}${nScaf ? ` · ${nScaf} scaffal${nScaf === 1 ? 'e' : 'i'}` : ''}`);
+    document.querySelectorAll('#prezzi .pz-opz').forEach(l => l.classList.toggle('attivo', !!l.querySelector('input:checked')));
+    const bc = document.getElementById('pzBloccoColl'), bs = document.getElementById('pzBloccoSealed');
+    if (bc) bc.style.display = coll.checked ? '' : 'none';
+    if (bs) bs.style.display = seal && seal.checked ? '' : 'none';
+    const locSel = _locationSelezionate();
+    const tl = document.getElementById('btnToggleTutteLocation'); if (tl) { tl.textContent = 'Tutte'; tl.classList.toggle('attivo', locSel.length === 0); }
+    const ts = document.getElementById('btnToggleTutteScaffaliSealed'); if (ts) { ts.textContent = 'Tutti'; ts.classList.toggle('attivo', _scaffaliSelezionatiSealed().length === 0); }
+    let n = 0;
+    if (coll.checked) n += locSel.length ? carte.filter(c => locSel.includes(c.location)).length : carte.length;
+    if (wish && wish.checked) n += wl.length;
+    const nSealed = seal && seal.checked ? sealed.length : 0;
+    const testo = document.getElementById('pzAvviaTesto');
+    if (testo) {
+        if (!n && !nSealed) testo.textContent = 'Scegli cosa controllare';
+        else if (!nSealed) testo.textContent = `Controlla ${n} cart${n === 1 ? 'a' : 'e'}`;
+        else if (!n) testo.textContent = `Controlla ${nSealed} prodott${nSealed === 1 ? 'o' : 'i'}`;
+        else testo.textContent = `Controlla ${n + nSealed} oggetti`;
+    }
+}
+
+function prezziLocationTutte() {
+    document.querySelectorAll('.checkboxLocationPrezzi').forEach(cb => { cb.checked = false; });
+    prezziAggiornaScelta();
+}
+function prezziScaffaliTutti() {
+    document.querySelectorAll('.checkboxScaffalePrezziSealed').forEach(cb => { cb.checked = false; });
+    prezziAggiornaScelta();
+}
+// Una sola scelta "Di chi" per Collezione e Sealed.
+function prezziImpostaDiChi(ambito) {
+    _impostaAmbitoControlloPrezzi(ambito);
+    _impostaAmbitoControlloPrezziSealed(ambito);
+    document.getElementById('btnAmbitoSoloMie')?.classList.toggle('attivo', ambito === 'soloMie');
+    document.getElementById('btnAmbitoGruppo')?.classList.toggle('attivo', ambito === 'gruppo');
+}
+
+// Riquadri in alto: ultimo controllo (con salite/scese da allora), carte da
+// aggiornare (mai controllate o più vecchie di 7 giorni) e se qualcuno del
+// gruppo sta controllando adesso (solo presenza, mai un conteggio).
+async function prezziRiepilogo() {
+    const box = document.getElementById('pzStat');
+    if (!box) return;
+    const carte = _pzCarteColl();
+    const soglia = Date.now() - SOGLIA_GIORNI_PREZZO_SCADUTO * 86400000;
+    const scadute = carte.filter(c => !c.ultimoControllo || new Date(c.ultimoControllo).getTime() < soglia);
+    _elencoPrezziScaduti = scadute.map(c => ({ name: c.name, code: c.code,
+        ultimoTesto: c.ultimoControllo ? new Date(c.ultimoControllo).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' }) : 'mai' }));
+    const disegna = (ultimo, frecce, attivi) => {
+        box.innerHTML = `
+            <div class="pz-box"><span>Ultimo<em class="pz-solo-pc"> controllo</em></span><b>${ultimo || '—'}</b>${frecce || ''}</div>
+            <div class="pz-box"><span>Da aggiornare</span><b class="${scadute.length ? 'pz-allerta' : ''}">${scadute.length} cart${scadute.length === 1 ? 'a' : 'e'}</b>
+                ${scadute.length ? `<a class="pz-link-sotto" onclick="apriModalePrezziScaduti()"><em class="pz-solo-tel">vedi</em><em class="pz-solo-pc">mai controllate o più vecchie di ${SOGLIA_GIORNI_PREZZO_SCADUTO} giorni</em></a>` : '<small>tutte aggiornate</small>'}</div>
+            <div class="pz-box"><span><em class="pz-solo-tel">Pronti</em><em class="pz-solo-pc">Chi sta controllando adesso</em></span>
+                <b>${attivi == null ? '…' : (attivi ? '<i class="pz-pallino on"></i> al lavoro' : '<i class="pz-pallino"></i> nessuno')}</b>
+                <small><em class="pz-solo-tel">${attivi ? 'del gruppo' : 'al momento'}</em><em class="pz-solo-pc">${attivi ? 'un dispositivo del gruppo' : 'parte con l’estensione aperta'}</em></small></div>`;
+    };
+    disegna(null, '', null);
+    let ultimoTxt = null, frecce = '', attivi = null;
+    try {
+        const userId = await authGetUserId();
+        const [{ data }, presenza] = await Promise.all([
+            userId ? ordiniUltimoCompletato(userId) : Promise.resolve({ data: [] }),
+            typeof _dispositiviAttiviOra === 'function' ? _dispositiviAttiviOra() : Promise.resolve(false),
+        ]);
+        attivi = !!presenza;
+        const quando = data && data[0] ? data[0].completato_il : null;
+        if (quando) {
+            ultimoTxt = _pzQuandoBreve(quando).replace(/^ieri /, 'ieri, ');
+            const { data: varz } = await variazioniPrezziDa(new Date(new Date(quando).getTime() - 60000).toISOString());
+            const base = new Map((varz || []).filter(r => r.tabella === 'carte').map(r => [String(r.oggetto_id), Number(r.prezzo_base)]));
+            let su = 0, giu = 0;
+            carte.forEach(c => { const b = base.get(String(c.id)); if (b == null) return; const d = (Number(c.price) || 0) - b; if (d > 0.005) su++; else if (d < -0.005) giu++; });
+            frecce = `<small><span class="pz-su">▲ ${su}</span> <span class="pz-giu">▼ ${giu}</span></small>`;
+        }
+    } catch (e) { console.error('[controllo prezzi] riepilogo:', e); }
+    disegna(ultimoTxt, frecce, attivi);
 }
 
 // Riprova = nuovo ordine con lo stesso tipo e gli stessi parametri.

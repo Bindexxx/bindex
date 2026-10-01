@@ -2825,60 +2825,7 @@
             td:first-child, td:last-child { padding-left: 0; }
             td:first-child::before, td:last-child::before { content: none; }
 
-            /* INSERIMENTO — versione compatta con griglia vera (non flex con
-               percentuali manuali + posizionamento assoluto: si è rivelato
-               fragile, causava sovrapposizioni). Prima di tutto, NEUTRALIZZA
-               esplicitamente le regole generiche pensate per la tabella
-               Visualizzazione (td:first-child/td:last-child con
-               position:absolute, pensate per la casella di selezione) — si
-               applicavano per errore ANCHE al campo Nome/Codice di questa
-               tabella (è "il primo td" anche lui), staccandolo dal flusso
-               normale e sovrapponendolo ad altri campi. Una regola con ID
-               ha priorità più alta e vince sempre su quella generica.
-            */
-            #tabellaInserimento td:first-child, #tabellaInserimento td:last-child {
-                position: static; padding-left: 0; width: auto; justify-content: normal;
-                gap: 0; padding-top: 0; margin-top: 0; border-top: none;
-            }
-            #tabellaInserimento td:first-child::before { content: attr(data-label); }
-
-            #tabellaInserimento tr {
-                display: grid;
-                grid-template-columns: repeat(10, 1fr);
-                gap: 0.5rem 0.5rem;
-                padding: 0.7rem 0.6rem;
-                align-items: end;
-            }
-            #tabellaInserimento td {
-                display: block;
-                padding: 0;
-                min-height: 0;
-            }
-            #tabellaInserimento td::before {
-                content: attr(data-label);
-                position: static;
-                display: block;
-                width: auto;
-                font-weight: 800;
-                font-size: 0.62rem;
-                text-transform: uppercase;
-                letter-spacing: 0.3px;
-                color: var(--text-muted);
-                margin-bottom: 0.15rem;
-            }
-            /* Riga 1: Nome/Codice + cestino accanto (non più in fondo alla card).
-               Riga 2: Lingua, Cond., Rev, 1st, Q.tà tutti insieme (5 campi,
-               2 colonne di griglia ciascuno = 10 in totale, entrano esatti).
-               Riga 3: Location e Note. */
-            #tabellaInserimento td:nth-child(1) { grid-column: 1 / 9; grid-row: 1; } /* Nome/Codice */
-            #tabellaInserimento td:last-child { grid-column: 9 / 11; grid-row: 1; text-align: right; padding-bottom: 0.4rem; } /* Cestino, esplicitamente sulla stessa riga del nome */
-            #tabellaInserimento td:nth-child(2) { grid-column: 1 / 3; grid-row: 2; } /* Lingua */
-            #tabellaInserimento td:nth-child(3) { grid-column: 3 / 5; grid-row: 2; } /* Cond. */
-            #tabellaInserimento td:nth-child(4) { grid-column: 5 / 7; grid-row: 2; text-align: center; } /* Rev */
-            #tabellaInserimento td:nth-child(5) { grid-column: 7 / 9; grid-row: 2; text-align: center; } /* 1st */
-            #tabellaInserimento td:nth-child(6) { grid-column: 9 / 11; grid-row: 2; } /* Q.tà */
-            #tabellaInserimento td:nth-child(7) { grid-column: 1 / 6; grid-row: 3; } /* Location */
-            #tabellaInserimento td:nth-child(8) { grid-column: 6 / 11; grid-row: 3; } /* Note */
+            /* (Inserimento: regole proprie in fondo al file, RESTYLE 2026-10-01) */
         }
 
         tbody tr.interactive-row {
@@ -4403,24 +4350,7 @@
         /* ═══════════════════════════════════════════════════════════════
            CONTROLLO PREZZI + PREZZI AGGIORNATI — RESTYLE BINDEX FASE 3h
            ═══════════════════════════════════════════════════════════════ */
-        #prezzi .pz-pagina, #prezziagg .pa-pagina { max-width: 720px; padding-bottom: 4.5rem; }
-        #prezzi .pz-riquadro { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 18px; margin-bottom: 12px; overflow: hidden; }
-        #prezzi .pz-testa { display: flex; align-items: center; gap: 12px; padding: 14px 16px; cursor: pointer; }
-        #prezzi .pz-testa b { flex: 1; color: var(--text-dark); font-size: 1rem; }
-        #prezzi .pz-testa input { width: 20px; height: 20px; accent-color: var(--primary); order: 3; }
-        #prezzi .pz-ico { width: 38px; height: 38px; border-radius: 12px; background: var(--primary-light); color: var(--primary); display: flex; align-items: center; justify-content: center; }
-        #prezzi .pz-corpo { padding: 0 16px 14px; border-top: 1px solid var(--border-color); padding-top: 12px; }
-        #prezzi .pz-etichetta { display: flex; justify-content: space-between; align-items: center; font-size: 0.72rem; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; color: var(--text-muted); margin: 6px 0; }
-        #prezzi .pz-link { background: none; border: none; color: var(--primary); font-weight: 800; font-size: 0.78rem; cursor: pointer; text-transform: none; letter-spacing: 0; }
-        #prezzi .pz-lista { display: flex; flex-direction: column; gap: 6px; max-height: 190px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 12px; padding: 10px; background: var(--bg-color); }
-        #prezzi .pz-nota { font-size: 0.76rem; color: var(--text-muted); margin: 6px 0; }
-        #prezzi .pz-stato { font-size: 0.82rem; color: var(--text-muted); margin: 10px 0 0; }
-        #prezzi .pz-centro { text-align: center; }
-        #prezzi .pz-seg { display: flex; gap: 8px; }
-        #prezzi .pz-seg .theme-btn { flex: 1; }
-        #prezzi .pz-avvia { width: 100%; margin-top: 6px; padding: 15px; border-radius: 16px; border: none; background: var(--primary); color: #fff; font-family: inherit; font-weight: 800; font-size: 1rem; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; }
-        #prezzi .pz-avvia:disabled { opacity: .6; }
-        #prezzi .pz-secondario { width: 100%; margin-top: 8px; padding: 13px; border-radius: 16px; border: 1px solid var(--border-color); background: var(--card-bg); color: var(--text-dark); font-family: inherit; font-weight: 800; font-size: 0.9rem; cursor: pointer; }
+        #prezziagg .pa-pagina { max-width: 720px; padding-bottom: 4.5rem; }
 
         #prezziagg .pa-testa { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
         #prezziagg .pa-quando { font-size: 0.82rem; color: var(--text-muted); white-space: nowrap; }
@@ -5161,16 +5091,7 @@
         .cd-chip-priv { background: var(--border-color); color: var(--text-muted); }
         .cd-riga.cd-privato .cd-cover { filter: saturate(.55) brightness(.92); }
 
-        /* RESTYLE BINDEX: Impostazioni su PC — menu a sinistra, pagina a destra */
-        @container (min-width: 780px) {
-            #impostazioni.active { display: grid; grid-template-columns: 280px minmax(0, 1fr); gap: 1.4rem; align-items: start; }
-            #impostazioni #impostazioniHub { grid-column: 1; grid-row: 1; position: sticky; top: 0; }
-            #impostazioni > [id^="impostazioniPagina-"] { grid-column: 2; grid-row: 1; }
-            #impostazioni #impostazioniHub .settings-card,
-            #impostazioni > [id^="impostazioniPagina-"] .settings-card { max-width: none; margin: 0 0 1rem; }
-            #impostazioni > [id^="impostazioniPagina-"] > .setting-row[onclick="_impostazioniTornaHub()"] { display: none; }
-            #impostazioni #impostazioniHub .setting-row.imp-attiva { background: color-mix(in srgb, var(--primary) 12%, transparent); border-radius: 10px; padding-left: 0.6rem; padding-right: 0.6rem; }
-        }
+        /* Impostazioni su PC: vedi il blocco "IMPOSTAZIONI — tavole" in fondo al file. */
         @container (min-width: 780px) {
             #condividi .cd-pagina { display: grid; grid-template-columns: minmax(300px, 380px) 1fr; gap: 22px; align-items: start; }
             #condividi .cd-griglia-tel { display: none; }
@@ -6764,15 +6685,6 @@
 
 
 /* ═══ RESTYLE BINDEX FASE 8e — elenco Controlli prezzi ═══ */
-#prezzi .pz-controllo { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border-color); }
-#prezzi .pz-controllo:last-child { border-bottom: none; }
-#prezzi .pz-controllo > i { color: var(--primary); width: 18px; text-align: center; }
-#prezzi .pz-controllo-info { flex: 1; min-width: 0; display: flex; flex-direction: column; font-size: 0.85rem; }
-#prezzi .pz-controllo-info span { font-size: 0.72rem; color: var(--text-muted); }
-#prezzi .pz-stato-pill { font-size: 0.68rem; font-weight: 800; padding: 3px 9px; border-radius: 999px; white-space: nowrap; background: var(--bg-color); color: var(--text-muted); }
-#prezzi .pz-stato-pill.ok { background: rgba(46,125,50,0.14); color: #2e7d32; }
-#prezzi .pz-stato-pill.ko { background: rgba(211,47,47,0.14); color: #d32f2f; }
-#prezzi .pz-stato-pill.att { background: rgba(184,134,11,0.16); color: #b8860b; }
 
         /* ==========================================================================
            RESTYLE BINDEX FASE 8c — Foto reali di questa copia (utils/foto-reali.js)
@@ -7111,6 +7023,7 @@
         /* In griglia su PC si ordina dalla barra (non c'è la tabella). */
         @container pagina (min-width: 780px) {
             body.coll-griglia-attiva .coll-ordina-pc { display: inline-flex !important; }
+        }
         /* ── RESTYLE BINDEX FASE 9: Polvere = Shop (ui/shop.ui.js) ───────── */
         #shopContenuto { padding-bottom: 2rem; }
         .sh-in-arrivo { margin: 0 0 0.8rem; }
@@ -7303,3 +7216,809 @@
             #shop .pg-contenuto-pagina { max-width: none; }
             .sh-colonna > .sh-pannello:last-child { margin-bottom: 0; }
         }
+
+        /* ── Pagina Valore collezione (RESTYLE BINDEX, tavole "Valore") ─────
+           Telefono: tutto in colonna. PC (pagina larga): grafico e location
+           a sinistra, Le più preziose e Cosa l'ha mosso a destra. */
+        #valore { container-type: inline-size; }
+        #valore .val-pagina { max-width: 1240px; padding-bottom: 4.5rem; }
+        #valore .bx-su { color: #2e7d32; }
+        #valore .bx-giu { color: #d32f2f; }
+        body.dark-mode #valore .bx-su { color: #81c784; }
+        body.dark-mode #valore .bx-giu { color: #ef9a9a; }
+        #valore .val-solo-pc, #valore .val-solo-pc-flex, #valore [hidden] { display: none !important; }
+        #valore .val-testa { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+        #valore .val-testa .page-title { font-size: 1.5rem; font-weight: 800; letter-spacing: -0.3px; color: var(--text-dark); }
+        #valore .val-riga-valore { margin-top: 14px; }
+        #valore .val-grande { font: 800 2.3rem/1.1 'Space Grotesk', sans-serif; color: var(--text-dark); font-variant-numeric: tabular-nums; letter-spacing: -0.5px; }
+        #valore .val-sotto { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 8px; color: var(--text-muted); font-size: 0.9rem; }
+        #valore .val-pillola { font-weight: 800; font-size: 0.82rem; padding: 4px 10px; border-radius: 8px; }
+        #valore .val-pillola.su { background: #e3f1e4; color: #2e7d32; }
+        #valore .val-pillola.giu { background: #fbe4e4; color: #c62828; }
+        body.dark-mode #valore .val-pillola.su { background: rgba(129,199,132,.15); color: #81c784; }
+        body.dark-mode #valore .val-pillola.giu { background: rgba(239,154,154,.15); color: #ef9a9a; }
+        #valore .val-btn {
+            flex: 0 0 auto; font: inherit; font-weight: 700; font-size: 0.88rem; padding: 10px 16px; border-radius: 999px; cursor: pointer;
+            border: 1px solid var(--border-color); background: var(--card-bg); color: var(--text-dark);
+        }
+        #valore .val-layout, #valore .val-sinistra, #valore .val-destra { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+        #valore .val-scheda { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 18px; padding: 16px; }
+        #valore .val-scheda-lista { padding: 4px 16px 12px; }
+        #valore .val-scheda-testa { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
+        #valore .val-scheda-testa > b { font-weight: 800; color: var(--text-dark); }
+        #valore .val-tabs { display: flex; gap: 6px; }
+        #valore .val-tab {
+            font: inherit; font-size: 0.8rem; font-weight: 700; padding: 6px 12px; border-radius: 999px; cursor: pointer;
+            border: 1px solid var(--border-color); background: var(--card-bg); color: var(--text-muted);
+        }
+        #valore .val-tab.attivo { background: var(--primary-light); border-color: transparent; color: var(--primary); }
+        #valore .val-grafico { position: relative; height: 170px; cursor: crosshair; touch-action: pan-y; }
+        #valore .val-grafico svg { width: 100%; height: 100%; display: block; overflow: visible; }
+        #valore .val-g-area { fill: var(--primary); opacity: 0.12; }
+        #valore .val-g-linea { fill: none; stroke: var(--primary); stroke-width: 2.5; stroke-linejoin: round; stroke-linecap: round; }
+        #valore .val-g-griglia { stroke: var(--border-color); stroke-width: 1; vector-effect: non-scaling-stroke; }
+        #valore .val-g-assey { display: none; }
+        #valore .val-g-assex { display: flex; justify-content: space-between; font-size: 0.74rem; color: var(--text-muted); margin-top: 6px; }
+        #valore .val-g-cursore { position: absolute; top: 0; bottom: 0; width: 0; border-left: 1px dashed var(--text-muted); pointer-events: none; }
+        #valore .val-g-punto { position: absolute; left: -6px; width: 12px; height: 12px; margin-top: -6px; border-radius: 50%; background: var(--card-bg); border: 2.5px solid var(--primary); }
+        #valore .val-g-tip {
+            position: absolute; z-index: 2; pointer-events: none; display: flex; flex-direction: column; gap: 2px; white-space: nowrap;
+            background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 10px; padding: 8px 10px; font-size: 0.74rem;
+            color: var(--text-muted); box-shadow: 0 6px 18px rgba(0,0,0,.12);
+        }
+        #valore .val-g-tip b { font-size: 0.9rem; color: var(--text-dark); }
+        #valore .val-grafico-vuoto, #valore .val-vuoto { color: var(--text-muted); font-size: 0.85rem; padding: 1.2rem 0; text-align: center; }
+        #valore .val-loc-griglia { display: flex; flex-direction: column; gap: 14px; }
+        #valore .val-loc-testa { display: flex; justify-content: space-between; gap: 10px; font-size: 0.92rem; color: var(--text-dark); }
+        #valore .val-loc-testa span { font-variant-numeric: tabular-nums; }
+        #valore .val-loc-pista { height: 8px; border-radius: 6px; background: var(--primary-light); margin-top: 6px; overflow: hidden; }
+        #valore .val-loc-pista div { height: 100%; border-radius: 6px; background: var(--primary); }
+        #valore .val-titoletto { display: flex; justify-content: space-between; align-items: baseline; font-weight: 800; color: var(--text-muted); font-size: 0.95rem; margin: 2px 2px 8px; }
+        #valore .val-titoletto small { font-weight: 600; }
+        #valore .val-top { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--border-color); cursor: pointer; }
+        #valore .val-top-fig { width: 40px; height: 56px; border-radius: 5px; object-fit: cover; flex: 0 0 auto; background: var(--primary-light); box-shadow: 0 2px 6px rgba(0,0,0,.2); }
+        #valore .val-top-testo { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+        #valore .val-top-testo b { color: var(--text-dark); font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        #valore .val-top-testo span { font-size: 0.8rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        #valore .val-top-testo em { font-style: normal; }
+        #valore .val-chip { font-size: 0.74rem; font-weight: 700; padding: 3px 9px; border-radius: 999px; background: var(--primary-light); color: var(--primary); white-space: nowrap; }
+        #valore .val-top-destra { display: flex; flex-direction: column; align-items: flex-end; font-variant-numeric: tabular-nums; }
+        #valore .val-top-destra b { color: var(--text-dark); }
+        #valore .val-top-destra span { font-size: 0.8rem; font-weight: 700; }
+        #valore .val-mosso-riga { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--border-color); cursor: pointer; }
+        #valore .val-mosso-ico { width: 38px; height: 38px; border-radius: 11px; flex: 0 0 auto; display: flex; align-items: center; justify-content: center; background: var(--primary-light); color: var(--primary); }
+        #valore .val-mosso-testo { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+        #valore .val-mosso-testo b { color: var(--text-dark); font-size: 0.92rem; }
+        #valore .val-mosso-testo span { font-size: 0.8rem; color: var(--text-muted); }
+        #valore .val-mosso-delta { font-variant-numeric: tabular-nums; white-space: nowrap; }
+        #valore .val-link { text-align: right; color: var(--primary); font-weight: 700; font-size: 0.88rem; padding-top: 12px; cursor: pointer; }
+
+        @container (min-width: 780px) {
+            #valore .val-solo-pc:not([hidden]) { display: inline !important; }
+            #valore .val-solo-pc-flex { display: flex !important; }
+            #valore .val-solo-tel { display: none; }
+            #valore .val-testa { align-items: flex-end; }
+            #valore .val-riga-valore { display: flex; align-items: baseline; gap: 14px; margin-top: 6px; }
+            #valore .val-grande { font-size: 2.6rem; }
+            #valore .val-sotto { margin-top: 0; }
+            #valore .val-layout { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 16px; align-items: start; }
+            #valore .val-grafico { height: 240px; margin-left: 44px; }
+            #valore .val-g-assey { display: block; position: absolute; left: -44px; top: 0; bottom: 0; width: 40px; font-size: 0.7rem; color: var(--text-muted); }
+            #valore .val-g-assey span { position: absolute; left: 0; }
+            #valore .val-g-assex { margin-left: 44px; }
+            #valore .val-loc-griglia { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 28px; }
+            #valore .val-titoletto { display: none; }
+            #valore .val-blocco .val-scheda-lista { padding-top: 14px; }
+            #valore .val-blocco .val-scheda-lista::before { font-weight: 800; color: var(--text-dark); display: block; margin-bottom: 4px; }
+            #valore .val-blocco:first-child .val-scheda-lista::before { content: 'Le più preziose'; }
+            #valore .val-blocco:last-child .val-scheda-lista::before { content: 'Cosa l’ha mosso'; }
+        }
+
+        /* ── Prezzi aggiornati: riquadri, Salite/Scese e grafico (tavole PC) ── */
+        #prezziagg { container-type: inline-size; }
+        #prezziagg .pa-solo-pc, #prezziagg .pa-solo-pc-blocco { display: none !important; }
+        #prezziagg .pa-testa { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
+        #prezziagg .pa-testa-sx { display: flex; flex-direction: column; min-width: 0; }
+        #prezziagg .pa-testa .page-title { font-size: 1.5rem; font-weight: 800; letter-spacing: -0.3px; color: var(--text-dark); }
+        #prezziagg .pa-gruppo { display: flex; justify-content: space-between; align-items: baseline; }
+        #prezziagg .pa-gruppo small { font-weight: 600; font-size: 0.74rem; }
+        #prezziagg .pa-nessuna { font-size: 0.85rem; color: var(--text-muted); padding: 8px 2px; }
+        #prezziagg .pa-invariate { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; padding: 10px 12px; border: 1px dashed var(--border-color); border-radius: 12px; font-size: 0.85rem; color: var(--text-muted); }
+        #prezziagg .pa-invariate button { font: inherit; font-weight: 700; border: 0; background: none; color: var(--primary); cursor: pointer; }
+        #prezziagg .pa-riga-inv .pa-destra span { color: var(--text-muted); font-weight: 600; }
+        #prezziagg .pa-dettaglio { display: none; }
+        #prezziagg .pa-btn { font: inherit; font-weight: 700; font-size: 0.85rem; padding: 9px 14px; border-radius: 999px; border: 1px solid var(--border-color); background: var(--card-bg); color: var(--text-dark); cursor: pointer; white-space: nowrap; }
+        #prezziagg .pa-invito { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; text-align: center; min-height: 160px; color: var(--text-muted); font-size: 0.85rem; }
+        #prezziagg .pa-invito i { font-size: 1.6rem; margin-bottom: 6px; }
+        #prezziagg .pa-invito b { color: var(--text-dark); font-size: 0.95rem; }
+        #prezziagg .pa-det-testa { display: flex; gap: 16px; align-items: flex-start; margin-bottom: 18px; }
+        #prezziagg .pa-det-fig { width: 72px; height: 100px; border-radius: 7px; overflow: hidden; flex: 0 0 auto; background: var(--primary-light); display: flex; align-items: center; justify-content: center; color: var(--primary); cursor: pointer; box-shadow: 0 3px 10px rgba(0,0,0,.2); }
+        #prezziagg .pa-det-fig img { width: 100%; height: 100%; object-fit: cover; }
+        #prezziagg .pa-det-nome { font-size: 1.3rem; font-weight: 800; color: var(--text-dark); line-height: 1.15; }
+        #prezziagg .pa-det-sotto { font-size: 0.85rem; color: var(--text-muted); margin: 3px 0 6px; }
+        #prezziagg .pa-det-prezzi { font-variant-numeric: tabular-nums; color: var(--text-muted); }
+        #prezziagg .pa-det-prezzi b { color: var(--text-dark); }
+        #prezziagg .pa-det-titolo { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
+        #prezziagg .pa-det-titolo b { color: var(--text-dark); }
+        #prezziagg .pa-det-titolo span { font-size: 0.78rem; color: var(--text-muted); }
+        #prezziagg .pa-det-grafico { height: 170px; }
+        #prezziagg .pa-det-grafico svg { width: 100%; height: 100%; display: block; overflow: visible; }
+        #prezziagg .pa-det-carico { display: flex; align-items: center; justify-content: center; text-align: center; color: var(--text-muted); font-size: 0.85rem; padding: 0 1rem; }
+        #prezziagg .pa-g-area { fill: var(--primary); opacity: 0.12; }
+        #prezziagg .pa-g-linea { fill: none; stroke: var(--primary); stroke-width: 2.5; stroke-linejoin: round; }
+        #prezziagg .pa-det-assex { display: flex; justify-content: space-between; font-size: 0.74rem; color: var(--text-muted); margin-top: 8px; }
+        #prezziagg .pa-det-righe { display: grid; grid-template-columns: auto 1fr; gap: 6px 18px; margin-top: 14px; font-size: 0.88rem; color: var(--text-muted); }
+        #prezziagg .pa-det-righe b { color: var(--text-dark); font-variant-numeric: tabular-nums; }
+        #prezziagg .pa-det-nota { font-size: 0.82rem; color: var(--text-muted); margin-top: 12px; }
+
+        @container (min-width: 780px) {
+            #prezziagg .pa-pagina { max-width: none; }
+            #prezziagg .pa-solo-tel { display: none !important; }
+            #prezziagg .pa-solo-pc { display: initial !important; }
+            #prezziagg div.pa-solo-pc { display: flex !important; }
+            #prezziagg .pa-solo-pc-blocco { display: flex !important; }
+            #prezziagg .pa-testa { align-items: center; gap: 14px; }
+            #prezziagg .pa-testa-sx { flex: 1; }
+            #prezziagg .pa-testa .pa-tabs { margin: 0; width: 300px; }
+            #prezziagg .pa-quando { white-space: normal; }
+            #prezziagg .pa-stat { display: flex; gap: 12px; margin: 10px 0 18px; }
+            #prezziagg .pa-stat > div { min-width: 120px; padding: 12px 18px; }
+            #prezziagg .pa-layout { display: grid; grid-template-columns: minmax(0, 1fr) 400px; gap: 18px; align-items: start; }
+            #prezziagg .pa-colonne { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+            #prezziagg .pa-blocco { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 18px; padding: 6px 16px 14px; }
+            #prezziagg .pa-gruppo { font-size: 0.95rem; margin: 12px 2px 6px; }
+            #prezziagg .pa-blocco-su .pa-gruppo span { color: #2e7d32; }
+            #prezziagg .pa-blocco-giu .pa-gruppo span { color: #d32f2f; }
+            #prezziagg .pa-riga { padding: 10px 8px; border-radius: 12px; border-bottom-color: transparent; box-shadow: 0 1px 0 var(--border-color); }
+            #prezziagg .pa-riga.sel { background: var(--primary-light); }
+            #prezziagg .pa-fig { width: 34px; height: 47px; flex-basis: 34px; cursor: zoom-in; }
+            #prezziagg .pa-prima { align-items: baseline; gap: 6px; color: var(--text-muted); font-size: 0.85rem; font-variant-numeric: tabular-nums; white-space: nowrap; }
+            #prezziagg .pa-prima b { color: var(--text-dark); font-size: 0.95rem; }
+            #prezziagg .pa-destra { min-width: 130px; }
+            #prezziagg .pa-destra span.pa-solo-pc { font-size: 0.74rem; }
+            #prezziagg .pa-dettaglio { display: block; position: sticky; top: 8px; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 18px; padding: 18px; }
+        }
+        #prezziagg .pa-gruppo i { font-style: normal; }
+
+        /* ── Controlla prezzi (RESTYLE, tavole "Controlla prezzi") ─────────
+           Telefono: riquadri, Cosa controllo, pulsante, Controlli sotto.
+           PC: Cosa controllo a sinistra, Controlli a destra. */
+        #prezzi { container-type: inline-size; }
+        #prezzi .pz-pagina { max-width: 1240px; padding-bottom: 4.5rem; }
+        #prezzi .pz-solo-pc { display: none !important; }
+        #prezzi em { font-style: normal; }
+        #prezzi .pz-testa-pagina .page-title { font-size: 1.5rem; font-weight: 800; letter-spacing: -0.3px; color: var(--text-dark); }
+        #prezzi .pz-sottotitolo { display: none; margin: 2px 0 0; font-size: 0.85rem; color: var(--text-muted); }
+        #prezzi .pz-stat { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 14px 0 16px; }
+        #prezzi .pz-box { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 16px; padding: 10px 11px; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+        #prezzi .pz-box > span { font-size: 0.74rem; color: var(--text-muted); }
+        #prezzi .pz-box > b { font-size: 1rem; color: var(--text-dark); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 6px; }
+        #prezzi .pz-box small { font-size: 0.72rem; color: var(--text-muted); }
+        #prezzi .pz-allerta { color: #b07800 !important; }
+        #prezzi .pz-link-sotto { font-size: 0.74rem; color: var(--primary); text-decoration: underline; cursor: pointer; }
+        #prezzi .pz-su { color: #2e7d32; font-weight: 700; }
+        #prezzi .pz-giu { color: #d32f2f; font-weight: 700; }
+        #prezzi .pz-pallino { width: 10px; height: 10px; border-radius: 50%; background: #b9b6c4; display: inline-block; }
+        #prezzi .pz-pallino.on { background: #2e7d32; }
+        #prezzi .pz-layout, #prezzi .pz-sx, #prezzi .pz-dx { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+        #prezzi .pz-scheda-cosa { background: none; border: 0; padding: 0; }
+        #prezzi .pz-dx .pz-scheda { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 18px; padding: 14px 16px; }
+        #prezzi .pz-titolo { display: flex; justify-content: space-between; align-items: baseline; font-weight: 800; color: var(--text-dark); font-size: 1.02rem; margin-bottom: 10px; }
+        #prezzi .pz-titolo small { font-weight: 600; font-size: 0.76rem; color: var(--text-muted); }
+        #prezzi .pz-cosa { display: flex; flex-direction: column; gap: 10px; }
+        #prezzi .pz-opz { position: relative; display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 16px; border: 1px solid var(--border-color); background: var(--card-bg); cursor: pointer; }
+        #prezzi .pz-opz.attivo { border-color: var(--primary); background: color-mix(in srgb, var(--primary-light) 45%, var(--card-bg)); }
+        #prezzi .pz-opz input { order: 3; margin-left: auto; width: 22px; height: 22px; accent-color: var(--primary); }
+        #prezzi .pz-opz-testo { display: flex; flex-direction: column; min-width: 0; }
+        #prezzi .pz-opz-testo b { color: var(--text-dark); }
+        #prezzi .pz-opz-testo small { font-size: 0.8rem; color: var(--text-muted); }
+        #prezzi .pz-ico { width: 40px; height: 40px; border-radius: 12px; background: var(--primary-light); color: var(--primary); display: flex; align-items: center; justify-content: center; flex: 0 0 auto; }
+        #prezzi .pz-blocco { margin-top: 14px; }
+        #prezzi .pz-etichetta { font-size: 0.72rem; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; color: var(--text-muted); margin: 0 2px 8px; }
+        #prezzi .pz-chips { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
+        #prezzi .pz-chips::-webkit-scrollbar { display: none; }
+        #prezzi .pz-chips-lista { display: flex; gap: 6px; }
+        #prezzi .pz-chip { flex: 0 0 auto; display: inline-flex; align-items: center; font: inherit; font-size: 0.8rem; font-weight: 700; padding: 7px 12px; border-radius: 999px; white-space: nowrap; border: 1px solid var(--border-color); background: var(--card-bg); color: var(--text-dark); cursor: pointer; }
+        #prezzi .pz-chip input { display: none; }
+        #prezzi .pz-chip.attivo, #prezzi label.pz-chip:has(input:checked) { background: var(--primary-light); border-color: var(--primary); color: var(--primary); }
+        #prezzi .pz-seg { display: flex; gap: 4px; padding: 4px; border-radius: 14px; background: var(--primary-light); }
+        #prezzi .pz-segbtn { flex: 1; font: inherit; font-weight: 700; font-size: 0.88rem; padding: 10px; border-radius: 11px; border: 0; background: transparent; color: var(--text-muted); cursor: pointer; }
+        #prezzi .pz-segbtn.attivo { background: var(--card-bg); color: var(--text-dark); box-shadow: 0 1px 4px rgba(0,0,0,.1); }
+        #prezzi .pz-nota { font-size: 0.78rem; color: var(--text-muted); margin: 8px 2px 0; }
+        #prezzi .pz-centro { text-align: center; }
+        #prezzi .pz-avvia { width: 100%; margin-top: 16px; padding: 15px; border-radius: 16px; border: none; background: var(--primary); color: #fff; font-family: inherit; font-weight: 800; font-size: 1rem; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; }
+        #prezzi .pz-avvia:disabled { opacity: .6; }
+        #prezzi .pz-stato { font-size: 0.82rem; color: var(--text-muted); margin: 8px 0 0; }
+        #prezzi .pz-stato:empty { display: none; }
+        #prezzi .pz-secondario { margin-top: 12px; padding: 9px 14px; border-radius: 999px; border: 1px solid var(--border-color); background: var(--card-bg); color: var(--text-dark); font-family: inherit; font-weight: 700; font-size: 0.85rem; cursor: pointer; display: inline-flex; gap: 8px; align-items: center; }
+        #prezzi .pz-controllo { display: flex; align-items: center; gap: 12px; padding: 11px 0; border-bottom: 1px solid var(--border-color); }
+        #prezzi .pz-controllo:last-child { border-bottom: none; }
+        #prezzi .pz-controllo-ico { width: 34px; height: 34px; border-radius: 10px; flex: 0 0 auto; display: flex; align-items: center; justify-content: center; background: var(--primary-light); color: var(--primary); }
+        #prezzi .pz-controllo-ico.ok { background: rgba(46,125,50,0.14); color: #2e7d32; }
+        #prezzi .pz-controllo-ico.ko { background: rgba(211,47,47,0.14); color: #d32f2f; }
+        #prezzi .pz-controllo-ico.att { background: rgba(184,134,11,0.16); color: #b8860b; }
+        #prezzi .pz-controllo-ico .fa-spinner { animation: fa-spin 1.4s linear infinite; }
+        #prezzi .pz-controllo-info { flex: 1; min-width: 0; display: flex; flex-direction: column; font-size: 0.9rem; }
+        #prezzi .pz-controllo-info b { color: var(--text-dark); }
+        #prezzi .pz-controllo-info span { font-size: 0.76rem; color: var(--text-muted); }
+        #prezzi .pz-quando { font-size: 0.76rem; color: var(--text-muted); white-space: nowrap; align-self: flex-start; }
+        #prezzi .pz-riprova { font: inherit; font-size: 0.8rem; font-weight: 700; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--border-color); background: var(--card-bg); color: var(--text-dark); cursor: pointer; }
+
+        @container (min-width: 780px) {
+            #prezzi .pz-solo-tel { display: none !important; }
+            #prezzi .pz-solo-pc { display: initial !important; }
+            #prezzi p.pz-solo-pc { display: block !important; }
+            #prezzi .pz-sottotitolo { display: block; }
+            #prezzi .pz-stat { gap: 14px; margin: 14px 0 18px; }
+            #prezzi .pz-box { padding: 12px 14px; }
+            #prezzi .pz-box > b { font-size: 1.2rem; }
+            #prezzi .pz-layout { display: grid; grid-template-columns: minmax(0, 1fr) 400px; gap: 18px; align-items: start; }
+            #prezzi .pz-scheda-cosa { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 18px; padding: 16px 18px; }
+            #prezzi .pz-cosa { flex-direction: row; }
+            #prezzi .pz-opz { flex: 1; flex-direction: column; align-items: flex-start; gap: 10px; padding: 12px; }
+            #prezzi .pz-opz input { position: absolute; top: 10px; right: 10px; }
+            #prezzi .pz-chips { flex-wrap: wrap; overflow: visible; }
+            #prezzi .pz-chips-lista { flex-wrap: wrap; }
+            #prezzi .pz-seg { max-width: 420px; }
+        }
+
+        /* ── Wishlist (RESTYLE, tavole "Wishlist") ─────────────────────────── */
+        #wishlist { container-type: inline-size; }
+        #wishlist .wl-pagina { max-width: 1240px; padding-bottom: 4.5rem; }
+        #wishlist .wl-solo-pc, #wishlist .wl-solo-pc-flex { display: none !important; }
+        #wishlist .wl-testa { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+        #wishlist .wl-testa .page-title { font-size: 1.5rem; font-weight: 800; letter-spacing: -0.3px; color: var(--text-dark); }
+        #wishlist .wl-btn { font: inherit; font-weight: 700; font-size: 0.88rem; padding: 9px 14px; border-radius: 999px; border: 1px solid var(--border-color); background: var(--card-bg); color: var(--text-dark); cursor: pointer; display: inline-flex; gap: 8px; align-items: center; white-space: nowrap; }
+        #wishlist .wl-conti { color: var(--text-muted); font-size: 0.92rem; margin-bottom: 12px; }
+        #wishlist .wl-conti b { color: var(--text-dark); font-size: 1.05rem; }
+        #wishlist .wl-seg { display: flex; gap: 4px; padding: 4px; border-radius: 14px; background: var(--primary-light); margin-bottom: 12px; }
+        #wishlist .wl-segbtn { flex: 1; font: inherit; font-weight: 700; font-size: 0.88rem; padding: 9px; border-radius: 11px; border: 0; background: transparent; color: var(--text-muted); cursor: pointer; }
+        #wishlist .wl-segbtn.attivo { background: var(--card-bg); color: var(--text-dark); box-shadow: 0 1px 4px rgba(0,0,0,.1); }
+        #wishlist .wl-barra { display: flex; gap: 8px; align-items: center; margin-bottom: 10px; }
+        #wishlist .wl-cerca { flex: 1; display: flex; align-items: center; gap: 10px; padding: 0 14px; height: 46px; border-radius: 14px; border: 1px solid var(--border-color); background: var(--card-bg); color: var(--text-muted); }
+        #wishlist .wl-cerca input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; font: inherit; color: var(--text-dark); }
+        #wishlist #wishlistTabSealed .wl-cerca { margin-bottom: 10px; }
+        #wishlist .wl-vista { width: 46px; height: 46px; border-radius: 14px; border: 1px solid var(--border-color); background: var(--card-bg); color: var(--text-dark); cursor: pointer; flex: 0 0 auto; font-size: 1rem; }
+        #wishlist .wl-vista.attiva { background: var(--primary); border-color: var(--primary); color: #fff; }
+        #wishlist .wl-filtri { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; margin-bottom: 8px; }
+        #wishlist .wl-filtri::-webkit-scrollbar { display: none; }
+        #wishlist .wl-chip { flex: 0 0 auto; font: inherit; font-size: 0.8rem; font-weight: 700; padding: 7px 12px; border-radius: 999px; border: 1px solid var(--border-color); background: var(--card-bg); color: var(--text-muted); cursor: pointer; white-space: nowrap; }
+        #wishlist .wl-chip.attivo { background: var(--primary-light); border-color: transparent; color: var(--primary); }
+        #wishlist .wl-ordina-riga { display: flex; justify-content: flex-end; margin-bottom: 8px; }
+        #wishlist .wl-vuoto { text-align: center; color: var(--text-muted); font-size: 0.85rem; padding: 2rem 0; }
+        #wishlist .wl-riga { display: flex; align-items: center; gap: 12px; padding: 12px 2px; border-bottom: 1px solid var(--border-color); cursor: pointer; }
+        #wishlist .wl-fig { width: 34px; height: 47px; border-radius: 5px; object-fit: cover; display: block; flex: 0 0 auto; background: var(--primary-light); box-shadow: 0 2px 6px rgba(0,0,0,.2); }
+        #wishlist .wl-riga-corpo { flex: 1; min-width: 0; }
+        #wishlist .wl-riga-testa { display: flex; justify-content: space-between; gap: 10px; color: var(--text-dark); }
+        #wishlist .wl-riga-testa b:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        #wishlist .wl-riga-testa b:last-child { font-variant-numeric: tabular-nums; white-space: nowrap; }
+        #wishlist .wl-pista { height: 6px; border-radius: 4px; background: var(--primary-light); margin: 7px 0 6px; overflow: hidden; }
+        #wishlist .wl-pista div { height: 100%; border-radius: 4px; background: var(--primary); }
+        #wishlist .wl-pista div.ok { background: #2e7d32; }
+        #wishlist .wl-riga-piede { display: flex; justify-content: space-between; gap: 8px; font-size: 0.8rem; color: var(--text-muted); }
+        #wishlist .wl-ok { color: #2e7d32 !important; font-weight: 700; }
+        #wishlist .wl-su { color: #2e7d32; }
+        #wishlist .wl-giu { color: #d32f2f; }
+        #wishlist .wl-dettaglio { display: none; }
+
+        @container (min-width: 780px) {
+            #wishlist .wl-solo-tel { display: none !important; }
+            #wishlist .wl-solo-pc { display: initial !important; }
+            #wishlist .wl-seg.wl-solo-pc { display: flex !important; width: 220px; margin: 0; }
+            #wishlist .wl-solo-pc-flex { display: flex !important; }
+            #wishlist .wl-testa-sx { flex: 1; display: flex; align-items: baseline; gap: 18px; }
+            #wishlist .wl-conti { margin: 0; font-size: 0.9rem; }
+            #wishlist .wl-conti b { margin-left: 10px; }
+            #wishlist .wl-conti b:first-child { margin-left: 0; }
+            #wishlist .wl-filtri { margin: 0; }
+            #wishlist .wl-layout { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 18px; align-items: start; }
+            #wishlist .wl-tabella-box { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 18px; overflow: hidden; }
+            #wishlist .wl-tabella { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+            #wishlist .wl-tabella th { text-align: left; font-size: 0.7rem; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; color: var(--text-muted); padding: 12px 10px; border-bottom: 1px solid var(--border-color); cursor: pointer; white-space: nowrap; }
+            #wishlist .wl-tabella th.attivo { color: var(--primary); }
+            #wishlist .wl-tabella td { padding: 10px; border-bottom: 1px solid var(--border-color); vertical-align: middle; }
+            #wishlist .wl-tabella tr { cursor: pointer; }
+            #wishlist .wl-tabella tbody tr.sel { background: var(--primary-light); }
+            #wishlist .wl-tabella tbody tr:last-child td { border-bottom: 0; }
+            #wishlist .wl-td-nome b { display: block; color: var(--text-dark); }
+            #wishlist .wl-td-nome span { font-size: 0.78rem; color: var(--text-muted); }
+            #wishlist .wl-num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+            #wishlist .wl-num b { color: var(--text-dark); }
+            #wishlist .wl-td-dist { width: 170px; font-size: 0.78rem; color: var(--text-muted); }
+            #wishlist .wl-td-dist .wl-pista { margin: 0 0 4px; }
+            #wishlist .wl-gruppo { font-size: 0.74rem; font-weight: 700; padding: 3px 8px; border-radius: 6px; background: #e3f1e4; color: #2e7d32; white-space: nowrap; }
+            #wishlist .wl-menu { border: 0; background: none; color: var(--text-muted); cursor: pointer; font-size: 1rem; }
+            #wishlist .wl-dettaglio { display: block; position: sticky; top: 8px; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 18px; padding: 18px; }
+            #wishlist .wl-invito { display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; color: var(--text-muted); font-size: 0.85rem; padding: 3rem 0.5rem; }
+            #wishlist .wl-invito i { font-size: 1.6rem; margin-bottom: 4px; }
+            #wishlist .wl-invito b { color: var(--text-dark); }
+            #wishlist .wl-det-testa { display: flex; gap: 14px; align-items: center; }
+            #wishlist .wl-det-fig { width: 64px; height: 89px; border-radius: 7px; overflow: hidden; background: var(--primary-light); flex: 0 0 auto; cursor: pointer; box-shadow: 0 3px 10px rgba(0,0,0,.2); }
+            #wishlist .wl-det-fig img { width: 100%; height: 100%; object-fit: cover; }
+            #wishlist .wl-det-nome { font-size: 1.25rem; font-weight: 800; color: var(--text-dark); }
+            #wishlist .wl-det-sotto { font-size: 0.82rem; color: var(--text-muted); }
+            #wishlist .wl-det-prezzo { display: flex; justify-content: space-between; align-items: baseline; margin: 16px 0 10px; }
+            #wishlist .wl-det-prezzo b { font-size: 1.7rem; color: var(--text-dark); font-variant-numeric: tabular-nums; }
+            #wishlist .wl-det-prezzo span { font-size: 0.85rem; color: var(--text-muted); }
+            #wishlist .wl-det-grafico { position: relative; height: 150px; }
+            #wishlist .wl-det-grafico svg { width: 100%; height: 100%; display: block; overflow: visible; }
+            #wishlist .wl-det-carico { display: flex; align-items: center; justify-content: center; color: var(--text-muted); font-size: 0.85rem; text-align: center; }
+            #wishlist .wl-g-linea { fill: none; stroke: var(--primary); stroke-width: 2.5; stroke-linejoin: round; }
+            #wishlist .wl-g-obj { stroke: #2e7d32; stroke-width: 1.5; stroke-dasharray: 6 5; }
+            #wishlist .wl-g-objtxt { position: absolute; right: 0; transform: translateY(-120%); font-size: 0.72rem; font-weight: 700; color: #2e7d32; }
+            #wishlist .wl-det-assex { display: flex; justify-content: space-between; font-size: 0.74rem; color: var(--text-muted); margin-top: 8px; }
+            #wishlist .wl-det-gruppo { margin-top: 14px; padding: 12px; border-radius: 12px; background: #e3f1e4; font-size: 0.85rem; color: var(--text-dark); }
+            #wishlist .wl-det-gruppo a { color: var(--primary); font-weight: 700; cursor: pointer; }
+            #wishlist .wl-det-azioni { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 14px; }
+            #wishlist .wl-azione { font: inherit; font-weight: 700; font-size: 0.85rem; padding: 10px; border-radius: 11px; border: 1px solid var(--border-color); background: var(--card-bg); color: var(--text-dark); cursor: pointer; text-align: center; text-decoration: none; }
+            #wishlist .wl-azione.piena { background: var(--primary); border-color: var(--primary); color: #fff; }
+        }
+        body.dark-mode #wishlist .wl-gruppo, body.dark-mode #wishlist .wl-det-gruppo { background: rgba(129,199,132,.15); color: #81c784; }
+
+        /* ── Inserimento (RESTYLE, tavole "Inserimento") ──────────────────────
+           Telefono: ogni riga è una scheda compatta che si apre (classe
+           .aperta); l'ultima riga vuota è "+ Scrivi nome o codice...".
+           PC: tabella, con "Ultimo invio" a destra. */
+        #inserimento { container-type: inline-size; }
+        #inserimento .ins-pagina { background: none; border: 0; box-shadow: none; padding: 0 0 4.5rem; max-width: 1240px; overflow: visible; }
+        #inserimento .ins-solo-pc, #inserimento .ins-solo-pc-blocco { display: none !important; }
+        #inserimento .ins-testa { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+        #inserimento .ins-testa .page-title { font-size: 1.5rem; font-weight: 800; letter-spacing: -0.3px; color: var(--text-dark); }
+        #inserimento .ins-svuota { font: inherit; font-weight: 700; font-size: 0.88rem; min-width: 44px; height: 44px; padding: 0 12px; border-radius: 14px; border: 1px solid var(--border-color); background: var(--card-bg); color: var(--text-dark); cursor: pointer; }
+        #inserimento .ins-avviso { display: flex; align-items: center; gap: 12px; padding: 12px 16px; margin-bottom: 12px; border-radius: 14px; background: #fde7e7; border: 1px solid #f4b4b4; color: #c62828; font-weight: 700; cursor: pointer; }
+        #inserimento .ins-avviso span { flex: 1; }
+        body.dark-mode #inserimento .ins-avviso { background: rgba(239,154,154,.12); border-color: rgba(239,154,154,.3); color: #ef9a9a; }
+        #inserimento .ins-comandi { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 12px; }
+        #inserimento .ins-seg { flex: 1 1 140px; display: flex; gap: 4px; padding: 4px; border-radius: 14px; background: var(--primary-light); }
+        #inserimento .ins-segbtn { flex: 1; font: inherit; font-weight: 700; font-size: 0.88rem; padding: 9px 6px; border-radius: 11px; border: 0; background: transparent; color: var(--text-muted); cursor: pointer; white-space: nowrap; }
+        #inserimento .ins-segbtn.active { background: var(--card-bg); color: var(--text-dark); box-shadow: 0 1px 4px rgba(0,0,0,.1); }
+        #inserimento .ins-location { flex: 1 1 100%; position: relative; display: flex; align-items: center; gap: 10px; padding: 0 12px 0 16px; min-height: 48px; border-radius: 14px; border: 1px solid var(--border-color); background: var(--card-bg); flex-wrap: wrap; }
+        #inserimento .ins-location > i { color: var(--text-dark); }
+        #inserimento .ins-location label { color: var(--text-muted); white-space: nowrap; }
+        #inserimento .ins-location select { flex: 1; min-width: 0; border: 0; background: transparent; font: inherit; font-weight: 700; color: var(--text-dark); padding: 10px 0; outline: 0; }
+        #inserimento .ins-nuova-loc { width: 32px; height: 32px; border-radius: 10px; border: 1px solid var(--border-color); background: var(--card-bg); color: var(--primary); cursor: pointer; }
+        #inserimento .ins-nuova-box { flex: 1 1 100%; display: flex; gap: 8px; padding-bottom: 10px; }
+        #inserimento .ins-nuova-box input { flex: 1; min-width: 0; }
+        #inserimento .ins-nuova-box button { font: inherit; font-weight: 700; padding: 8px 14px; border-radius: 10px; border: 0; background: var(--primary); color: #fff; cursor: pointer; }
+        #inserimento .ins-layout, #inserimento .ins-sx { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+        #inserimento .ins-tabella-box { min-width: 0; }
+
+        /* Ultimo invio */
+        #inserimento .ins-ultimo:empty { display: none !important; }
+        #inserimento .ins-ultimo { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 18px; padding: 14px 16px; }
+        #inserimento .ins-ultimo-testa { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+        #inserimento .ins-ultimo-testa b { color: var(--text-dark); }
+        #inserimento .ins-ultimo-testa span { font-size: 0.82rem; color: var(--text-muted); }
+        #inserimento .ins-ultimo-pista { height: 7px; border-radius: 5px; background: var(--primary-light); margin: 10px 0 8px; overflow: hidden; }
+        #inserimento .ins-ultimo-pista div { height: 100%; background: var(--primary); border-radius: 5px; }
+        #inserimento .ins-ultimo-sotto { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 0.82rem; color: var(--text-muted); }
+        #inserimento .ins-ultimo-sotto button { font: inherit; font-weight: 700; border: 0; background: none; color: var(--primary); cursor: pointer; }
+        #inserimento .ins-ko { color: #d32f2f; }
+        #inserimento .ins-ultimo-lista { display: none; margin-top: 8px; }
+        #inserimento .ins-ultimo.aperto .ins-ultimo-lista { display: block; }
+        #inserimento .ins-ultimo-riga { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 9px 0; border-top: 1px solid var(--border-color); }
+        #inserimento .ins-ultimo-riga div { display: flex; flex-direction: column; min-width: 0; }
+        #inserimento .ins-ultimo-riga b { font-size: 0.88rem; color: var(--text-dark); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        #inserimento .ins-ultimo-riga span { font-size: 0.76rem; color: var(--text-muted); }
+        #inserimento .ins-pill { flex: 0 0 auto; font-size: 0.72rem; font-weight: 700; padding: 3px 9px; border-radius: 999px; }
+        #inserimento .ins-pill.ok { background: rgba(46,125,50,0.14); color: #2e7d32; }
+        #inserimento .ins-pill.att { background: var(--primary-light); color: var(--primary); }
+        #inserimento .ins-pill.ko { background: rgba(211,47,47,0.14); color: #d32f2f; }
+
+        /* Righe — telefono */
+        #inserimento table { min-width: 0; width: 100%; border-collapse: separate; border-spacing: 0; }
+        #inserimento thead { position: absolute; top: -9999px; left: -9999px; }
+        #inserimento table, #inserimento tbody { display: block; }
+        #inserimento tbody tr { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 10px; padding: 12px 14px; border: 1px solid var(--border-color); border-radius: 18px; background: var(--card-bg); }
+        #inserimento tbody td { display: block; width: auto; padding: 0; min-height: 0; border: 0; position: static; white-space: normal; }
+        #inserimento tbody td::before { content: none !important; }
+        #inserimento .ins-td-nome { flex: 1 1 calc(100% - 165px); min-width: 0; order: 1; }
+        #inserimento .ins-td-qty { order: 2; }
+        #inserimento .ins-td-sel { order: 3; }
+        #inserimento .ins-td-loc { flex: 1 1 auto; min-width: 45%; }
+        #inserimento .ins-td-loc select { width: 100%; }
+        #inserimento .ins-td-loc select { max-width: 100%; }
+        #inserimento .ins-td-chip { order: 4; }
+        #inserimento .ins-td-note { order: 5; }
+        #inserimento .ins-td-togli { order: 6; }
+        #inserimento .ins-td-nome input { width: 100%; border: 0; background: transparent; padding: 2px 0; font: 800 1.02rem 'Space Grotesk', sans-serif; color: var(--text-dark); outline: 0; box-shadow: none; }
+        #inserimento .ins-sommario { font-size: 0.82rem; color: var(--text-muted); }
+        #inserimento .ins-gia:empty { display: none; }
+        #inserimento .ins-gia { font-size: 0.82rem; font-weight: 700; color: #b07800; margin-top: 2px; }
+        #inserimento .ins-td-qty { display: flex !important; align-items: center; gap: 6px; }
+        #inserimento .qty-control { display: flex; align-items: center; border-radius: 12px; background: var(--primary-light); overflow: hidden; }
+        #inserimento .qty-btn { width: 32px; height: 36px; border: 0; background: transparent; color: var(--primary); font-weight: 800; font-size: 1rem; cursor: pointer; }
+        #inserimento .qty-input { width: 40px; height: 36px; border: 0; border-radius: 0; text-align: center; background: var(--card-bg); font-weight: 800; padding: 0; color: var(--text-dark); -moz-appearance: textfield; }
+        #inserimento .qty-input::-webkit-inner-spin-button { -webkit-appearance: none; }
+        #inserimento .ins-apri { width: 30px; height: 30px; border: 0; background: none; color: var(--text-muted); cursor: pointer; }
+        #inserimento tr.aperta .ins-apri i { transform: rotate(180deg); }
+        #inserimento .ins-td-sel select { font: inherit; font-weight: 700; font-size: 0.85rem; padding: 7px 10px; border-radius: 10px; border: 1px solid var(--border-color); background: var(--card-bg); color: var(--text-dark); }
+        #inserimento .ins-chip { display: inline-flex; align-items: center; font-size: 0.85rem; font-weight: 700; padding: 7px 14px; border-radius: 999px; border: 1px solid var(--border-color); color: var(--text-muted); cursor: pointer; background: var(--card-bg); white-space: nowrap; }
+        #inserimento .ins-chip input { display: none; }
+        #inserimento .ins-chip:has(input:checked) { background: var(--primary-light); border-color: var(--primary); color: var(--primary); }
+        #inserimento .ins-td-note { flex: 1 1 100%; }
+        #inserimento .ins-td-note input { width: 100%; border-radius: 12px; border: 0; background: var(--bg-color, var(--primary-light)); padding: 10px 12px; font: inherit; }
+        #inserimento .ins-td-togli { flex: 1 1 100%; text-align: right; }
+        #inserimento .ins-togli { font: inherit; font-weight: 700; border: 0; background: none; color: #d32f2f; cursor: pointer; }
+        /* chiusa: solo nome, sommario e quantità */
+        #inserimento tbody tr:not(.aperta) td:not(.ins-td-nome):not(.ins-td-qty) { display: none; }
+        #inserimento tbody tr.aperta .ins-sommario { display: none; }
+        /* riga vuota in fondo: "+ Scrivi nome o codice..." */
+        #inserimento tbody tr.ins-vuota { border-style: dashed; background: transparent; }
+        #inserimento tbody tr.ins-vuota td:not(.ins-td-nome) { display: none !important; }
+        #inserimento tbody tr.ins-vuota .ins-td-nome input { font-weight: 500; font-size: 0.95rem; }
+        #inserimento tbody tr.ins-vuota .ins-sommario { display: none; }
+        /* sealed: scheda semplice, sempre aperta */
+        #inserimento #entryTableBodySealed tr td { display: block !important; }
+        #inserimento #entryTableBodySealed td:first-child { flex: 1 1 100%; }
+        #inserimento #entryTableBodySealed td input:not(.qty-input), #inserimento #entryTableBodySealed td select { font: inherit; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--border-color); background: var(--card-bg); }
+        #inserimento #entryTableBodySealed td:first-child input { width: 100%; }
+        #inserimento .ins-piede { position: sticky; bottom: 0.5rem; z-index: 2; display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 10px 10px 10px 16px; border-radius: 18px; border: 1px solid var(--border-color); background: var(--card-bg); box-shadow: 0 6px 20px rgba(0,0,0,.08); }
+        #inserimento .ins-piede .autosave-status { font-size: 0.8rem; color: var(--text-muted); }
+        #inserimento .ins-piede .btn-main { margin: 0; white-space: nowrap; border-radius: 14px; }
+
+        @container (min-width: 780px) {
+            #inserimento .ins-solo-tel { display: none !important; }
+            #inserimento .ins-solo-pc { display: initial !important; }
+            #inserimento .ins-solo-pc-blocco { display: block !important; }
+            #inserimento .ins-comandi { flex-wrap: nowrap; align-items: center; }
+            #inserimento .ins-seg { flex: 0 0 auto; }
+            #inserimento .ins-segbtn { padding: 8px 16px; }
+            #inserimento .ins-location { flex: 0 1 380px; }
+            #inserimento .ins-nuova-box { position: absolute; top: 100%; left: 0; right: 0; z-index: 3; margin-top: 6px; padding: 10px; border-radius: 12px; background: var(--card-bg); border: 1px solid var(--border-color); box-shadow: 0 8px 20px rgba(0,0,0,.1); }
+            #inserimento .ins-layout { display: grid; grid-template-columns: minmax(0, 1fr) 260px; gap: 16px; align-items: start; }
+            #inserimento .ins-tabella-box { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 18px; overflow: hidden; }
+            #inserimento table { display: table; }
+            #inserimento thead { position: static; display: table-header-group; }
+            #inserimento tbody { display: table-row-group; }
+            #inserimento thead th { font-size: 0.68rem; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; color: var(--text-muted); padding: 12px 8px; border-bottom: 1px solid var(--border-color); text-align: left; background: none; }
+            #inserimento .ins-th-centro { text-align: center; }
+            #inserimento tbody tr, #inserimento tbody tr.ins-vuota, #inserimento tbody tr:not(.aperta) { display: table-row; border: 0; border-radius: 0; padding: 0; margin: 0; background: none; }
+            #inserimento tbody tr td, #inserimento tbody tr:not(.aperta) td:not(.ins-td-nome):not(.ins-td-qty), #inserimento tbody tr.ins-vuota td:not(.ins-td-nome) { display: table-cell !important; padding: 8px; border-bottom: 1px solid var(--border-color); vertical-align: middle; }
+            #inserimento .ins-td-nome input { font-size: 0.92rem; padding: 8px 10px; border-radius: 10px; background: var(--primary-light); }
+            #inserimento tbody tr.ins-vuota .ins-td-nome input { background: transparent; border: 1px dashed var(--border-color); }
+            #inserimento .ins-sommario, #inserimento .ins-apri { display: none !important; }
+            #inserimento .ins-gia { font-size: 0.74rem; }
+            #inserimento .ins-td-sel select { padding: 6px 4px; font-size: 0.8rem; min-width: 58px; }
+            #inserimento .ins-td-loc { min-width: 0; }
+            #inserimento .ins-td-loc select { min-width: 104px; width: auto; }
+            #inserimento tbody tr td { padding: 7px 5px !important; }
+            #inserimento .ins-chip { padding: 4px 9px; font-size: 0.74rem; }
+            #inserimento .ins-td-qty .qty-control { justify-content: center; }
+            #inserimento .qty-btn { width: 26px; height: 30px; }
+            #inserimento .qty-input { width: 32px; height: 30px; }
+            #inserimento .ins-td-note input { padding: 7px 10px; font-size: 0.8rem; width: 90px; }
+            #inserimento .ins-td-togli { text-align: center; }
+            #inserimento .ins-piede { position: static; border: 0; border-top: 1px solid var(--border-color); border-radius: 0; box-shadow: none; }
+            #inserimento #entryTableBodySealed tr td:first-child input { min-width: 220px; }
+            #inserimento .ins-td-nome input { min-width: 180px; }
+            #inserimento .ins-td-note input { width: 70px; }
+            #inserimento .ins-ultimo-lista { display: block; }
+            #inserimento .ins-ultimo-riga b { font-size: 0.82rem; }
+        }
+
+        /* ── Doppioni PC: pannello copie a destra (RESTYLE, tavola "Doppioni PC") ── */
+        #doppioni { container-type: inline-size; }
+        #doppioni .dp-solo-pc, #doppioni .dp-pannello-pc { display: none; }
+        #doppioni .dp-p-testa { display: flex; gap: 16px; align-items: flex-start; }
+        #doppioni .dp-p-fig { width: 130px; height: 182px; border-radius: 10px; flex: 0 0 auto; overflow: hidden; background: var(--primary-light); color: var(--primary); display: flex; align-items: center; justify-content: center; font-size: 2rem; cursor: zoom-in; box-shadow: 0 6px 18px rgba(0,0,0,.2); }
+        #doppioni .dp-p-fig.dp-fig-box { height: 130px; cursor: default; }
+        #doppioni .dp-p-fig img { width: 100%; height: 100%; object-fit: cover; }
+        #doppioni .dp-p-testo { flex: 1; min-width: 0; }
+        #doppioni .dp-p-nome { font-size: 1.35rem; font-weight: 800; color: var(--text-dark); line-height: 1.15; }
+        #doppioni .dp-p-sotto { font-size: 0.82rem; color: var(--text-muted); margin: 3px 0 10px; }
+        #doppioni .dp-p-stat { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+        #doppioni .dp-p-stat div { background: var(--primary-light); border-radius: 10px; padding: 7px 9px; display: flex; flex-direction: column; min-width: 0; }
+        #doppioni .dp-p-stat b { font-size: 0.85rem; color: var(--text-dark); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        #doppioni .dp-p-stat span { font-size: 0.7rem; color: var(--text-muted); }
+        #doppioni .dp-p-btn { margin-top: 10px; font: inherit; font-weight: 700; font-size: 0.82rem; padding: 7px 14px; border-radius: 999px; border: 1px solid var(--border-color); background: var(--card-bg); color: var(--text-dark); cursor: pointer; }
+        #doppioni .dp-p-nota { font-size: 0.74rem; color: var(--text-muted); margin-top: 8px; }
+        #doppioni .dp-p-titolo { font-weight: 800; color: var(--text-dark); margin: 18px 0 8px; }
+        #doppioni .dp-p-pos { display: flex; align-items: center; gap: 10px; padding: 11px 12px; border: 1px solid var(--border-color); border-radius: 12px; margin-bottom: 8px; cursor: pointer; }
+        #doppioni .dp-p-pos span { flex: 1; font-weight: 700; color: var(--text-dark); font-size: 0.88rem; }
+        #doppioni .dp-p-pos span i { color: var(--primary); margin-right: 4px; }
+        #doppioni .dp-p-pos b { font-size: 0.85rem; color: var(--text-muted); }
+        #doppioni .dp-p-pos button { font: inherit; font-size: 0.76rem; font-weight: 700; padding: 5px 10px; border-radius: 999px; border: 1px solid var(--border-color); background: var(--card-bg); color: var(--primary); cursor: pointer; }
+        #doppioni #doppioniPannelloPc #doppioniSpostaFlusso .pg-pagina { background: var(--primary-light); border-radius: 12px; padding: 12px !important; }
+        #doppioni #doppioniPannelloPc .pg-filtro { font: inherit; font-size: 0.8rem; font-weight: 700; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--border-color); background: var(--card-bg); color: var(--text-dark); cursor: pointer; }
+        #doppioni #doppioniPannelloPc .primario { font: inherit; font-weight: 800; padding: 10px; border-radius: 10px; border: 0; background: var(--primary); color: #fff; cursor: pointer; }
+        @container (min-width: 780px) {
+            #doppioni .dp-pagina { max-width: 1240px; }
+            #doppioni .dp-solo-tel { display: none; }
+            #doppioni .dp-solo-pc { display: block; margin-top: 10px; }
+            #doppioni .dp-seg { max-width: 260px; }
+            #doppioni .dp-layout { display: grid; grid-template-columns: minmax(0, 1fr) 400px; gap: 18px; align-items: start; }
+            #doppioni .dp-sx { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 18px; padding: 10px 14px; }
+            #doppioni .dp-riga { padding: 10px 8px; border-radius: 12px; }
+            #doppioni .dp-riga.sel { background: var(--primary-light); }
+            #doppioni .dp-riga-testo { flex-direction: row; flex-wrap: wrap; align-items: baseline; column-gap: 10px; }
+            #doppioni .dp-riga-testo b { flex: 1 1 100%; }
+            #doppioni .dp-fig { width: 34px; height: 47px; flex-basis: 34px; cursor: zoom-in; }
+            #doppioni .dp-pannello-pc { display: block; position: sticky; top: 8px; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 18px; padding: 18px; }
+            #doppioni .dp-pannello-pc:empty { display: none; }
+        }
+
+        /* ── Sealed PC: elenco + dettagli affiancati (RESTYLE, tavola "Sealed PC") ── */
+        #sealed { container-type: inline-size; }
+        @container (min-width: 780px) {
+            #sealed .sl-layout { display: grid; grid-template-columns: minmax(0, 1fr) 420px; gap: 18px; align-items: start; max-width: 1240px; }
+            #sealed .sl-layout .sl-pagina { max-width: none; }
+            #sealed #sealedVistaDettaglio { position: sticky; top: 8px; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 18px; padding: 18px 18px 8px; }
+            #sealed #sealedVistaDettaglio .sl-indietro { display: none; }
+            #sealed #sealedElenco { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 18px; padding: 6px 12px; }
+            #sealed .sl-riga { border-radius: 12px; padding-left: 8px; padding-right: 8px; }
+            #sealed .sl-riga.sel { background: var(--primary-light); }
+            #sealed .sl-stat { max-width: 640px; }
+        }
+
+        /* ── Scaffali PC: elenco a sinistra, scaffale aperto a destra (RESTYLE) ── */
+        #scaffali { container-type: inline-size; }
+        @container (min-width: 780px) {
+            #scaffali .sc-layout { max-width: 1240px; display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 18px; align-items: start; margin: 0; }
+            #scaffali #scaffaleDettaglioWrap { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 18px; padding: 18px; }
+            #scaffali #scaffaleDettaglioWrap .sc-indietro { display: none; }
+            #scaffali .sc-riga.sel { border-color: var(--primary); background: var(--primary-light); }
+        }
+
+/* ── MISSIONI — tavole OK-missioni / PC-missioni (2026-10-01) ──────────
+   Telefono: testata con "Traguardi", anello + riepilogo, tab a pillola,
+   righe con avanzamento e premio a destra, card in fondo. PC (pagina
+   >= 780px): tre colonne Oggi/Settimana/Mese affiancate, card in fondo
+   affiancate, "Completate di recente". Tutto sotto #missioni. */
+#missioni { container-type: inline-size; }
+#missioni .page-header { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+#missioni .msn-btn-traguardi {
+    display: inline-flex; align-items: center; gap: 7px; flex: 0 0 auto;
+    background: var(--card-bg); color: var(--text-dark); border: 1px solid var(--border-color);
+    border-radius: 12px; padding: 8px 14px; font: inherit; font-size: 0.85rem; font-weight: 700; cursor: pointer;
+}
+#missioni .msn-btn-traguardi i { color: var(--text-dark); }
+#missioni .msn-solo-pc { display: none; }
+#missioni .msn-riepilogo { margin-bottom: 1rem; }
+#missioni .msn-riepilogo-sotto { font-size: 0.8rem; color: var(--text-muted); margin-top: 3px; }
+#missioni .msn-tabs {
+    display: flex; gap: 4px; padding: 4px; border-radius: 14px;
+    background: var(--primary-light); margin-bottom: 0.4rem;
+}
+#missioni .msn-tab {
+    flex: 1; position: relative; border: 0; background: transparent; cursor: pointer;
+    font: inherit; font-size: 0.85rem; font-weight: 600; color: var(--text-muted);
+    padding: 8px 6px; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+}
+#missioni .msn-tab.active { background: var(--card-bg); color: var(--text-dark); font-weight: 700; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+#missioni .msn-tab-pallino, #missioni .msn-pallino-in-riga {
+    position: static; display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--danger);
+}
+#missioni .msn-riga { cursor: pointer; padding: 12px 2px; gap: 12px; align-items: center; }
+#missioni .msn-riga-testo-riga2 { font-size: 0.74rem; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+#missioni .msn-check { width: 24px; height: 24px; }
+#missioni .msn-destra { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; flex: 0 0 auto; font-size: 0.74rem; color: var(--text-muted); font-variant-numeric: tabular-nums; text-align: right; max-width: 40%; }
+#missioni .msn-destra b { color: var(--text-dark); font-weight: 700; }
+#missioni .msn-premio-preso {
+    flex: 0 0 auto; display: inline-flex; align-items: center; gap: 5px; white-space: nowrap;
+    background: color-mix(in srgb, var(--success) 14%, transparent); color: var(--success);
+    border-radius: 999px; padding: 5px 10px; font-size: 0.74rem; font-weight: 700;
+}
+#missioni .msn-nuova { margin-left: 6px; font-size: 0.66rem; font-weight: 700; color: #fff; background: var(--success); border-radius: 999px; padding: 1px 7px; vertical-align: 2px; }
+#missioni .msn-riga-dettaglio { padding: 0 0.2rem 0.7rem 2.3rem; font-size: 0.76rem; color: var(--text-muted); line-height: 1.4; }
+#missioni .msn-vuoto { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 2rem 0.6rem; }
+#missioni .msn-vuoto i { font-size: 1.3rem; }
+#missioni .msn-vuoto b { color: var(--text-dark); font-size: 0.85rem; }
+#missioni .msn-vuoto span { font-size: 0.74rem; }
+#missioni .msn-card-titolo { justify-content: space-between; font-size: 0.72rem; }
+#missioni .msn-card-premio { text-transform: none; font-weight: 600; letter-spacing: 0; }
+#missioni .msn-card-nome { font-weight: 700; color: var(--text-dark); margin: 6px 0 9px; font-size: 0.95rem; }
+#missioni .msn-card-streak { display: flex; align-items: center; gap: 14px; }
+#missioni .msn-fuoco { font-size: 1.7rem; line-height: 1; }
+#missioni .msn-fuoco.spento { filter: grayscale(1); opacity: .5; }
+#missioni .msn-card-streak .msn-card-streak-numero { font-size: 1rem; margin: 0; }
+#missioni .msn-card-streak .msn-card-sotto { margin-top: 2px; }
+
+@container (min-width: 780px) {
+    #missioni .msn-solo-tel { display: none; }
+    #missioni .msn-solo-pc { display: block; }
+    #missioni .msn-colonne { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; align-items: stretch; }
+    #missioni .msn-colonna {
+        background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 16px;
+        padding: 0.9rem 1rem 0.4rem; display: flex; flex-direction: column; min-width: 0;
+    }
+    #missioni .msn-colonna .pg-elenco { flex: 1; display: flex; flex-direction: column; }
+    #missioni .msn-colonna .msn-vuoto { flex: 1; justify-content: center; }
+    #missioni .msn-colonna-testa { display: flex; align-items: center; gap: 7px; margin-bottom: 4px; font-size: 0.9rem; color: var(--text-dark); }
+    #missioni .msn-colonna-scade { margin-left: auto; font-size: 0.74rem; color: var(--text-muted); }
+    #missioni .msn-fondo { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; }
+    #missioni .msn-fondo > .msn-card { margin-top: 16px; }
+    #missioni .msn-fondo > .msn-card:only-child { grid-column: 1 / -1; }
+    #missioni .msn-recenti { margin-top: 16px; }
+    #missioni .msn-recenti-testa { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px; }
+    #missioni .msn-recenti-testa b { color: var(--text-dark); font-size: 0.9rem; }
+    #missioni .msn-recenti-testa span { font-size: 0.74rem; color: var(--text-muted); }
+    #missioni .msn-recenti-griglia { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+    #missioni .msn-recente { border: 1px solid var(--border-color); border-radius: 12px; padding: 10px 12px; display: flex; flex-direction: column; gap: 3px; }
+    #missioni .msn-recente span { font-size: 0.72rem; color: var(--text-muted); }
+    #missioni .msn-recente b { color: var(--text-dark); font-size: 0.9rem; }
+    #missioni .msn-recente em { font-style: normal; font-size: 0.74rem; font-weight: 700; color: var(--success); }
+}
+
+/* ── SET — tavole OK-set / PC-set (2026-10-01) ─────────────────────────
+   Telefono: Modifica come bottone, tre riquadri (in corso / completati /
+   il più avanti), ricerca, schede a pillola, sigla accanto al nome.
+   PC (>= 780px): elenco a sinistra in un riquadro, dettaglio del set a
+   destra (#setDettPc, riempito da _setUiRenderDettaglio inline). */
+#set { container-type: inline-size; }
+#set .page-header { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+#set .set-btn-modifica {
+    display: inline-flex; align-items: center; gap: 7px; flex: 0 0 auto;
+    background: var(--card-bg); color: var(--text-dark); border: 1px solid var(--border-color);
+    border-radius: 12px; padding: 8px 14px; font: inherit; font-size: 0.85rem; font-weight: 700; cursor: pointer;
+}
+#set .set-btn-modifica.attiva { background: var(--primary); border-color: var(--primary); color: #fff; }
+#set .set-solo-pc { display: none; }
+#set .set-dx { display: none; }
+#set .set-stat { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+#set .set-stat > div { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 12px; padding: 10px 12px; display: flex; flex-direction: column; gap: 2px; }
+#set .set-stat b { font-size: 1.15rem; font-weight: 800; color: var(--text-dark); font-variant-numeric: tabular-nums; }
+#set .set-stat span { font-size: 0.72rem; color: var(--text-muted); }
+#set .set-sx { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+#set .set-cerca {
+    display: flex; align-items: center; gap: 10px; background: var(--card-bg);
+    border: 1px solid var(--border-color); border-radius: 12px; padding: 0 14px; color: var(--text-muted);
+}
+#set .set-cerca input { flex: 1; min-width: 0; border: 0; background: transparent; padding: 11px 0; font: inherit; font-size: 0.88rem; color: var(--text-dark); outline: none; }
+#set .pg-filtri { gap: 6px; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+#set .pg-filtri::-webkit-scrollbar { display: none; }
+#set .pg-filtro { white-space: nowrap; flex: 0 0 auto; }
+#set .pg-filtro.attivo { background: var(--primary-light); border-color: var(--primary-light); color: var(--primary); }
+#set .set-ordine { font-size: 0.74rem; color: var(--text-muted); }
+#set .set-sigla { font-size: 0.66rem; font-weight: 700; color: var(--text-muted); letter-spacing: .3px; margin-left: 2px; }
+#set .set-riga.sel { background: var(--primary-light); border-radius: 10px; }
+#set .set-dett-testa { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+#set .set-dett-nome { font-size: 0.78rem; font-weight: 700; color: var(--text-muted); }
+#set .set-dett-testa .page-azione {
+    background: var(--card-bg); color: var(--text-dark); border: 1px solid var(--border-color);
+    border-radius: 10px; padding: 6px 12px; font-weight: 700;
+}
+#set .set-dett-testa .page-azione.attiva { background: var(--primary); border-color: var(--primary); color: #fff; }
+#set .set-dett-corpo { display: flex; flex-direction: column; gap: 10px; margin-top: 4px; }
+#set .set-vuoto-dx { text-align: center; color: var(--text-muted); font-size: 0.85rem; padding: 3rem 0; }
+
+@container (min-width: 780px) {
+    #set .set-solo-pc { display: block; }
+    #set .set-stat { display: none; }
+    #set .set-layout { display: grid; grid-template-columns: minmax(280px, 0.9fr) 2.1fr; gap: 16px; align-items: start; }
+    #set .set-sx, #set .set-dx {
+        display: flex; flex-direction: column; background: var(--card-bg);
+        border: 1px solid var(--border-color); border-radius: 16px; padding: 14px;
+    }
+    #set .set-sx { position: sticky; top: 0; max-height: calc(100vh - 170px); }
+    #set .set-sx #setElenco { overflow-y: auto; min-height: 0; flex: 1; }
+    #set .set-sx .set-riga { padding: 8px 8px; }
+    #set .set-dx .pg-intro { display: flex; flex-direction: row; align-items: baseline; gap: 14px; text-align: left; }
+    #set .set-dx .set-griglia { grid-template-columns: repeat(auto-fill, minmax(88px, 1fr)); }
+}
+
+/* ── ACHIEVEMENT — tavola OK-achievement (2026-10-01) ──────────────────
+   Testata con "In evidenza", riepilogo con barra, filtri a pillola,
+   sezioni per rarità colorate, tessere con icona/nome/rarità; chiuse =
+   bordo tratteggiato del colore della rarità e "???". */
+#achievement { container-type: inline-size;
+    --ach-legg: #e8a317; --ach-legg-bg: #fdf0cf; --ach-rara: #2f8ee5; --ach-rara-bg: #d8ebfc; --ach-com: #8a8794; --ach-com-bg: #e9e7ef; }
+body.dark-mode #achievement { --ach-legg-bg: #4a3a12; --ach-rara-bg: #173450; --ach-com-bg: #34313d; }
+#achievement .page-header { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+#achievement .ach-btn-evidenza {
+    display: inline-flex; align-items: center; gap: 7px; flex: 0 0 auto;
+    background: var(--card-bg); color: var(--text-dark); border: 1px solid var(--border-color);
+    border-radius: 12px; padding: 8px 14px; font: inherit; font-size: 0.85rem; font-weight: 700; cursor: pointer;
+}
+#achievement .ach-btn-evidenza.attiva { background: var(--primary); border-color: var(--primary); color: #fff; }
+#achievement .ach-riepilogo { margin: 4px 0 12px; }
+#achievement .ach-riepilogo-testa { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
+#achievement .ach-riepilogo-testa b { font-size: 1.05rem; font-weight: 800; color: var(--text-dark); }
+#achievement .ach-riepilogo-testa span { font-size: 0.78rem; color: var(--text-muted); }
+#achievement .ach-filtri { display: flex; gap: 6px; margin-bottom: 6px; flex-wrap: wrap; }
+#achievement .ach-filtro {
+    border: 1px solid var(--border-color); background: var(--card-bg); color: var(--text-muted);
+    border-radius: 999px; padding: 6px 12px; font: inherit; font-size: 0.78rem; font-weight: 600; cursor: pointer;
+}
+#achievement .ach-filtro.attivo { background: var(--primary-light); border-color: var(--primary-light); color: var(--primary); font-weight: 700; }
+#achievement .ach-nota { font-size: 0.76rem; color: var(--text-muted); margin: 8px 0; }
+#achievement .ach-sezione { display: flex; justify-content: space-between; align-items: baseline; margin: 16px 0 8px; }
+#achievement .ach-sezione b { font-size: 1rem; font-weight: 800; }
+#achievement .ach-sezione span { font-size: 0.78rem; color: var(--text-muted); }
+#achievement .ach-sezione.r-leggendaria b { color: var(--ach-legg); }
+#achievement .ach-sezione.r-rara b { color: var(--ach-rara); }
+#achievement .ach-sezione.r-comune b { color: var(--ach-com); }
+#achievement .ach-griglia { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 10px; }
+#achievement .ach-tessera {
+    --c: var(--ach-com); --cbg: var(--ach-com-bg);
+    position: relative; display: flex; flex-direction: column; align-items: center; gap: 5px; text-align: center;
+    background: var(--card-bg); border: 1px solid var(--border-color); border-top: 4px solid var(--c);
+    border-radius: 12px; padding: 12px 6px 10px; min-width: 0;
+}
+#achievement .ach-tessera.r-leggendaria { --c: var(--ach-legg); --cbg: var(--ach-legg-bg); }
+#achievement .ach-tessera.r-rara { --c: var(--ach-rara); --cbg: var(--ach-rara-bg); }
+#achievement .ach-tessera.chiusa { border: 1.5px dashed color-mix(in srgb, var(--c) 55%, transparent); border-top: 4px solid color-mix(in srgb, var(--c) 45%, transparent); }
+#achievement .ach-tessera.aperta { cursor: pointer; transition: transform .15s ease; }
+#achievement .ach-tessera.aperta:hover { transform: translateY(-2px); }
+#achievement .ach-icona {
+    width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    background: var(--cbg); color: var(--c); font-size: 1rem;
+}
+#achievement .ach-tessera.aperta .ach-icona { background: var(--c); color: #fff; }
+#achievement .ach-tessera b { font-size: 0.78rem; font-weight: 700; color: var(--text-dark); line-height: 1.2; overflow-wrap: anywhere; }
+#achievement .ach-tessera.chiusa b { color: var(--text-muted); }
+#achievement .ach-tessera small { font-size: 0.68rem; font-weight: 700; color: var(--c); }
+#achievement .ach-stella { position: absolute; top: 6px; right: 7px; color: #f2b01e; font-size: 0.8rem; }
+@container (min-width: 780px) {
+    #achievement .ach-griglia { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); }
+}
+
+/* ── IMPOSTAZIONI — tavole OK-impostazioni / PC-imp (2026-10-01) ───────
+   Telefono: elenco unico a gruppi (titoletto maiuscolo + card con righe
+   icona/testo/controllo); le voci .espandibile aprono il loro .imp-corpo.
+   PC (>= 780px): menu a sinistra, a destra solo il gruppo .attivo con
+   tutti i corpi aperti. */
+#impostazioni { container-type: inline-size; }
+#impostazioni .imp-solo-pc { display: none; }
+#impostazioni .imp-sotto { font-size: 0.8rem; color: var(--text-muted); margin: -0.4rem 0 0.9rem; }
+#impostazioni .imp-gruppo { margin-bottom: 1.1rem; }
+#impostazioni .imp-gruppo-titolo { font-size: 0.72rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); margin: 0 0 8px 4px; }
+#impostazioni .imp-card { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 16px; padding: 4px 14px; }
+#impostazioni .imp-card + .imp-card { margin-top: 10px; }
+#impostazioni .imp-card-pad { padding: 14px; }
+#impostazioni .imp-card-titolo { font-size: 0.9rem; font-weight: 800; color: var(--text-dark); display: flex; gap: 8px; align-items: center; }
+#impostazioni .imp-voce { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--border-color); cursor: pointer; margin: 0; }
+#impostazioni .imp-card > .imp-voce:last-child, #impostazioni .imp-card > .imp-corpo:last-child, #impostazioni #impostazioniEstensioneGroup > .imp-voce:last-child { border-bottom: 0; }
+#impostazioni .imp-card > .imp-voce.espandibile:nth-last-child(2):not(.aperta) { border-bottom: 0; }
+#impostazioni .imp-ico { width: 34px; height: 34px; border-radius: 10px; flex: 0 0 auto; display: flex; align-items: center; justify-content: center; background: var(--primary-light); color: var(--primary); font-size: 0.9rem; }
+#impostazioni .imp-voce-testo { flex: 1; min-width: 0; }
+#impostazioni .imp-voce-testo h4 { font-size: 0.9rem; font-weight: 700; color: var(--text-dark); margin: 0; }
+#impostazioni .imp-voce-testo p { font-size: 0.74rem; color: var(--text-muted); margin: 2px 0 0; line-height: 1.35; }
+#impostazioni .imp-valore { font-size: 0.78rem; color: var(--text-muted); text-align: right; max-width: 42%; }
+#impostazioni .imp-freccia { color: var(--text-muted); font-size: 0.8rem; transition: transform .2s; }
+#impostazioni .imp-voce.espandibile.aperta .imp-freccia { transform: rotate(90deg); }
+#impostazioni .imp-corpo { display: none; flex-direction: column; gap: 10px; padding: 4px 0 14px; border-bottom: 1px solid var(--border-color); }
+#impostazioni .imp-voce.espandibile.aperta + .imp-corpo { display: flex; }
+#impostazioni .imp-corpo input[type=email], #impostazioni .imp-corpo input[type=password], #impostazioni .imp-corpo input[type=text] { margin: 0; }
+#impostazioni .imp-corpo > .btn-main, #impostazioni .imp-corpo > .btn-secondary { align-self: flex-start; }
+#impostazioni .imp-etichetta { font-size: 0.7rem; font-weight: 700; color: var(--text-muted); margin: 4px 0 -4px; }
+#impostazioni .imp-nota { font-size: 0.74rem; color: var(--text-muted); margin: 0; }
+#impostazioni .imp-sottotitolo { font-size: 0.68rem; font-weight: 800; letter-spacing: .06em; color: var(--text-muted); }
+#impostazioni .imp-spunte { display: flex; flex-direction: column; gap: 0.6rem; }
+#impostazioni .imp-spunte label { display: flex; align-items: center; gap: 0.6rem; font-size: 0.85rem; cursor: pointer; }
+#impostazioni .imp-spunte input[type=checkbox] { width: auto; }
+#impostazioni .imp-slider { display: flex; flex-direction: column; gap: 6px; }
+#impostazioni .imp-slider-riga { display: flex; align-items: center; gap: 12px; }
+#impostazioni .imp-slider-riga input { flex: 1; accent-color: var(--primary); cursor: pointer; }
+#impostazioni .imp-slider-riga span { font-size: 0.8rem; font-weight: 700; color: var(--text-dark); min-width: 48px; text-align: right; }
+#impostazioni .imp-colore { width: 36px; height: 36px; border: 1px solid var(--border-color); border-radius: 10px; padding: 2px; cursor: pointer; background: var(--card-bg); flex: 0 0 auto; }
+#impostazioni .imp-select { max-width: 46%; }
+#impostazioni .imp-btn { padding: 6px 12px; font-size: 0.8rem; white-space: nowrap; }
+#impostazioni .imp-bottoni { display: flex; gap: 6px; flex: 0 0 auto; }
+#impostazioni .imp-conn { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+#impostazioni .imp-conn h4 { font-size: 0.85rem; font-weight: 700; margin: 0; color: var(--text-dark); }
+#impostazioni .imp-conn p { font-size: 0.72rem; color: var(--text-muted); margin: 0; }
+#impostazioni .imp-profilo { padding: 14px 0; }
+#impostazioni .imp-avatar { width: 52px; height: 52px; border-radius: 14px; flex: 0 0 auto; display: flex; align-items: center; justify-content: center; background: var(--primary); color: #fff; font-size: 1.3rem; font-weight: 800; background-size: cover; background-position: center; }
+#impostazioni .imp-profilo h4 { font-size: 1rem; }
+#impostazioni .imp-cerca { display: flex; align-items: center; gap: 8px; border: 1px solid var(--border-color); border-radius: 10px; padding: 0 10px; color: var(--text-muted); margin-bottom: 8px; }
+#impostazioni .imp-cerca input { border: 0; background: transparent; padding: 8px 0; flex: 1; min-width: 0; font: inherit; font-size: 0.82rem; color: var(--text-dark); outline: none; margin: 0; }
+#impostazioni .imp-nascosta { display: none !important; }
+
+@container (min-width: 780px) {
+    #impostazioni .imp-solo-pc { display: block; }
+    #impostazioni .imp-solo-tel { display: none; }
+    #impostazioni .imp-layout { display: grid; grid-template-columns: 250px minmax(0, 1fr); gap: 1.2rem; align-items: start; }
+    #impostazioni .imp-menu { display: flex; flex-direction: column; gap: 2px; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 16px; padding: 12px; position: sticky; top: 0; }
+    #impostazioni .imp-menu button { display: flex; align-items: center; gap: 12px; border: 0; background: transparent; text-align: left; font: inherit; font-size: 0.86rem; font-weight: 600; color: var(--text-dark); padding: 9px 10px; border-radius: 10px; cursor: pointer; }
+    #impostazioni .imp-menu button i { width: 28px; height: 28px; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; background: var(--primary-light); color: var(--primary); font-size: 0.8rem; }
+    #impostazioni .imp-menu button.attivo { background: var(--primary-light); color: var(--primary); }
+    #impostazioni .imp-gruppi:not(.cercando) .imp-gruppo:not(.attivo) { display: none; }
+    #impostazioni .imp-gruppo-titolo { font-size: 1.1rem; text-transform: none; letter-spacing: 0; color: var(--text-dark); margin: 0; padding: 14px 14px 0; }
+    #impostazioni .imp-gruppo { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 16px; max-width: 760px; }
+    #impostazioni .imp-gruppo > .imp-card { border: 0; border-radius: 16px; background: transparent; }
+    #impostazioni .imp-voce.espandibile { cursor: default; border-bottom: 0; padding-bottom: 4px; }
+    #impostazioni .imp-voce.espandibile .imp-freccia { display: none; }
+    #impostazioni .imp-corpo { display: flex; padding-left: 46px; }
+    #impostazioni .imp-profilo + .imp-corpo { padding-left: 0; }
+}

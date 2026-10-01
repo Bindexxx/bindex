@@ -160,6 +160,7 @@ async function renderPaginaSealed() {
 
     const nScaffali = new Set(_sealedAssoc.filter(r => { const x = _scaffaliElenco.find(y => String(y.id) === String(r.scaffale_id)); return x && x.tipo !== 'scambio'; }).map(r => r.scaffale_id)).size;
     container.innerHTML = `
+        <div class="sl-layout">
         <div class="sl-pagina" id="sealedVistaElenco">
             ${testa}
             <div class="sl-stat">
@@ -176,9 +177,17 @@ async function renderPaginaSealed() {
             <div id="sealedElenco"></div>
         </div>
         <div class="sl-pagina" id="sealedVistaDettaglio" style="display:none;"></div>
+        </div>
     `;
     _sealedRenderElenco();
+    // RESTYLE (tavola "Sealed PC"): su PC elenco e dettagli affiancati.
+    if (_sealedEPC() && _sealedProdottiComputati.length) {
+        const primo = [..._sealedProdottiComputati].sort((a, b) => b.valoreTotale - a.valoreTotale)[0];
+        _sealedApriDettaglio(primo.id);
+    }
 }
+
+function _sealedEPC() { const s = document.getElementById('sealed'); return !!s && s.clientWidth >= 780; }
 
 function _sealedImpostaOrdinamento(ordine) {
     _sealedOrdinamento = ordine;
@@ -219,7 +228,7 @@ function _sealedRenderElenco() {
     elenco.innerHTML = righe.map(r => {
         const sotto = [r.codice || null, `×${r.qty}`, r.inScambio > 0 ? 'in Scambio' : null].filter(Boolean).join(' · ');
         return `
-            <div class="sl-riga" onclick="_sealedApriDettaglio('${escapeJsAttr(String(r.id))}')">
+            <div class="sl-riga${String(r.id) === String(_sealedDettaglioId) ? ' sel' : ''}" data-id="${escapeHtml(String(r.id))}" onclick="_sealedApriDettaglio('${escapeJsAttr(String(r.id))}')">
                 ${_sealedFigHtml(r.immagine)}
                 <div class="sl-riga-testo"><b>${escapeHtml(r.nome)}</b><span>${escapeHtml(sotto)}</span></div>
                 <div class="sl-riga-destra"><b>${eur(r.valoreTotale)}</b><span>${r.scaffale ? escapeHtml(r.scaffale) : 'nessuno scaffale'}</span></div>
@@ -243,9 +252,12 @@ function _sealedApriDettaglio(id) {
     const el = document.getElementById('sealedVistaElenco');
     const det = document.getElementById('sealedVistaDettaglio');
     if (!el || !det) return;
-    el.style.display = 'none';
+    const pc = _sealedEPC();
+    el.style.display = pc ? '' : 'none';
     det.style.display = '';
+    document.querySelectorAll('#sealedElenco .sl-riga').forEach(r => r.classList.toggle('sel', r.dataset.id === String(id)));
     _sealedRenderDettaglio();
+    if (pc) return;
     const scroller = document.getElementById('sealed');
     if (scroller) scroller.scrollTop = 0;
 }

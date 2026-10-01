@@ -324,6 +324,7 @@ function collezioneRender(data) {
 
     const ordinati = _collOrdina(data);
     const pc = _collEPC();
+    _collUltimoPC = pc;
     const corpo = document.getElementById('collCorpo');
     if (corpo) {
         corpo.innerHTML = _collVista === 'griglia' ? _collGriglia(ordinati)
@@ -332,6 +333,15 @@ function collezioneRender(data) {
     document.body.classList.toggle('coll-griglia-attiva', _collVista === 'griglia');
     _collAggiornaTesta(data);
     _aggiornaBarraSelezioneMultipla();
+}
+
+// La sezione viene disegnata mentre il pannello è ancora nascosto (larghezza
+// 0 = "telefono"): appena il pannello è visibile si rifà il render se la
+// misura vera dice PC. Chiamata da apriDettaglioWidget.
+let _collUltimoPC = null;
+function collezioneRiallinea() {
+    if (!_collUltimiDati || !document.body.classList.contains('coll-attiva')) return;
+    if (_collEPC() !== _collUltimoPC) collezioneRender(_collUltimiDati);
 }
 
 // Uscendo dalla tab Collezione la classe va tolta, altrimenti le altre tab

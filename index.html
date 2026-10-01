@@ -523,95 +523,89 @@
 
         <!-- SEZIONE 2: INSERIMENTO CARTE (LOCATION DEFAULT: ?) -->
         <div id="inserimento" class="view-section">
-            <div class="card-panel">
-                <div style="margin-bottom: 0.9rem; font-weight: 800; font-size: 1.05rem; color: var(--text-dark); display: flex; justify-content: space-between; align-items: center;">
-                    <span><i class="fa-solid fa-table-list" style="color: var(--primary);"></i> Inserimento Rapido</span>
-                    <button type="button" class="btn-secondary" onclick="clearEntryDraft()" style="padding: 0.3rem 0.6rem; font-size: 0.75rem;">
-                        <i class="fa-solid fa-eraser"></i> Svuota Bozza
-                    </button>
+            <!-- RESTYLE BINDEX (2026-10-01, tavole "Inserimento"): righe compatte
+                 (telefono: schede che si aprono; PC: tabella), Collezione/Wishlist
+                 e Carte/Sealed, "Location per tutte", "Ultimo invio". La
+                 struttura delle righe (10 celle) è quella di sempre: salvataggio
+                 e bozza in ui/entry.ui.js leggono le celle per posizione. -->
+            <div class="card-panel ins-pagina">
+                <div class="ins-testa">
+                    <span class="page-title">Inserimento</span>
+                    <button type="button" class="ins-svuota" onclick="clearEntryDraft()" title="Svuota la bozza"><i class="fa-solid fa-eraser"></i><span class="ins-solo-pc"> Svuota bozza</span></button>
+                </div>
+                <div class="ins-avviso" id="insAvvisoCorrezioni" style="display:none;" onclick="document.getElementById('pannelloCarteProblemi').scrollIntoView({ behavior: 'smooth' })">
+                    <i class="fa-solid fa-triangle-exclamation"></i><span id="insAvvisoTesto"></span><u>Apri</u>
                 </div>
 
-                <div style="margin-bottom: 0.4rem; font-size: 0.72rem; font-weight: 700; color: var(--text-muted);">DESTINAZIONE</div>
-                <div style="display:flex; flex-wrap:wrap; gap:0.5rem; margin-bottom: 0.8rem;">
-                    <button type="button" class="theme-btn active" id="btnDestCollezione" onclick="impostaDestinazioneInserimento('collezione')" style="flex:1; flex-direction:row; gap:0.5rem; min-width:110px;">
-                        <i class="fa-solid fa-box"></i> Colleziona <span class="testo-esteso">(con Location)</span>
-                    </button>
-                    <button type="button" class="theme-btn" id="btnDestWishlist" onclick="impostaDestinazioneInserimento('wishlist')" style="flex:1; flex-direction:row; gap:0.5rem; min-width:110px;">
-                        <i class="fa-solid fa-bookmark"></i> Wishlist <span class="testo-esteso">(voglio comprarla)</span>
-                    </button>
-                </div>
-
-                <div style="margin-bottom: 0.4rem; font-size: 0.72rem; font-weight: 700; color: var(--text-muted);">TIPO PRODOTTO</div>
-                <div style="display:flex; flex-wrap:wrap; gap:0.5rem; margin-bottom: 1rem;">
-                    <button type="button" class="theme-btn active" id="btnTipoCarta" onclick="impostaTipoInserimento('carta')" style="flex:1; flex-direction:row; gap:0.5rem; min-width:110px;">
-                        <i class="fa-solid fa-clone"></i> Carta singola
-                    </button>
-                    <button type="button" class="theme-btn" id="btnTipoSealed" onclick="impostaTipoInserimento('sealed')" style="flex:1; flex-direction:row; gap:0.5rem; min-width:110px;">
-                        <i class="fa-solid fa-box-archive"></i> Sealed <span class="testo-esteso">(ETB, box, UPC...)</span>
-                    </button>
-                </div>
-
-                <div id="pannelloLocationComune" style="display:flex; flex-wrap:wrap; gap:0.6rem; align-items:flex-end; margin-bottom: 1rem; padding: 0.8rem; background: var(--bg-color); border: 1px solid var(--border-color); border-radius: 10px;">
-                    <div style="flex: 1; min-width: 180px;">
-                        <label style="display:block; font-size: 0.72rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.3rem;">LOCATION COMUNE (sovrascrive quelle delle righe)</label>
-                        <select id="selectLocationComune" class="filter-select" style="width: 100%;">
-                            <option value="">— nessuna, usa quella di ogni riga —</option>
+                <div class="ins-comandi">
+                    <div class="ins-seg">
+                        <button type="button" class="ins-segbtn active" id="btnDestCollezione" onclick="impostaDestinazioneInserimento('collezione')"><i class="fa-solid fa-box ins-solo-pc"></i> Collezione</button>
+                        <button type="button" class="ins-segbtn" id="btnDestWishlist" onclick="impostaDestinazioneInserimento('wishlist')"><i class="fa-solid fa-bookmark ins-solo-pc"></i> Wishlist</button>
+                    </div>
+                    <div class="ins-seg">
+                        <button type="button" class="ins-segbtn active" id="btnTipoCarta" onclick="impostaTipoInserimento('carta')"><i class="fa-solid fa-clone ins-solo-pc"></i> Carte</button>
+                        <button type="button" class="ins-segbtn" id="btnTipoSealed" onclick="impostaTipoInserimento('sealed')"><i class="fa-solid fa-box-archive ins-solo-pc"></i> Sealed</button>
+                    </div>
+                    <div id="pannelloLocationComune" class="ins-location">
+                        <i class="fa-solid fa-location-dot"></i>
+                        <label for="selectLocationComune">Location per tutte</label>
+                        <select id="selectLocationComune" onchange="insLocationComuneCambiata()">
+                            <option value="">per riga</option>
                         </select>
+                        <button type="button" class="ins-nuova-loc" onclick="insMostraNuovaLocation()" title="Nuova location"><i class="fa-solid fa-plus"></i></button>
+                        <div class="ins-nuova-box" id="insNuovaLocationBox" style="display:none;">
+                            <input type="text" id="inputNuovaLocationComune" placeholder="Nuova location, es. SCATOLA 4" onkeydown="if(event.key==='Enter'){event.preventDefault(); aggiungiNuovaLocationComune();}">
+                            <button type="button" onclick="aggiungiNuovaLocationComune()">Aggiungi</button>
+                        </div>
                     </div>
-                    <div style="min-width: 160px;">
-                        <label style="display:block; font-size: 0.72rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.3rem;">NUOVA LOCATION</label>
-                        <input type="text" id="inputNuovaLocationComune" placeholder="es. SCATOLA 4" onkeydown="if(event.key==='Enter'){event.preventDefault(); aggiungiNuovaLocationComune();}">
-                    </div>
-                    <button type="button" class="btn-secondary" onclick="aggiungiNuovaLocationComune()" style="padding: 0.6rem 0.9rem;">
-                        <i class="fa-solid fa-plus"></i> Aggiungi
-                    </button>
                 </div>
 
-                <table id="tabellaInserimento">
-                    <thead>
-                        <tr>
-                            <th style="width: 22%;">NOME / CODICE</th>
-                            <th style="width: 10%;">LINGUA</th>
-                            <th style="width: 10%;">COND.</th>
-                            <th style="width: 6%; text-align: center;">REV</th>
-                            <th style="width: 6%; text-align: center;">1st</th>
-                            <th style="width: 6%; text-align: center;" title="Ancora sigillata nella bustina originale">SIG</th>
-                            <th style="width: 15%; text-align: center;">Q.TÀ</th>
-                            <th style="width: 13%;" class="colonna-location">LOCATION</th>
-                            <th style="width: 8%;">NOTE</th>
-                            <th style="width: 4%;"></th>
-                        </tr>
-                    </thead>
-                    <tbody id="entryTableBody"></tbody>
-                </table>
+                <div class="ins-layout">
+                    <div class="ins-sx">
+                        <div class="ins-ultimo ins-solo-tel" id="insUltimoTel"></div>
+                        <div class="ins-tabella-box">
+                            <table id="tabellaInserimento">
+                                <thead>
+                                    <tr>
+                                        <th>Nome / codice</th>
+                                        <th>Lingua</th>
+                                        <th>Cond.</th>
+                                        <th colspan="3">Varianti</th>
+                                        <th class="ins-th-centro">Q.tà</th>
+                                        <th class="colonna-location">Location</th>
+                                        <th>Note</th>
+                                        <th></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="entryTableBody"></tbody>
+                            </table>
 
-                <!-- FASE 1 (2026-09-12): tabella dedicata ai prodotti sealed
-                     (Booster Box, ETB, UPC...) — campi diversi dalle carte,
-                     niente REV/1st/CONDIZIONE (non si applicano a un
-                     prodotto sigillato), niente ricerca automatica su
-                     Cardmarket: inserimento diretto in prodotti_sealed,
-                     prezzo facoltativo/manuale. Nascosta di default,
-                     mostrata da impostaTipoInserimento('sealed'). -->
-                <table id="tabellaInserimentoSealed" style="display:none;">
-                    <thead>
-                        <tr>
-                            <th style="width: 26%;">NOME</th>
-                            <th style="width: 14%;">LINGUA</th>
-                            <th style="width: 18%;">INTEGRITÀ</th>
-                            <th style="width: 12%; text-align: center;">Q.TÀ</th>
-                            <th style="width: 14%;">PREZZO (facolt.)</th>
-                            <th style="width: 12%;">NOTE</th>
-                            <th style="width: 4%;"></th>
-                        </tr>
-                    </thead>
-                    <tbody id="entryTableBodySealed"></tbody>
-                </table>
+                            <!-- FASE 1 (2026-09-12): prodotti sealed, inserimento diretto
+                                 in prodotti_sealed (o wishlist_sealed). -->
+                            <table id="tabellaInserimentoSealed" style="display:none;">
+                                <thead>
+                                    <tr>
+                                        <th>Nome</th>
+                                        <th>Lingua</th>
+                                        <th>Integrità</th>
+                                        <th class="ins-th-centro">Q.tà</th>
+                                        <th>Prezzo (facolt.)</th>
+                                        <th>Note</th>
+                                        <th></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="entryTableBodySealed"></tbody>
+                            </table>
 
-                <div style="margin-top: 1.2rem; display: flex; justify-content: space-between; align-items: center;">
-                    <span class="autosave-status" id="autosaveLabel">
-                        <i class="fa-solid fa-floppy-disk"></i> Salva automatico attivo
-                    </span>
-                    <button class="btn-main" id="btnSalvaCarte" onclick="salvaCarteReali()"><i class="fa-solid fa-paper-plane"></i> Salva Carte</button>
+                            <div class="ins-piede">
+                                <span class="autosave-status" id="autosaveLabel"><i class="fa-solid fa-floppy-disk"></i> Bozza salvata automaticamente<span class="ins-solo-pc"> · Invio = riga sotto</span></span>
+                                <button class="btn-main" id="btnSalvaCarte" onclick="salvaCarteReali()"><i class="fa-solid fa-paper-plane"></i> Salva</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="ins-dx ins-solo-pc-blocco">
+                        <div class="ins-ultimo" id="insUltimoPc"></div>
+                    </div>
                 </div>
             </div>
 
@@ -633,59 +627,68 @@
                  pulsanti originali restano nascosti perché i controlli li
                  usano per mostrare l'avanzamento. -->
             <div class="pz-pagina">
-                <div class="page-header">
-                    <span class="page-title">Controllo prezzi</span>
+                <div class="pz-testa-pagina">
+                    <span class="page-title">Controlla prezzi</span>
+                    <p class="pz-sottotitolo">Chiedi all'estensione di aggiornare le quotazioni da Cardmarket</p>
                 </div>
-                <p class="pg-sotto" style="margin:-6px 0 14px;">Scegli cosa controllare: un dispositivo con l'estensione aperta aggiorna le quotazioni su Cardmarket.</p>
+                <div class="pz-stat" id="pzStat"></div>
 
-                <div class="pz-riquadro">
-                    <label class="pz-testa"><input type="checkbox" id="pzCollezione" checked><span class="pz-ico"><i class="fa-solid fa-layer-group"></i></span><b>Collezione</b></label>
-                    <div class="pz-corpo">
-                        <div class="pz-etichetta"><span>Location da controllare</span>
-                            <button type="button" onclick="toggleTutteLocation()" class="pz-link" id="btnToggleTutteLocation">Seleziona tutte</button></div>
-                        <div id="listaLocationCheckbox" class="pz-lista"><p class="pz-nota">Caricamento location...</p></div>
-                        <p class="pz-nota">Nessuna spuntata = controlla tutte le location.</p>
-                        <div class="pz-etichetta"><span>Carte di chi controllare</span></div>
-                        <div class="pz-seg">
-                            <button type="button" class="theme-btn active" id="btnAmbitoSoloMie" onclick="_impostaAmbitoControlloPrezzi('soloMie')">Solo le mie</button>
-                            <button type="button" class="theme-btn" id="btnAmbitoGruppo" onclick="_impostaAmbitoControlloPrezzi('gruppo')">Tutto il gruppo</button>
+                <div class="pz-layout">
+                    <div class="pz-sx">
+                        <div class="pz-scheda pz-scheda-cosa">
+                            <div class="pz-titolo">Cosa controllo</div>
+                            <div class="pz-cosa">
+                                <label class="pz-opz"><input type="checkbox" id="pzCollezione" checked onchange="prezziAggiornaScelta()"><span class="pz-ico"><i class="fa-solid fa-layer-group"></i></span><span class="pz-opz-testo"><b>Collezione</b><small id="pzContaColl"></small></span></label>
+                                <label class="pz-opz"><input type="checkbox" id="pzWishlist" checked onchange="prezziAggiornaScelta()"><span class="pz-ico"><i class="fa-solid fa-heart"></i></span><span class="pz-opz-testo"><b>Wishlist</b><small id="pzContaWish"></small></span></label>
+                                <label class="pz-opz"><input type="checkbox" id="pzSealed" onchange="prezziAggiornaScelta()"><span class="pz-ico"><i class="fa-solid fa-box"></i></span><span class="pz-opz-testo"><b>Sealed</b><small id="pzContaSealed"></small></span></label>
+                            </div>
+
+                            <div class="pz-blocco" id="pzBloccoColl">
+                                <div class="pz-etichetta"><span>Location della collezione</span></div>
+                                <div class="pz-chips">
+                                    <button type="button" class="pz-chip pz-chip-tutte attivo" id="btnToggleTutteLocation" onclick="prezziLocationTutte()">Tutte</button>
+                                    <div id="listaLocationCheckbox" class="pz-chips-lista" onchange="prezziAggiornaScelta()"><span class="pz-nota">Caricamento location...</span></div>
+                                </div>
+                            </div>
+                            <div class="pz-blocco" id="pzBloccoSealed">
+                                <div class="pz-etichetta"><span>Scaffali dei sealed</span></div>
+                                <div class="pz-chips">
+                                    <button type="button" class="pz-chip pz-chip-tutte attivo" id="btnToggleTutteScaffaliSealed" onclick="prezziScaffaliTutti()">Tutti</button>
+                                    <div id="listaScaffaliCheckboxSealed" class="pz-chips-lista" onchange="prezziAggiornaScelta()"><span class="pz-nota">Caricamento scaffali...</span></div>
+                                </div>
+                            </div>
+
+                            <div class="pz-blocco">
+                                <div class="pz-etichetta"><span>Di chi</span></div>
+                                <div class="pz-seg">
+                                    <button type="button" class="pz-segbtn attivo" id="btnAmbitoSoloMie" onclick="prezziImpostaDiChi('soloMie')">Solo le mie</button>
+                                    <button type="button" class="pz-segbtn" id="btnAmbitoGruppo" onclick="prezziImpostaDiChi('gruppo')">Tutto il gruppo</button>
+                                </div>
+                                <div style="display:none;">
+                                    <button type="button" id="btnAmbitoSoloMieSealed" class="active"></button>
+                                    <button type="button" id="btnAmbitoGruppoSealed"></button>
+                                </div>
+                                <p class="pz-nota pz-solo-pc">"Tutto il gruppo" controlla anche le carte degli altri (vale per Collezione e Sealed).</p>
+                            </div>
+
+                            <button type="button" class="pz-avvia" id="pzAvvia" onclick="prezziAvviaSelezionati()"><i class="fa-solid fa-paper-plane"></i> <span id="pzAvviaTesto">Controlla</span></button>
+                            <p class="pz-nota pz-centro pz-solo-pc">Parte un ordine per ogni tipo: lo esegue il primo dispositivo del gruppo con l'estensione aperta.</p>
+                            <p class="pz-stato pz-centro" id="pzEsito"></p>
+                            <div class="pz-avanzamento">
+                                <p class="pz-stato" id="prezziSubtext"></p>
+                                <p class="pz-stato" id="prezziWishlistSubtext"></p>
+                                <p class="pz-stato" id="prezziSealedSubtext"></p>
+                            </div>
                         </div>
-                        <p class="pz-stato" id="prezziSubtext">Aggiorna le quotazioni sincronizzando la tua estensione.</p>
                     </div>
-                </div>
-
-                <div class="pz-riquadro">
-                    <label class="pz-testa"><input type="checkbox" id="pzWishlist"><span class="pz-ico"><i class="fa-solid fa-bookmark"></i></span><b>Wishlist</b></label>
-                    <div class="pz-corpo">
-                        <p class="pz-stato" id="prezziWishlistSubtext">Aggiorna le quotazioni delle carte che desideri.</p>
-                    </div>
-                </div>
-
-                <!-- Sealed: filtro per Scaffale (Scaffali sostituisce location
-                     per i sealed). Ordine dedicato tipo='controlla_prezzi_sealed'. -->
-                <div class="pz-riquadro">
-                    <label class="pz-testa"><input type="checkbox" id="pzSealed"><span class="pz-ico"><i class="fa-solid fa-box"></i></span><b>Sealed</b></label>
-                    <div class="pz-corpo">
-                        <div class="pz-etichetta"><span>Scaffali da controllare</span>
-                            <button type="button" onclick="toggleTutteScaffaliSealed()" class="pz-link" id="btnToggleTutteScaffaliSealed">Seleziona tutti</button></div>
-                        <div id="listaScaffaliCheckboxSealed" class="pz-lista"><p class="pz-nota">Caricamento scaffali...</p></div>
-                        <p class="pz-nota">Nessuno spuntato = controlla tutti gli scaffali.</p>
-                        <div class="pz-etichetta"><span>Prodotti di chi controllare</span></div>
-                        <div class="pz-seg">
-                            <button type="button" class="theme-btn active" id="btnAmbitoSoloMieSealed" onclick="_impostaAmbitoControlloPrezziSealed('soloMie')">Solo i miei</button>
-                            <button type="button" class="theme-btn" id="btnAmbitoGruppoSealed" onclick="_impostaAmbitoControlloPrezziSealed('gruppo')">Tutto il gruppo</button>
+                    <div class="pz-dx">
+                        <div class="pz-scheda">
+                            <div class="pz-titolo"><span>Controlli</span><small>ultimi 7 giorni</small></div>
+                            <div id="pzControlli"><p class="pz-nota">Caricamento…</p></div>
+                            <button type="button" class="pz-secondario" onclick="apriDettaglioWidget('prezziagg', event)"><i class="fa-solid fa-chart-line"></i> Vedi i prezzi cambiati</button>
                         </div>
-                        <p class="pz-stato" id="prezziSealedSubtext">Aggiorna le quotazioni dei prodotti sealed sincronizzando la tua estensione.</p>
                     </div>
                 </div>
-
-                <button type="button" class="pz-avvia" id="pzAvvia" onclick="prezziAvviaSelezionati()"><i class="fa-solid fa-paper-plane"></i> Avvia controllo</button>
-                <p class="pz-stato pz-centro" id="pzEsito"></p>
-                <div class="pz-riquadro">
-                    <div class="pz-testa"><span class="pz-ico"><i class="fa-solid fa-list-check"></i></span><b>Controlli (ultimi 7 giorni)</b></div>
-                    <div class="pz-corpo" id="pzControlli"><p class="pz-nota">Caricamento…</p></div>
-                </div>
-                <button type="button" class="pz-secondario" onclick="apriDettaglioWidget('prezziagg', event)"><i class="fa-solid fa-clock-rotate-left"></i> Vedi i prezzi aggiornati</button>
 
                 <div style="display:none;">
                     <button id="btnControllaPrezzi" onclick="triggerExtensionPriceCheck()"></button>
@@ -881,6 +884,7 @@
                  #missioniListaOggi, nessun altro markup fisso necessario. -->
             <div class="page-header">
                 <span class="page-title">Missioni</span>
+                <button type="button" class="msn-btn-traguardi" onclick="apriDettaglioWidget('achievement', event)"><i class="fa-solid fa-trophy"></i> Traguardi</button>
             </div>
             <div class="pg-pagina">
                 <div id="missioniListaOggi"></div>
@@ -1030,7 +1034,7 @@
              contenitore-* (puro stile, zero dipendenza di comportamento da
              binder.ui.js) — vedi ui/scaffali.ui.js. -->
         <div id="scaffali" class="view-section scaffale-tema-standard">
-            <div class="pg-contenuto-pagina">
+            <div class="pg-contenuto-pagina sc-layout">
                 <!-- RESTYLE FASE 3f: elenco a righe + dettaglio a ripiano.
                      Logica in ui/scaffali.ui.js (id invariati). -->
                 <div id="scaffaliElencoVista">
@@ -1129,494 +1133,312 @@
                  tutt'altra cosa.
                  ═══════════════════════════════════════════════════════ -->
 
-            <div id="impostazioniHub">
-                <div class="settings-card">
-                    <h3 style="margin-bottom: 1rem; color: var(--text-dark); display: flex; align-items: center; gap: 0.6rem; font-size: 1.15rem; font-weight: 800;">
-                        <i class="fa-solid fa-sliders" style="color: var(--primary);"></i> Impostazioni
-                    </h3>
-                    <div class="setting-row" onclick="_impostazioniApri('suoni')" style="cursor:pointer;">
-                        <div><h4 style="font-size: 0.9rem; font-weight: 700;"><i class="fa-solid fa-volume-high" style="color:var(--primary); width:1.2rem;"></i> Suoni</h4></div>
-                        <i class="fa-solid fa-chevron-right" style="color: var(--text-muted); font-size: 0.85rem;"></i>
-                    </div>
-                    <div class="setting-row" onclick="_impostazioniApri('tema')" style="cursor:pointer;">
-                        <div><h4 style="font-size: 0.9rem; font-weight: 700;"><i class="fa-solid fa-palette" style="color:var(--primary); width:1.2rem;"></i> Tema</h4></div>
-                        <i class="fa-solid fa-chevron-right" style="color: var(--text-muted); font-size: 0.85rem;"></i>
-                    </div>
-                    <div class="setting-row" onclick="_impostazioniApri('accessibilita')" style="cursor:pointer;">
-                        <div><h4 style="font-size: 0.9rem; font-weight: 700;"><i class="fa-solid fa-universal-access" style="color:var(--primary); width:1.2rem;"></i> Accessibilità</h4></div>
-                        <i class="fa-solid fa-chevron-right" style="color: var(--text-muted); font-size: 0.85rem;"></i>
-                    </div>
-                    <div class="setting-row" onclick="_impostazioniApri('notifiche')" style="cursor:pointer;">
-                        <div><h4 style="font-size: 0.9rem; font-weight: 700;"><i class="fa-solid fa-envelope" style="color:var(--primary); width:1.2rem;"></i> Notifiche</h4></div>
-                        <i class="fa-solid fa-chevron-right" style="color: var(--text-muted); font-size: 0.85rem;"></i>
-                    </div>
-                    <div class="setting-row" onclick="_impostazioniApri('connessioni')" style="cursor:pointer;">
-                        <div><h4 style="font-size: 0.9rem; font-weight: 700;"><i class="fa-solid fa-tower-broadcast" style="color:var(--primary); width:1.2rem;"></i> Connessioni</h4></div>
-                        <i class="fa-solid fa-chevron-right" style="color: var(--text-muted); font-size: 0.85rem;"></i>
-                    </div>
-                    <div class="setting-row" onclick="_impostazioniApri('account')" style="cursor:pointer;">
-                        <div><h4 style="font-size: 0.9rem; font-weight: 700;"><i class="fa-solid fa-key" style="color:var(--primary); width:1.2rem;"></i> Account</h4></div>
-                        <i class="fa-solid fa-chevron-right" style="color: var(--text-muted); font-size: 0.85rem;"></i>
-                    </div>
-                    <div class="setting-row" onclick="_impostazioniApri('dati')" style="cursor:pointer;">
-                        <div><h4 style="font-size: 0.9rem; font-weight: 700;"><i class="fa-solid fa-shield-halved" style="color:var(--primary); width:1.2rem;"></i> Dati e Privacy</h4></div>
-                        <i class="fa-solid fa-chevron-right" style="color: var(--text-muted); font-size: 0.85rem;"></i>
-                    </div>
-                    <div class="setting-row" onclick="_impostazioniApri('generali')" style="cursor:pointer;">
-                        <div><h4 style="font-size: 0.9rem; font-weight: 700;"><i class="fa-solid fa-gear" style="color:var(--primary); width:1.2rem;"></i> Generali</h4></div>
-                        <i class="fa-solid fa-chevron-right" style="color: var(--text-muted); font-size: 0.85rem;"></i>
-                    </div>
-                    <div class="setting-row" onclick="_impostazioniApri('bug')" style="cursor:pointer;">
-                        <div><h4 style="font-size: 0.9rem; font-weight: 700;"><i class="fa-solid fa-bug" style="color:var(--primary); width:1.2rem;"></i> Segnala un bug</h4></div>
-                        <i class="fa-solid fa-chevron-right" style="color: var(--text-muted); font-size: 0.85rem;"></i>
-                    </div>
-                </div>
-            </div>
+            <!-- RESTYLE TAVOLA (2026-10-01, tavole OK-impostazioni /
+                 OK-impostazioni2 / PC-imp*): gli 8 gruppi della tavola
+                 (Profilo, Aspetto, Home, Animazioni, Notifiche e suoni,
+                 Gruppo e connessioni, Account e dati, Info e segnalazioni).
+                 Telefono: un unico elenco a gruppi, le voci semplici con
+                 l'interruttore in riga, quelle con più campi si aprono al
+                 tocco (.imp-voce.espandibile). PC (>= 780px): menu a
+                 sinistra con ricerca, a destra solo il gruppo scelto, tutto
+                 già aperto. OGNI controllo di prima è rimasto con lo stesso
+                 id e la stessa funzione: cambia solo dove sta. Router in
+                 ui/impostazioni.ui.js (_impostazioniApri/_impostazioniTornaHub). -->
+            <div class="page-header"><span class="page-title">Impostazioni</span></div>
+            <p class="imp-solo-pc imp-sotto">Tutto quello che cambia l'aspetto e il comportamento di Bindex</p>
+            <div class="imp-layout">
+                <nav class="imp-menu imp-solo-pc" id="impostazioniHub">
+                    <label class="imp-cerca"><i class="fa-solid fa-magnifying-glass"></i><input type="search" id="impCerca" placeholder="Cerca un'impostazione…" oninput="_impostazioniCerca(this.value)" autocomplete="off"></label>
+                    <button type="button" data-gruppo="profilo" onclick="_impostazioniApri('profilo')"><i class="fa-solid fa-user"></i> Profilo</button>
+                    <button type="button" data-gruppo="aspetto" onclick="_impostazioniApri('aspetto')"><i class="fa-solid fa-palette"></i> Aspetto</button>
+                    <button type="button" data-gruppo="home" onclick="_impostazioniApri('home')"><i class="fa-solid fa-house"></i> Home</button>
+                    <button type="button" data-gruppo="animazioni" onclick="_impostazioniApri('animazioni')"><i class="fa-solid fa-wand-magic-sparkles"></i> Animazioni</button>
+                    <button type="button" data-gruppo="notifiche" onclick="_impostazioniApri('notifiche')"><i class="fa-solid fa-bell"></i> Notifiche e suoni</button>
+                    <button type="button" data-gruppo="gruppo" onclick="_impostazioniApri('gruppo')"><i class="fa-solid fa-handshake-angle"></i> Gruppo e connessioni</button>
+                    <button type="button" data-gruppo="account" onclick="_impostazioniApri('account')"><i class="fa-solid fa-key"></i> Account e dati</button>
+                    <button type="button" data-gruppo="info" onclick="_impostazioniApri('info')"><i class="fa-solid fa-circle-info"></i> Info e segnalazioni</button>
+                </nav>
 
-            <!-- ── SUONI ──────────────────────────────────────────────── -->
-            <div id="impostazioniPagina-suoni" style="display:none;">
-                <div class="setting-row" onclick="_impostazioniTornaHub()" style="cursor:pointer; max-width:600px; margin:0 auto 0.6rem; padding:0;">
-                    <div style="display:flex; align-items:center; gap:0.5rem; font-weight:700; font-size:0.9rem;"><i class="fa-solid fa-chevron-left"></i> Impostazioni</div>
-                </div>
-                <div class="settings-card">
-                    <h3 style="margin-bottom: 1rem; color: var(--text-dark); display: flex; align-items: center; gap: 0.6rem; font-size: 1.15rem; font-weight: 800;">
-                        <i class="fa-solid fa-volume-high" style="color: var(--primary);"></i> Suoni
-                    </h3>
-                    <div class="setting-row">
-                        <div>
-                            <h4 style="font-size: 0.9rem; font-weight: 700;">Suoni dell'app</h4>
-                            <p style="font-size: 0.75rem; color: var(--text-muted);">Beep di apertura widget e notifiche sonore (solo su questo dispositivo)</p>
+                <div class="imp-gruppi">
+
+                <!-- ── PROFILO ─────────────────────────────────────────── -->
+                <section class="imp-gruppo" id="impostazioniPagina-profilo" data-gruppo="profilo">
+                    <h3 class="imp-gruppo-titolo">Profilo</h3>
+                    <div class="imp-card">
+                        <div class="imp-voce espandibile imp-profilo" onclick="_impostazioniEspandi(this)">
+                            <span class="imp-avatar" id="impProfiloIniziale">?</span>
+                            <div class="imp-voce-testo"><h4 id="impProfiloNome">Il tuo profilo</h4><p>Nome mostrato in Match e Chat · foto profilo</p></div>
+                            <i class="fa-solid fa-chevron-right imp-freccia"></i>
                         </div>
-                        <label class="switch">
-                            <input type="checkbox" id="suoniAppToggle" onchange="toggleSuoniWidgetHome()">
-                            <span class="slider"></span>
+                        <div class="imp-corpo">
+                            <!-- Foto profilo (sql/90): disegnata da fotoProfiloRenderImpostazioni() in ui/foto-profilo.ui.js -->
+                            <div id="fotoProfiloBox" class="fp-box"></div>
+                            <!-- Nickname (sql/71): salvaNickname()/_nicknameCaricaSeVuoto() in ui/widget-chat.ui.js -->
+                            <label class="imp-etichetta">NOME MOSTRATO NEL MATCH E IN CHAT (facoltativo)</label>
+                            <div style="display:flex; gap:0.5rem;">
+                                <input type="text" id="nicknameInput" maxlength="30" placeholder="Se vuoto, si vede solo la parte iniziale della tua email" onfocus="_nicknameCaricaSeVuoto()" style="flex:1;">
+                                <button class="btn-secondary" onclick="salvaNickname()" title="Salva"><i class="fa-solid fa-floppy-disk"></i></button>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ── ASPETTO ─────────────────────────────────────────── -->
+                <section class="imp-gruppo" id="impostazioniPagina-aspetto" data-gruppo="aspetto">
+                    <h3 class="imp-gruppo-titolo">Aspetto</h3>
+                    <div class="imp-card">
+                        <label class="imp-voce">
+                            <span class="imp-ico"><i class="fa-solid fa-moon"></i></span>
+                            <div class="imp-voce-testo"><h4>Tema scuro</h4><p class="imp-solo-pc">Attiva il tema scuro</p></div>
+                            <span class="switch"><input type="checkbox" id="darkModeToggle" onchange="toggleDarkMode(this.checked)"><span class="slider"></span></span>
+                        </label>
+                        <!-- Due color-picker liberi (STEP 1 restyle "cornice
+                             Pokédex"): il resto della palette si deriva da
+                             questi due colori, vedi utils/theme-colori.js. -->
+                        <label class="imp-voce">
+                            <span class="imp-ico"><i class="fa-solid fa-palette"></i></span>
+                            <div class="imp-voce-testo"><h4>Colore principale</h4><p>Colore delle sfere e dei widget: decide anche il resto della palette</p></div>
+                            <input type="color" class="imp-colore" id="temaColorePrincipale" value="#7c4dff" oninput="setColorePrincipale(this.value)">
+                        </label>
+                        <label class="imp-voce">
+                            <span class="imp-ico"><i class="fa-solid fa-droplet"></i></span>
+                            <div class="imp-voce-testo"><h4>Colore secondario</h4><p>Contorni, linee e testo attenuato</p></div>
+                            <input type="color" class="imp-colore" id="temaColoreSecondario" value="#756a8a" oninput="setColoreSecondario(this.value)">
+                        </label>
+                        <div class="imp-voce espandibile" onclick="_impostazioniEspandi(this)">
+                            <span class="imp-ico"><i class="fa-solid fa-up-right-and-down-left-from-center"></i></span>
+                            <div class="imp-voce-testo"><h4>Dimensioni</h4></div>
+                            <span class="imp-valore imp-solo-tel">Widget, binder, achievement</span>
+                            <i class="fa-solid fa-chevron-right imp-freccia"></i>
+                        </div>
+                        <div class="imp-corpo">
+                            <!-- STEP 3/11/12 restyle "cornice Pokédex": diametro
+                                 widget = "1 unità" della griglia Home (vedi
+                                 setDiametroWidget in ui/navigation-tema.ui.js). -->
+                            <div class="imp-slider">
+                                <div class="imp-voce-testo"><h4>Widget</h4><p>Diametro delle sfere: è anche "1 unità" della griglia</p></div>
+                                <div class="imp-slider-riga">
+                                    <input type="range" id="temaDiametroWidget" min="80" max="220" step="10" value="90" oninput="setDiametroWidget(this.value)">
+                                    <span id="temaDiametroWidgetValore">90 px</span>
+                                </div>
+                                <p id="temaDiametroAnteprimaTesto" class="imp-nota">Con questa dimensione, per questo dispositivo, ci saranno 0 colonne e 0 righe</p>
+                            </div>
+                            <!-- 2026-09-18: slider scollegati da --ball-misura
+                                 (applicaDiametroBinder/applicaDiametroAchievement). -->
+                            <div class="imp-slider">
+                                <div class="imp-voce-testo"><h4>Binder e Scaffali</h4><p>Copertine nella griglia Binder, Scaffali e Condividi</p></div>
+                                <div class="imp-slider-riga">
+                                    <input type="range" id="temaDiametroBinder" min="80" max="440" step="10" value="90" oninput="setDiametroBinder(this.value)">
+                                    <span id="temaDiametroBinderValore">90 px</span>
+                                </div>
+                                <p id="temaDiametroBinderAnteprimaTesto" class="imp-nota">Con questa dimensione, per questo dispositivo, ci saranno 0 colonne</p>
+                            </div>
+                            <div class="imp-slider">
+                                <div class="imp-voce-testo"><h4>Achievement</h4><p>Tessere nella griglia (la Vetrina resta fissa)</p></div>
+                                <div class="imp-slider-riga">
+                                    <input type="range" id="temaDiametroAchievement" min="80" max="440" step="10" value="90" oninput="setDiametroAchievement(this.value)">
+                                    <span id="temaDiametroAchievementValore">90 px</span>
+                                </div>
+                                <p id="temaDiametroAchievementAnteprimaTesto" class="imp-nota">Con questa dimensione, per questo dispositivo, ci saranno 0 colonne e 0 righe</p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ── HOME ────────────────────────────────────────────── -->
+                <section class="imp-gruppo" id="impostazioniPagina-home" data-gruppo="home">
+                    <h3 class="imp-gruppo-titolo">Home</h3>
+                    <div class="imp-card">
+                        <label class="imp-voce">
+                            <span class="imp-ico"><i class="fa-solid fa-circle"></i></span>
+                            <div class="imp-voce-testo"><h4>Badge sulle sfere</h4><p>Il pallino col conteggio in alto a destra</p></div>
+                            <span class="switch"><input type="checkbox" id="chkBadgeWidget" onchange="toggleBadgeWidget(this.checked)"><span class="slider"></span></span>
+                        </label>
+                        <label class="imp-voce">
+                            <span class="imp-ico"><i class="fa-solid fa-font"></i></span>
+                            <div class="imp-voce-testo"><h4>Scritte sulle Poké Ball</h4><p>Il nome inciso sulla parte bianca dei widget piccoli</p></div>
+                            <span class="switch"><input type="checkbox" id="chkScritteBall" onchange="toggleScritteBall(this.checked)"><span class="slider"></span></span>
+                        </label>
+                        <label class="imp-voce">
+                            <span class="imp-ico"><i class="fa-solid fa-house"></i></span>
+                            <div class="imp-voce-testo"><h4>Pagina all'apertura</h4><p class="imp-solo-pc">Da quale scheda partire ogni volta che apri il sito</p></div>
+                            <select class="filter-select imp-select" id="tabPredefinitaSelect" onchange="salvaTabPredefinita(this.value)">
+                                <option value="visualizzazione">Visualizzazione</option>
+                                <option value="wishlist">Wishlist</option>
+                                <option value="scambio">Scambio</option>
+                                <option value="sealed">Sealed</option>
+                                <option value="binder">Binder</option>
+                            </select>
+                        </label>
+                        <div class="imp-voce">
+                            <span class="imp-ico"><i class="fa-solid fa-rotate-left"></i></span>
+                            <div class="imp-voce-testo"><h4>Disposizione della home</h4><p>Riporta le tessere come al primo accesso (solo su questo dispositivo)</p></div>
+                            <button class="btn-secondary imp-btn" onclick="ripristinaDisposizioneHome()">Ripristina</button>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ── ANIMAZIONI ──────────────────────────────────────── -->
+                <section class="imp-gruppo" id="impostazioniPagina-animazioni" data-gruppo="animazioni">
+                    <h3 class="imp-gruppo-titolo">Animazioni</h3>
+                    <div class="imp-card">
+                        <label class="imp-voce">
+                            <span class="imp-ico"><i class="fa-solid fa-wand-magic-sparkles"></i></span>
+                            <div class="imp-voce-testo"><h4>Animazioni dei widget</h4><p class="imp-solo-pc">Movimento delle Poké Ball: cattura all'apertura e richiami quando c'è qualcosa da fare</p></div>
+                            <span class="switch"><input type="checkbox" id="chkAnimWidget" onchange="toggleAnimWidget(this.checked)"><span class="slider"></span></span>
+                        </label>
+                        <label class="imp-voce" id="rigaAnimCattura">
+                            <span class="imp-ico"><i class="fa-solid fa-bullseye"></i></span>
+                            <div class="imp-voce-testo"><h4>Animazione di cattura</h4><p class="imp-solo-pc">La sequenza completa quando apri un widget (circa 2 secondi e mezzo). Spenta, i widget si aprono subito</p></div>
+                            <span class="switch"><input type="checkbox" id="chkAnimCattura" onchange="toggleAnimCattura(this.checked)"><span class="slider"></span></span>
+                        </label>
+                        <label class="imp-voce">
+                            <span class="imp-ico"><i class="fa-solid fa-person-walking"></i></span>
+                            <div class="imp-voce-testo"><h4>Riduci animazioni</h4><p class="imp-solo-pc">Toglie il lampo colorato sul prezzo quando lo modifichi</p></div>
+                            <span class="switch"><input type="checkbox" id="riduciAnimazioniToggle" onchange="toggleRiduciAnimazioni(this.checked)"><span class="slider"></span></span>
                         </label>
                     </div>
-                </div>
-            </div>
+                </section>
 
-            <!-- ── TEMA ───────────────────────────────────────────────── -->
-            <div id="impostazioniPagina-tema" style="display:none;">
-                <div class="setting-row" onclick="_impostazioniTornaHub()" style="cursor:pointer; max-width:600px; margin:0 auto 0.6rem; padding:0;">
-                    <div style="display:flex; align-items:center; gap:0.5rem; font-weight:700; font-size:0.9rem;"><i class="fa-solid fa-chevron-left"></i> Impostazioni</div>
-                </div>
-                <div class="settings-card">
-                    <h3 style="margin-bottom: 1rem; color: var(--text-dark); display: flex; align-items: center; gap: 0.6rem; font-size: 1.15rem; font-weight: 800;">
-                        <i class="fa-solid fa-palette" style="color: var(--primary);"></i> Tema
-                    </h3>
-                    <div class="setting-row">
-                        <div>
-                            <h4 style="font-size: 0.9rem; font-weight: 700;">Modalità Scura</h4>
-                            <p style="font-size: 0.75rem; color: var(--text-muted);">Attiva tema scuro</p>
-                        </div>
-                        <label class="switch">
-                            <input type="checkbox" id="darkModeToggle" onchange="toggleDarkMode(this.checked)">
-                            <span class="slider"></span>
+                <!-- ── NOTIFICHE E SUONI ───────────────────────────────── -->
+                <section class="imp-gruppo" id="impostazioniPagina-notifiche" data-gruppo="notifiche">
+                    <h3 class="imp-gruppo-titolo">Notifiche e suoni</h3>
+                    <div class="imp-card">
+                        <label class="imp-voce">
+                            <span class="imp-ico"><i class="fa-solid fa-music"></i></span>
+                            <div class="imp-voce-testo"><h4>Suoni dell'app</h4><p class="imp-solo-pc">Beep di apertura dei widget e notifiche sonore (solo su questo dispositivo)</p></div>
+                            <span class="switch"><input type="checkbox" id="suoniAppToggle" onchange="toggleSuoniWidgetHome()"><span class="slider"></span></span>
                         </label>
-                    </div>
-                    <!-- AGGIORNATO (STEP 1 restyle "cornice Pokédex", 2026-09-17):
-                         i 3 preset fissi (Viola/Verde/Pokémon, bottoni
-                         .theme-btn) sono sostituiti da 2 color-picker liberi.
-                         Le altre ~11 variabili CSS che ogni preset ridefiniva
-                         a mano ora si derivano da questi due soli colori, vedi
-                         utils/theme-colori.js. Markup/CSS .theme-btn/
-                         .theme-options-grid lasciati intonsi altrove (nessuno
-                         li referenzia più da qui, ma restano per rollback). -->
-                    <div class="setting-row" style="flex-direction: column; align-items: flex-start; gap: 0.6rem;">
-                        <div>
-                            <h4 style="font-size: 0.9rem; font-weight: 700;">Colore Principale</h4>
-                            <p style="font-size: 0.75rem; color: var(--text-muted);">Colore delle sfere/widget — determina anche il resto della palette</p>
+                        <div class="imp-voce espandibile" onclick="_impostazioniEspandi(this)">
+                            <span class="imp-ico"><i class="fa-solid fa-envelope"></i></span>
+                            <div class="imp-voce-testo"><h4>Avvisi via email</h4><p class="imp-solo-pc">Non ancora attivi: questa è la lista d'attesa, appena saranno pronti partiranno da qui</p></div>
+                            <i class="fa-solid fa-chevron-right imp-freccia"></i>
                         </div>
-                        <input type="color" id="temaColorePrincipale" value="#7c4dff" oninput="setColorePrincipale(this.value)" style="width: 64px; height: 40px; border: 1px solid var(--border-color); border-radius: 8px; padding: 2px; cursor: pointer; background: var(--card-bg);">
-                    </div>
-                    <div class="setting-row" style="flex-direction: column; align-items: flex-start; gap: 0.6rem;">
-                        <div>
-                            <h4 style="font-size: 0.9rem; font-weight: 700;">Colore Secondario</h4>
-                            <p style="font-size: 0.75rem; color: var(--text-muted);">Contorni, linee e testo attenuato</p>
+                        <div class="imp-corpo">
+                            <p class="imp-nota imp-solo-tel">Non ancora attivi: questa è la lista d'attesa, appena saranno pronti partiranno da qui.</p>
+                            <label class="imp-etichetta">LA TUA EMAIL</label>
+                            <input type="email" id="notificheEmailInput" placeholder="nome@esempio.it">
+                            <div class="imp-spunte">
+                                <label><input type="checkbox" id="notificaChangelogCheck"> Novità e changelog dell'app</label>
+                                <label style="flex-wrap:wrap;"><input type="checkbox" id="notificaPrezziCheck"> Variazioni di prezzo superiori a
+                                    <input type="number" id="notificaPrezziSoglia" value="5" min="0" step="0.5" style="width:70px; padding:0.3rem 0.5rem;"> €</label>
+                                <label><input type="checkbox" id="notificaWishlistCheck"> Aggiornamenti sulla wishlist (prezzo sotto obiettivo, match trovati)</label>
+                            </div>
+                            <button class="btn-main" onclick="salvaPreferenzeNotifiche()"><i class="fa-solid fa-floppy-disk"></i> Salva preferenze</button>
                         </div>
-                        <input type="color" id="temaColoreSecondario" value="#756a8a" oninput="setColoreSecondario(this.value)" style="width: 64px; height: 40px; border: 1px solid var(--border-color); border-radius: 8px; padding: 2px; cursor: pointer; background: var(--card-bg);">
                     </div>
-                    <!-- STEP 3 restyle "cornice Pokédex" (2026-09-17): diametro
-                         widget — "1 unità" di resize (vedi setDiametroWidget in
-                         ui/navigation-tema.ui.js e la griglia in CSS, entrambe
-                         guidate da questo stesso valore via --ball-misura). -->
-                    <div class="setting-row" style="flex-direction: column; align-items: flex-start; gap: 0.6rem;">
-                        <div>
-                            <h4 style="font-size: 0.9rem; font-weight: 700;">Dimensione Widget</h4>
-                            <p style="font-size: 0.75rem; color: var(--text-muted);">Diametro delle sfere — è anche "1 unità" di ridimensionamento</p>
-                        </div>
-                        <!-- AGGIORNATO (STEP 11 fix restyle "cornice Pokédex",
-                             2026-09-17): anteprima trasparente della misura
-                             reale + colonne/righe che risulteranno su
-                             questo schermo — tutto aggiornato ad ogni
-                             movimento dello slider (vedi
-                             setDiametroWidget in ui/navigation-tema.ui.js),
-                             il ridisegno VERO della Home ha invece un
-                             piccolo ritardo (Claudio: "concordo col
-                             ritardo") per non scattare ad ogni pixel di
-                             trascinamento su schermi con molti widget. -->
-                        <div style="display: flex; align-items: center; gap: 0.8rem; width: 100%;">
-                            <input type="range" id="temaDiametroWidget" min="80" max="220" step="10" value="90" oninput="setDiametroWidget(this.value)" style="flex: 1; accent-color: var(--primary); cursor: pointer;">
-                            <span id="temaDiametroWidgetValore" style="font-size: 0.8rem; color: var(--text-muted); min-width: 48px; text-align: right;">90 px</span>
-                        </div>
-                        <!-- AGGIORNATO (STEP 12 fix restyle "cornice
-                             Pokédex", 2026-09-17): tolto il cerchio di
-                             anteprima disegnato a mano — Claudio non si
-                             fidava che corrispondesse davvero alla resa
-                             reale. Sostituito con la trasparenza del
-                             pannello stesso durante il trascinamento (vedi
-                             commento CSS su .container-trasparente-diametro
-                             e setDiametroWidget in ui/navigation-tema.ui.js)
-                             — resta solo il testo colonne/righe, calcolato
-                             dallo spazio vero, sempre istantaneo. -->
-                        <p id="temaDiametroAnteprimaTesto" style="font-size: 0.78rem; color: var(--text-muted); margin: 0.4rem 0 0;">Con questa dimensione, per questo dispositivo, ci saranno 0 colonne e 0 righe</p>
-                    </div>
+                </section>
 
-                    <!-- AGGIUNTI 2026-09-18 (Claudio: "le anteprime dei
-                         binder risultano troppo piccole... scolleghiamola
-                         dalla dimensione dei widget") — due slider in più,
-                         scollegati da --ball-misura (quella resta SOLO dei
-                         widget Home, invariata sopra). SEMPLIFICATI
-                         rispetto allo slider Widget: niente trasparenza del
-                         pannello — quel trucco funziona solo lì perché sotto
-                         Impostazioni c'è sempre la Home vera montata,
-                         Binder/Scaffali/Achievement mai (vedi
-                         ui/navigation-tema.ui.js, applicaDiametroBinder/
-                         applicaDiametroAchievement). Testo anteprima
-                         comunque istantaneo, stesso principio. -->
-                    <div class="setting-row" style="flex-direction: column; align-items: flex-start; gap: 0.6rem;">
-                        <div>
-                            <h4 style="font-size: 0.9rem; font-weight: 700;">Dimensione Binder/Scaffali</h4>
-                            <p style="font-size: 0.75rem; color: var(--text-muted);">Diametro delle copertine nella griglia Binder e Scaffali (e in Condividi)</p>
+                <!-- ── GRUPPO E CONNESSIONI ────────────────────────────── -->
+                <section class="imp-gruppo" id="impostazioniPagina-gruppo" data-gruppo="gruppo">
+                    <h3 class="imp-gruppo-titolo">Gruppo e connessioni</h3>
+                    <div class="imp-card">
+                        <!-- Preferenze estensione: visibili solo se
+                             l'estensione risponde (_aggiornaControlliApriApp
+                             in ui/extension.ui.js imposta display). -->
+                        <div id="impostazioniEstensioneGroup" style="display:none;">
+                            <label class="imp-voce">
+                                <span class="imp-ico"><i class="fa-solid fa-handshake-angle"></i></span>
+                                <div class="imp-voce-testo"><h4>Aiuta il gruppo da questo dispositivo</h4><p class="imp-solo-pc">L'app aperta qui aiuta gli altri a fare i calcoli (risolve anche le carte del resto del gruppo)</p></div>
+                                <span class="switch"><input type="checkbox" id="chkAiutaGruppoDispositivo" onchange="salvaPreferenzaAiutaGruppoDispositivo(this.checked)"><span class="slider"></span></span>
+                            </label>
+                            <label class="imp-voce">
+                                <span class="imp-ico"><i class="fa-solid fa-arrow-up-right-from-square"></i></span>
+                                <div class="imp-voce-testo"><h4>Apri sempre l'app all'apertura</h4><p class="imp-solo-pc">Apre l'app dell'estensione ogni volta che visiti il sito da questo dispositivo</p></div>
+                                <span class="switch"><input type="checkbox" id="chkApriSempreApp" onchange="salvaPreferenzaApriSempreApp(this.checked)"><span class="slider"></span></span>
+                            </label>
                         </div>
-                        <div style="display: flex; align-items: center; gap: 0.8rem; width: 100%;">
-                            <input type="range" id="temaDiametroBinder" min="80" max="440" step="10" value="90" oninput="setDiametroBinder(this.value)" style="flex: 1; accent-color: var(--primary); cursor: pointer;">
-                            <span id="temaDiametroBinderValore" style="font-size: 0.8rem; color: var(--text-muted); min-width: 48px; text-align: right;">90 px</span>
+                        <div class="imp-voce espandibile" onclick="_impostazioniEspandi(this); _connessioniRicontrolla();">
+                            <span class="imp-ico"><i class="fa-solid fa-signal"></i></span>
+                            <div class="imp-voce-testo"><h4>Stato delle connessioni</h4><p class="imp-solo-pc">Utile per capire se un problema è "solo qui" o riguarda tutti</p></div>
+                            <i class="fa-solid fa-chevron-right imp-freccia"></i>
                         </div>
-                        <p id="temaDiametroBinderAnteprimaTesto" style="font-size: 0.78rem; color: var(--text-muted); margin: 0.4rem 0 0;">Con questa dimensione, per questo dispositivo, ci saranno 0 colonne</p>
+                        <div class="imp-corpo">
+                            <div class="imp-conn"><div><h4>Supabase</h4><p>Database e autenticazione</p></div><span id="statoConnSupabase" class="badge-connessione">Verifica...</span></div>
+                            <div class="imp-conn"><div><h4>Estensione Chrome</h4><p>Solo su questo dispositivo</p></div><span id="statoConnEstensione" class="badge-connessione">Verifica...</span></div>
+                            <div class="imp-conn"><div><h4>Presenza in tempo reale</h4><p>Canale "chi è online adesso"</p></div><span id="statoConnPresenza" class="badge-connessione">Verifica...</span></div>
+                            <div class="imp-conn"><div><h4>Worker del gruppo</h4><p>Dispositivi che stanno elaborando prezzi in questo momento</p></div><span id="statoConnWorker" class="badge-connessione">Verifica...</span></div>
+                            <button class="btn-secondary" onclick="_connessioniRicontrolla()"><i class="fa-solid fa-rotate"></i> Ricontrolla</button>
+                        </div>
                     </div>
-
-                    <div class="setting-row" style="flex-direction: column; align-items: flex-start; gap: 0.6rem;">
-                        <div>
-                            <h4 style="font-size: 0.9rem; font-weight: 700;">Dimensione Achievement</h4>
-                            <p style="font-size: 0.75rem; color: var(--text-muted);">Diametro delle tessere nella griglia Achievement (non tocca la Vetrina, a dimensione fissa)</p>
+                    <!-- FASE 10, STEP 3: "Diagnostica" — SOLO admin, mostrata
+                         da _impostazioniAggiornaDiagnostica() se authGetRuolo()
+                         conferma role='admin'. -->
+                    <div id="impostazioniDiagnosticaCard" class="imp-card imp-card-pad" style="display:none;">
+                        <h4 class="imp-card-titolo"><i class="fa-solid fa-stethoscope"></i> Diagnostica (admin)</h4>
+                        <p class="imp-nota">Log di QUESTA sessione soltanto — riparte vuoto ad ogni refresh, non può leggere retroattivamente la console.</p>
+                        <div style="display:flex; gap:0.6rem; flex-wrap:wrap; margin:0.6rem 0 0.8rem;">
+                            <button class="btn-secondary" onclick="document.getElementById('impostazioniLogViewer').textContent = _logDiagnosticoTesto(80);"><i class="fa-solid fa-arrows-rotate"></i> Aggiorna log</button>
+                            <button class="btn-secondary" onclick="_impostazioniCopiaLog()"><i class="fa-solid fa-copy"></i> Copia (Report to admin)</button>
                         </div>
-                        <div style="display: flex; align-items: center; gap: 0.8rem; width: 100%;">
-                            <input type="range" id="temaDiametroAchievement" min="80" max="440" step="10" value="90" oninput="setDiametroAchievement(this.value)" style="flex: 1; accent-color: var(--primary); cursor: pointer;">
-                            <span id="temaDiametroAchievementValore" style="font-size: 0.8rem; color: var(--text-muted); min-width: 48px; text-align: right;">90 px</span>
-                        </div>
-                        <p id="temaDiametroAchievementAnteprimaTesto" style="font-size: 0.78rem; color: var(--text-muted); margin: 0.4rem 0 0;">Con questa dimensione, per questo dispositivo, ci saranno 0 colonne e 0 righe</p>
+                        <pre id="impostazioniLogViewer" style="max-height:280px; overflow:auto; background:var(--bg-secondary, rgba(0,0,0,0.05)); border-radius:10px; padding:0.8rem; font-size:0.72rem; white-space:pre-wrap; word-break:break-word; margin:0;">(nessun evento registrato in questa sessione)</pre>
                     </div>
-                </div>
-            </div>
+                </section>
 
-            <!-- ── ACCESSIBILITÀ ──────────────────────────────────────── -->
-            <div id="impostazioniPagina-accessibilita" style="display:none;">
-                <div class="setting-row" onclick="_impostazioniTornaHub()" style="cursor:pointer; max-width:600px; margin:0 auto 0.6rem; padding:0;">
-                    <div style="display:flex; align-items:center; gap:0.5rem; font-weight:700; font-size:0.9rem;"><i class="fa-solid fa-chevron-left"></i> Impostazioni</div>
-                </div>
-                <div class="settings-card">
-                    <h3 style="margin-bottom: 1rem; color: var(--text-dark); display: flex; align-items: center; gap: 0.6rem; font-size: 1.15rem; font-weight: 800;">
-                        <i class="fa-solid fa-universal-access" style="color: var(--primary);"></i> Accessibilità
-                    </h3>
-                    <div class="setting-row">
-                        <div>
-                            <h4 style="font-size: 0.9rem; font-weight: 700;">Riduci Animazioni</h4>
-                            <p style="font-size: 0.75rem; color: var(--text-muted);">Disattiva il flash colorato sul prezzo quando lo modifichi (solo su questo dispositivo)</p>
+                <!-- ── ACCOUNT E DATI ──────────────────────────────────── -->
+                <section class="imp-gruppo" id="impostazioniPagina-account" data-gruppo="account">
+                    <h3 class="imp-gruppo-titolo">Account e dati</h3>
+                    <div class="imp-card">
+                        <div class="imp-voce espandibile" onclick="_impostazioniEspandi(this)">
+                            <span class="imp-ico"><i class="fa-solid fa-key"></i></span>
+                            <div class="imp-voce-testo"><h4>Password</h4><p class="imp-solo-pc">Il nome utente è assegnato dall'amministratore: da qui puoi cambiare la password</p></div>
+                            <i class="fa-solid fa-chevron-right imp-freccia"></i>
                         </div>
-                        <label class="switch">
-                            <input type="checkbox" id="riduciAnimazioniToggle" onchange="toggleRiduciAnimazioni(this.checked)">
-                            <span class="slider"></span>
+                        <div class="imp-corpo">
+                            <label class="imp-etichetta">NUOVA PASSWORD</label>
+                            <input type="password" id="nuovaPasswordInput" placeholder="Almeno 6 caratteri">
+                            <button class="btn-main" onclick="cambiaPassword()"><i class="fa-solid fa-key"></i> Cambia password</button>
+                        </div>
+                        <label class="imp-voce">
+                            <span class="imp-ico"><i class="fa-solid fa-right-left"></i></span>
+                            <div class="imp-voce-testo"><h4>Nascondi i miei Scambi dal match</h4><p class="imp-solo-pc">Il gruppo non le vedrà cercando corrispondenze; per te resta tutto visibile</p></div>
+                            <span class="switch"><input type="checkbox" id="nascondiScambioCheck" onchange="salvaPreferenzePrivacy()"><span class="slider"></span></span>
                         </label>
-                    </div>
-                    <div class="setting-row">
-                        <div>
-                            <h4 style="font-size: 0.9rem; font-weight: 700;">Animazioni dei widget</h4>
-                            <p style="font-size: 0.75rem; color: var(--text-muted);">Movimento delle Poké Ball: cattura all'apertura e richiami quando c'è qualcosa da fare (solo su questo dispositivo)</p>
+                        <label class="imp-voce">
+                            <span class="imp-ico"><i class="fa-solid fa-heart"></i></span>
+                            <div class="imp-voce-testo"><h4>Nascondi la mia Wishlist dal match</h4><p class="imp-solo-pc">Stessa cosa per le carte che cerchi</p></div>
+                            <span class="switch"><input type="checkbox" id="nascondiWishlistCheck" onchange="salvaPreferenzePrivacy()"><span class="slider"></span></span>
+                        </label>
+                        <div class="imp-voce">
+                            <span class="imp-ico"><i class="fa-solid fa-file-export"></i></span>
+                            <div class="imp-voce-testo"><h4>Esporta i tuoi dati</h4><p>Collezione, sealed e wishlist, tutto insieme</p></div>
+                            <div class="imp-bottoni">
+                                <button class="btn-secondary imp-btn" onclick="esportaDati('csv')">CSV</button>
+                                <button class="btn-secondary imp-btn" onclick="esportaDati('json')">JSON</button>
+                            </div>
                         </div>
-                        <label class="switch">
-                            <input type="checkbox" id="chkAnimWidget" onchange="toggleAnimWidget(this.checked)">
-                            <span class="slider"></span>
-                        </label>
-                    </div>
-                    <div class="setting-row" id="rigaAnimCattura">
-                        <div>
-                            <h4 style="font-size: 0.9rem; font-weight: 700;">Animazione di cattura</h4>
-                            <p style="font-size: 0.75rem; color: var(--text-muted);">La sequenza completa quando apri un widget (dura circa 2 secondi e mezzo). Spegnendola i widget si aprono subito, ma le Poké Ball continuano a segnalarti cosa richiede attenzione</p>
+                        <div class="imp-voce">
+                            <span class="imp-ico"><i class="fa-solid fa-file-import"></i></span>
+                            <div class="imp-voce-testo"><h4>Importa da CSV</h4><p>Colonne: nome (obbligatoria), lingua, condizione, qty, reverse, first_ed, sigillata_originale, nota, location, destinazione. Le righe vanno in coda, come le carte inserite a mano.</p>
+                                <p id="importCsvEsito" style="font-size:0.8rem; margin-top:0.4rem;"></p></div>
+                            <input type="file" id="importCsvFile" accept=".csv,text/csv" style="display:none;" onchange="importaCsvDaFile(this)">
+                            <button class="btn-secondary imp-btn" onclick="document.getElementById('importCsvFile').click()">Scegli file</button>
                         </div>
-                        <label class="switch">
-                            <input type="checkbox" id="chkAnimCattura" onchange="toggleAnimCattura(this.checked)">
-                            <span class="slider"></span>
-                        </label>
                     </div>
-                    <div class="setting-row">
-                        <div>
-                            <h4 style="font-size: 0.9rem; font-weight: 700;">Scritte sulle Poké Ball</h4>
-                            <p style="font-size: 0.75rem; color: var(--text-muted);">Il nome inciso sulla parte bianca dei widget piccoli. Spento, restano le sfere nude</p>
+                </section>
+
+                <!-- ── INFO E SEGNALAZIONI ─────────────────────────────── -->
+                <section class="imp-gruppo" id="impostazioniPagina-info" data-gruppo="info">
+                    <h3 class="imp-gruppo-titolo">Info e segnalazioni</h3>
+                    <div class="imp-card">
+                        <!-- CHANGELOG (EASTER EGG) -->
+                        <div class="imp-voce" onclick="handleChangelogClick()" style="cursor:pointer; user-select:none;">
+                            <span class="imp-ico"><i class="fa-solid fa-scroll"></i></span>
+                            <div class="imp-voce-testo"><h4>changeLog</h4><p>Consulta la cronologia degli aggiornamenti dell'applicazione</p></div>
+                            <i class="fa-solid fa-chevron-right imp-freccia"></i>
                         </div>
-                        <label class="switch">
-                            <input type="checkbox" id="chkScritteBall" onchange="toggleScritteBall(this.checked)">
-                            <span class="slider"></span>
-                        </label>
-                    </div>
-                    <div class="setting-row">
-                        <div>
-                            <h4 style="font-size: 0.9rem; font-weight: 700;">Numeri sui widget</h4>
-                            <p style="font-size: 0.75rem; color: var(--text-muted);">Il pallino col conteggio in alto a destra. Sui widget piccoli ripete un dato già inciso sulla sfera</p>
+                        <div class="imp-voce espandibile" onclick="_impostazioniEspandi(this)">
+                            <span class="imp-ico"><i class="fa-solid fa-bug"></i></span>
+                            <div class="imp-voce-testo"><h4>Hai trovato un Caterpie?</h4><p>Se qualcosa non funziona come dovrebbe, hai incontrato un Caterpie selvatico (un bug): segnalalo</p></div>
+                            <i class="fa-solid fa-chevron-right imp-freccia"></i>
                         </div>
-                        <label class="switch">
-                            <input type="checkbox" id="chkBadgeWidget" onchange="toggleBadgeWidget(this.checked)">
-                            <span class="slider"></span>
-                        </label>
-                    </div>
-                </div>
-            </div>
-
-            <!-- ── NOTIFICHE ──────────────────────────────────────────── -->
-            <div id="impostazioniPagina-notifiche" style="display:none;">
-                <div class="setting-row" onclick="_impostazioniTornaHub()" style="cursor:pointer; max-width:600px; margin:0 auto 0.6rem; padding:0;">
-                    <div style="display:flex; align-items:center; gap:0.5rem; font-weight:700; font-size:0.9rem;"><i class="fa-solid fa-chevron-left"></i> Impostazioni</div>
-                </div>
-                <div class="settings-card">
-                    <h3 style="margin-bottom: 0.3rem; color: var(--text-dark); display: flex; align-items: center; gap: 0.6rem; font-size: 1.15rem; font-weight: 800;">
-                        <i class="fa-solid fa-envelope" style="color: var(--primary);"></i> Notifiche via Email
-                    </h3>
-                    <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 1rem;">Le notifiche non sono ancora attive — questa è la lista d'attesa: appena saranno pronte, partiranno da qui.</p>
-
-                    <label style="display:block; font-size: 0.72rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.3rem;">LA TUA EMAIL</label>
-                    <input type="email" id="notificheEmailInput" placeholder="nome@esempio.it" style="margin-bottom: 1rem;">
-
-                    <div style="display:flex; flex-direction:column; gap:0.7rem; margin-bottom: 1rem;">
-                        <label style="display:flex; align-items:center; gap:0.6rem; font-size:0.85rem; cursor:pointer;">
-                            <input type="checkbox" id="notificaChangelogCheck" style="width:auto;"> Novità e changelog dell'app
-                        </label>
-                        <label style="display:flex; align-items:center; gap:0.6rem; font-size:0.85rem; cursor:pointer; flex-wrap:wrap;">
-                            <input type="checkbox" id="notificaPrezziCheck" style="width:auto;"> Variazioni di prezzo superiori a
-                            <input type="number" id="notificaPrezziSoglia" value="5" min="0" step="0.5" style="width:70px; padding:0.3rem 0.5rem;"> €
-                        </label>
-                        <label style="display:flex; align-items:center; gap:0.6rem; font-size:0.85rem; cursor:pointer;">
-                            <input type="checkbox" id="notificaWishlistCheck" style="width:auto;"> Aggiornamenti sulla wishlist (prezzo sotto obiettivo, match trovati)
-                        </label>
-                    </div>
-
-                    <button class="btn-main" onclick="salvaPreferenzeNotifiche()"><i class="fa-solid fa-floppy-disk"></i> Salva preferenze</button>
-                </div>
-            </div>
-
-            <!-- ── CONNESSIONI ────────────────────────────────────────── -->
-            <div id="impostazioniPagina-connessioni" style="display:none;">
-                <div class="setting-row" onclick="_impostazioniTornaHub()" style="cursor:pointer; max-width:600px; margin:0 auto 0.6rem; padding:0;">
-                    <div style="display:flex; align-items:center; gap:0.5rem; font-weight:700; font-size:0.9rem;"><i class="fa-solid fa-chevron-left"></i> Impostazioni</div>
-                </div>
-                <div class="settings-card">
-                    <h3 style="margin-bottom: 0.3rem; color: var(--text-dark); display: flex; align-items: center; gap: 0.6rem; font-size: 1.15rem; font-weight: 800;">
-                        <i class="fa-solid fa-tower-broadcast" style="color: var(--primary);"></i> Connessioni
-                    </h3>
-                    <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 1rem;">Stato dei servizi da cui dipende CardSync Pro — utile per capire se un problema è "solo qui" o riguarda tutti.</p>
-
-                    <div class="setting-row">
-                        <div><h4 style="font-size: 0.9rem; font-weight: 700;">Supabase</h4><p style="font-size: 0.75rem; color: var(--text-muted);">Database e autenticazione</p></div>
-                        <span id="statoConnSupabase" class="badge-connessione">Verifica...</span>
-                    </div>
-                    <div class="setting-row">
-                        <div><h4 style="font-size: 0.9rem; font-weight: 700;">Estensione Chrome</h4><p style="font-size: 0.75rem; color: var(--text-muted);">Solo su questo dispositivo</p></div>
-                        <span id="statoConnEstensione" class="badge-connessione">Verifica...</span>
-                    </div>
-                    <div class="setting-row">
-                        <div><h4 style="font-size: 0.9rem; font-weight: 700;">Presenza in tempo reale</h4><p style="font-size: 0.75rem; color: var(--text-muted);">Canale "chi è online adesso"</p></div>
-                        <span id="statoConnPresenza" class="badge-connessione">Verifica...</span>
-                    </div>
-                    <div class="setting-row">
-                        <div><h4 style="font-size: 0.9rem; font-weight: 700;">Worker del gruppo</h4><p style="font-size: 0.75rem; color: var(--text-muted);">Dispositivi che stanno elaborando prezzi in questo momento</p></div>
-                        <span id="statoConnWorker" class="badge-connessione">Verifica...</span>
-                    </div>
-
-                    <button class="btn-secondary" style="margin-top:0.8rem;" onclick="_connessioniRicontrolla()"><i class="fa-solid fa-rotate"></i> Ricontrolla</button>
-                </div>
-
-                <!-- FASE 10, STEP 3 (2026-09-13): "Diagnostica" — SOLO admin
-                     (roadmap: "utente normale vede stato connessione
-                     semplice; admin vede diagnostica e Report to admin").
-                     Nascosta di default, mostrata da _impostazioniApri()
-                     solo se authGetRuolo() conferma role='admin'
-                     (data/auth.repository.js, già caricato qui — evitato
-                     di caricare tutto data/admin.repository.js solo per
-                     questo controllo). -->
-                <div id="impostazioniDiagnosticaCard" class="settings-card" style="display:none;">
-                    <h3 style="margin-bottom: 0.3rem; color: var(--text-dark); display: flex; align-items: center; gap: 0.6rem; font-size: 1.15rem; font-weight: 800;">
-                        <i class="fa-solid fa-stethoscope" style="color: var(--primary);"></i> Diagnostica (admin)
-                    </h3>
-                    <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.8rem;">Log di QUESTA sessione soltanto — riparte vuoto ad ogni refresh, non può leggere retroattivamente la console.</p>
-                    <div style="display:flex; gap:0.6rem; flex-wrap:wrap; margin-bottom:0.8rem;">
-                        <button class="btn-secondary" onclick="document.getElementById('impostazioniLogViewer').textContent = _logDiagnosticoTesto(80);"><i class="fa-solid fa-arrows-rotate"></i> Aggiorna log</button>
-                        <button class="btn-secondary" onclick="_impostazioniCopiaLog()"><i class="fa-solid fa-copy"></i> Copia (Report to admin)</button>
-                    </div>
-                    <pre id="impostazioniLogViewer" style="max-height:280px; overflow:auto; background:var(--bg-secondary, rgba(0,0,0,0.05)); border-radius:10px; padding:0.8rem; font-size:0.72rem; white-space:pre-wrap; word-break:break-word; margin:0;">(nessun evento registrato in questa sessione)</pre>
-                </div>
-
-                <!-- Preferenze estensione — SPOSTATE qui da "Generali" perché
-                     riguardano proprio il comportamento del dispositivo verso
-                     l'estensione/il worker del gruppo, stesso tema di questa
-                     pagina. Gruppo visibile solo se l'estensione risponde,
-                     comportamento invariato (vedi _aggiornaControlliApriApp
-                     in ui/extension.ui.js). -->
-                <div id="impostazioniEstensioneGroup" class="settings-card" style="display:none;">
-                    <div class="setting-row">
-                        <div>
-                            <h4 style="font-size: 0.9rem; font-weight: 700;">Apri sempre l'app all'apertura</h4>
-                            <p style="font-size: 0.75rem; color: var(--text-muted);">Apre automaticamente l'app dell'estensione ogni volta che visiti il sito da questo dispositivo</p>
+                        <div class="imp-corpo">
+                            <textarea id="bugDescrizione" rows="5" maxlength="1500" placeholder="Cosa non funzionava come dovrebbe?" style="width:100%; box-sizing:border-box; border-radius:12px; padding:0.7rem; font:inherit;"></textarea>
+                            <button class="btn-main" onclick="(async()=>{const t=document.getElementById('bugDescrizione'); if(!t||!t.value.trim()) return; await segnalaCaterpie(t.value); t.value='';})()"><i class="fa-solid fa-bug"></i> Segnala un Caterpie</button>
                         </div>
-                        <label class="switch">
-                            <input type="checkbox" id="chkApriSempreApp" onchange="salvaPreferenzaApriSempreApp(this.checked)">
-                            <span class="slider"></span>
-                        </label>
                     </div>
-                    <div class="setting-row">
-                        <div>
-                            <h4 style="font-size: 0.9rem; font-weight: 700;">Aiuta il gruppo da questo dispositivo</h4>
-                            <p style="font-size: 0.75rem; color: var(--text-muted);">L'app aperta su questo device aiuta gli altri a fare i calcoli (risolve anche le carte del resto del gruppo, non solo le tue)</p>
-                        </div>
-                        <label class="switch">
-                            <input type="checkbox" id="chkAiutaGruppoDispositivo" onchange="salvaPreferenzaAiutaGruppoDispositivo(this.checked)">
-                            <span class="slider"></span>
-                        </label>
-                    </div>
-                </div>
-            </div>
+                </section>
 
-            <!-- ── ACCOUNT ────────────────────────────────────────────── -->
-            <div id="impostazioniPagina-account" style="display:none;">
-                <div class="setting-row" onclick="_impostazioniTornaHub()" style="cursor:pointer; max-width:600px; margin:0 auto 0.6rem; padding:0;">
-                    <div style="display:flex; align-items:center; gap:0.5rem; font-weight:700; font-size:0.9rem;"><i class="fa-solid fa-chevron-left"></i> Impostazioni</div>
-                </div>
-                <div class="settings-card">
-                    <h3 style="margin-bottom: 0.3rem; color: var(--text-dark); display: flex; align-items: center; gap: 0.6rem; font-size: 1.15rem; font-weight: 800;">
-                        <i class="fa-solid fa-key" style="color: var(--primary);"></i> Account
-                    </h3>
-                    <!-- Foto profilo (sql/90): disegnata da fotoProfiloRenderImpostazioni() in ui/foto-profilo.ui.js -->
-                    <div id="fotoProfiloBox" class="fp-box"></div>
-                    <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 1rem;">Il nome utente è assegnato dall'amministratore — da qui puoi solo cambiare la password.</p>
-                    <label style="display:block; font-size: 0.72rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.3rem;">NUOVA PASSWORD</label>
-                    <input type="password" id="nuovaPasswordInput" placeholder="Almeno 6 caratteri" style="margin-bottom: 1rem;">
-                    <button class="btn-main" onclick="cambiaPassword()"><i class="fa-solid fa-key"></i> Cambia Password</button>
-                    <!-- Logout duplicato "Esci" RIMOSSO (audit 2026-09-25,
-                         decisione Claudio): il logout dal menu Profilo
-                         funziona, questo era un accesso TEMPORANEO del 26/08. -->
-                </div>
-            </div>
-
-            <!-- ── DATI E PRIVACY ─────────────────────────────────────── -->
-            <div id="impostazioniPagina-dati" style="display:none;">
-                <div class="setting-row" onclick="_impostazioniTornaHub()" style="cursor:pointer; max-width:600px; margin:0 auto 0.6rem; padding:0;">
-                    <div style="display:flex; align-items:center; gap:0.5rem; font-weight:700; font-size:0.9rem;"><i class="fa-solid fa-chevron-left"></i> Impostazioni</div>
-                </div>
-                <div class="settings-card">
-                    <h3 style="margin-bottom: 0.3rem; color: var(--text-dark); display: flex; align-items: center; gap: 0.6rem; font-size: 1.15rem; font-weight: 800;">
-                        <i class="fa-solid fa-eye-slash" style="color: var(--primary);"></i> Privacy — Match automatico
-                    </h3>
-                    <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 1rem;">Il resto del gruppo non vedrà le tue carte in questa/e sezione/i quando cerca corrispondenze — restano visibili solo a te, in tutto il resto del sito.</p>
-
-                    <!-- AGGIUNTO 2026-09-24: nickname (sql/71) — prima la
-                         lista Match mostrava la parte iniziale della tua
-                         email a tutto il gruppo, ora è sostituibile con un
-                         nome a scelta. Facoltativo: se vuoto resta il
-                         comportamento di prima. RINOMINATO 2026-09-24
-                         (estrazione widget Chat): salvaNickname()/
-                         _nicknameCaricaSeVuoto() ora vivono in
-                         ui/widget-chat.ui.js (erano salvaNicknameMatch()/
-                         _nicknameMatchCaricaSeVuoto() in
-                         ui/widget-match.ui.js). -->
-                    <label style="display:block; font-size: 0.72rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.3rem;">NOME MOSTRATO NEL MATCH E IN CHAT (facoltativo)</label>
-                    <div style="display:flex; gap:0.5rem; margin-bottom: 1rem;">
-                        <input type="text" id="nicknameInput" maxlength="30" placeholder="Se vuoto, si vede solo la parte iniziale della tua email" onfocus="_nicknameCaricaSeVuoto()" style="flex:1;">
-                        <button class="btn-secondary" onclick="salvaNickname()"><i class="fa-solid fa-floppy-disk"></i></button>
-                    </div>
-
-                    <div style="display:flex; flex-direction:column; gap:0.7rem;">
-                        <label style="display:flex; align-items:center; gap:0.6rem; font-size:0.85rem; cursor:pointer;">
-                            <input type="checkbox" id="nascondiScambioCheck" style="width:auto;" onchange="salvaPreferenzePrivacy()"> Nascondi i miei Scambi dal match automatico
-                        </label>
-                        <label style="display:flex; align-items:center; gap:0.6rem; font-size:0.85rem; cursor:pointer;">
-                            <input type="checkbox" id="nascondiWishlistCheck" style="width:auto;" onchange="salvaPreferenzePrivacy()"> Nascondi la mia Wishlist dal match automatico
-                        </label>
-                    </div>
-                </div>
-
-                <div class="settings-card">
-                    <h3 style="margin-bottom: 0.3rem; color: var(--text-dark); display: flex; align-items: center; gap: 0.6rem; font-size: 1.15rem; font-weight: 800;">
-                        <i class="fa-solid fa-file-export" style="color: var(--primary);"></i> Esporta i tuoi dati
-                    </h3>
-                    <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 1rem;">Collezione, sealed e wishlist, tutto insieme.</p>
-                    <div style="display:flex; gap:0.6rem; flex-wrap:wrap;">
-                        <button class="btn-secondary" onclick="esportaDati('csv')"><i class="fa-solid fa-file-csv"></i> Esporta CSV</button>
-                        <button class="btn-secondary" onclick="esportaDati('json')"><i class="fa-solid fa-file-code"></i> Esporta JSON</button>
-                    </div>
-                </div>
-
-                <div class="settings-card">
-                    <h3 style="margin-bottom: 0.3rem; color: var(--text-dark); display: flex; align-items: center; gap: 0.6rem; font-size: 1.15rem; font-weight: 800;">
-                        <i class="fa-solid fa-file-import" style="color: var(--primary);"></i> Importa da CSV
-                    </h3>
-                    <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 1rem;">Colonne: nome (obbligatoria), lingua, condizione, qty, reverse, first_ed, sigillata_originale, nota, location, destinazione. Le righe vanno in coda, come le carte inserite a mano.</p>
-                    <input type="file" id="importCsvFile" accept=".csv,text/csv" style="display:none;" onchange="importaCsvDaFile(this)">
-                    <button class="btn-secondary" onclick="document.getElementById('importCsvFile').click()"><i class="fa-solid fa-file-csv"></i> Scegli file CSV</button>
-                    <p id="importCsvEsito" style="font-size:0.8rem; margin-top:0.7rem;"></p>
-                </div>
-            </div>
-
-            <!-- ── GENERALI ───────────────────────────────────────────── -->
-            <div id="impostazioniPagina-generali" style="display:none;">
-                <div class="setting-row" onclick="_impostazioniTornaHub()" style="cursor:pointer; max-width:600px; margin:0 auto 0.6rem; padding:0;">
-                    <div style="display:flex; align-items:center; gap:0.5rem; font-weight:700; font-size:0.9rem;"><i class="fa-solid fa-chevron-left"></i> Impostazioni</div>
-                </div>
-                <div class="settings-card">
-                    <h3 style="margin-bottom: 1rem; color: var(--text-dark); display: flex; align-items: center; gap: 0.6rem; font-size: 1.15rem; font-weight: 800;">
-                        <i class="fa-solid fa-gear" style="color: var(--primary);"></i> Generali
-                    </h3>
-                    <div class="setting-row">
-                        <div>
-                            <h4 style="font-size: 0.9rem; font-weight: 700;">Pagina all'apertura</h4>
-                            <p style="font-size: 0.75rem; color: var(--text-muted);">Da quale scheda vuoi partire ogni volta che apri il sito</p>
-                        </div>
-                        <select class="filter-select" id="tabPredefinitaSelect" onchange="salvaTabPredefinita(this.value)">
-                            <option value="visualizzazione">Visualizzazione</option>
-                            <option value="wishlist">Wishlist</option>
-                            <option value="scambio">Scambio</option>
-                            <option value="sealed">Sealed</option>
-                            <option value="binder">Binder</option>
-                        </select>
-                    </div>
-                    <div class="setting-row">
-                        <div>
-                            <h4 style="font-size: 0.9rem; font-weight: 700;">Disposizione della home</h4>
-                            <p style="font-size: 0.75rem; color: var(--text-muted);">Riporta le tessere come al primo accesso (solo su questo dispositivo)</p>
-                        </div>
-                        <button class="btn-secondary" onclick="ripristinaDisposizioneHome()"><i class="fa-solid fa-rotate-left"></i> Ripristina</button>
-                    </div>
-                    <!-- CHANGELOG (EASTER EGG) -->
-                    <div class="setting-row" onclick="handleChangelogClick()" style="cursor: pointer; user-select: none;">
-                        <div>
-                            <h4 style="font-size: 0.9rem; font-weight: 700;">changeLog</h4>
-                            <p style="font-size: 0.75rem; color: var(--text-muted);">Consulta la cronologia degli aggiornamenti dell'applicazione</p>
-                        </div>
-                        <i class="fa-solid fa-chevron-right" style="color: var(--text-muted); font-size: 0.85rem;"></i>
-                    </div>
-                </div>
-            </div>
-
-            <!-- ── SEGNALA UN BUG ─────────────────────────────────────── -->
-            <div id="impostazioniPagina-bug" style="display:none;">
-                <div class="setting-row" onclick="_impostazioniTornaHub()" style="cursor:pointer; max-width:600px; margin:0 auto 0.6rem; padding:0;">
-                    <div style="display:flex; align-items:center; gap:0.5rem; font-weight:700; font-size:0.9rem;"><i class="fa-solid fa-chevron-left"></i> Impostazioni</div>
-                </div>
-                <div class="settings-card">
-                    <h3 style="margin-bottom: 0.3rem; color: var(--text-dark); display: flex; align-items: center; gap: 0.6rem; font-size: 1.15rem; font-weight: 800;">
-                        <i class="fa-solid fa-bug" style="color: var(--primary);"></i> Hai trovato un Caterpie?
-                    </h3>
-                    <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 1rem;">Se qualcosa non funziona come dovrebbe, probabilmente hai incontrato un Caterpie selvatico (cioè un bug). Catturalo segnalandolo:</p>
-                    <!-- RESTYLE BINDEX FASE 3i: descrizione scritta qui, non più in un prompt() del browser -->
-                    <textarea id="bugDescrizione" rows="5" maxlength="1500" placeholder="Cosa non funzionava come dovrebbe?" style="width:100%; box-sizing:border-box; margin-bottom:0.8rem; border-radius:12px; padding:0.7rem; font:inherit;"></textarea>
-                    <button class="btn-main" onclick="(async()=>{const t=document.getElementById('bugDescrizione'); if(!t||!t.value.trim()) return; await segnalaCaterpie(t.value); t.value='';})()"><i class="fa-solid fa-bug"></i> Segnala un Caterpie</button>
                 </div>
             </div>
 

@@ -145,6 +145,7 @@
                 notes: r.note || '',
                 immagine: r.immagine || null,
                 createdAt: r.created_at || null, // usato per l'ordine automatico nel Binder (Stage 1)
+                ultimoControllo: r.ultimo_controllo || null, // RESTYLE: "controllate" in Prezzi aggiornati e Controllo prezzi
             }));
 
             const righeWishlist = (dataWishlist || []).map(r => ({
@@ -170,6 +171,7 @@
                 notes: r.note || '',
                 immagine: r.immagine || null,
                 prezzoObiettivo: r.prezzo_obiettivo != null ? Number(r.prezzo_obiettivo) : null,
+                variazioneNumerica: (r.prezzo_precedente != null && r.prezzo != null) ? (Number(r.prezzo) - Number(r.prezzo_precedente)) : null, // RESTYLE: colonna Var. della Wishlist
             }));
 
             carteReali = [...righeCarte, ...righeWishlist];

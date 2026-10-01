@@ -84,7 +84,7 @@ function _wishlistClassificaEOrdina() {
         const obiettivo = conObiettivoVal(c);
         const prezzo = conPrezzo(c);
         const raggiunta = obiettivo != null && prezzo > 0 && prezzo <= obiettivo;
-        return { id: c.id, nome: c.name || '—', immagine: c.immagine || null, prezzo, obiettivo, raggiunta };
+        return { id: c.id, nome: c.name || '—', codice: c.code || '', immagine: c.immagine || null, prezzo, obiettivo, raggiunta, variazione: c.variazioneNumerica, link: c.link };
     });
 
     const raggiunte = righe.filter(r => r.raggiunta)
@@ -98,6 +98,33 @@ function _wishlistClassificaEOrdina() {
     return { totale: righe.length, conObiettivo: raggiunte.length + inCorso.length, raggiunte: raggiunte.length };
 }
 
+// RESTYLE (2026-10-01, tavole "Wishlist"): riepilogo "N carte · sotto
+// obiettivo", Carte/Sealed, ricerca con vista Elenco/Libro (Libro = binder
+// Wishlist), filtri e ordinamento; ogni riga con la barra verso
+// l'obiettivo ("mancano X €" / "sotto di X €"). Su PC: tabella con
+// distanza, variazione e "Nel gruppo" (chi ce l'ha in Scambio, dai Match),
+// e a destra il dettaglio con il prezzo nel tempo e la linea dell'obiettivo.
+let _wishlistOrdine = 'vicine';      // 'vicine' | 'prezzo' | 'az'
+let _wishlistSelId = null;
+let _wishlistNelGruppo = new Map();  // id wishlist -> [{ owner, nickname }]
+
+function _wishlistEPC() { const s = document.getElementById('wishlist'); return !!s && s.clientWidth >= 780; }
+
+async function _wishlistCaricaNelGruppo() {
+    _wishlistNelGruppo = new Map();
+    try {
+        const userId = await authGetUserId();
+        if (!userId || typeof trovaMatch !== 'function') return;
+        const { data } = await trovaMatch('trova_match_wishlist_scambio', userId);
+        (data || []).forEach(m => {
+            const k = String(m.mia_wishlist_id);
+            if (!_wishlistNelGruppo.has(k)) _wishlistNelGruppo.set(k, []);
+            const l = _wishlistNelGruppo.get(k);
+            if (!l.some(x => x.owner === m.altro_owner_id)) l.push({ owner: m.altro_owner_id, nickname: m.altro_nickname || 'Qualcuno' });
+        });
+    } catch (e) { console.error('[wishlist] nel gruppo:', e); }
+}
+
 async function renderPaginaWishlist() {
     const container = document.getElementById('wishlistContenuto');
     if (!container) return;
@@ -105,51 +132,48 @@ async function renderPaginaWishlist() {
     _wishlistFiltroAttivo = 'tutte';
     _wishlistRicercaTesto = '';
     _wishlistTabAttiva = 'carte';
+    _wishlistSelId = null;
     _wishlistSealedCaricato = false; // Fase 6, Step 2: ricarica sempre ad ogni apertura pagina
     const { totale, conObiettivo, raggiunte } = _wishlistClassificaEOrdina();
+    const perPrenderle = _wishlistCarteComputate.reduce((t, r) => t + (r.prezzo || 0), 0);
+    const filtro = (id, t) => `<button type="button" class="wl-chip${id === 'tutte' ? ' attivo' : ''}" data-filtro="${id}" onclick="_wishlistImpostaFiltro('${id}')">${t}</button>`;
 
-    // Fase 6, Step 2 (2026-09-13): tab Carte/Sealed — il messaggio "wishlist
-    // vuota" ora vive DENTRO la tab Carte (prima usciva subito dalla
-    // funzione, il che avrebbe nascosto la tab Sealed anche quando questa
-    // avesse contenuto).
     container.innerHTML = `
-        <div class="page-header">
-            <span class="page-title">Wishlist</span>
-            <span class="page-azione attiva" onclick="_vaiAlBinderWishlist(event)">Vai alla Wishlist</span>
-        </div>
-        <div class="pg-pagina">
-            <div class="pg-filtri" style="margin-bottom:0.6rem;">
-                <span class="pg-filtro attivo" data-tab="carte" onclick="_wishlistImpostaTab('carte')">Carte</span>
-                <span class="pg-filtro" data-tab="sealed" onclick="_wishlistImpostaTab('sealed')">Sealed</span>
+        <div class="wl-pagina">
+            <div class="wl-testa">
+                <div class="wl-testa-sx">
+                    <span class="page-title">Wishlist</span>
+                    <span class="wl-conti wl-solo-pc"><b>${totale}</b> carte <b>${raggiunte}</b> sotto obiettivo <b>${formattaEuroTondo(perPrenderle)}</b> per prenderle tutte</span>
+                </div>
+                <div class="wl-seg wl-solo-pc"><button type="button" class="wl-segbtn attivo" data-tab="carte" onclick="_wishlistImpostaTab('carte')">Carte</button><button type="button" class="wl-segbtn" data-tab="sealed" onclick="_wishlistImpostaTab('sealed')">Sealed</button></div>
+                <button type="button" class="wl-btn" onclick="_wishlistCondividi(event)"><i class="fa-solid fa-share-nodes"></i> Condividi</button>
             </div>
+            <div class="wl-conti wl-solo-tel"><b>${totale} cart${totale === 1 ? 'a' : 'e'}</b> · ${raggiunte} sotto obiettivo · ${conObiettivo} con obiettivo</div>
+            <div class="wl-seg wl-solo-tel"><button type="button" class="wl-segbtn attivo" data-tab="carte" onclick="_wishlistImpostaTab('carte')">Carte</button><button type="button" class="wl-segbtn" data-tab="sealed" onclick="_wishlistImpostaTab('sealed')">Sealed</button></div>
             <div id="wishlistTabCarte">
-                ${totale === 0 ? `<p style="text-align:center; color:var(--text-muted); font-size:0.85rem; padding:2rem 0;">La tua wishlist di carte è vuota.</p>` : `
-                <div class="pg-intro">
-                    <div class="pg-grande">${totale}</div>
-                    <div class="pg-sotto">${conObiettivo} con obiettivo di prezzo · ${raggiunte} già raggiunte</div>
+                ${totale === 0 ? `<p class="wl-vuoto">La tua wishlist di carte è vuota.</p>` : `
+                <div class="wl-barra">
+                    <label class="wl-cerca"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="Cerca nella wishlist..." oninput="_wishlistCercaInput(this.value)"></label>
+                    <div class="wl-filtri wl-solo-pc-flex">${filtro('tutte', 'Tutte')}${filtro('raggiunte', 'Raggiunte')}${filtro('in_corso', 'In corso')}${filtro('senza_obiettivo', 'Senza obiettivo')}</div>
+                    <button type="button" class="wl-vista attiva" title="Elenco"><i class="fa-solid fa-list"></i></button>
+                    <button type="button" class="wl-vista" title="Libro" onclick="_vaiAlBinderWishlist(event)"><i class="fa-solid fa-book-open"></i></button>
                 </div>
-                <div class="pg-stat">
-                    <div><b>${totale}</b><span>Desiderate</span></div>
-                    <div><b>${conObiettivo}</b><span>Con obiettivo</span></div>
-                    <div><b>${raggiunte}</b><span>Raggiunte</span></div>
+                <div class="wl-filtri wl-solo-tel">${filtro('tutte', 'Tutte')}${filtro('raggiunte', 'Raggiunte')}${filtro('in_corso', 'In corso')}${filtro('senza_obiettivo', 'Senza obiettivo')}</div>
+                <div class="wl-ordina-riga wl-solo-tel"><button type="button" class="wl-chip" id="wlOrdina" onclick="_wishlistCambiaOrdine()"></button></div>
+                <div class="wl-layout">
+                    <div class="wl-elenco" id="wishlistElenco"></div>
+                    <div class="wl-dettaglio" id="wishlistDettaglio"></div>
                 </div>
-                <input type="text" class="pg-cerca" placeholder="Cerca nella wishlist..." oninput="_wishlistCercaInput(this.value)">
-                <div class="pg-filtri">
-                    <span class="pg-filtro attivo" data-filtro="tutte" onclick="_wishlistImpostaFiltro('tutte')">Tutte</span>
-                    <span class="pg-filtro" data-filtro="raggiunte" onclick="_wishlistImpostaFiltro('raggiunte')">Raggiunte</span>
-                    <span class="pg-filtro" data-filtro="in_corso" onclick="_wishlistImpostaFiltro('in_corso')">In corso</span>
-                    <span class="pg-filtro" data-filtro="senza_obiettivo" onclick="_wishlistImpostaFiltro('senza_obiettivo')">Senza obiettivo</span>
-                </div>
-                <div class="pg-elenco" id="wishlistElenco"></div>
                 `}
             </div>
             <div id="wishlistTabSealed" style="display:none;">
-                <input type="text" class="pg-cerca" placeholder="Cerca tra i prodotti sealed desiderati..." oninput="_wishlistSealedCercaInput(this.value)">
+                <label class="wl-cerca"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="Cerca tra i prodotti sealed desiderati..." oninput="_wishlistSealedCercaInput(this.value)"></label>
                 <div class="pg-elenco" id="wishlistSealedElenco"></div>
             </div>
         </div>
     `;
     if (totale > 0) _wishlistRenderElenco();
+    if (totale > 0) { await _wishlistCaricaNelGruppo(); _wishlistRenderElenco(); }
 }
 
 // ── TAB CARTE/SEALED (Fase 6, Step 2) ────────────────────────────────────
@@ -157,7 +181,7 @@ let _wishlistTabAttiva = 'carte';
 
 function _wishlistImpostaTab(tab) {
     _wishlistTabAttiva = tab;
-    document.querySelectorAll('#wishlistContenuto .pg-filtri span[data-tab]').forEach(el => {
+    document.querySelectorAll('#wishlistContenuto .wl-segbtn').forEach(el => {
         el.classList.toggle('attivo', el.dataset.tab === tab);
     });
     const tabCarte = document.getElementById('wishlistTabCarte');
@@ -167,11 +191,13 @@ function _wishlistImpostaTab(tab) {
     if (tab === 'sealed') _wishlistSealedApri();
 }
 
-
+function _wishlistCondividi(evt) {
+    apriDettaglioWidget('condividi', evt);
+}
 
 function _wishlistImpostaFiltro(filtro) {
     _wishlistFiltroAttivo = filtro;
-    document.querySelectorAll('.pg-filtri .pg-filtro').forEach(el => {
+    document.querySelectorAll('#wishlistContenuto .wl-chip[data-filtro]').forEach(el => {
         el.classList.toggle('attivo', el.dataset.filtro === filtro);
     });
     _wishlistRenderElenco();
@@ -182,42 +208,162 @@ function _wishlistCercaInput(valore) {
     _wishlistRenderElenco();
 }
 
+const _WL_ORDINI = { vicine: 'più vicine', prezzo: 'prezzo', az: 'A → Z' };
+function _wishlistCambiaOrdine() {
+    const k = Object.keys(_WL_ORDINI);
+    _wishlistOrdine = k[(k.indexOf(_wishlistOrdine) + 1) % k.length];
+    _wishlistRenderElenco();
+}
+function _wishlistOrdinaPer(o) { _wishlistOrdine = o; _wishlistRenderElenco(); }
+
+// Distanza dall'obiettivo: negativa = sotto obiettivo (raggiunta).
+function _wlDistanza(r) { return r.obiettivo != null ? r.prezzo - r.obiettivo : null; }
+function _wlBarra(r) {
+    if (r.obiettivo == null) return { pct: 0, cls: '', testo: 'nessun obiettivo' };
+    if (!(r.prezzo > 0)) return { pct: 0, cls: '', testo: 'prezzo non ancora letto' };
+    const d = _wlDistanza(r);
+    if (d <= 0) return { pct: 100, cls: 'ok', testo: d === 0 ? 'all’obiettivo' : `sotto di ${formattaEuroTondo(-d)}` };
+    const pct = r.prezzo > 0 ? Math.max(4, Math.min(96, r.obiettivo / r.prezzo * 100)) : 0;
+    return { pct, cls: '', testo: `mancano ${formattaEuroTondo(d)}` };
+}
+
 function _wishlistRenderElenco() {
     const elenco = document.getElementById('wishlistElenco');
     if (!elenco) return;
-
-    const eur = (v) => formattaEuro(v); // formato unico "12.345,00 €" (decisione Claudio 2026-09-25)
-
-    let righe = _wishlistCarteComputate;
+    const eur = (v) => formattaEuro(v);
+    let righe = _wishlistCarteComputate.slice();
     if (_wishlistFiltroAttivo === 'raggiunte') righe = righe.filter(r => r.raggiunta);
     else if (_wishlistFiltroAttivo === 'in_corso') righe = righe.filter(r => !r.raggiunta && r.obiettivo != null);
     else if (_wishlistFiltroAttivo === 'senza_obiettivo') righe = righe.filter(r => r.obiettivo == null);
-    if (_wishlistRicercaTesto) righe = righe.filter(r => r.nome.toLowerCase().includes(_wishlistRicercaTesto));
+    if (_wishlistRicercaTesto) righe = righe.filter(r => r.nome.toLowerCase().includes(_wishlistRicercaTesto) || (r.codice || '').toLowerCase().includes(_wishlistRicercaTesto));
+    if (_wishlistOrdine === 'prezzo') righe.sort((a, b) => b.prezzo - a.prezzo);
+    else if (_wishlistOrdine === 'az') righe.sort((a, b) => a.nome.localeCompare(b.nome));
+    const o = document.getElementById('wlOrdina');
+    if (o) o.textContent = `Ordina: ${_WL_ORDINI[_wishlistOrdine]} ↓`;
 
     if (righe.length === 0) {
-        // Messaggio diverso da quello a pagina intera (wishlist vuota):
-        // qui la wishlist ha carte, solo il filtro/ricerca corrente non
-        // trova corrispondenze.
-        elenco.innerHTML = '<p style="text-align:center; color:var(--text-muted); font-size:0.82rem; padding:1.2rem 0;">Nessuna carta corrisponde alla ricerca o al filtro.</p>';
+        elenco.innerHTML = '<p class="wl-vuoto">Nessuna carta corrisponde alla ricerca o al filtro.</p>';
+        _wishlistDettaglio();
+        return;
+    }
+    const pc = _wishlistEPC();
+    if (pc && (!_wishlistSelId || !righe.some(r => String(r.id) === String(_wishlistSelId)))) _wishlistSelId = null;
+    const fig = (r) => {
+        const src = r.immagine ? (_urlImmagineVisualizzabile(r.immagine, 96) || '') : '';
+        return src ? `<img class="wl-fig" src="${src}" alt="" loading="lazy" onerror="this.style.visibility='hidden';">` : '<span class="wl-fig"></span>';
+    };
+    const id = (r) => escapeJsAttr(String(r.id));
+
+    if (!pc) {
+        elenco.innerHTML = righe.map(r => {
+            const b = _wlBarra(r);
+            return `
+            <div class="wl-riga" onclick="apriFlipCardHome('${id(r)}', { origine: 'wishlist_pagina' })">
+                ${fig(r)}
+                <div class="wl-riga-corpo">
+                    <div class="wl-riga-testa"><b>${escapeHtml(r.nome)}</b><b>${r.prezzo > 0 ? eur(r.prezzo) : '—'}</b></div>
+                    <div class="wl-pista"><div class="${b.cls}" style="width:${b.pct}%"></div></div>
+                    <div class="wl-riga-piede"><span>${r.obiettivo != null ? 'obiettivo ' + eur(r.obiettivo) : 'nessun obiettivo'}</span><span class="${b.cls ? 'wl-ok' : ''}">${r.obiettivo != null ? (b.cls ? 'sotto obiettivo' : b.testo) : ''}</span></div>
+                </div>
+            </div>`;
+        }).join('');
         return;
     }
 
-    elenco.innerHTML = righe.map(r => {
-        const immagineSrc = r.immagine ? (_urlImmagineVisualizzabile(r.immagine, 96) || '') : '';
-        const fig = immagineSrc
-            ? `<img class="pg-fig" src="${immagineSrc}" alt="" onerror="this.style.display='none';">`
-            : '<div class="pg-fig"></div>';
-        const badge = r.raggiunta ? '<span class="pg-badge-raggiunta">Raggiunto</span>' : '';
-        const destra = r.obiettivo != null
-            ? `<b>${eur(r.prezzo)}</b>obiettivo ${eur(r.obiettivo)}`
-            : `<b>${eur(r.prezzo)}</b>nessun obiettivo`;
-        return `
-            <div class="pg-riga ${r.raggiunta ? 'pg-riga-raggiunta' : ''}" data-tocca onclick="apriFlipCardHome('${r.id}', { origine: 'wishlist_pagina' })">
-                ${fig}
-                <div class="pg-testo"><b>${escapeHtml(r.nome)}${badge}</b></div>
-                <div class="pg-destra">${destra}</div>
-            </div>`;
-    }).join('');
+    const th = (k, t) => `<th class="${_wishlistOrdine === k ? 'attivo' : ''}" onclick="_wishlistOrdinaPer('${k}')">${t}${_wishlistOrdine === k ? ' ↑' : ''}</th>`;
+    elenco.innerHTML = `<div class="wl-tabella-box"><table class="wl-tabella">
+        <thead><tr><th>${''}</th>${th('az', 'Carta')}${th('prezzo', 'Prezzo')}<th>Obiettivo</th>${th('vicine', 'Distanza')}<th>Var.</th><th>Nel gruppo</th><th></th></tr></thead>
+        <tbody>${righe.map(r => {
+            const b = _wlBarra(r);
+            const v = r.variazione;
+            const chi = _wishlistNelGruppo.get(String(r.id)) || [];
+            return `<tr class="${String(r.id) === String(_wishlistSelId) ? 'sel' : ''}" onclick="_wishlistSeleziona('${id(r)}')">
+                <td><span class="bx-lente" onclick="event.stopPropagation(); apriFlipCardHome('${id(r)}', { origine: 'wishlist_pagina' })">${fig(r)}</span></td>
+                <td class="wl-td-nome"><b>${escapeHtml(r.nome)}</b><span>${escapeHtml(r.codice || '')}</span></td>
+                <td class="wl-num"><b>${r.prezzo > 0 ? eur(r.prezzo) : '—'}</b></td>
+                <td class="wl-num">${r.obiettivo != null ? eur(r.obiettivo) : '—'}</td>
+                <td class="wl-td-dist">${r.obiettivo != null ? `<div class="wl-pista"><div class="${b.cls}" style="width:${b.pct}%"></div></div><span class="${b.cls ? 'wl-ok' : ''}">${b.testo}</span>` : '<span>—</span>'}</td>
+                <td class="wl-num ${v > 0 ? 'wl-su' : (v < 0 ? 'wl-giu' : '')}">${v ? (v > 0 ? '+' : '−') + formattaEuro(Math.abs(v)).replace(' €', '') : '—'}</td>
+                <td>${chi.length ? `<span class="wl-gruppo">${escapeHtml(chi[0].nickname)} ce l’ha${chi.length > 1 ? ` +${chi.length - 1}` : ''}</span>` : ''}</td>
+                <td><button type="button" class="wl-menu" title="Modifica" onclick="event.stopPropagation(); apriModificaCarta('${id(r)}')"><i class="fa-solid fa-ellipsis"></i></button></td>
+            </tr>`;
+        }).join('')}</tbody></table></div>`;
+    _wishlistDettaglio();
+}
+
+// Telefono ↔ PC (finestra ridimensionata): elenco o tabella.
+(function () {
+    let t = null, eraPC = null;
+    window.addEventListener('resize', () => {
+        clearTimeout(t);
+        t = setTimeout(() => {
+            const s = document.getElementById('wishlist');
+            if (!s || !s.classList.contains('active')) return;
+            const ora = _wishlistEPC();
+            if (ora !== eraPC) { eraPC = ora; _wishlistRenderElenco(); }
+        }, 200);
+    });
+})();
+
+function _wishlistSeleziona(idCarta) {
+    _wishlistSelId = idCarta;
+    document.querySelectorAll('#wishlistElenco tbody tr').forEach(tr => tr.classList.toggle('sel', tr.getAttribute('onclick').includes(`'${idCarta}'`)));
+    _wishlistDettaglio();
+}
+
+async function _wishlistDettaglio() {
+    const box = document.getElementById('wishlistDettaglio');
+    if (!box) return;
+    const r = _wishlistCarteComputate.find(x => String(x.id) === String(_wishlistSelId));
+    if (!r) {
+        box.innerHTML = `<div class="wl-invito"><i class="fa-regular fa-hand-pointer"></i><b>Clicca una riga per vedere prezzo e obiettivo nel tempo</b><span>Clicca la miniatura per aprire la carta intera</span></div>`;
+        return;
+    }
+    const idA = escapeJsAttr(String(r.id));
+    const src = r.immagine ? (_urlImmagineVisualizzabile(r.immagine, 240) || '') : '';
+    const d = _wlDistanza(r);
+    const distTxt = r.obiettivo == null ? 'nessun obiettivo' : !(r.prezzo > 0) ? 'prezzo non ancora letto'
+        : (d <= 0 ? `sotto di ${formattaEuro(-d)}` : `mancano ${formattaEuro(d)} (−${Math.round(d / r.prezzo * 100)}%)`);
+    const chi = _wishlistNelGruppo.get(String(r.id)) || [];
+    const gruppo = chi.length ? `
+        <div class="wl-det-gruppo"><b>${escapeHtml(chi[0].nickname)} ce l’ha</b> · <a onclick="apriChat('${escapeJsAttr(String(chi[0].owner))}', '${escapeJsAttr(chi[0].nickname)}')">Contattal${'o'}</a> · <a onclick="apriDettaglioWidget('match', event)">Vedi nei Match →</a></div>` : '';
+    box.innerHTML = `
+        <div class="wl-det">
+            <div class="wl-det-testa">
+                <span class="bx-lente wl-det-fig" onclick="apriFlipCardHome('${idA}', { origine: 'wishlist_pagina' })">${src ? `<img src="${src}" alt="">` : ''}</span>
+                <div><div class="wl-det-nome">${escapeHtml(r.nome)}</div><div class="wl-det-sotto">${escapeHtml([r.codice, r.obiettivo != null ? 'obiettivo ' + formattaEuroTondo(r.obiettivo) : null].filter(Boolean).join(' · '))}</div></div>
+            </div>
+            <div class="wl-det-prezzo"><b>${r.prezzo > 0 ? formattaEuro(r.prezzo) : '—'}</b><span class="${d != null && d <= 0 ? 'wl-ok' : ''}">${distTxt}</span></div>
+            <div class="wl-det-grafico wl-det-carico">Carico lo storico…</div>
+            <div class="wl-det-assex"></div>
+            ${gruppo}
+            <div class="wl-det-azioni">
+                <button type="button" class="wl-azione piena" onclick="apriModificaCarta('${idA}')">Modifica obiettivo</button>
+                ${r.link && r.link !== '#' ? `<a class="wl-azione" href="${escapeHtml(r.link)}" target="_blank" rel="noopener">Apri su Cardmarket</a>` : '<span></span>'}
+                <button type="button" class="wl-azione" onclick="segnaOttenuta('${idA}')">Segna come ottenuta</button>
+                <button type="button" class="wl-azione" onclick="eliminaCarta('${idA}')">Rimuovi</button>
+            </div>
+        </div>`;
+    let righe = [];
+    try { const { data } = await storicoPrezziGrafico(r.id, 'wishlist'); righe = data || []; } catch (e) { console.error('[wishlist] storico:', e); }
+    if (String(_wishlistSelId) !== String(r.id)) return;
+    const g = box.querySelector('.wl-det-grafico'), ax = box.querySelector('.wl-det-assex');
+    if (!g) return;
+    const serie = righe.slice(-30);
+    if (serie.length < 2) { g.textContent = 'Non ci sono ancora abbastanza controlli per un grafico.'; return; }
+    const val = serie.map(x => Number(x.prezzo) || 0);
+    const tutti = r.obiettivo != null ? [...val, r.obiettivo] : val;
+    let min = Math.min(...tutti), max = Math.max(...tutti);
+    if (max === min) { max += 1; min -= 1; }
+    const W = 400, H = 150, pad = 8;
+    const x = i => i / (val.length - 1) * W, y = v => pad + (1 - (v - min) / (max - min)) * (H - 2 * pad);
+    const linea = 'M' + val.map((v, i) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' L');
+    const obj = r.obiettivo != null ? `<line x1="0" x2="${W}" y1="${y(r.obiettivo).toFixed(1)}" y2="${y(r.obiettivo).toFixed(1)}" class="wl-g-obj" vector-effect="non-scaling-stroke"/>` : '';
+    g.classList.remove('wl-det-carico');
+    g.innerHTML = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true">${obj}<path d="${linea}" class="wl-g-linea" vector-effect="non-scaling-stroke"/></svg>` +
+        (r.obiettivo != null ? `<span class="wl-g-objtxt" style="top:${(y(r.obiettivo) / H * 100).toFixed(1)}%">obiettivo ${formattaEuroTondo(r.obiettivo)}</span>` : '');
+    const giorno = iso => new Date(iso).toLocaleDateString('it-IT', { day: 'numeric', month: 'short' }).replace('.', '');
+    if (ax) ax.innerHTML = `<span>${giorno(serie[0].registrato_il)} · ${formattaEuroTondo(val[0])}</span><span>oggi · ${formattaEuroTondo(val[val.length - 1])}</span>`;
 }
 
 // Salta direttamente al binder di tipo 'wishlist', invece di lasciare

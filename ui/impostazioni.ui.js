@@ -15,33 +15,106 @@ function _impostazioniEPC() {
     return !!pg && pg.clientWidth >= 780;
 }
 
-function _impostazioniApri(pagina) {
-    const hub = document.getElementById('impostazioniHub');
-    const pc = _impostazioniEPC();
-    if (hub) hub.style.display = pc ? '' : 'none';
-    if (hub) hub.querySelectorAll('.setting-row[onclick]').forEach(r => {
-        r.classList.toggle('imp-attiva', pc && (r.getAttribute('onclick') || '').includes(`'${pagina}'`));
-    });
-    document.querySelectorAll('#impostazioni [id^="impostazioniPagina-"]').forEach(el => { el.style.display = 'none'; });
-    const target = document.getElementById('impostazioniPagina-' + pagina);
-    if (target) target.style.display = '';
+// RESTYLE TAVOLA (2026-10-01): 8 gruppi (profilo, aspetto, home,
+// animazioni, notifiche, gruppo, account, info). Sul telefono si vedono
+// tutti uno sotto l'altro: _impostazioniApri porta al gruppo e ne apre le
+// voci; su PC mostra solo quel gruppo a destra e segna la voce del menu.
+// I vecchi nomi di sotto-pagina restano accettati (stessa destinazione).
+const _IMPOSTAZIONI_ALIAS = {
+    suoni: 'notifiche', tema: 'aspetto', accessibilita: 'animazioni', connessioni: 'gruppo',
+    dati: 'account', generali: 'home', bug: 'info',
+};
+let _impostazioniGruppo = 'aspetto';
 
-    // Inizializza lo stato del checkbox Suoni all'apertura di quella
-    // pagina — toggleSuoniWidgetHome() lo tiene sincronizzato DOPO,
-    // ma qui serve leggerlo la prima volta (il checkbox non esiste
-    // finché la pagina non è aperta almeno una volta).
-    if (pagina === 'suoni') {
-        const checkbox = document.getElementById('suoniAppToggle');
-        if (checkbox) checkbox.checked = prefSuoniWidgetGet();
+function _impostazioniApri(pagina) {
+    const gruppo = _IMPOSTAZIONI_ALIAS[pagina] || pagina;
+    _impostazioniGruppo = gruppo;
+    const pc = _impostazioniEPC();
+    document.querySelectorAll('#impostazioni .imp-menu button[data-gruppo]').forEach(b => {
+        b.classList.toggle('attivo', b.dataset.gruppo === gruppo);
+    });
+    document.querySelectorAll('#impostazioni .imp-gruppo').forEach(g => {
+        g.classList.toggle('attivo', g.dataset.gruppo === gruppo);
+    });
+    const target = document.getElementById('impostazioniPagina-' + gruppo);
+    if (!pc && target) {
+        // Telefono: apri le voci del gruppo e portalo in vista.
+        target.querySelectorAll('.imp-voce.espandibile').forEach(v => v.classList.add('aperta'));
+        target.scrollIntoView({ block: 'start', behavior: 'smooth' });
     }
-    if (pagina === 'account' && typeof fotoProfiloRenderImpostazioni === 'function') fotoProfiloRenderImpostazioni();
-    if (pagina === 'connessioni') {
+    _impostazioniAlMostrare(gruppo);
+}
+
+// Cose da rileggere quando un gruppo diventa visibile (prima lo faceva
+// _impostazioniApri per la singola sotto-pagina, stessa logica).
+function _impostazioniAlMostrare(gruppo) {
+    if (gruppo === 'notifiche') {
+        const checkbox = document.getElementById('suoniAppToggle');
+        if (checkbox && typeof prefSuoniWidgetGet === 'function') checkbox.checked = prefSuoniWidgetGet();
+    }
+    if (gruppo === 'profilo') {
+        if (typeof fotoProfiloRenderImpostazioni === 'function') fotoProfiloRenderImpostazioni();
+        if (typeof _nicknameCaricaSeVuoto === 'function') _nicknameCaricaSeVuoto();
+    }
+    if (gruppo === 'gruppo') {
         _connessioniRicontrolla();
         _impostazioniAggiornaDiagnostica();
     }
 }
 
-// ── DIAGNOSTICA (admin) ──────────────────────────────────────────────────
+// Telefono: tocco su una voce con più campi = apri/chiudi il suo corpo.
+// Su PC i corpi sono sempre aperti (CSS), il tocco non cambia nulla.
+function _impostazioniEspandi(voce) {
+    if (!voce || _impostazioniEPC()) return;
+    const aperta = voce.classList.toggle('aperta');
+    if (aperta && voce.classList.contains('imp-profilo')) _impostazioniAlMostrare('profilo');
+}
+
+// PC: ricerca nel menu — mostra tutti i gruppi e solo le voci che
+// contengono il testo; vuota = torna al gruppo scelto.
+function _impostazioniCerca(testo) {
+    const q = String(testo || '').trim().toLowerCase();
+    const gruppi = document.querySelector('#impostazioni .imp-gruppi');
+    if (!gruppi) return;
+    gruppi.classList.toggle('cercando', !!q);
+    document.querySelectorAll('#impostazioni .imp-menu button[data-gruppo]').forEach(b => {
+        b.classList.toggle('attivo', !q && b.dataset.gruppo === _impostazioniGruppo);
+    });
+    gruppi.querySelectorAll('.imp-gruppo').forEach(g => {
+        let trovate = 0;
+        g.querySelectorAll('.imp-voce').forEach(v => {
+            const corpo = v.classList.contains('espandibile') ? v.nextElementSibling : null;
+            const testoVoce = (v.textContent + ' ' + (corpo ? corpo.textContent : '')).toLowerCase();
+            const ok = !q || testoVoce.includes(q) || g.querySelector('.imp-gruppo-titolo').textContent.toLowerCase().includes(q);
+            v.classList.toggle('imp-nascosta', !ok);
+            if (corpo) corpo.classList.toggle('imp-nascosta', !ok);
+            if (ok) trovate++;
+        });
+        g.classList.toggle('imp-nascosta', !!q && !trovate);
+    });
+}
+
+// Riga profilo in cima: iniziale (o foto approvata) e nome mostrato.
+async function _impostazioniProfiloRiepilogo() {
+    const nomeEl = document.getElementById('impProfiloNome');
+    const iniz = document.getElementById('impProfiloIniziale');
+    if (!nomeEl || !iniz) return;
+    try {
+        const userId = await authGetUserId();
+        if (!userId) return;
+        const [{ data: prefs }, sessione] = await Promise.all([
+            userSettingsGet(userId),
+            typeof authGetSession === 'function' ? authGetSession() : Promise.resolve(null),
+        ]);
+        const email = sessione && sessione.user ? (sessione.user.email || '') : '';
+        const nome = (prefs && prefs.nickname) || email.split('@')[0] || 'Il tuo profilo';
+        nomeEl.textContent = nome;
+        iniz.textContent = nome.charAt(0).toUpperCase();
+    } catch (e) {
+        console.error('[impostazioni] riepilogo profilo:', e);
+    }
+}
+
 let _impostazioniEhAdmin = null; // cache: null = non ancora verificato
 
 async function _impostazioniControllaAdmin() {
@@ -155,9 +228,15 @@ async function _connessioniRicontrolla() {
 }
 
 function _impostazioniTornaHub() {
-    document.querySelectorAll('#impostazioni [id^="impostazioniPagina-"]').forEach(el => { el.style.display = 'none'; });
-    const hub = document.getElementById('impostazioniHub');
-    if (hub) hub.style.display = '';
-    if (_impostazioniEPC()) _impostazioniApri('generali'); // PC: a destra non resta mai vuoto
-    else if (hub) hub.querySelectorAll('.imp-attiva').forEach(r => r.classList.remove('imp-attiva'));
+    const cerca = document.getElementById('impCerca');
+    if (cerca && cerca.value) { cerca.value = ''; _impostazioniCerca(''); }
+    _impostazioniProfiloRiepilogo();
+    if (_impostazioniEPC()) {
+        // PC: a destra non resta mai vuoto — si riparte da Aspetto.
+        _impostazioniApri('aspetto');
+        return;
+    }
+    // Telefono: tutto l'elenco, voci con più campi chiuse, dall'inizio.
+    document.querySelectorAll('#impostazioni .imp-voce.espandibile.aperta').forEach(v => v.classList.remove('aperta'));
+    _impostazioniAlMostrare('notifiche');
 }

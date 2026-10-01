@@ -25,17 +25,20 @@
             }
             wrap.innerHTML = '';
             location.forEach(nome => {
+                // RESTYLE: ogni location è un chip "Nome · N carte" (la casella resta, nascosta)
                 const label = document.createElement('label');
-                label.style.cssText = 'display:flex; align-items:center; gap:0.5rem; font-size:0.85rem; font-weight:600; cursor:pointer;';
+                label.className = 'pz-chip';
                 const cb = document.createElement('input');
                 cb.type = 'checkbox';
                 cb.value = nome;
                 cb.className = 'checkboxLocationPrezzi';
                 label.appendChild(cb);
-                label.appendChild(document.createTextNode(nome));
+                const n = carteReali.filter(c => c.tabella === 'carte' && c.stato === 'collezione' && c.location === nome).length;
+                label.appendChild(document.createTextNode(`${nome} · ${n}`));
                 wrap.appendChild(label);
             });
             _locationCaricate = true;
+            if (typeof prezziAggiornaScelta === 'function') prezziAggiornaScelta();
         }
 
 
@@ -432,7 +435,7 @@
             wrap.innerHTML = '';
             scaffali.forEach(s => {
                 const label = document.createElement('label');
-                label.style.cssText = 'display:flex; align-items:center; gap:0.5rem; font-size:0.85rem; font-weight:600; cursor:pointer;';
+                label.className = 'pz-chip'; // RESTYLE: chip, casella nascosta
                 const cb = document.createElement('input');
                 cb.type = 'checkbox';
                 cb.value = s.id;
@@ -442,6 +445,7 @@
                 wrap.appendChild(label);
             });
             _scaffaliSealedCaricati = true;
+            if (typeof prezziAggiornaScelta === 'function') prezziAggiornaScelta();
         }
 
 

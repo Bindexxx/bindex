@@ -120,16 +120,33 @@ async function renderPaginaAchievement() {
     } catch (_) { _achievementVetrinaIds = []; }
 
     _achievementTabAttiva = 'tutti';
+    _achievementRenderPagina();
+}
+
+// RESTYLE TAVOLA (2026-10-01, tavola OK-achievement): testata con
+// "In evidenza" (la vecchia scheda Vetrina, stessi dati), riepilogo
+// "N su M ottenuti" con barra, filtri Tutti/Ottenuti/Da ottenere a
+// pillola, sezioni per rarità colorate e tessere con icona, nome e
+// rarità; quelle ancora chiuse restano "???" (sorpresa, invariato).
+function _achievementRenderPagina() {
+    const container = document.getElementById('achievementContenuto');
+    if (!container) return;
+    const totale = _achievementCatalogo.length;
+    const ottenuti = _achievementCatalogo.filter(a => _achievementSbloccatiSet.has(a.id)).length;
+    const perc = totale ? Math.round((ottenuti / totale) * 100) : 0;
+    const inEvidenza = _achievementTabAttiva === 'vetrina';
+    const filtri = [['tutti', 'Tutti'], ['ottenuti', 'Ottenuti'], ['non_ottenuti', 'Da ottenere']]
+        .map(([id, et]) => `<button type="button" class="ach-filtro${_achievementTabAttiva === id ? ' attivo' : ''}" data-atab="${id}" onclick="_achievementImpostaTab('${id}')">${et}</button>`).join('');
     container.innerHTML = `
         <div class="page-header">
             <span class="page-title">Achievement</span>
+            <button type="button" class="ach-btn-evidenza${inEvidenza ? ' attiva' : ''}" onclick="_achievementImpostaTab('${inEvidenza ? 'tutti' : 'vetrina'}')" title="Gli achievement che mostri in evidenza (massimo ${ACHIEVEMENT_VETRINA_MAX})"><i class="fa-solid fa-star"></i> In evidenza</button>
         </div>
-        <div class="binder-modalita-toggle">
-            <button type="button" class="binder-modalita-btn active" data-atab="tutti" onclick="_achievementImpostaTab('tutti')">Tutti</button>
-            <button type="button" class="binder-modalita-btn" data-atab="ottenuti" onclick="_achievementImpostaTab('ottenuti')">Ottenuti</button>
-            <button type="button" class="binder-modalita-btn" data-atab="non_ottenuti" onclick="_achievementImpostaTab('non_ottenuti')">Non ottenuti</button>
-            <button type="button" class="binder-modalita-btn" data-atab="vetrina" onclick="_achievementImpostaTab('vetrina')">Vetrina</button>
+        <div class="ach-riepilogo">
+            <div class="ach-riepilogo-testa"><b>${ottenuti} su ${totale} ottenuti</b><span>${perc}%</span></div>
+            <div class="pg-barra-track"><div class="pg-barra-fill" style="width:${perc}%"></div></div>
         </div>
+        <div class="ach-filtri">${filtri}</div>
         <div id="achievementListaWrap"></div>
     `;
     _achievementRenderLista();
@@ -137,47 +154,61 @@ async function renderPaginaAchievement() {
 
 function _achievementImpostaTab(tab) {
     _achievementTabAttiva = tab;
-    document.querySelectorAll('#achievementContenuto .binder-modalita-btn[data-atab]').forEach(el => {
-        el.classList.toggle('active', el.dataset.atab === tab);
-    });
-    _achievementRenderLista();
+    _achievementRenderPagina();
+}
+
+// Icona per categoria del traguardo (CATALOGO_TRAGUARDI.categoria) — le
+// immagini vere (nome_file) non ci sono ancora per nessuno.
+const _ACHIEVEMENT_ICONA_CATEGORIA = {
+    inserimento: 'fa-layer-group', prezzi: 'fa-tag', meta: 'fa-crown',
+    costanza: 'fa-fire', social: 'fa-user-group', home: 'fa-mobile-screen-button',
+};
+const _ACHIEVEMENT_RARITA_SING = { leggendaria: 'leggendaria', rara: 'rara', comune: 'comune' };
+let _achievementCategorie = null;
+function _achievementIcona(id) {
+    if (!_achievementCategorie) {
+        _achievementCategorie = {};
+        (typeof CATALOGO_TRAGUARDI !== 'undefined' ? CATALOGO_TRAGUARDI : []).forEach(t => { _achievementCategorie[t.id] = t.categoria; });
+    }
+    return _ACHIEVEMENT_ICONA_CATEGORIA[_achievementCategorie[id]] || 'fa-trophy';
 }
 
 // Non sbloccato: NESSUN titolo, solo rarità/lucchetto — "mascherati per
-// sorpresa" (roadmap, invariato dopo il passaggio a "Tutti", Claudio
-// 2026-09-25). nome_file è sempre NULL per i traguardi calcolati (mai
-// curati manualmente), e NULL o valorizzato per i 37 curati a seconda di
-// achievement_catalogo: quando ci saranno immagini reali, qui va aggiunto
-// un <img> con fallback su questa stessa icona trofeo.
+// sorpresa" (roadmap, invariato). Sbloccato: icona, titolo, rarità; tocco
+// = metti/togli in evidenza (stessa vetrina di prima, max 3).
 function _achievementCard(a) {
+    const rar = _ACHIEVEMENT_RARITA_SING[a.rarita] ? a.rarita : 'comune';
     const sbloccato = _achievementSbloccatiSet.has(a.id);
     if (!sbloccato) {
-        return `<div class="achievement-slot achievement-slot-locked" title="Achievement non ancora sbloccato (${_ACHIEVEMENT_RARITA_LABEL[a.rarita] || a.rarita})">
-            <i class="fa-solid fa-lock"></i>
+        return `<div class="ach-tessera chiusa r-${rar}" title="Achievement non ancora sbloccato (${_ACHIEVEMENT_RARITA_SING[rar]})">
+            <span class="ach-icona"><i class="fa-solid fa-lock"></i></span>
+            <b>???</b><small>${_ACHIEVEMENT_RARITA_SING[rar]}</small>
         </div>`;
     }
     const inVetrina = _achievementVetrinaIds.includes(a.id);
     const dataSbloccato = _achievementSbloccatiData[a.id] ? new Date(_achievementSbloccatiData[a.id]).toLocaleDateString('it-IT') : '';
     const titoloAttr = escapeHtml(a.titolo);
-    return `<div class="achievement-slot achievement-slot-filled" onclick="_achievementToggleVetrina('${a.id}')" title="${titoloAttr} — sbloccato il ${dataSbloccato}${inVetrina ? ' (in vetrina, tocca per rimuovere)' : ' (tocca per aggiungere alla vetrina)'}">
-        <div class="achievement-slot-fallback"><i class="fa-solid fa-trophy"></i><span>${titoloAttr}</span></div>
-        ${inVetrina ? '<span class="achievement-slot-qty-badge"><i class="fa-solid fa-star"></i></span>' : ''}
+    return `<div class="ach-tessera aperta r-${rar}" onclick="_achievementToggleVetrina('${a.id}')" title="${titoloAttr} — sbloccato il ${dataSbloccato}${inVetrina ? ' (in evidenza, tocca per togliere)' : ' (tocca per mettere in evidenza)'}">
+        ${inVetrina ? '<i class="fa-solid fa-star ach-stella"></i>' : ''}
+        <span class="ach-icona"><i class="fa-solid ${_achievementIcona(a.id)}"></i></span>
+        <b>${titoloAttr}</b><small>${_ACHIEVEMENT_RARITA_SING[rar]}</small>
     </div>`;
 }
 
 // Elenco raggruppato per rarità, riusato da 'tutti'/'ottenuti'/
-// 'non_ottenuti' — cambia solo il filtro passato, il resto (ordine
-// rarità, conteggio per fascia) è identico. Leggendarie per prime.
-// INVARIATA nella logica — opera ora sull'array unito (curati + calcolati,
-// 121 voci), non più sul solo elenco curato (37).
+// 'non_ottenuti' — cambia solo il filtro passato. Leggendarie per prime.
 function _achievementListaPerRarita(filtro) {
     let html = '';
     _ACHIEVEMENT_RARITA_ORDINE.forEach(rar => {
-        const voci = _achievementCatalogo.filter(a => a.rarita === rar && filtro(a));
+        const tutte = _achievementCatalogo.filter(a => a.rarita === rar);
+        const voci = tutte.filter(filtro);
         if (voci.length === 0) return;
-        const sbloccatiN = voci.filter(a => _achievementSbloccatiSet.has(a.id)).length;
-        html += `<div class="pg-titoletto">${_ACHIEVEMENT_RARITA_LABEL[rar]} — ${sbloccatiN}/${voci.length}</div>
-            <div class="achievement-grid">${voci.map(_achievementCard).join('')}</div>`;
+        const sbloccatiN = tutte.filter(a => _achievementSbloccatiSet.has(a.id)).length;
+        // Prima gli ottenuti, poi i chiusi: con molte voci si vede subito
+        // cosa si ha (stesso ordine del catalogo dentro ciascun gruppo).
+        voci.sort((x, y) => (_achievementSbloccatiSet.has(y.id) ? 1 : 0) - (_achievementSbloccatiSet.has(x.id) ? 1 : 0));
+        html += `<div class="ach-sezione r-${rar}"><b>${_ACHIEVEMENT_RARITA_LABEL[rar]}</b><span>${sbloccatiN}/${tutte.length}</span></div>
+            <div class="ach-griglia">${voci.map(_achievementCard).join('')}</div>`;
     });
     return html;
 }
@@ -188,11 +219,12 @@ function _achievementRenderLista() {
 
     if (_achievementTabAttiva === 'vetrina') {
         const selezionati = _achievementCatalogo.filter(a => _achievementVetrinaIds.includes(a.id));
+        const nota = `<p class="ach-nota">In evidenza ${selezionati.length} su ${ACHIEVEMENT_VETRINA_MAX}. Tocca un achievement ottenuto (anche da "Tutti") per metterlo o toglierlo.</p>`;
         if (selezionati.length === 0) {
-            wrap.innerHTML = '<p style="text-align:center; color:var(--text-muted); font-size:0.85rem; padding:2rem 0;">Nessun achievement in vetrina.<br><small>Vai su "Tutti" e tocca un achievement sbloccato per aggiungerlo.</small></p>';
+            wrap.innerHTML = nota + '<p style="text-align:center; color:var(--text-muted); font-size:0.85rem; padding:2rem 0;">Nessun achievement in evidenza.</p>';
             return;
         }
-        wrap.innerHTML = `<div class="achievement-vetrina-grid">${selezionati.map(_achievementCard).join('')}</div>`;
+        wrap.innerHTML = nota + `<div class="ach-griglia">${selezionati.map(_achievementCard).join('')}</div>`;
         return;
     }
 

@@ -226,6 +226,35 @@ function _locAssicuraStile() {
         .loc-grid.loc-rest .loc-check { top:10px; right:10px; }
         .loc-grid.loc-rest .loc-attesa { top:10px; left:10px; }
         .loc-grid.loc-rest .loc-badge-vuota { position:absolute; left:12px; top:10px; right:auto; bottom:auto; border-radius:999px; padding:3px 10px; }
+        .loc-pannello { display:none; }
+        @container (min-width:780px) {
+            #location .pg-pagina { max-width:1240px; }
+            .loc-layout { display:grid; grid-template-columns:minmax(0,1fr) 360px; gap:18px; align-items:start; }
+            .loc-layout .loc-grid.loc-rest { grid-template-columns:repeat(auto-fill, minmax(150px, 1fr)); background:var(--card-bg); border:1px solid var(--border-color); border-radius:18px; padding:14px; }
+            .loc-grid.loc-rest .loc-tile.loc-attiva { border-color:var(--primary); box-shadow:0 0 0 2px var(--primary-light); }
+            .loc-pannello { display:block; position:sticky; top:8px; background:var(--card-bg); border:1px solid var(--border-color); border-radius:18px; padding:18px; }
+        }
+        .loc-p-invito { display:flex; flex-direction:column; align-items:center; gap:8px; color:var(--text-muted); padding:2rem 0; text-align:center; }
+        .loc-p-invito i { font-size:1.5rem; }
+        .loc-p-testa { display:flex; gap:14px; align-items:center; }
+        .loc-p-cover { width:72px; height:72px; border-radius:16px; background:var(--primary); color:#fff; display:flex; align-items:center; justify-content:center; font-size:1.8rem; overflow:hidden; flex:0 0 auto; }
+        .loc-p-cover img { width:100%; height:100%; object-fit:cover; }
+        .loc-p-nome { font-size:1.35rem; font-weight:800; color:var(--text-dark); }
+        .loc-p-meta { font-size:.8rem; color:var(--text-muted); margin-top:2px; }
+        .loc-p-meta b { color:var(--text-dark); }
+        .loc-p-azioni { display:flex; flex-wrap:wrap; gap:8px; margin:14px 0 4px; }
+        .loc-p-azioni .loc-btn { padding:8px 12px; font-size:.8rem; }
+        .loc-p-titolo { display:flex; justify-content:space-between; align-items:baseline; margin-top:14px; }
+        .loc-p-titolo b { color:var(--text-dark); }
+        .loc-p-titolo span { font-size:.76rem; color:var(--text-muted); }
+        .loc-p-lista { max-height:360px; overflow-y:auto; }
+        .loc-p-riga { display:flex; align-items:center; gap:10px; padding:9px 0; border-bottom:1px solid var(--border-color); cursor:pointer; }
+        .loc-p-riga img, .loc-p-fig { width:26px; height:36px; border-radius:4px; object-fit:cover; flex:0 0 auto; background:var(--primary-light); }
+        .loc-p-riga div { flex:1; min-width:0; display:flex; flex-direction:column; }
+        .loc-p-riga div b { font-size:.85rem; color:var(--text-dark); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .loc-p-riga div span { font-size:.74rem; color:var(--text-muted); }
+        .loc-p-riga > b { font-size:.85rem; color:var(--text-dark); font-variant-numeric:tabular-nums; }
+        .loc-p-nota { font-size:.74rem; color:var(--text-muted); margin-top:12px; }
         #locGestisciModal.modal-overlay { align-items:stretch; justify-content:stretch; padding:0; }
         #locGestisciModal .modal-content { max-width:none; width:100%; height:100%; max-height:none; }
         #locGestisciModal .loc-mcover { width:120px; margin:0 auto 0.8rem; aspect-ratio:63 / 88; border-radius:12px; background:var(--border-color); display:flex; align-items:center; justify-content:center; overflow:hidden; box-shadow:0 4px 14px rgba(0,0,0,.2); position:relative; }
@@ -592,7 +621,61 @@ function _locToggleSeleziona() {
 
 function _locClicTessera(i) {
     if (_locSelezionando) { _locToggleSel(i); return; }
+    // RESTYLE (tavola PC "Location"): su PC la gestione è nel pannello a destra.
+    if (_locEPC()) {
+        const v = _locDati.voci[i];
+        if (!v) return;
+        _locPannelloNome = v.nome;
+        document.querySelectorAll('#location .loc-tile').forEach(t => t.classList.toggle('loc-attiva', t.dataset.i === String(i)));
+        _locPannelloDisegna();
+        return;
+    }
     _locApriGestione(i);
+}
+
+// ── PC: pannello di gestione a destra (RESTYLE, tavola "Location PC") ───
+let _locPannelloNome = null;
+function _locEPC() { const s = document.getElementById('location'); return !!s && s.clientWidth >= 780; }
+
+function _locPannelloDisegna() {
+    const box = document.getElementById('locPannello');
+    if (!box) return;
+    const v = _locPannelloNome != null ? _locVoce(_locPannelloNome) : null;
+    if (!v) { box.innerHTML = '<div class="loc-p-invito"><i class="fa-regular fa-hand-pointer"></i><b>Clicca una location per gestirla qui</b></div>'; return; }
+    const nome = v.nome;
+    const b = _locDati.binder[nome];
+    const url = _locDati.copertine[nome];
+    const modificabile = _locModificabile(nome);
+    const totale = _locDati.voci.reduce((t, x) => t + x.valore, 0);
+    const perc = totale > 0 && v.valore > 0 ? Math.round(v.valore / totale * 100) : 0;
+    const cover = url ? `<img src="${_locAttr(url)}" alt="" onerror="this.remove();">` : `<i class="fa-solid ${_locIconaFallback(nome)}"></i>`;
+    const carte = carteReali.filter(c => c.stato === 'collezione' && (c.location || '—') === nome)
+        .sort((a, b2) => (Number(b2.price) || 0) * (Number(b2.qty) || 1) - (Number(a.price) || 0) * (Number(a.qty) || 1));
+    const righe = carte.map(c => {
+        const src = c.immagine ? (_urlImmagineVisualizzabile(c.immagine, 96) || '') : '';
+        const q = Number(c.qty) || 1;
+        return `<div class="loc-p-riga" onclick="apriFlipCardHome('${escapeJsAttr(String(c.id))}')">
+            ${src ? `<img src="${src}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">` : '<span class="loc-p-fig"></span>'}
+            <div><b>${escapeHtml(c.name || '—')}</b><span>${q > 1 ? `x${q} · ${formattaEuro(c.price)} cad.` : formattaEuro(c.price)}</span></div>
+            <b>${formattaEuro((Number(c.price) || 0) * q)}</b></div>`;
+    }).join('');
+    const btn = [];
+    if (v.n > 0) btn.push(`<button type="button" class="loc-btn loc-btn-pieno" onclick="_ballAzioneRiga(null, 'location', '${escapeJsAttr(nome)}')"><i class="fa-solid fa-eye"></i> Vedi in Collezione</button>`);
+    if (modificabile) btn.push(`<button type="button" class="loc-btn" onclick="_locRinomina('${escapeJsAttr(nome)}')"><i class="fa-solid fa-pen"></i> Rinomina</button>`);
+    if (modificabile && v.n > 0) btn.push(`<button type="button" class="loc-btn" onclick="_locApriSposta(['${escapeJsAttr(nome)}'])"><i class="fa-solid fa-arrow-right"></i> Sposta tutte le carte</button>`);
+    if (modificabile && v.n === 0) btn.push(`<button type="button" class="loc-btn" style="color:var(--danger);" onclick="_locElimina(['${escapeJsAttr(nome)}'])"><i class="fa-solid fa-trash"></i> Elimina (è vuota)</button>`);
+    const nota = modificabile ? 'Elimina compare solo quando la location è vuota. Le location vuote non spariscono mai da sole.'
+        : (nome === '?' ? 'Qui finiscono le carte in attesa di una location: non si rinomina né si elimina.' : 'Contenitore di sistema: non modificabile.');
+    box.innerHTML = `
+        <div class="loc-p-testa">
+            <div class="loc-p-cover">${cover}</div>
+            <div><div class="loc-p-nome">${escapeHtml(nome)}</div>
+                <div class="loc-p-meta"><b>${_locCarte(v.n)}</b> · ${_locEur(v.valore)}${perc ? ` · ${perc}% del valore` : ''}</div>
+                ${b ? `<div class="loc-p-meta"><i class="fa-solid fa-book"></i> collegata al binder “${escapeHtml(b.nome || nome)}”${b.nome_in_attesa ? ` (in attesa: ${escapeHtml(b.nome_in_attesa)})` : ''}</div>` : ''}</div>
+        </div>
+        <div class="loc-p-azioni">${btn.join('')}</div>
+        ${carte.length ? `<div class="loc-p-titolo"><b>Carte in questa location</b><span>per valore</span></div><div class="loc-p-lista">${righe}</div>` : ''}
+        <p class="loc-p-nota">${nota}</p>`;
 }
 
 function _locDisegna() {
@@ -666,10 +749,17 @@ function _locDisegna() {
             </div>
             <div class="loc-chips">${chip('valore', 'Per valore')}${chip('carte', 'Per numero di carte')}${chip('az', 'A → Z')}</div>
             <div class="loc-barra" id="locBarra"></div>
-            <div class="loc-grid loc-rest">${tessere}</div>
+            <div class="loc-layout">
+                <div class="loc-grid loc-rest">${tessere}</div>
+                <div class="loc-pannello" id="locPannello"></div>
+            </div>
         </div>
     `;
     _locAggiornaSelezioneUI();
+    if (_locPannelloNome == null || !_locVoce(_locPannelloNome)) _locPannelloNome = voci.length ? voci[0].nome : null;
+    const iSel = voci.findIndex(v => v.nome === _locPannelloNome);
+    if (iSel >= 0) container.querySelector(`.loc-tile[data-i="${iSel}"]`)?.classList.add('loc-attiva');
+    _locPannelloDisegna();
 }
 
 // ── Ingresso: lettura dati + disegno ────────────────────────────────────
