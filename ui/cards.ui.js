@@ -245,6 +245,14 @@
             const contenitoreCompatto = document.getElementById('viewCardsCompact');
             tbody.innerHTML = '';
 
+            // RESTYLE BINDEX (2026-10-01): la tab Collezione ha il suo render
+            // (ui/collezione-vista.ui.js). Scambio/Wishlist/Sealed restano qui.
+            if (currentMode === 'visualizzazione' && typeof collezioneRender === 'function') {
+                collezioneRender(data);
+                return;
+            }
+            if (typeof collezioneDisattiva === 'function') collezioneDisattiva();
+
             if (_sortColonna) {
                 data = [...data].sort((a, b) => {
                     let va = a[_sortColonna], vb = b[_sortColonna];
