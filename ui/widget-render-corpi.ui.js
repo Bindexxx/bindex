@@ -311,6 +311,27 @@ const _ballCORPI = {
     // Stessa forma dello "stato vuoto" del mockup: dice cosa arriverà,
     // senza numeri finti e senza pulsanti che non portano da nessuna parte.
     bustina: (d) => _ballCorpoSegnaposto('Bustina', d),
+    // RESTYLE BINDEX FASE 8c (tavola "Foto carte · tessera"): fatte/totale,
+    // barra, le prossime 3 da fotografare e "Inizia sessione foto".
+    foto: (d) => {
+        if (!d) return { inline: '', blocco: '' };
+        const perc = d.totale ? Math.round((d.fatte / d.totale) * 100) : 0;
+        const inline = '<p class="ball-k-tit">Foto carte</p>' +
+            `<div class="ball-k-big ball-k-mono">${d.fatte} / ${d.totale}</div>` +
+            `<span class="ball-k-lab">carte con foto vere${d.daFare ? ` · ${d.daFare} da fare` : ''}</span>` +
+            `<div class="ball-barra-out"><div class="ball-barra-in" style="width:${perc}%"></div></div>`;
+        if (!d.daFare) return { inline, blocco: '<span class="ball-k-lab">Tutte le carte hanno almeno una foto.</span>' };
+        const righe = (d.prossime || []).map(c => `
+            <div class="ball-riga ball-clic" onclick="_ballAzioneRiga(event,'tab','foto')">
+                <span class="ball-nome">${escapeHtml(c.name || '')}</span>
+                <span class="ball-dato">${_ballPill('Fronte', c.fronte)}${_ballPill('Retro', c.retro)}${c.scambio ? _ballPill('Scambio', false) : ''}</span>
+            </div>`).join('');
+        return {
+            inline,
+            blocco: '<div class="ball-gruppo"><span class="ball-k-lab">Prossime da fotografare</span>' + righe + '</div>' +
+                _ballPulsante('<i class="fa-solid fa-camera"></i> Inizia sessione foto', 'fotoAvviaSessioneDaTessera(event)'),
+        };
+    },
     // Restyle FASE 2: saldo vero (vedi ui/widget-polvere.ui.js).
     polvere: (d) => {
         if (!d || d.saldo == null) return { inline: '', blocco: '' };

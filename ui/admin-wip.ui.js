@@ -49,6 +49,7 @@ const WIP_BERSAGLI = [
     ['chat', 'Chat'],
     ['condividi', 'Condividi'],
     ['contributi', 'Contributi al gruppo'],
+    ['foto', 'Foto carte'],
     ['doppioni', 'Doppioni'],
     ['impostazioni', 'Impostazioni (anche widget Estensione)'],
     ['primopiano', 'In primo piano'],

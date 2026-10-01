@@ -371,7 +371,8 @@ const _ballTITOLI_BREVI = {
     set_completamento: 'Set',
     bustina: 'Bustina',
     polvere: 'Polvere',
-    missioni: 'Missioni'
+    missioni: 'Missioni',
+    foto: 'Foto carte'
 };
 
 // ── EMBLEMA + COLORE PER OGNI WIDGET ─────────────────────────────────────
@@ -415,7 +416,8 @@ const _ballASPETTO = {
     set_completamento:{ emblema: 'griglia',     colore: '#3B7DD8' },
     bustina:          { emblema: 'bustina',     colore: '#D6538F' },
     polvere:          { emblema: 'polvere',     colore: '#7F77DD' },
-    missioni:         { emblema: 'bandiera',    colore: '#639922' }
+    missioni:         { emblema: 'bandiera',    colore: '#639922' },
+    foto:             { emblema: 'fotocamera',  colore: '#7F77DD' } // FASE 8c
 };
 
 // Il testo inciso è stretto: teniamo le prime parole, il resto lo dice la

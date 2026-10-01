@@ -311,6 +311,7 @@ async function apriFlipCard(id) {
     document.getElementById('immagineModal').style.display = 'flex';
     _flipCardIdAperta = card.id;
     _flipCardAggiornaAggiungi();
+    _bxFotoReali(card.id); // FASE 8c (non blocca)
 
     if (_flipCardTimeout) clearTimeout(_flipCardTimeout);
     _flipCardTimeout = setTimeout(() => inner.classList.add('flipped'), 500);
@@ -420,4 +421,20 @@ function chiudiImmagineIngrandita() {
     document.getElementById('flipCardInner').classList.remove('flipped');
     _flipCardIdAperta = null;
     if (_flipCardTimeout) { clearTimeout(_flipCardTimeout); _flipCardTimeout = null; }
+}
+
+// RESTYLE BINDEX FASE 8c (sql/89): "Foto reali di questa copia" sotto la
+// carta a tutto schermo. La funzione del DB restituisce solo le foto delle
+// carte di un binder pubblico (la Wishlist non ne ha: id di wishlist).
+async function _bxFotoReali(cartaId) {
+    const box = document.getElementById('flipCardFotoReali');
+    if (!box) return;
+    box.innerHTML = '';
+    if (!_binderInfo || _binderInfo.tipo === 'wishlist' || typeof binderPubblicoFotoCarte !== 'function') return;
+    box.dataset.carta = String(cartaId);
+    try {
+        const { data, error } = await binderPubblicoFotoCarte([cartaId]);
+        if (error || box.dataset.carta !== String(cartaId)) return;
+        box.innerHTML = fotoRealiStripHtml(data || []);
+    } catch (e) { console.warn('[foto] binder pubblico:', e); }
 }

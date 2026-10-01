@@ -6741,3 +6741,131 @@
 #prezzi .pz-stato-pill.ok { background: rgba(46,125,50,0.14); color: #2e7d32; }
 #prezzi .pz-stato-pill.ko { background: rgba(211,47,47,0.14); color: #d32f2f; }
 #prezzi .pz-stato-pill.att { background: rgba(184,134,11,0.16); color: #b8860b; }
+
+        /* ==========================================================================
+           RESTYLE BINDEX FASE 8c — Foto reali di questa copia (utils/foto-reali.js)
+           ========================================================================== */
+        .fr-sezione { margin-top: 10px; text-align: left; }
+        .fr-titolo { font-size: 0.82rem; font-weight: 800; margin-bottom: 6px; display: flex; align-items: center; gap: 6px; }
+        .fr-striscia { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; }
+        .fr-mini { position: relative; flex: 0 0 auto; width: 64px; height: 84px; border-radius: 10px; overflow: hidden; border: 2px solid rgba(255,255,255,0.25); padding: 0; background: rgba(0,0,0,0.3); cursor: pointer; }
+        .fr-mini img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        .fr-mini span { position: absolute; left: 4px; bottom: 4px; font-size: 0.62rem; font-weight: 800; color: #fff; background: rgba(0,0,0,0.65); border-radius: 6px; padding: 1px 5px; }
+        .fr-mini-rotta img { visibility: hidden; }
+        .fr-visore { position: fixed; inset: 0; z-index: 9000; background: rgba(0,0,0,0.92); display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 16px; box-sizing: border-box; }
+        .fr-visore img { max-width: 100%; max-height: calc(100% - 60px); object-fit: contain; border-radius: 10px; }
+        .fr-visore-testa { position: absolute; top: 12px; left: 16px; right: 12px; display: flex; align-items: center; justify-content: space-between; color: #fff; font-weight: 800; }
+        .fr-visore-testa button { background: rgba(255,255,255,0.15); color: #fff; border: 0; border-radius: 50%; width: 44px; height: 44px; font-size: 1.1rem; cursor: pointer; }
+
+        /* FASE 8c: striscia foto dentro la carta a tutto schermo (sito privato) */
+        #flipCardFotoReali:empty { display: none; }
+        #flipCardFotoReali .fr-sezione { color: #fff; }
+
+        /* ==========================================================================
+           RESTYLE BINDEX FASE 8c — pagina "Foto carte" (ui/widget-foto.ui.js)
+           ========================================================================== */
+        #foto .ft-nota { font-size: 0.82rem; color: var(--text-muted); }
+        #foto .ft-testa { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 18px; padding: 16px; margin-bottom: 14px; }
+        #foto .ft-numeri { display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; }
+        #foto .ft-numeri b { font-size: 2.2rem; font-weight: 800; color: var(--text-dark); line-height: 1; }
+        #foto .ft-numeri span { font-size: 1.2rem; font-weight: 700; color: var(--text-muted); }
+        #foto .ft-numeri em { font-style: normal; font-size: 0.85rem; color: var(--text-muted); }
+        #foto .ft-barra { height: 8px; border-radius: 99px; background: var(--primary-light); margin: 12px 0; overflow: hidden; }
+        #foto .ft-barra i { display: block; height: 100%; background: var(--primary); border-radius: 99px; }
+        #foto .ft-avvia { width: 100%; min-height: 48px; border: 0; border-radius: 14px; background: var(--primary); color: #fff; font: inherit; font-weight: 800; font-size: 0.98rem; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+        #foto .ft-filtri { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 8px; }
+        #foto .ft-filtro { flex: 0 0 auto; border: 1px solid var(--border-color); background: var(--card-bg); color: var(--text-dark); border-radius: 999px; padding: 7px 13px; font: inherit; font-size: 0.82rem; font-weight: 600; cursor: pointer; }
+        #foto .ft-filtro.attivo { background: var(--primary-light); color: var(--primary); border-color: transparent; font-weight: 800; }
+        #foto .ft-elenco { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 18px; overflow: hidden; }
+        #foto .ft-riga { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-top: 1px solid var(--border-color); cursor: pointer; }
+        #foto .ft-riga:first-child { border-top: 0; }
+        #foto .ft-riga.sel { background: var(--primary-light); }
+        #foto .ft-mini { width: 46px; height: 64px; border-radius: 5px; object-fit: cover; flex: 0 0 auto; background: var(--primary-light); box-shadow: 0 2px 6px rgba(0,0,0,0.2); display: inline-flex; align-items: center; justify-content: center; color: var(--text-muted); }
+        #foto .ft-riga-testo { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+        #foto .ft-riga-testo b { font-size: 0.95rem; color: var(--text-dark); }
+        #foto .ft-riga-testo > span { font-size: 0.78rem; color: var(--text-muted); }
+        #foto .ft-chips { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
+        #foto .ft-chip { font-size: 0.72rem; font-weight: 700; padding: 3px 9px; border-radius: 8px; border: 1px dashed var(--border-color); color: var(--text-muted); }
+        #foto .ft-chip.ok { border: 0; background: #e8f5e9; color: #2e7d32; }
+        #foto .ft-chip.scambio { border: 0; background: #e3f2fd; color: #1565c0; }
+        body.dark-mode #foto .ft-chip.ok { background: rgba(76,175,80,0.18); color: #81c784; }
+        body.dark-mode #foto .ft-chip.scambio { background: rgba(66,165,245,0.18); color: #90caf9; }
+        #foto .ft-freccia { color: var(--text-muted); }
+        #foto .ft-vuoto { padding: 20px; text-align: center; color: var(--text-muted); font-size: 0.88rem; }
+        #foto .ft-btn, .ft-sessione .ft-btn { border: 1px solid var(--border-color); background: var(--card-bg); color: var(--text-dark); border-radius: 12px; padding: 9px 14px; font: inherit; font-weight: 700; font-size: 0.85rem; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 40px; }
+        #foto .ft-btn.pieno, .ft-sessione .ft-btn.pieno { background: var(--primary); border-color: var(--primary); color: #fff; }
+        #foto .ft-layout { display: block; }
+        @container (min-width: 780px) {
+            #foto .ft-testa { display: grid; grid-template-columns: 1fr auto; align-items: center; column-gap: 20px; }
+            #foto .ft-barra { grid-column: 1; max-width: 640px; }
+            #foto .ft-avvia { grid-column: 2; grid-row: 1 / span 2; width: auto; padding: 0 20px; }
+            #foto .ft-layout { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(320px, 1fr); gap: 18px; align-items: start; }
+        }
+        #foto .ft-pannello { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 18px; padding: 18px; position: sticky; top: 0; }
+        #foto .ft-pannello.in-corso { opacity: 0.6; pointer-events: none; }
+        #foto .ft-pan-testa { display: flex; gap: 14px; align-items: center; margin-bottom: 14px; }
+        #foto .ft-pan-testa h3 { margin: 0; font-size: 1.2rem; font-weight: 800; }
+        #foto .ft-pan-testa span { font-size: 0.82rem; color: var(--text-muted); }
+        #foto .ft-slots { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+        #foto .ft-slots p { margin: 0 0 6px; font-weight: 800; font-size: 0.85rem; }
+        #foto .ft-slots em { font-style: normal; font-weight: 500; color: var(--text-muted); }
+        #foto .ft-difetti { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+        #foto .ft-difetti.uno { grid-template-columns: 1fr; }
+        #foto .ft-slot { position: relative; aspect-ratio: 63 / 88; border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; text-align: center; font-size: 0.75rem; color: var(--text-muted); }
+        #foto .ft-slot.vuoto { border: 2px dashed var(--border-color); cursor: pointer; padding: 6px; }
+        #foto .ft-slot.vuoto.sopra { border-color: var(--primary); background: var(--primary-light); }
+        #foto .ft-slot.vuoto i { font-size: 1.3rem; color: var(--primary); }
+        #foto .ft-slot input { display: none; }
+        #foto .ft-slot.pieno img { width: 100%; height: 100%; object-fit: cover; cursor: zoom-in; }
+        #foto .ft-slot-ok { position: absolute; top: 6px; right: 6px; width: 22px; height: 22px; border-radius: 50%; background: #2e7d32; color: #fff; font-size: 0.7rem; display: flex; align-items: center; justify-content: center; }
+        #foto .ft-slot-via { position: absolute; bottom: 6px; right: 6px; width: 30px; height: 30px; border-radius: 50%; border: 0; background: rgba(0,0,0,0.65); color: #fff; cursor: pointer; }
+        #foto .ft-etichette-tit { font-weight: 800; font-size: 0.88rem; margin: 14px 0 6px; }
+        .ft-etichette { display: flex; flex-wrap: wrap; gap: 8px; }
+        .ft-etichetta { border: 1px solid var(--border-color); background: var(--card-bg); color: var(--text-dark); border-radius: 999px; padding: 7px 14px; font: inherit; font-size: 0.85rem; cursor: pointer; min-height: 38px; }
+        .ft-etichetta.attivo { background: var(--primary); border-color: var(--primary); color: #fff; }
+        #foto .ft-info { display: flex; gap: 8px; background: var(--primary-light); border-radius: 12px; padding: 10px 12px; font-size: 0.8rem; color: var(--text-muted); margin: 14px 0; }
+        #foto .ft-info i { color: var(--primary); margin-top: 2px; }
+        #foto .ft-pan-bottoni { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        #foto .ft-qr { display: flex; gap: 12px; align-items: center; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border-color); }
+        #foto .ft-qr > div:last-child { display: flex; flex-direction: column; gap: 2px; font-size: 0.8rem; color: var(--text-muted); }
+        #foto .ft-qr b { color: var(--text-dark); font-size: 0.95rem; }
+        #foto #ftQr { background: #fff; padding: 6px; border-radius: 10px; flex: 0 0 auto; }
+
+        /* Sessione fotocamera (sopra a tutto) */
+        .ft-sessione { position: fixed; inset: 0; z-index: 8000; background: #0e0d12; color: #fff; display: flex; flex-direction: column; padding: max(14px, env(safe-area-inset-top)) 14px max(14px, env(safe-area-inset-bottom)); box-sizing: border-box; gap: 12px; }
+        .ft-ses-testa { display: flex; align-items: center; gap: 12px; }
+        .ft-ses-tit { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+        .ft-ses-tit b { font-size: 1.1rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .ft-ses-tit span { font-size: 0.8rem; color: rgba(255,255,255,0.65); }
+        .ft-tondo { width: 46px; height: 46px; border-radius: 50%; border: 0; background: rgba(255,255,255,0.12); color: #fff; font-size: 1.1rem; cursor: pointer; flex: 0 0 auto; }
+        .ft-tondo.acceso { background: #f2c230; color: #222; }
+        .ft-tondo-vuoto { width: 46px; flex: 0 0 auto; }
+        .ft-passi { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+        .ft-passo { border: 0; border-radius: 999px; padding: 7px 14px; background: rgba(255,255,255,0.12); color: rgba(255,255,255,0.8); font: inherit; font-weight: 800; font-size: 0.85rem; cursor: pointer; }
+        .ft-passo.fatto { background: rgba(76,175,80,0.2); color: #81c784; }
+        .ft-passo.attivo { background: #fff; color: #111; }
+        .ft-mirino { position: relative; flex: 1; min-height: 0; border-radius: 22px; overflow: hidden; background: #1c1a22; }
+        .ft-mirino video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+        .ft-sagoma { position: absolute; left: 50%; top: 46%; transform: translate(-50%, -50%); height: 72%; aspect-ratio: 63 / 88; max-width: 82%; box-shadow: 0 0 0 9999px rgba(0,0,0,0.45); border-radius: 12px; }
+        .ft-sagoma i { position: absolute; width: 26px; height: 26px; border: 4px solid #fff; }
+        .ft-sagoma i:nth-child(1) { top: -4px; left: -4px; border-right: 0; border-bottom: 0; border-radius: 10px 0 0 0; }
+        .ft-sagoma i:nth-child(2) { top: -4px; right: -4px; border-left: 0; border-bottom: 0; border-radius: 0 10px 0 0; }
+        .ft-sagoma i:nth-child(3) { bottom: -4px; left: -4px; border-right: 0; border-top: 0; border-radius: 0 0 0 10px; }
+        .ft-sagoma i:nth-child(4) { bottom: -4px; right: -4px; border-left: 0; border-top: 0; border-radius: 0 0 10px 0; }
+        .ft-mirino-aiuto { position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%); margin: 0; background: rgba(0,0,0,0.7); border-radius: 999px; padding: 8px 16px; font-size: 0.85rem; white-space: nowrap; max-width: calc(100% - 24px); overflow: hidden; text-overflow: ellipsis; }
+        .ft-comandi { display: flex; align-items: center; justify-content: space-around; padding: 4px 0; }
+        .ft-comando { display: flex; flex-direction: column; align-items: center; gap: 4px; background: rgba(255,255,255,0.12); color: #fff; border: 0; border-radius: 14px; width: 72px; height: 72px; justify-content: center; font: inherit; font-size: 0.75rem; font-weight: 700; cursor: pointer; }
+        .ft-comando i { font-size: 1.3rem; }
+        .ft-comando input { display: none; }
+        .ft-scatto { width: 78px; height: 78px; border-radius: 50%; background: #fff; border: 6px solid rgba(255,255,255,0.35); background-clip: padding-box; cursor: pointer; }
+        .ft-scatto:disabled { opacity: 0.3; cursor: default; }
+        .ft-revisione { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; background: #1c1a22; border-radius: 22px; padding: 16px; }
+        .ft-revisione img { max-width: 100%; max-height: 100%; border-radius: 12px; box-shadow: 0 6px 24px rgba(0,0,0,0.5); }
+        .ft-domanda { margin: 0; font-weight: 800; }
+        .ft-etichette.scuro .ft-etichetta { background: transparent; color: rgba(255,255,255,0.85); border-color: rgba(255,255,255,0.3); }
+        .ft-etichette.scuro .ft-etichetta.attivo { background: #fff; color: #111; }
+        .ft-rev-bottoni { display: grid; grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); gap: 12px; }
+        .ft-sessione .ft-btn.grande { min-height: 54px; font-size: 1rem; background: rgba(255,255,255,0.12); color: #fff; border-color: transparent; }
+        .ft-sessione .ft-btn.grande.pieno { background: var(--primary); }
+        .ft-difetti-sessione { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; justify-content: center; }
+        .ft-nota.chiaro { color: rgba(255,255,255,0.7); font-size: 0.85rem; }

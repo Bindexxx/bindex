@@ -275,3 +275,20 @@ body > .og-velo { position: fixed; }
 body.dark-mode .og-pill.att { background: rgba(255, 193, 7, 0.18); color: #ffd54f; }
 body.dark-mode .og-pill.ok { background: rgba(76, 175, 80, 0.18); color: #81c784; }
 body.dark-mode .og-pill.ko { background: rgba(244, 67, 54, 0.18); color: #ef9a9a; }
+
+/* ==========================================================================
+   RESTYLE BINDEX FASE 8c — Foto reali di questa copia (utils/foto-reali.js)
+   ========================================================================== */
+.fr-sezione { margin-top: 10px; text-align: left; }
+.fr-titolo { font-size: 0.82rem; font-weight: 800; margin-bottom: 6px; display: flex; align-items: center; gap: 6px; }
+.fr-striscia { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; }
+.fr-mini { position: relative; flex: 0 0 auto; width: 64px; height: 84px; border-radius: 10px; overflow: hidden; border: 2px solid rgba(255,255,255,0.25); padding: 0; background: rgba(0,0,0,0.3); cursor: pointer; }
+.fr-mini img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.fr-mini span { position: absolute; left: 4px; bottom: 4px; font-size: 0.62rem; font-weight: 800; color: #fff; background: rgba(0,0,0,0.65); border-radius: 6px; padding: 1px 5px; }
+.fr-mini-rotta img { visibility: hidden; }
+.fr-visore { position: fixed; inset: 0; z-index: 9000; background: rgba(0,0,0,0.92); display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 16px; box-sizing: border-box; }
+.fr-visore img { max-width: 100%; max-height: calc(100% - 60px); object-fit: contain; border-radius: 10px; }
+.fr-visore-testa { position: absolute; top: 12px; left: 16px; right: 12px; display: flex; align-items: center; justify-content: space-between; color: #fff; font-weight: 800; }
+.fr-visore-testa button { background: rgba(255,255,255,0.15); color: #fff; border: 0; border-radius: 50%; width: 44px; height: 44px; font-size: 1.1rem; cursor: pointer; }
+.bx-foto-reali { width: 100%; color: #fff; }
+.bx-foto-reali:empty { display: none; }

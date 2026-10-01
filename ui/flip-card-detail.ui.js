@@ -133,6 +133,8 @@
             btnVaiAlBinder.style.display = opzioni.nascondiVaiAlBinder ? 'none' : '';
             btnVaiAlBinder.onclick = (e) => { e.stopPropagation(); vaiAllaCartaNelBinder(card.id); };
             renderRetroCartaOwner(card, opzioni.binderId || null);
+            // FASE 8c: foto reali di questa copia (asincrono, non blocca l'apertura).
+            if (typeof fotoRealiInFlipCard === 'function') fotoRealiInFlipCard(card).catch(e => console.warn('[foto] carta:', e));
 
             // "Gestisci doppione" (2026-08-30, pagina Doppioni): mostrato
             // SOLO quando aperto con opzioni.doppione=true — non auto-
