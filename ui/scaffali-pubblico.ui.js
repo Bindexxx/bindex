@@ -24,6 +24,54 @@ let _scaffaleId = null;
 let _scaffaleInfo = null; // { nome, tipo }
 let carte = []; // vedi nota sui nomi sopra
 let selezioni = {};
+let _vistaScaffale = 'scaffale'; // RESTYLE BINDEX FASE 6c: 'scaffale' (piastrelle) | 'elenco' (righe), solo per Scambio
+let _prodottoIdAperto = null;
+
+// RESTYLE BINDEX FASE 6c: "N prodotti · N pz." nella barra in fondo.
+function _testoConteggioSelezione(distinte, pezzi) {
+    return `${distinte} prodott${distinte === 1 ? 'o' : 'i'} · ${pezzi} pz.`;
+}
+
+function impostaVistaScaffale(vista) {
+    if (vista !== 'scaffale' && vista !== 'elenco') return;
+    _vistaScaffale = vista;
+    document.querySelectorAll('.bx-vista-btn').forEach(b => b.classList.toggle('active', b.dataset.vista === vista));
+    renderLista();
+}
+
+// Overlay della piastrella: bollino prezzo + tondino "+" / "− N +" (stesse
+// classi di utils/cornice-pubblica.css usate dalle tasche del binder).
+function _prodottoOverlayHtml(p) {
+    const idAttr = String(p.id).replace(/'/g, "\\'");
+    const prezzo = p.price > 0 ? `<span class="bx-slot-prezzo">${formattaEuro(p.price)}</span>` : '';
+    if (p.qtyDisponibile <= 0) return `${prezzo}<span class="bx-slot-lucchetto"><i class="fa-solid fa-lock"></i></span>`;
+    const q = selezioni[p.id] || 0;
+    const piu = `<button type="button" class="bx-slot-btn" aria-label="Aggiungi" onclick="event.stopPropagation(); modificaQty('${idAttr}', 1)" ${q >= p.qtyDisponibile ? 'disabled' : ''}>+</button>`;
+    if (q <= 0) return `${prezzo}<div class="bx-slot-azione" onclick="event.stopPropagation();">${piu}</div>`;
+    return `${prezzo}<div class="bx-slot-azione bx-slot-azione-attiva" onclick="event.stopPropagation();">
+        <button type="button" class="bx-slot-btn" aria-label="Togli" onclick="event.stopPropagation(); modificaQty('${idAttr}', -1)">−</button>
+        <span class="bx-slot-n">${q}</span>${piu}
+    </div>`;
+}
+
+function _prodottoAggiornaAggiungi() {
+    const btn = document.getElementById('prodottoAggiungi');
+    if (!btn) return;
+    const p = carte.find(x => String(x.id) === String(_prodottoIdAperto));
+    const eScambio = _scaffaleInfo && _scaffaleInfo.tipo === 'scambio';
+    if (!p || !eScambio || p.qtyDisponibile <= 0) { btn.style.display = 'none'; return; }
+    const q = selezioni[p.id] || 0;
+    btn.style.display = 'flex';
+    btn.disabled = q >= p.qtyDisponibile;
+    btn.innerHTML = q > 0
+        ? `<i class="fa-solid fa-check"></i> Nella scelta (${q}) — aggiungi un'altra`
+        : `<i class="fa-solid fa-plus"></i> Aggiungi alla scelta`;
+}
+function prodottoAggiungiAllaScelta() {
+    if (_prodottoIdAperto == null) return;
+    modificaQty(_prodottoIdAperto, 1);
+    _prodottoAggiornaAggiungi();
+}
 
 async function caricaCatalogo() {
     const params = new URLSearchParams(window.location.search);
@@ -60,6 +108,12 @@ async function caricaCatalogo() {
     document.body.classList.toggle('scaffale-pubblico-selezionabile', eScambio);
     const barraTotale = document.getElementById('barraTotale');
     if (barraTotale) barraTotale.style.display = eScambio ? 'flex' : 'none';
+    // RESTYLE BINDEX FASE 6c: in Scambio niente "Vetrina pubblica — sola lettura"
+    // (la pagina è interattiva) e compare il toggle Scaffale/Elenco.
+    const sottotitolo = document.getElementById('sottotitoloScaffale');
+    if (sottotitolo && eScambio) sottotitolo.textContent = 'Seleziona i prodotti che ti interessano — il totale si aggiorna da solo.';
+    const toggleVista = document.getElementById('vistaScaffaleToggle');
+    if (toggleVista) toggleVista.style.display = eScambio ? 'flex' : 'none';
 
     // Fire-and-forget, non deve mai bloccare il caricamento per il
     // visitatore — la RPC stessa rivalida che lo scaffale sia pubblico.
@@ -121,6 +175,24 @@ function renderLista() {
 
     if (filtrati.length === 0) {
         container.innerHTML = '<div class="stato-vuoto"><i class="fa-solid fa-magnifying-glass"></i><br>Nessun prodotto corrisponde alla ricerca.</div>';
+        return;
+    }
+
+    if (eScambio && _vistaScaffale === 'scaffale') {
+        container.innerHTML = `<div class="prodotti-grid prodotti-grid-scambio">${filtrati.map(p => {
+            const immagineSrc = _urlImmagineVisualizzabile(p.immagine);
+            const bloccata = p.qtyDisponibile <= 0;
+            const selezionata = !bloccata && (selezioni[p.id] || 0) > 0;
+            return `
+                <div class="prodotto-tile bx-prodotto${selezionata ? ' bx-selezionato' : ''}${bloccata ? ' bx-riservato' : ''}" onclick="apriImmagineIngrandita('${String(p.id).replace(/'/g, "\\'")}')">
+                    <div class="prodotto-cover">
+                        ${immagineSrc ? `<img src="${immagineSrc}" alt="${escapeHtml(p.name)}" loading="lazy">` : '<i class="fa-solid fa-box"></i>'}
+                        ${_prodottoOverlayHtml(p)}
+                    </div>
+                    <div class="prodotto-nome">${escapeHtml(p.name || p.code || '(senza nome)')}</div>
+                    <div class="prodotto-qty">Offerte: ${p.qtyDisponibile}${p.riservato > 0 ? ` · 🔒 ${p.riservato}` : ''}</div>
+                </div>`;
+        }).join('')}</div>`;
         return;
     }
 
@@ -231,8 +303,11 @@ function apriImmagineIngrandita(id) {
     `;
 
     document.getElementById('immagineModal').style.display = 'flex';
+    _prodottoIdAperto = p.id;
+    _prodottoAggiornaAggiungi();
 }
 
 function chiudiImmagineIngrandita() {
+    _prodottoIdAperto = null;
     document.getElementById('immagineModal').style.display = 'none';
 }
