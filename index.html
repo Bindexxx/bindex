@@ -1949,14 +1949,20 @@
     ═══════════════════════════════════════════════════════════════════ -->
     <div id="cardsyncPanel" style="display:none; position:fixed; inset:0; width:100%; height:100%; z-index:9999999; background:var(--bg-color); overflow-y:auto;">
         <div style="min-height:100%; display:flex; align-items:center; justify-content:center; padding:2rem 1.2rem;">
-        <div style="width:100%; max-width:520px;">
+        <!-- RESTYLE BINDEX FASE 5: tutto dentro un "Bindex" disegnato come un
+             Pokédex (lente, led, BINDEX inciso, croce). Solo aspetto: gli
+             stati, gli id e i TESTI sono quelli di prima. -->
+        <div class="pdx">
+        <div class="pdx-top"><span class="pdx-lente"></span><i class="pdx-led pdx-led-r"></i><i class="pdx-led pdx-led-g"></i><i class="pdx-led pdx-led-v"></i><span class="pdx-nome">BINDEX</span></div>
+        <div class="pdx-schermo">
+        <div style="width:100%;">
 
             <!-- STATO: estensione assente o non aggiornata — prima pagina -->
             <div id="statoNonInstallata" style="display:none; text-align:center;">
                 <div class="cardsync-motivo-tema" id="motivoNonInstallata">⚡</div>
                 <h2 style="font-weight:800; margin-bottom:0.6rem; font-size:1.5rem;" id="statoNonInstallataTitolo">Non hai l'estensione installata</h2>
                 <p style="font-size:1.02rem; color:var(--text-muted); margin-bottom:2rem;" id="statoNonInstallataTesto">
-                    Per usare CardSync Pro su questo PC serve l'estensione — non è possibile usare versioni vecchie, sorry not sorry.
+                    Per usare Bindex su questo PC serve l'estensione — non è possibile usare versioni vecchie, sorry not sorry.
                 </p>
                 <div style="display:flex; flex-direction:column; gap:0.8rem; text-align:left;">
                     <button class="btn-main" style="width:100%; justify-content:center; padding:0.9rem;" onclick="mostraIstruzioniInstallazione()">
@@ -1985,27 +1991,27 @@
                     <p style="font-size:0.9rem; color:var(--text-dark); margin:0;">Al riavvio, se Chrome mostra un avviso <strong>"Ripristina le pagine?"</strong>, <strong>NON</strong> premere "Ripristina" — clicca sulla <strong>✕</strong> per chiuderlo e basta. È innocuo, ma ripristinare farebbe riaprire tutte le schede di prima inutilmente.</p>
                 </div>
 
-                <div style="background:var(--card-bg); border:1px solid var(--border-color); border-radius:14px; padding:1.2rem 1.4rem; margin-bottom:1rem;">
-                    <p style="font-weight:800; margin:0 0 0.6rem; color:var(--primary);">1. Apri PowerShell</p>
-                    <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.6rem; flex-wrap:wrap;">
-                        <kbd class="wizard-tasto">⊞ Win</kbd><span style="font-weight:800; color:var(--text-muted);">+</span><kbd class="wizard-tasto">X</kbd>
-                        <span style="font-weight:800; color:var(--text-muted); margin:0 0.2rem;">poi</span><kbd class="wizard-tasto">I</kbd>
-                    </div>
-                    <p style="font-size:0.9rem; color:var(--text-muted); margin:0;">Tieni premuto <strong>Windows</strong> e premi <strong>X</strong>, poi subito <strong>I</strong> per aprire il Terminale. In alternativa: tasto destro sul menu Start.</p>
-                </div>
-
-                <div style="background:var(--card-bg); border:1px solid var(--border-color); border-radius:14px; padding:1.2rem 1.4rem; margin-bottom:1rem;">
-                    <p style="font-weight:800; margin:0 0 0.6rem; color:var(--primary);">2. Copia e incolla questo comando</p>
-                    <div style="display:flex; align-items:center; gap:0.5rem; background:var(--bg-color); border:1px solid var(--border-color); border-radius:8px; padding:0.6rem 0.8rem; margin-bottom:0.6rem;">
-                        <code id="comandoAggiornaEstensione" style="flex:1; font-size:0.85rem; word-break:break-all; user-select:all;"></code>
-                        <button class="btn-secondary" style="flex-shrink:0; padding:0.4rem 0.6rem;" onclick="copiaComandoAggiorna()" title="Copia" id="btnCopiaComando"><i class="fa-solid fa-copy"></i></button>
-                    </div>
-                    <p style="font-size:0.9rem; color:var(--text-muted); margin:0;">Clicca <i class="fa-solid fa-copy"></i> per copiarlo, poi in PowerShell: tasto destro per incollare, e premi <strong>Invio</strong>.</p>
-                </div>
-
-                <div style="background:var(--card-bg); border:1px solid var(--border-color); border-radius:14px; padding:1.2rem 1.4rem; margin-bottom:1rem;">
-                    <p style="font-weight:800; margin:0 0 0.6rem; color:var(--primary);">3. Fatto — pensa a tutto lui</p>
-                    <p style="font-size:0.9rem; color:var(--text-muted); margin:0;" id="statoIstruzioniPasso3">Scarica, installa da solo e riapre Chrome (che aprirà anche la tab Prezzi dell'estensione e questo sito, da solo).</p>
+                <div class="pdx-passi">
+                    <div class="pdx-passo"><span class="pdx-num">1</span><div>
+                        <p class="pdx-passo-tit">Apri PowerShell</p>
+                        <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.6rem; flex-wrap:wrap;">
+                            <kbd class="wizard-tasto">⊞ Win</kbd><span style="font-weight:800; color:var(--text-muted);">+</span><kbd class="wizard-tasto">X</kbd>
+                            <span style="font-weight:800; color:var(--text-muted); margin:0 0.2rem;">poi</span><kbd class="wizard-tasto">I</kbd>
+                        </div>
+                        <p class="pdx-passo-txt">Tieni premuto <strong>Windows</strong> e premi <strong>X</strong>, poi subito <strong>I</strong> per aprire il Terminale. In alternativa: tasto destro sul menu Start.</p>
+                    </div></div>
+                    <div class="pdx-passo"><span class="pdx-num">2</span><div>
+                        <p class="pdx-passo-tit">Copia e incolla questo comando</p>
+                        <div style="display:flex; align-items:center; gap:0.5rem; background:var(--bg-color); border:1px solid var(--border-color); border-radius:10px; padding:0.6rem 0.8rem; margin-bottom:0.6rem;">
+                            <code id="comandoAggiornaEstensione" style="flex:1; font-size:0.85rem; word-break:break-all; user-select:all;"></code>
+                            <button class="btn-secondary" style="flex-shrink:0; padding:0.4rem 0.6rem;" onclick="copiaComandoAggiorna()" title="Copia" id="btnCopiaComando"><i class="fa-solid fa-copy"></i></button>
+                        </div>
+                        <p class="pdx-passo-txt">Clicca <i class="fa-solid fa-copy"></i> per copiarlo, poi in PowerShell: tasto destro per incollare, e premi <strong>Invio</strong>.</p>
+                    </div></div>
+                    <div class="pdx-passo"><span class="pdx-num">3</span><div>
+                        <p class="pdx-passo-tit">Fatto — pensa a tutto lui</p>
+                        <p class="pdx-passo-txt" id="statoIstruzioniPasso3">Scarica, installa da solo e riapre Chrome (che aprirà anche la tab Prezzi dell'estensione e questo sito, da solo).</p>
+                    </div></div>
                 </div>
 
                 <button class="btn-main" style="width:100%; justify-content:center; padding:0.9rem; margin-top:0.6rem;" onclick="_ricontrollaEChiudiIstruzioni()">Fatto — ricontrolla <i class="fa-solid fa-arrow-right"></i></button>
@@ -2078,6 +2084,9 @@
                 </button>
             </div>
 
+        </div>
+        </div>
+        <div class="pdx-fondo"><span class="pdx-croce"></span><span class="pdx-pill"></span><span class="pdx-pill"></span></div>
         </div>
         </div>
     </div>

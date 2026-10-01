@@ -4502,6 +4502,29 @@
         #binderImpostazioniModal .binder-layout-btn.active .bn-mini { background:rgba(255,255,255,0.25); }
         #binderImpostazioniModal .binder-layout-btn.active .bn-mini b { background:#fff; opacity:1; }
 
+        /* ═══ RESTYLE BINDEX FASE 5 — Accesso come un Pokédex (solo aspetto) ═══ */
+        .pdx { width:100%; max-width:520px; background:linear-gradient(180deg, #7c4dff 0%, #4a2d9c 100%); border-radius:34px 34px 30px 30px; padding:18px 18px 16px; box-shadow:0 18px 40px rgba(60,30,140,0.35); box-sizing:border-box; }
+        .pdx-top { display:flex; align-items:center; gap:12px; padding:2px 6px 14px; }
+        .pdx-lente { width:46px; height:46px; border-radius:50%; background:radial-gradient(circle at 35% 30%, #aee3ff, #1c7fd1 70%); border:4px solid #fff; box-shadow:0 0 0 2px rgba(0,0,0,0.12); flex-shrink:0; }
+        .pdx-led { width:13px; height:13px; border-radius:50%; display:block; box-shadow:inset 0 -2px 3px rgba(0,0,0,0.25); }
+        .pdx-led-r { background:#d93a3a; } .pdx-led-g { background:#f0b429; } .pdx-led-v { background:#34b45a; }
+        .pdx-nome { margin-left:auto; font-weight:800; letter-spacing:0.28em; color:rgba(255,255,255,0.85); font-size:0.95rem; text-shadow:0 1px 0 rgba(0,0,0,0.3); }
+        .pdx-schermo { background:var(--card-bg); border:3px solid #e6e6ea; border-radius:20px; padding:1.6rem 1.3rem; max-height:calc(100vh - 11rem); overflow-y:auto; }
+        .pdx-fondo { display:flex; align-items:center; justify-content:space-between; padding:14px 8px 2px; }
+        .pdx-croce { position:relative; width:44px; height:44px; flex-shrink:0; }
+        .pdx-croce::before, .pdx-croce::after { content:''; position:absolute; background:#1f1f24; border-radius:4px; }
+        .pdx-croce::before { left:15px; top:0; width:14px; height:44px; }
+        .pdx-croce::after { left:0; top:15px; width:44px; height:14px; }
+        .pdx-pill { width:34px; height:8px; border-radius:999px; background:rgba(20,10,60,0.45); margin-left:8px; }
+        .pdx-fondo .pdx-croce { margin-right:auto; }
+        .pdx-passi { display:flex; flex-direction:column; gap:1rem; margin:1.2rem 0 1.4rem; }
+        .pdx-passo { display:flex; gap:0.9rem; align-items:flex-start; }
+        .pdx-num { width:30px; height:30px; border-radius:50%; background:var(--primary); color:#fff; font-weight:800; font-size:0.9rem; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+        .pdx-passo > div { flex:1; min-width:0; }
+        .pdx-passo-tit { font-weight:800; margin:0 0 0.4rem; color:var(--text-dark); }
+        .pdx-passo-txt { font-size:0.9rem; color:var(--text-muted); margin:0; }
+        .pdx-schermo .auth-field input { background:color-mix(in srgb, var(--primary) 6%, var(--card-bg)); border-radius:14px; padding:0.8rem 1rem; }
+
         /* ═══ RESTYLE BINDEX FASE 4b — binder aperto: testata, scheda Libro|Elenco, Elenco ═══
            La testata non è più sovrapposta al libro: sta nel flusso, e il
            libro (#binderLibroWrap, flex:1) occupa lo spazio che resta — il
