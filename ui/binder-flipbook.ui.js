@@ -413,16 +413,17 @@ function _libroHtmlSelezione(card, qtyMax, bloccata) {
     // checkbox spuntata, a prescindere dal massimo — disabilitarla è
     // l'unica difesa reale).
     const qtyAttuale = bloccata ? 0 : (selezioni[card.id] || 0);
-    return `
-        <div class="binder-slot-selezione" onclick="event.stopPropagation();">
-            <input type="checkbox" class="card-checkbox" ${qtyAttuale > 0 ? 'checked' : ''} ${bloccata ? 'disabled' : ''}
-                   onchange="toggleSelezione('${idAttr}', this.checked)">
-            <div class="qty-control qty-control-mini">
-                <button type="button" class="qty-btn" onclick="modificaQty('${idAttr}', -1)" ${qtyAttuale <= 0 || bloccata ? 'disabled' : ''}>-</button>
-                <span class="qty-value">${qtyAttuale}</span>
-                <button type="button" class="qty-btn" onclick="modificaQty('${idAttr}', 1)" ${qtyAttuale >= qtyMax || bloccata ? 'disabled' : ''}>+</button>
-            </div>
-        </div>`;
+    // RESTYLE BINDEX FASE 6: tondino "+" quando 0, "− N +" quando > 0, e
+    // bollino prezzo sulla tasca. Stessa logica di prima (modificaQty
+    // limita già al massimo disponibile): cambia solo l'HTML/CSS.
+    const prezzo = (card.price != null && Number(card.price) > 0) ? `<span class="bx-slot-prezzo">${formattaEuro(card.price)}</span>` : '';
+    if (bloccata) return `${prezzo}<span class="bx-slot-lucchetto"><i class="fa-solid fa-lock"></i></span>`;
+    const piu = `<button type="button" class="bx-slot-btn" aria-label="Aggiungi" onclick="event.stopPropagation(); modificaQty('${idAttr}', 1)" ${qtyAttuale >= qtyMax ? 'disabled' : ''}>+</button>`;
+    if (qtyAttuale <= 0) return `${prezzo}<div class="bx-slot-azione" onclick="event.stopPropagation();">${piu}</div>`;
+    return `${prezzo}<div class="bx-slot-azione bx-slot-azione-attiva" onclick="event.stopPropagation();">
+        <button type="button" class="bx-slot-btn" aria-label="Togli" onclick="event.stopPropagation(); modificaQty('${idAttr}', -1)">−</button>
+        <span class="bx-slot-n">${qtyAttuale}</span>${piu}
+    </div>`;
 }
 
 function _libroClickCarta(id) {

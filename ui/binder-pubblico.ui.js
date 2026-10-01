@@ -145,9 +145,14 @@ async function caricaCatalogo() {
         `${carte.length} cart${carte.length === 1 ? 'a' : 'e'}`;
 
     renderLista();
-    impostaModalitaBinderPubblico('elenco');
+    impostaModalitaBinderPubblico('libro'); // RESTYLE BINDEX FASE 6: si apre sul Libro
 }
 
+
+// RESTYLE BINDEX FASE 6: "N carte · N pz." nella barra in fondo.
+function _testoConteggioSelezione(distinte, pezzi) {
+    return `${distinte} cart${distinte === 1 ? 'a' : 'e'} · ${pezzi} pz.`;
+}
 
 function renderLista() {
     const container = document.getElementById('listaContainer');
@@ -298,9 +303,32 @@ async function apriFlipCard(id) {
     await _renderSleeve(card);
 
     document.getElementById('immagineModal').style.display = 'flex';
+    _flipCardIdAperta = card.id;
+    _flipCardAggiornaAggiungi();
 
     if (_flipCardTimeout) clearTimeout(_flipCardTimeout);
     _flipCardTimeout = setTimeout(() => inner.classList.add('flipped'), 500);
+}
+
+// RESTYLE BINDEX FASE 6: "Aggiungi alla scelta" sulla carta a tutto schermo
+// (solo binder selezionabili, carta non del tutto riservata).
+let _flipCardIdAperta = null;
+function _flipCardAggiornaAggiungi() {
+    const btn = document.getElementById('flipCardAggiungi');
+    if (!btn) return;
+    const card = carte.find(c => String(c.id) === String(_flipCardIdAperta));
+    if (!card || !_binderPubblicoESelezionabile() || card.qtyDisponibile <= 0) { btn.style.display = 'none'; return; }
+    const q = selezioni[card.id] || 0;
+    btn.style.display = '';
+    btn.disabled = q >= card.qtyDisponibile;
+    btn.innerHTML = q > 0
+        ? `<i class="fa-solid fa-check"></i> Nella scelta (${q}) — aggiungi un'altra`
+        : `<i class="fa-solid fa-plus"></i> Aggiungi alla scelta`;
+}
+function flipCardAggiungiAllaScelta() {
+    if (_flipCardIdAperta == null) return;
+    modificaQty(_flipCardIdAperta, 1);
+    _flipCardAggiornaAggiungi();
 }
 
 function toggleFlipCard() {
@@ -384,5 +412,6 @@ function _cbdScrivi(chiave, testo) {
 function chiudiImmagineIngrandita() {
     document.getElementById('immagineModal').style.display = 'none';
     document.getElementById('flipCardInner').classList.remove('flipped');
+    _flipCardIdAperta = null;
     if (_flipCardTimeout) { clearTimeout(_flipCardTimeout); _flipCardTimeout = null; }
 }
