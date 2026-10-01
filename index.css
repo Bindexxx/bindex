@@ -6473,6 +6473,10 @@
             color: var(--text-dark);
         }
         .chat-input-campo:focus { outline: none; border-color: var(--primary); }
+        /* RESTYLE BINDEX FASE 3i: frasi pronte */
+        .chat-frasi { display:flex; gap:0.4rem; flex-wrap:wrap; padding:0.5rem 0.9rem 0; }
+        .chat-frasi button { border:1.5px solid var(--primary); background:transparent; color:var(--primary); border-radius:999px; padding:0.4rem 0.8rem; font:inherit; font-size:0.8rem; font-weight:600; cursor:pointer; }
+        .chat-frasi button:active { background:var(--primary); color:#fff; }
         .chat-invia-btn { width: 40px; height: 40px; border-radius: 50%; flex-shrink: 0; padding: 0; }
 
         /* ═══════════════════════════════════════════════════════════════
