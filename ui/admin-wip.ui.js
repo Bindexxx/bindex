@@ -58,6 +58,7 @@ const WIP_BERSAGLI = [
     ['match', 'Match trovati'],
     ['missioni', 'Missioni'],
     ['polvere', 'Polvere'],
+    ['shop', 'Shop (pagina Polvere)'],
     ['prezzi', 'Prezzi (anche Prezzi aggiornati)'],
     ['richieste', 'Richieste'],
     ['scaffali', 'Scaffali'],

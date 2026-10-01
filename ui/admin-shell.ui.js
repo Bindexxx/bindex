@@ -78,6 +78,7 @@ async function controllaRuoloEAvvia() {
   caricaUtenti();
   caricaLogAdmin();
   if (typeof caricaWip === 'function') caricaWip();
+  if (typeof caricaShopAdmin === 'function') caricaShopAdmin(); // RESTYLE FASE 9, ui/admin-shop.ui.js
 }
 
 // ── TABS ───────────────────────────────────────────────────────

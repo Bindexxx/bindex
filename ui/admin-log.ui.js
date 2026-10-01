@@ -22,6 +22,7 @@ function _fraseRegistro(r, nome) {
     case 'hard_delete': return `${chi} ha cancellato definitivamente ${target || 'un account'}`;
     case 'anagrafica_update': return `${chi} ha aggiornato i dati anagrafici di ${target}`;
     case 'chat_minorenne_change': return `${chi} ha ${d.minorenne ? 'segnato come minorenne' : 'tolto il segno di minorenne a'} ${target}`;
+    case 'shop_ritira': return `${chi} ha ritirato un articolo dallo Shop${d.rimborsati != null ? ' (rimborsate ' + d.rimborsati + ' persone)' : ''}`;
     case 'richieste_archiviate': return `${chi} ha archiviato ${d.count != null ? d.count : ''} richieste gestite`;
     default: return `${chi}: ${r.action}${target ? ' (' + target + ')' : ''}`;
   }

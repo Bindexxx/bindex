@@ -83,6 +83,7 @@ async function polvereGuadagnataDa(isoDa) {
         .select('quantita')
         .eq('tipo', 'polvere')
         .gt('quantita', 0)
+        .not('riferimento_id', 'like', 'rimborso:%') // FASE 9: i rimborsi dello Shop non sono guadagni
         .gte('ottenuto_il', isoDa);
 }
 

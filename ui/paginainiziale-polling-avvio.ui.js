@@ -505,6 +505,7 @@ async function initPhoneShell() {
                 if (!userId) return;
                 const { data: saldo, error } = await polvereSaldoLeggi();
                 if (!error) CSBar.setCurrency({ value: saldo || 0, glyph: '\u2727', label: 'Polvere' });
+                if (typeof shopCaricaEffetti === 'function') shopCaricaEffetti(); // FASE 9: cornice/retro pronti per la carta a tutto schermo
             } catch (e) { console.error('[statusbar] saldo polvere iniziale:', e); }
         })();
     }

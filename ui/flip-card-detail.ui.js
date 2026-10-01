@@ -135,6 +135,7 @@
             renderRetroCartaOwner(card, opzioni.binderId || null);
             // FASE 8c: foto reali di questa copia (asincrono, non blocca l'apertura).
             if (typeof fotoRealiInFlipCard === 'function') fotoRealiInFlipCard(card).catch(e => console.warn('[foto] carta:', e));
+            if (typeof shopApplicaAllaCarta === 'function') shopApplicaAllaCarta(card); // FASE 9: cornice e retro dello Shop
 
             // "Gestisci doppione" (2026-08-30, pagina Doppioni): mostrato
             // SOLO quando aperto con opzioni.doppione=true — non auto-
