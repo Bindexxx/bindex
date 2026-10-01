@@ -1321,7 +1321,7 @@ function _libroHtmlPagina(indicePagina) {
                 <div class="binder-slot-fallback"><i class="fa-solid fa-image"></i><span>${nomeAttr}</span></div>
                 ${immagineSrc ? `<img src="${immagineSrc}" alt="${nomeAttr}" loading="lazy" draggable="false" onerror="this.remove();">` : ''}
                 ${_libro.eScambio
-                    ? `<span class="binder-slot-qty-badge" title="Quantità offerta in Scambio">Offerte: ${card.quantitaOfferta ?? 0}</span>`
+                    ? `<button type="button" class="binder-slot-qty-badge binder-slot-scambio-badge" title="Cambia la quantità offerta in Scambio" aria-label="Quantità offerta: ${card.quantitaOfferta ?? 0}. Tocca per cambiarla" onclick="event.stopPropagation(); if (_libro && _libro.dragMosso) { _libro.dragMosso = false; return; } apriModaleQuantitaScambio('${idAttr}')"><i class="fa-solid fa-right-left"></i> ${card.quantitaOfferta ?? 0}</button>`
                     : (card.qty > 1 ? `<span class="binder-slot-qty-badge" title="Hai ${card.qty} copie di questa carta — occupano un solo slot">×${card.qty}</span>` : '')}
             </div>`;
     }
@@ -1344,7 +1344,10 @@ function _libroClickCarta(id) {
     // sfogliabile l'ha sostituita. Senza questo, dentro il binder Scambio
     // aperto non c'era modo di correggere la quantità offerta cliccando la
     // carta (si apriva solo il flip, che non ha alcun controllo quantità).
-    if (_libro && _libro.eScambio) { apriModaleQuantitaScambio(id); return; }
+    // RESTYLE BINDEX FASE 4c (2026-10-01): nel binder Scambio il tocco sulla
+    // carta apre il flip come ovunque (imperativo "ogni carta a tutto
+    // schermo"); la quantità offerta si cambia dal bollino ⇄ N sulla tasca
+    // (vedi _libroHtmlPagina), che chiama apriModaleQuantitaScambio.
     apriFlipCardHome(id, { binderId: _binderAttivo, nascondiVaiAlBinder: true });
 }
 

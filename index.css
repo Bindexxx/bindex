@@ -4477,6 +4477,9 @@
             #binder .bn-nota { font-size:0.78rem; color:var(--text-muted); margin:0.4rem 0 0; }
         }
 
+        /* RESTYLE BINDEX FASE 4c: bollino "⇄ N" del binder Scambio (era un'etichetta "Offerte: N") */
+        .binder-slot-scambio-badge { border:none; cursor:pointer; font:inherit; display:inline-flex; align-items:center; gap:0.25rem; }
+
         /* ═══ RESTYLE BINDEX FASE 4b — binder aperto: testata, scheda Libro|Elenco, Elenco ═══
            La testata non è più sovrapposta al libro: sta nel flusso, e il
            libro (#binderLibroWrap, flex:1) occupa lo spazio che resta — il
