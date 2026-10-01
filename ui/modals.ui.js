@@ -33,6 +33,12 @@
             // in apriFlipCardHome() — reset innocuo anche se non era mai
             // stato bloccato (modalità immagine semplice).
             document.body.style.overflow = '';
+            // RESTYLE (carta dentro la cornice): torna alle misure di sempre.
+            const _m = document.getElementById('immagineModal');
+            if (_m && _m.classList.contains('flip-in-cornice')) {
+                _m.classList.remove('flip-in-cornice');
+                ['top', 'left', 'width', 'height', 'right', 'bottom'].forEach(k => { _m.style[k] = ''; });
+            }
         }
 
 
