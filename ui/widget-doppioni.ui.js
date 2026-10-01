@@ -217,10 +217,27 @@ function _doppioniRenderCorpo() {
             <span class="dp-chip ${ordinamento === 'valore' ? 'attivo' : ''}" data-ord="valore" onclick="_doppioniImpostaOrdinamento('valore')">Valore</span>
             <span class="dp-chip ${ordinamento === 'alfabetico' ? 'attivo' : ''}" data-ord="alfabetico" onclick="_doppioniImpostaOrdinamento('alfabetico')">A → Z</span>
         </div>
-        <p class="dp-suggerimento">Tocca una riga per vedere la ${_doppioniModalita === 'carte' ? 'carta a tutto schermo' : 'scheda'} e spostare le copie.</p>
-        <div id="doppioniGriglia"></div>
+        <p class="dp-suggerimento dp-solo-tel">Tocca una riga per vedere la ${_doppioniModalita === 'carte' ? 'carta a tutto schermo' : 'scheda'} e spostare le copie.</p>
+        <div class="dp-layout">
+            <div class="dp-sx"><div id="doppioniGriglia"></div>
+                <p class="dp-suggerimento dp-solo-pc">Clicca una riga per gestire le copie · clicca la ${_doppioniModalita === 'carte' ? 'carta' : 'miniatura'} per vederla a tutto schermo</p></div>
+            <div class="dp-pannello-pc" id="doppioniPannelloPc"></div>
+        </div>
     `;
     _doppioniRenderGriglia();
+    _doppioniPcAutoApri();
+}
+
+// ── PC (RESTYLE, tavola "Doppioni PC"): pannello copie a destra ─────────
+let _doppioniInline = false;
+function _doppioniEPC() { const s = document.getElementById('doppioni'); return !!s && s.clientWidth >= 780; }
+function _doppioniPcAutoApri() {
+    const box = document.getElementById('doppioniPannelloPc');
+    if (!box || !_doppioniEPC()) return;
+    const gruppi = _doppioniModalita === 'carte' ? _doppioniGruppiCarte : _doppioniGruppiBox;
+    const primo = document.querySelector('#doppioniGriglia .dp-riga');
+    if (!gruppi.length || !primo) { box.innerHTML = ''; return; }
+    _doppioniApriDettaglio(Number(primo.dataset.i));
 }
 
 function _doppioniImpostaOrdinamento(ordine) {
@@ -274,11 +291,11 @@ function _doppioniRenderGriglia() {
             ? [prima.lang, prima.cond].filter(Boolean).join(' · ')
             : [prima.codice, prima.lingua].filter(Boolean).join(' · ');
         return `
-            <div class="dp-riga" onclick="_doppioniApriDettaglio(${indiceReale})">
-                <div class="dp-fig dp-fig-${g.tipo}">${fig}</div>
+            <div class="dp-riga${_doppioniInline && indiceReale === _doppioniGruppoApertoIndice ? ' sel' : ''}" data-i="${indiceReale}" onclick="_doppioniApriDettaglio(${indiceReale})">
+                <div class="dp-fig dp-fig-${g.tipo}" ${g.tipo === 'carte' ? `onclick="if (_doppioniEPC()) { event.stopPropagation(); apriFlipCardHome('${escapeJsAttr(String(g.righe[0].id))}', { nascondiVaiAlBinder: true }); }"` : ''}>${fig}</div>
                 <div class="dp-riga-testo">
                     <b>${escapeHtml(g.nome)}</b>
-                    <span>${escapeHtml(dettaglio)}</span>
+                    <span>${escapeHtml(g.tipo === 'carte' ? [prima.code, dettaglio].filter(Boolean).join(' · ') : dettaglio)}</span>
                     <span class="dp-badge">×${g.qtyTotale} · ${g.qtyTotale - 1} in più</span>
                 </div>
                 <div class="dp-riga-destra"><b>${eur(g.valoreStack)}</b><span>${eur(g.prezzoUnitario)} cad.</span></div>
@@ -304,6 +321,18 @@ async function _doppioniApriDettaglio(indice) {
     _doppioniGruppoApertoIndice = indice;
     _doppioniRigheSorgenteScelta = null;
     _doppioniDestinazioniCache = null;
+
+    if (_doppioniEPC()) {
+        _doppioniInline = true;
+        document.querySelectorAll('#doppioniGriglia .dp-riga').forEach(r => r.classList.toggle('sel', r.dataset.i === String(indice)));
+        const box = document.getElementById('doppioniPannelloPc');
+        if (box) box.innerHTML = `<div class="doppioni-controlli-loading"><i class="fa-solid fa-spinner fa-spin"></i> Carico le posizioni...</div>`;
+        const posizioniPc = await _doppioniCaricaPosizioni(gruppo);
+        if (_doppioniGruppoApertoIndice !== indice) return;
+        _doppioniRenderControlli(gruppo, posizioniPc);
+        return;
+    }
+    _doppioniInline = false;
 
     const controlli = document.getElementById('doppioniControlliContainer');
     controlli.style.display = 'flex';
@@ -392,6 +421,15 @@ function _doppioniFermaOsservazioneFlip() {
 }
 
 function _doppioniChiudiDettaglio() {
+    if (_doppioniInline) {
+        const box = document.getElementById('doppioniPannelloPc');
+        if (box) box.innerHTML = '';
+        _doppioniGruppoApertoIndice = null;
+        _doppioniRigheSorgenteScelta = null;
+        _doppioniDestinazioniCache = null;
+        document.querySelectorAll('#doppioniGriglia .dp-riga.sel').forEach(r => r.classList.remove('sel'));
+        return;
+    }
     _doppioniFermaOsservazioneFlip(); // PRIMA di richiudere il flip sotto, altrimenti la disconnect avverrebbe dopo aver già innescato un secondo giro
 
     const gruppi = _doppioniModalita === 'carte' ? _doppioniGruppiCarte : _doppioniGruppiBox;
@@ -495,11 +533,43 @@ function _doppioniPosizioniRaggruppate(posizioni) {
 // bottone Modifica, invariato nella sua funzione (apre il modale di
 // modifica già esistente, carte o box) come confermato da Claudio.
 function _doppioniRenderControlli(gruppo, posizioni) {
-    const controlli = document.getElementById('doppioniControlliContainer');
+    const controlli = document.getElementById(_doppioniInline ? 'doppioniPannelloPc' : 'doppioniControlliContainer');
     if (!controlli || _doppioniGruppoApertoIndice == null) return;
     const eur = (v) => formattaEuro(v); // formato unico "12.345,00 €" (decisione Claudio 2026-09-25)
 
     _doppioniPosizioniRaggruppateCorrenti = _doppioniPosizioniRaggruppate(posizioni);
+    if (_doppioniInline) {
+        const prima = gruppo.righe[0] || {};
+        const src = gruppo.immagine ? (_urlImmagineVisualizzabile(gruppo.immagine, 300) || '') : '';
+        const sotto = gruppo.tipo === 'carte'
+            ? [prima.code, prima.lang, prima.cond].filter(Boolean).join(' · ')
+            : [prima.codice, prima.lingua].filter(Boolean).join(' · ');
+        const idMod = escapeJsAttr(String(prima.id));
+        const apri = gruppo.tipo === 'carte' ? `onclick="apriFlipCardHome('${idMod}', { nascondiVaiAlBinder: true })"` : '';
+        controlli.innerHTML = `
+            <div class="dp-p-testa">
+                <span class="dp-p-fig dp-fig-${gruppo.tipo}" ${apri}>${src ? `<img src="${src}" alt="">` : `<i class="fa-solid ${gruppo.tipo === 'carte' ? 'fa-image' : 'fa-box'}"></i>`}</span>
+                <div class="dp-p-testo">
+                    <div class="dp-p-nome">${escapeHtml(gruppo.nome)}</div>
+                    <div class="dp-p-sotto">${escapeHtml(sotto)}</div>
+                    <div class="dp-p-stat">
+                        <div><b>${gruppo.qtyTotale}</b><span>copie</span></div>
+                        <div><b>${eur(gruppo.valoreStack)}</b><span>valore stack</span></div>
+                        <div><b>${eur(gruppo.prezzoUnitario * (gruppo.qtyTotale - 1))}</b><span>extra</span></div>
+                    </div>
+                    <button type="button" class="dp-p-btn" onclick="${gruppo.tipo === 'carte' ? `_doppioniApriModificaCarta('${idMod}')` : `_doppioniApriModificaBox('${idMod}')`}"><i class="fa-solid fa-pen"></i> Modifica</button>
+                    ${gruppo.tipo === 'carte' ? '<div class="dp-p-nota">Clicca la carta per vederla a tutto schermo e girarla</div>' : ''}
+                </div>
+            </div>
+            <div class="dp-p-titolo">Dove sono le copie</div>
+            <div id="doppioniPosizioniElenco">${_doppioniPosizioniRaggruppateCorrenti.map((p, i) => `
+                <div class="dp-p-pos" onclick="_doppioniSelezionaSorgente(${i})">
+                    <span><i class="fa-solid fa-location-dot"></i> ${escapeHtml(p.etichetta.replace(/^In "(.*)"$/, '$1'))}</span><b>${p.qtyTotale} ${p.qtyTotale === 1 ? 'copia' : 'copie'}</b>
+                    <button type="button">Sposta da qui</button>
+                </div>`).join('')}</div>
+            <div id="doppioniSpostaFlusso"></div>`;
+        return;
+    }
     const righePosizioni = _doppioniPosizioniRaggruppateCorrenti.map((p, i) => `
         <div class="pg-riga" data-tocca>
             <div class="pg-testo"><b>${p.qtyTotale} ${p.qtyTotale === 1 ? 'copia' : 'copie'}</b><span>${escapeHtml(p.etichetta)}</span></div>

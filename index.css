@@ -7705,3 +7705,44 @@
             #inserimento .ins-ultimo-lista { display: block; }
             #inserimento .ins-ultimo-riga b { font-size: 0.82rem; }
         }
+
+        /* ── Doppioni PC: pannello copie a destra (RESTYLE, tavola "Doppioni PC") ── */
+        #doppioni { container-type: inline-size; }
+        #doppioni .dp-solo-pc, #doppioni .dp-pannello-pc { display: none; }
+        #doppioni .dp-p-testa { display: flex; gap: 16px; align-items: flex-start; }
+        #doppioni .dp-p-fig { width: 130px; height: 182px; border-radius: 10px; flex: 0 0 auto; overflow: hidden; background: var(--primary-light); color: var(--primary); display: flex; align-items: center; justify-content: center; font-size: 2rem; cursor: zoom-in; box-shadow: 0 6px 18px rgba(0,0,0,.2); }
+        #doppioni .dp-p-fig.dp-fig-box { height: 130px; cursor: default; }
+        #doppioni .dp-p-fig img { width: 100%; height: 100%; object-fit: cover; }
+        #doppioni .dp-p-testo { flex: 1; min-width: 0; }
+        #doppioni .dp-p-nome { font-size: 1.35rem; font-weight: 800; color: var(--text-dark); line-height: 1.15; }
+        #doppioni .dp-p-sotto { font-size: 0.82rem; color: var(--text-muted); margin: 3px 0 10px; }
+        #doppioni .dp-p-stat { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+        #doppioni .dp-p-stat div { background: var(--primary-light); border-radius: 10px; padding: 7px 9px; display: flex; flex-direction: column; min-width: 0; }
+        #doppioni .dp-p-stat b { font-size: 0.85rem; color: var(--text-dark); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        #doppioni .dp-p-stat span { font-size: 0.7rem; color: var(--text-muted); }
+        #doppioni .dp-p-btn { margin-top: 10px; font: inherit; font-weight: 700; font-size: 0.82rem; padding: 7px 14px; border-radius: 999px; border: 1px solid var(--border-color); background: var(--card-bg); color: var(--text-dark); cursor: pointer; }
+        #doppioni .dp-p-nota { font-size: 0.74rem; color: var(--text-muted); margin-top: 8px; }
+        #doppioni .dp-p-titolo { font-weight: 800; color: var(--text-dark); margin: 18px 0 8px; }
+        #doppioni .dp-p-pos { display: flex; align-items: center; gap: 10px; padding: 11px 12px; border: 1px solid var(--border-color); border-radius: 12px; margin-bottom: 8px; cursor: pointer; }
+        #doppioni .dp-p-pos span { flex: 1; font-weight: 700; color: var(--text-dark); font-size: 0.88rem; }
+        #doppioni .dp-p-pos span i { color: var(--primary); margin-right: 4px; }
+        #doppioni .dp-p-pos b { font-size: 0.85rem; color: var(--text-muted); }
+        #doppioni .dp-p-pos button { font: inherit; font-size: 0.76rem; font-weight: 700; padding: 5px 10px; border-radius: 999px; border: 1px solid var(--border-color); background: var(--card-bg); color: var(--primary); cursor: pointer; }
+        #doppioni #doppioniPannelloPc #doppioniSpostaFlusso .pg-pagina { background: var(--primary-light); border-radius: 12px; padding: 12px !important; }
+        #doppioni #doppioniPannelloPc .pg-filtro { font: inherit; font-size: 0.8rem; font-weight: 700; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--border-color); background: var(--card-bg); color: var(--text-dark); cursor: pointer; }
+        #doppioni #doppioniPannelloPc .primario { font: inherit; font-weight: 800; padding: 10px; border-radius: 10px; border: 0; background: var(--primary); color: #fff; cursor: pointer; }
+        @container (min-width: 780px) {
+            #doppioni .dp-pagina { max-width: 1240px; }
+            #doppioni .dp-solo-tel { display: none; }
+            #doppioni .dp-solo-pc { display: block; margin-top: 10px; }
+            #doppioni .dp-seg { max-width: 260px; }
+            #doppioni .dp-layout { display: grid; grid-template-columns: minmax(0, 1fr) 400px; gap: 18px; align-items: start; }
+            #doppioni .dp-sx { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 18px; padding: 10px 14px; }
+            #doppioni .dp-riga { padding: 10px 8px; border-radius: 12px; }
+            #doppioni .dp-riga.sel { background: var(--primary-light); }
+            #doppioni .dp-riga-testo { flex-direction: row; flex-wrap: wrap; align-items: baseline; column-gap: 10px; }
+            #doppioni .dp-riga-testo b { flex: 1 1 100%; }
+            #doppioni .dp-fig { width: 34px; height: 47px; flex-basis: 34px; cursor: zoom-in; }
+            #doppioni .dp-pannello-pc { display: block; position: sticky; top: 8px; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 18px; padding: 18px; }
+            #doppioni .dp-pannello-pc:empty { display: none; }
+        }
