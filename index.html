@@ -1479,6 +1479,16 @@
                         <button class="btn-secondary" onclick="esportaDati('json')"><i class="fa-solid fa-file-code"></i> Esporta JSON</button>
                     </div>
                 </div>
+
+                <div class="settings-card">
+                    <h3 style="margin-bottom: 0.3rem; color: var(--text-dark); display: flex; align-items: center; gap: 0.6rem; font-size: 1.15rem; font-weight: 800;">
+                        <i class="fa-solid fa-file-import" style="color: var(--primary);"></i> Importa da CSV
+                    </h3>
+                    <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 1rem;">Colonne: nome (obbligatoria), lingua, condizione, qty, reverse, first_ed, sigillata_originale, nota, location, destinazione. Le righe vanno in coda, come le carte inserite a mano.</p>
+                    <input type="file" id="importCsvFile" accept=".csv,text/csv" style="display:none;" onchange="importaCsvDaFile(this)">
+                    <button class="btn-secondary" onclick="document.getElementById('importCsvFile').click()"><i class="fa-solid fa-file-csv"></i> Scegli file CSV</button>
+                    <p id="importCsvEsito" style="font-size:0.8rem; margin-top:0.7rem;"></p>
+                </div>
             </div>
 
             <!-- ── GENERALI ───────────────────────────────────────────── -->
@@ -2801,6 +2811,7 @@
     <script src="ui/home.ui.js"></script>
     <script src="ui/flip-card-detail.ui.js"></script>
     <script src="ui/account.ui.js"></script>
+    <script src="ui/import-csv.ui.js"></script>
     <script src="ui/queue.ui.js"></script>
     <script src="ui/queue-correzioni.ui.js"></script>
     <script src="ui/modals.ui.js"></script>
