@@ -270,14 +270,19 @@ function _daFareTesti(s, nickname) {
     const titolo = escapeHtml(s.testo);
     if (s.id === 'richieste_da_gestire') {
         const righe = s.righe || [];
-        const persone = [...new Set(righe.map(r => (r.richieste_scambio || {}).richiedente_id).filter(Boolean))];
+        // FASE 8b: un ospite non ha id utente → conta come persona a sé (per codice RQ).
+        const _chiRiga = (r) => { const rs = r.richieste_scambio || {}; return rs.richiedente_id || (rs.codice_rq ? 'ospite:' + rs.codice_rq : null); };
+        const persone = [...new Set(righe.map(_chiRiga).filter(Boolean))];
         const oggetti = righe.map(r => (r.snapshot || {}).nome || (r.snapshot || {}).codice).filter(Boolean);
         const pezzi = [];
         if (oggetti.length) pezzi.push(escapeHtml(oggetti.slice(0, 2).join(', ')) + (oggetti.length > 2 ? ` e altri ${oggetti.length - 2}` : ''));
         if (s.valore > 0) pezzi.push(formattaEuro(s.valore));
         pezzi.push(persone.length > 1 ? `da ${persone.length} persone` : 'aspetta una tua risposta');
         if (persone.length === 1) {
-            const chi = nickname[persone[0]] ? escapeHtml(nickname[persone[0]]) : 'Qualcuno del gruppo';
+            const rsOspite = persone[0].startsWith('ospite:') ? ((righe[0] || {}).richieste_scambio || {}) : null;
+            const chi = rsOspite
+                ? escapeHtml((rsOspite.ospite_nome || 'Un ospite') + ' (ospite)')
+                : (nickname[persone[0]] ? escapeHtml(nickname[persone[0]]) : 'Qualcuno del gruppo');
             return { titolo: `${chi} ti ha chiesto ${righe.length} oggett${righe.length === 1 ? 'o' : 'i'}`, sotto: pezzi.join(' · ') };
         }
         return { titolo, sotto: pezzi.join(' · ') };

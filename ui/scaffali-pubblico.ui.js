@@ -108,6 +108,8 @@ async function caricaCatalogo() {
     // ui/binder-pubblico.ui.js.
     const eScambio = _scaffaleInfo.tipo === 'scambio';
     document.body.classList.toggle('scaffale-pubblico-selezionabile', eScambio);
+    // FASE 8b: "Hai un codice richiesta? Controlla" (ui/richiesta-ospite.ui.js)
+    if (eScambio && typeof ospiteMostraControllo === 'function') ospiteMostraControllo();
     const barraTotale = document.getElementById('barraTotale');
     if (barraTotale) barraTotale.style.display = eScambio ? 'flex' : 'none';
     // RESTYLE BINDEX FASE 6c: in Scambio niente "Vetrina pubblica — sola lettura"

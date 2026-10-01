@@ -10,11 +10,19 @@
 // il nome/dettagli dell'oggetto vengono dallo snapshot congelato nella
 // riga stessa (jsonb), non serve join su carte/prodotti_sealed.
 async function richiesteScambioRicevuteList(userId) {
-    return supabaseClient
+    // FASE 8b: campi ospite (sql/88). Se lo SQL non è ancora applicato le
+    // colonne non esistono: si rilegge con la select di prima, così la
+    // pagina Richieste non resta mai vuota per un ordine di rilascio.
+    const leggi = (campi) => supabaseClient
         .from('richieste_scambio_righe')
-        .select('*, richieste_scambio(richiedente_id, creato_il)')
+        .select(`*, richieste_scambio(${campi})`)
         .eq('proprietario_id', userId)
         .order('creato_il', { ascending: false });
+    const esito = await leggi('richiedente_id, creato_il, codice_rq, ospite_nome, ospite_contatto_tipo, ospite_contatto, ospite_messaggio');
+    if (esito.error && /codice_rq|ospite_|42703|column/i.test((esito.error.message || '') + ' ' + (esito.error.code || ''))) {
+        return leggi('richiedente_id, creato_il');
+    }
+    return esito;
 }
 
 // Righe dove l'utente è RICHIEDENTE (richieste inviate).
@@ -62,4 +70,16 @@ async function richiesteScambioContaDaGestire(userId) {
         .select('id', { count: 'exact', head: true })
         .eq('proprietario_id', userId)
         .eq('stato_riga', 'in_attesa');
+}
+
+// RESTYLE BINDEX FASE 8b (sql/88): richieste degli ospiti.
+// Scadenza (7 giorni) e pulizia dati: il DB non ha un pianificatore, quindi
+// il sito la fa partire all'apertura della pagina Richieste.
+async function scadiRichiesteOspite() {
+    return supabaseClient.rpc('scadi_richieste_ospite');
+}
+
+// Blocca il dispositivo dell'ospite (solo verso di me) e annulla le sue richieste aperte.
+async function bloccaOspite(richiestaId) {
+    return supabaseClient.rpc('blocca_ospite', { p_richiesta_id: richiestaId });
 }

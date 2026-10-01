@@ -153,7 +153,14 @@ async function tentaLoginPubblico() {
 async function avviaRichiestaScambio(proprietarioId) {
     _proprietarioIdRichiestaPendente = proprietarioId;
     const utente = await _sessionePubblicoAttiva();
-    if (!utente) { apriLoginPubblico(); return; }
+    // RESTYLE BINDEX FASE 8b: senza sessione si sceglie "Ho un profilo" o
+    // "Continua come ospite" (ui/richiesta-ospite.ui.js, sql/88); se quel
+    // file non è caricato resta il login di sempre.
+    if (!utente) {
+        if (typeof apriSceltaRichiesta === 'function') apriSceltaRichiesta(proprietarioId);
+        else apriLoginPubblico();
+        return;
+    }
     await _richiediScambioDopoLogin();
 }
 
