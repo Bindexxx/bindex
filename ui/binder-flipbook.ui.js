@@ -39,6 +39,8 @@
 // funzionale (Regola d'Oro #1: stabilità > pulizia del nome).
 
 let _libroSelezionabile = false;
+// RESTYLE BINDEX FASE 6b: Wishlist — il bollino sulla tasca mostra "max X" (prezzo obiettivo) invece del prezzo.
+let _libroPrezzoObiettivo = false;
 let _copertinaRisolta = null;
 
 async function _caricaCopertinaBinder(binderId) {
@@ -416,7 +418,12 @@ function _libroHtmlSelezione(card, qtyMax, bloccata) {
     // RESTYLE BINDEX FASE 6: tondino "+" quando 0, "− N +" quando > 0, e
     // bollino prezzo sulla tasca. Stessa logica di prima (modificaQty
     // limita già al massimo disponibile): cambia solo l'HTML/CSS.
-    const prezzo = (card.price != null && Number(card.price) > 0) ? `<span class="bx-slot-prezzo">${formattaEuro(card.price)}</span>` : '';
+    let prezzo = '';
+    if (_libroPrezzoObiettivo) {
+        if (card.prezzoObiettivo != null) prezzo = `<span class="bx-slot-prezzo">max ${formattaEuro(card.prezzoObiettivo)}</span>`;
+    } else if (card.price != null && Number(card.price) > 0) {
+        prezzo = `<span class="bx-slot-prezzo">${formattaEuro(card.price)}</span>`;
+    }
     if (bloccata) return `${prezzo}<span class="bx-slot-lucchetto"><i class="fa-solid fa-lock"></i></span>`;
     const piu = `<button type="button" class="bx-slot-btn" aria-label="Aggiungi" onclick="event.stopPropagation(); modificaQty('${idAttr}', 1)" ${qtyAttuale >= qtyMax ? 'disabled' : ''}>+</button>`;
     if (qtyAttuale <= 0) return `${prezzo}<div class="bx-slot-azione" onclick="event.stopPropagation();">${piu}</div>`;
