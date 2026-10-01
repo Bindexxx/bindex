@@ -14,6 +14,20 @@ async function ordiniLeggiStato(ordineId) {
     return supabaseClient.from('ordini').select('stato, risultato, errore_msg').eq('id', ordineId).single();
 }
 
+// RESTYLE BINDEX FASE 8e: i controlli prezzi dell'utente negli ultimi N
+// giorni (solo lettura, policy "utenti autenticati possono leggere ordini").
+async function ordiniControlliRecentiUtente(userId, giorni) {
+    const da = new Date(Date.now() - giorni * 86400000).toISOString();
+    return supabaseClient
+        .from('ordini')
+        .select('id, tipo, stato, parametri, creato_il, completato_il, errore_msg')
+        .eq('creato_da', userId)
+        .in('tipo', ['controlla_prezzi', 'controlla_prezzi_wishlist', 'controlla_prezzi_sealed'])
+        .gte('creato_il', da)
+        .order('creato_il', { ascending: false })
+        .limit(30);
+}
+
 async function ordiniUltimoCompletato(userId) {
     return supabaseClient
         .from('ordini')
