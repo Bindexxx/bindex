@@ -4381,6 +4381,34 @@
         #prezziagg .pa-destra b { font-size: 0.95rem; color: var(--text-dark); white-space: nowrap; }
         #prezziagg .pa-destra span { font-size: 0.8rem; font-weight: 800; white-space: nowrap; }
 
+        /* ═══════════════════════════════════════════════════════════════
+           PAGINA CONTRIBUTI — RESTYLE BINDEX FASE 3i (2026-10-01)
+           ═══════════════════════════════════════════════════════════════ */
+        #contributi .ct-pagina { max-width: 720px; padding-bottom: 4.5rem; }
+        #contributi .ct-quota { display: flex; align-items: center; gap: 18px; margin: 6px 0 16px; }
+        #contributi .ct-anello { width: 120px; height: 120px; flex: 0 0 120px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+            background: conic-gradient(var(--primary) calc(var(--ct-perc, 0) * 1%), var(--primary-light) 0); }
+        #contributi .ct-anello-dentro { width: 92px; height: 92px; border-radius: 50%; background: var(--bg-color); display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        #contributi .ct-anello-dentro b { font-size: 1.6rem; color: var(--text-dark); line-height: 1; }
+        #contributi .ct-anello-dentro span { font-size: 0.72rem; color: var(--text-muted); }
+        #contributi .ct-vuoto .ct-anello-dentro i { font-size: 2rem; color: var(--primary); opacity: .55; }
+        #contributi .ct-frase { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+        #contributi .ct-frase b { font-size: 1.2rem; color: var(--text-dark); }
+        #contributi .ct-frase span { font-size: 0.88rem; color: var(--text-muted); line-height: 1.35; }
+        #contributi .ct-stat { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+        #contributi .ct-stat > div { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 16px; padding: 14px; display: flex; flex-direction: column; gap: 2px; }
+        #contributi .ct-stat b { font-size: 1.6rem; color: var(--text-dark); }
+        #contributi .ct-stat span { font-size: 0.8rem; color: var(--text-muted); }
+        #contributi .ct-scheda { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 18px; padding: 16px; margin-bottom: 14px; }
+        #contributi .ct-scheda h4 { margin: 0 0 12px; font-size: 1rem; color: var(--text-dark); }
+        #contributi .ct-passo { display: flex; gap: 12px; align-items: flex-start; margin-bottom: 10px; }
+        #contributi .ct-passo span { flex: 0 0 26px; width: 26px; height: 26px; border-radius: 50%; background: var(--primary-light); color: var(--primary); font-weight: 800; font-size: 0.8rem; display: flex; align-items: center; justify-content: center; }
+        #contributi .ct-passo p { margin: 2px 0 0; font-size: 0.9rem; color: var(--text-dark); line-height: 1.35; }
+        #contributi .ct-aiuta { display: flex; align-items: center; gap: 14px; }
+        #contributi .ct-aiuta-ico { width: 52px; height: 52px; border-radius: 50%; background: var(--primary-light); color: var(--primary); display: flex; align-items: center; justify-content: center; font-size: 1.2rem; flex: 0 0 52px; }
+        #contributi .ct-aiuta b { display: block; font-size: 1rem; color: var(--text-dark); }
+        #contributi .ct-aiuta span { font-size: 0.82rem; color: var(--text-muted); }
+
         /* Toggle modalità immagini/elenco — preferenza per-utente, vedi
            impostaModalitaBinder() in ui/binder.ui.js */
         .binder-modalita-toggle { display: flex; gap: 0.4rem; margin: 0.8rem 0; }
