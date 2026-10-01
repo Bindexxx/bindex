@@ -171,6 +171,7 @@
                 notes: r.note || '',
                 immagine: r.immagine || null,
                 prezzoObiettivo: r.prezzo_obiettivo != null ? Number(r.prezzo_obiettivo) : null,
+                variazioneNumerica: (r.prezzo_precedente != null && r.prezzo != null) ? (Number(r.prezzo) - Number(r.prezzo_precedente)) : null, // RESTYLE: colonna Var. della Wishlist
             }));
 
             carteReali = [...righeCarte, ...righeWishlist];

@@ -150,6 +150,7 @@ async function apriDettaglioWidget(tabId, evt) {
         _posizionaContainerNelloSchermo();
         // Collezione: disegnata a pannello ancora nascosto, va rimisurata.
         if (tabId === 'visualizzazione' && typeof collezioneRiallinea === 'function') collezioneRiallinea();
+        if (tabId === 'wishlist' && typeof _wishlistRenderElenco === 'function') _wishlistRenderElenco(); // elenco (telefono) o tabella (PC)
         // Un frame di distacco tra "cerchio a 0%" e "aggiungi la classe che
         // lo porta a 150%": necessario perché il browser faccia partire
         // davvero la transizione invece di saltare subito allo stato finale.
