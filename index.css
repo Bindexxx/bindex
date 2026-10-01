@@ -4403,24 +4403,7 @@
         /* ═══════════════════════════════════════════════════════════════
            CONTROLLO PREZZI + PREZZI AGGIORNATI — RESTYLE BINDEX FASE 3h
            ═══════════════════════════════════════════════════════════════ */
-        #prezzi .pz-pagina, #prezziagg .pa-pagina { max-width: 720px; padding-bottom: 4.5rem; }
-        #prezzi .pz-riquadro { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 18px; margin-bottom: 12px; overflow: hidden; }
-        #prezzi .pz-testa { display: flex; align-items: center; gap: 12px; padding: 14px 16px; cursor: pointer; }
-        #prezzi .pz-testa b { flex: 1; color: var(--text-dark); font-size: 1rem; }
-        #prezzi .pz-testa input { width: 20px; height: 20px; accent-color: var(--primary); order: 3; }
-        #prezzi .pz-ico { width: 38px; height: 38px; border-radius: 12px; background: var(--primary-light); color: var(--primary); display: flex; align-items: center; justify-content: center; }
-        #prezzi .pz-corpo { padding: 0 16px 14px; border-top: 1px solid var(--border-color); padding-top: 12px; }
-        #prezzi .pz-etichetta { display: flex; justify-content: space-between; align-items: center; font-size: 0.72rem; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; color: var(--text-muted); margin: 6px 0; }
-        #prezzi .pz-link { background: none; border: none; color: var(--primary); font-weight: 800; font-size: 0.78rem; cursor: pointer; text-transform: none; letter-spacing: 0; }
-        #prezzi .pz-lista { display: flex; flex-direction: column; gap: 6px; max-height: 190px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 12px; padding: 10px; background: var(--bg-color); }
-        #prezzi .pz-nota { font-size: 0.76rem; color: var(--text-muted); margin: 6px 0; }
-        #prezzi .pz-stato { font-size: 0.82rem; color: var(--text-muted); margin: 10px 0 0; }
-        #prezzi .pz-centro { text-align: center; }
-        #prezzi .pz-seg { display: flex; gap: 8px; }
-        #prezzi .pz-seg .theme-btn { flex: 1; }
-        #prezzi .pz-avvia { width: 100%; margin-top: 6px; padding: 15px; border-radius: 16px; border: none; background: var(--primary); color: #fff; font-family: inherit; font-weight: 800; font-size: 1rem; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; }
-        #prezzi .pz-avvia:disabled { opacity: .6; }
-        #prezzi .pz-secondario { width: 100%; margin-top: 8px; padding: 13px; border-radius: 16px; border: 1px solid var(--border-color); background: var(--card-bg); color: var(--text-dark); font-family: inherit; font-weight: 800; font-size: 0.9rem; cursor: pointer; }
+        #prezziagg .pa-pagina { max-width: 720px; padding-bottom: 4.5rem; }
 
         #prezziagg .pa-testa { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
         #prezziagg .pa-quando { font-size: 0.82rem; color: var(--text-muted); white-space: nowrap; }
@@ -6764,15 +6747,6 @@
 
 
 /* ═══ RESTYLE BINDEX FASE 8e — elenco Controlli prezzi ═══ */
-#prezzi .pz-controllo { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border-color); }
-#prezzi .pz-controllo:last-child { border-bottom: none; }
-#prezzi .pz-controllo > i { color: var(--primary); width: 18px; text-align: center; }
-#prezzi .pz-controllo-info { flex: 1; min-width: 0; display: flex; flex-direction: column; font-size: 0.85rem; }
-#prezzi .pz-controllo-info span { font-size: 0.72rem; color: var(--text-muted); }
-#prezzi .pz-stato-pill { font-size: 0.68rem; font-weight: 800; padding: 3px 9px; border-radius: 999px; white-space: nowrap; background: var(--bg-color); color: var(--text-muted); }
-#prezzi .pz-stato-pill.ok { background: rgba(46,125,50,0.14); color: #2e7d32; }
-#prezzi .pz-stato-pill.ko { background: rgba(211,47,47,0.14); color: #d32f2f; }
-#prezzi .pz-stato-pill.att { background: rgba(184,134,11,0.16); color: #b8860b; }
 
         /* ==========================================================================
            RESTYLE BINDEX FASE 8c — Foto reali di questa copia (utils/foto-reali.js)
@@ -7467,3 +7441,85 @@
             #prezziagg .pa-dettaglio { display: block; position: sticky; top: 8px; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 18px; padding: 18px; }
         }
         #prezziagg .pa-gruppo i { font-style: normal; }
+
+        /* ── Controlla prezzi (RESTYLE, tavole "Controlla prezzi") ─────────
+           Telefono: riquadri, Cosa controllo, pulsante, Controlli sotto.
+           PC: Cosa controllo a sinistra, Controlli a destra. */
+        #prezzi { container-type: inline-size; }
+        #prezzi .pz-pagina { max-width: 1240px; padding-bottom: 4.5rem; }
+        #prezzi .pz-solo-pc { display: none !important; }
+        #prezzi em { font-style: normal; }
+        #prezzi .pz-testa-pagina .page-title { font-size: 1.5rem; font-weight: 800; letter-spacing: -0.3px; color: var(--text-dark); }
+        #prezzi .pz-sottotitolo { display: none; margin: 2px 0 0; font-size: 0.85rem; color: var(--text-muted); }
+        #prezzi .pz-stat { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 14px 0 16px; }
+        #prezzi .pz-box { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 16px; padding: 10px 11px; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+        #prezzi .pz-box > span { font-size: 0.74rem; color: var(--text-muted); }
+        #prezzi .pz-box > b { font-size: 1rem; color: var(--text-dark); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 6px; }
+        #prezzi .pz-box small { font-size: 0.72rem; color: var(--text-muted); }
+        #prezzi .pz-allerta { color: #b07800 !important; }
+        #prezzi .pz-link-sotto { font-size: 0.74rem; color: var(--primary); text-decoration: underline; cursor: pointer; }
+        #prezzi .pz-su { color: #2e7d32; font-weight: 700; }
+        #prezzi .pz-giu { color: #d32f2f; font-weight: 700; }
+        #prezzi .pz-pallino { width: 10px; height: 10px; border-radius: 50%; background: #b9b6c4; display: inline-block; }
+        #prezzi .pz-pallino.on { background: #2e7d32; }
+        #prezzi .pz-layout, #prezzi .pz-sx, #prezzi .pz-dx { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+        #prezzi .pz-scheda-cosa { background: none; border: 0; padding: 0; }
+        #prezzi .pz-dx .pz-scheda { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 18px; padding: 14px 16px; }
+        #prezzi .pz-titolo { display: flex; justify-content: space-between; align-items: baseline; font-weight: 800; color: var(--text-dark); font-size: 1.02rem; margin-bottom: 10px; }
+        #prezzi .pz-titolo small { font-weight: 600; font-size: 0.76rem; color: var(--text-muted); }
+        #prezzi .pz-cosa { display: flex; flex-direction: column; gap: 10px; }
+        #prezzi .pz-opz { position: relative; display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 16px; border: 1px solid var(--border-color); background: var(--card-bg); cursor: pointer; }
+        #prezzi .pz-opz.attivo { border-color: var(--primary); background: color-mix(in srgb, var(--primary-light) 45%, var(--card-bg)); }
+        #prezzi .pz-opz input { order: 3; margin-left: auto; width: 22px; height: 22px; accent-color: var(--primary); }
+        #prezzi .pz-opz-testo { display: flex; flex-direction: column; min-width: 0; }
+        #prezzi .pz-opz-testo b { color: var(--text-dark); }
+        #prezzi .pz-opz-testo small { font-size: 0.8rem; color: var(--text-muted); }
+        #prezzi .pz-ico { width: 40px; height: 40px; border-radius: 12px; background: var(--primary-light); color: var(--primary); display: flex; align-items: center; justify-content: center; flex: 0 0 auto; }
+        #prezzi .pz-blocco { margin-top: 14px; }
+        #prezzi .pz-etichetta { font-size: 0.72rem; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; color: var(--text-muted); margin: 0 2px 8px; }
+        #prezzi .pz-chips { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
+        #prezzi .pz-chips::-webkit-scrollbar { display: none; }
+        #prezzi .pz-chips-lista { display: flex; gap: 6px; }
+        #prezzi .pz-chip { flex: 0 0 auto; display: inline-flex; align-items: center; font: inherit; font-size: 0.8rem; font-weight: 700; padding: 7px 12px; border-radius: 999px; white-space: nowrap; border: 1px solid var(--border-color); background: var(--card-bg); color: var(--text-dark); cursor: pointer; }
+        #prezzi .pz-chip input { display: none; }
+        #prezzi .pz-chip.attivo, #prezzi label.pz-chip:has(input:checked) { background: var(--primary-light); border-color: var(--primary); color: var(--primary); }
+        #prezzi .pz-seg { display: flex; gap: 4px; padding: 4px; border-radius: 14px; background: var(--primary-light); }
+        #prezzi .pz-segbtn { flex: 1; font: inherit; font-weight: 700; font-size: 0.88rem; padding: 10px; border-radius: 11px; border: 0; background: transparent; color: var(--text-muted); cursor: pointer; }
+        #prezzi .pz-segbtn.attivo { background: var(--card-bg); color: var(--text-dark); box-shadow: 0 1px 4px rgba(0,0,0,.1); }
+        #prezzi .pz-nota { font-size: 0.78rem; color: var(--text-muted); margin: 8px 2px 0; }
+        #prezzi .pz-centro { text-align: center; }
+        #prezzi .pz-avvia { width: 100%; margin-top: 16px; padding: 15px; border-radius: 16px; border: none; background: var(--primary); color: #fff; font-family: inherit; font-weight: 800; font-size: 1rem; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; }
+        #prezzi .pz-avvia:disabled { opacity: .6; }
+        #prezzi .pz-stato { font-size: 0.82rem; color: var(--text-muted); margin: 8px 0 0; }
+        #prezzi .pz-stato:empty { display: none; }
+        #prezzi .pz-secondario { margin-top: 12px; padding: 9px 14px; border-radius: 999px; border: 1px solid var(--border-color); background: var(--card-bg); color: var(--text-dark); font-family: inherit; font-weight: 700; font-size: 0.85rem; cursor: pointer; display: inline-flex; gap: 8px; align-items: center; }
+        #prezzi .pz-controllo { display: flex; align-items: center; gap: 12px; padding: 11px 0; border-bottom: 1px solid var(--border-color); }
+        #prezzi .pz-controllo:last-child { border-bottom: none; }
+        #prezzi .pz-controllo-ico { width: 34px; height: 34px; border-radius: 10px; flex: 0 0 auto; display: flex; align-items: center; justify-content: center; background: var(--primary-light); color: var(--primary); }
+        #prezzi .pz-controllo-ico.ok { background: rgba(46,125,50,0.14); color: #2e7d32; }
+        #prezzi .pz-controllo-ico.ko { background: rgba(211,47,47,0.14); color: #d32f2f; }
+        #prezzi .pz-controllo-ico.att { background: rgba(184,134,11,0.16); color: #b8860b; }
+        #prezzi .pz-controllo-ico .fa-spinner { animation: fa-spin 1.4s linear infinite; }
+        #prezzi .pz-controllo-info { flex: 1; min-width: 0; display: flex; flex-direction: column; font-size: 0.9rem; }
+        #prezzi .pz-controllo-info b { color: var(--text-dark); }
+        #prezzi .pz-controllo-info span { font-size: 0.76rem; color: var(--text-muted); }
+        #prezzi .pz-quando { font-size: 0.76rem; color: var(--text-muted); white-space: nowrap; align-self: flex-start; }
+        #prezzi .pz-riprova { font: inherit; font-size: 0.8rem; font-weight: 700; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--border-color); background: var(--card-bg); color: var(--text-dark); cursor: pointer; }
+
+        @container (min-width: 780px) {
+            #prezzi .pz-solo-tel { display: none !important; }
+            #prezzi .pz-solo-pc { display: initial !important; }
+            #prezzi p.pz-solo-pc { display: block !important; }
+            #prezzi .pz-sottotitolo { display: block; }
+            #prezzi .pz-stat { gap: 14px; margin: 14px 0 18px; }
+            #prezzi .pz-box { padding: 12px 14px; }
+            #prezzi .pz-box > b { font-size: 1.2rem; }
+            #prezzi .pz-layout { display: grid; grid-template-columns: minmax(0, 1fr) 400px; gap: 18px; align-items: start; }
+            #prezzi .pz-scheda-cosa { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 18px; padding: 16px 18px; }
+            #prezzi .pz-cosa { flex-direction: row; }
+            #prezzi .pz-opz { flex: 1; flex-direction: column; align-items: flex-start; gap: 10px; padding: 12px; }
+            #prezzi .pz-opz input { position: absolute; top: 10px; right: 10px; }
+            #prezzi .pz-chips { flex-wrap: wrap; overflow: visible; }
+            #prezzi .pz-chips-lista { flex-wrap: wrap; }
+            #prezzi .pz-seg { max-width: 420px; }
+        }

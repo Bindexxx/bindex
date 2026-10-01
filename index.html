@@ -633,59 +633,68 @@
                  pulsanti originali restano nascosti perché i controlli li
                  usano per mostrare l'avanzamento. -->
             <div class="pz-pagina">
-                <div class="page-header">
-                    <span class="page-title">Controllo prezzi</span>
+                <div class="pz-testa-pagina">
+                    <span class="page-title">Controlla prezzi</span>
+                    <p class="pz-sottotitolo">Chiedi all'estensione di aggiornare le quotazioni da Cardmarket</p>
                 </div>
-                <p class="pg-sotto" style="margin:-6px 0 14px;">Scegli cosa controllare: un dispositivo con l'estensione aperta aggiorna le quotazioni su Cardmarket.</p>
+                <div class="pz-stat" id="pzStat"></div>
 
-                <div class="pz-riquadro">
-                    <label class="pz-testa"><input type="checkbox" id="pzCollezione" checked><span class="pz-ico"><i class="fa-solid fa-layer-group"></i></span><b>Collezione</b></label>
-                    <div class="pz-corpo">
-                        <div class="pz-etichetta"><span>Location da controllare</span>
-                            <button type="button" onclick="toggleTutteLocation()" class="pz-link" id="btnToggleTutteLocation">Seleziona tutte</button></div>
-                        <div id="listaLocationCheckbox" class="pz-lista"><p class="pz-nota">Caricamento location...</p></div>
-                        <p class="pz-nota">Nessuna spuntata = controlla tutte le location.</p>
-                        <div class="pz-etichetta"><span>Carte di chi controllare</span></div>
-                        <div class="pz-seg">
-                            <button type="button" class="theme-btn active" id="btnAmbitoSoloMie" onclick="_impostaAmbitoControlloPrezzi('soloMie')">Solo le mie</button>
-                            <button type="button" class="theme-btn" id="btnAmbitoGruppo" onclick="_impostaAmbitoControlloPrezzi('gruppo')">Tutto il gruppo</button>
+                <div class="pz-layout">
+                    <div class="pz-sx">
+                        <div class="pz-scheda pz-scheda-cosa">
+                            <div class="pz-titolo">Cosa controllo</div>
+                            <div class="pz-cosa">
+                                <label class="pz-opz"><input type="checkbox" id="pzCollezione" checked onchange="prezziAggiornaScelta()"><span class="pz-ico"><i class="fa-solid fa-layer-group"></i></span><span class="pz-opz-testo"><b>Collezione</b><small id="pzContaColl"></small></span></label>
+                                <label class="pz-opz"><input type="checkbox" id="pzWishlist" checked onchange="prezziAggiornaScelta()"><span class="pz-ico"><i class="fa-solid fa-heart"></i></span><span class="pz-opz-testo"><b>Wishlist</b><small id="pzContaWish"></small></span></label>
+                                <label class="pz-opz"><input type="checkbox" id="pzSealed" onchange="prezziAggiornaScelta()"><span class="pz-ico"><i class="fa-solid fa-box"></i></span><span class="pz-opz-testo"><b>Sealed</b><small id="pzContaSealed"></small></span></label>
+                            </div>
+
+                            <div class="pz-blocco" id="pzBloccoColl">
+                                <div class="pz-etichetta"><span>Location della collezione</span></div>
+                                <div class="pz-chips">
+                                    <button type="button" class="pz-chip pz-chip-tutte attivo" id="btnToggleTutteLocation" onclick="prezziLocationTutte()">Tutte</button>
+                                    <div id="listaLocationCheckbox" class="pz-chips-lista" onchange="prezziAggiornaScelta()"><span class="pz-nota">Caricamento location...</span></div>
+                                </div>
+                            </div>
+                            <div class="pz-blocco" id="pzBloccoSealed">
+                                <div class="pz-etichetta"><span>Scaffali dei sealed</span></div>
+                                <div class="pz-chips">
+                                    <button type="button" class="pz-chip pz-chip-tutte attivo" id="btnToggleTutteScaffaliSealed" onclick="prezziScaffaliTutti()">Tutti</button>
+                                    <div id="listaScaffaliCheckboxSealed" class="pz-chips-lista" onchange="prezziAggiornaScelta()"><span class="pz-nota">Caricamento scaffali...</span></div>
+                                </div>
+                            </div>
+
+                            <div class="pz-blocco">
+                                <div class="pz-etichetta"><span>Di chi</span></div>
+                                <div class="pz-seg">
+                                    <button type="button" class="pz-segbtn attivo" id="btnAmbitoSoloMie" onclick="prezziImpostaDiChi('soloMie')">Solo le mie</button>
+                                    <button type="button" class="pz-segbtn" id="btnAmbitoGruppo" onclick="prezziImpostaDiChi('gruppo')">Tutto il gruppo</button>
+                                </div>
+                                <div style="display:none;">
+                                    <button type="button" id="btnAmbitoSoloMieSealed" class="active"></button>
+                                    <button type="button" id="btnAmbitoGruppoSealed"></button>
+                                </div>
+                                <p class="pz-nota pz-solo-pc">"Tutto il gruppo" controlla anche le carte degli altri (vale per Collezione e Sealed).</p>
+                            </div>
+
+                            <button type="button" class="pz-avvia" id="pzAvvia" onclick="prezziAvviaSelezionati()"><i class="fa-solid fa-paper-plane"></i> <span id="pzAvviaTesto">Controlla</span></button>
+                            <p class="pz-nota pz-centro pz-solo-pc">Parte un ordine per ogni tipo: lo esegue il primo dispositivo del gruppo con l'estensione aperta.</p>
+                            <p class="pz-stato pz-centro" id="pzEsito"></p>
+                            <div class="pz-avanzamento">
+                                <p class="pz-stato" id="prezziSubtext"></p>
+                                <p class="pz-stato" id="prezziWishlistSubtext"></p>
+                                <p class="pz-stato" id="prezziSealedSubtext"></p>
+                            </div>
                         </div>
-                        <p class="pz-stato" id="prezziSubtext">Aggiorna le quotazioni sincronizzando la tua estensione.</p>
                     </div>
-                </div>
-
-                <div class="pz-riquadro">
-                    <label class="pz-testa"><input type="checkbox" id="pzWishlist"><span class="pz-ico"><i class="fa-solid fa-bookmark"></i></span><b>Wishlist</b></label>
-                    <div class="pz-corpo">
-                        <p class="pz-stato" id="prezziWishlistSubtext">Aggiorna le quotazioni delle carte che desideri.</p>
-                    </div>
-                </div>
-
-                <!-- Sealed: filtro per Scaffale (Scaffali sostituisce location
-                     per i sealed). Ordine dedicato tipo='controlla_prezzi_sealed'. -->
-                <div class="pz-riquadro">
-                    <label class="pz-testa"><input type="checkbox" id="pzSealed"><span class="pz-ico"><i class="fa-solid fa-box"></i></span><b>Sealed</b></label>
-                    <div class="pz-corpo">
-                        <div class="pz-etichetta"><span>Scaffali da controllare</span>
-                            <button type="button" onclick="toggleTutteScaffaliSealed()" class="pz-link" id="btnToggleTutteScaffaliSealed">Seleziona tutti</button></div>
-                        <div id="listaScaffaliCheckboxSealed" class="pz-lista"><p class="pz-nota">Caricamento scaffali...</p></div>
-                        <p class="pz-nota">Nessuno spuntato = controlla tutti gli scaffali.</p>
-                        <div class="pz-etichetta"><span>Prodotti di chi controllare</span></div>
-                        <div class="pz-seg">
-                            <button type="button" class="theme-btn active" id="btnAmbitoSoloMieSealed" onclick="_impostaAmbitoControlloPrezziSealed('soloMie')">Solo i miei</button>
-                            <button type="button" class="theme-btn" id="btnAmbitoGruppoSealed" onclick="_impostaAmbitoControlloPrezziSealed('gruppo')">Tutto il gruppo</button>
+                    <div class="pz-dx">
+                        <div class="pz-scheda">
+                            <div class="pz-titolo"><span>Controlli</span><small>ultimi 7 giorni</small></div>
+                            <div id="pzControlli"><p class="pz-nota">Caricamento…</p></div>
+                            <button type="button" class="pz-secondario" onclick="apriDettaglioWidget('prezziagg', event)"><i class="fa-solid fa-chart-line"></i> Vedi i prezzi cambiati</button>
                         </div>
-                        <p class="pz-stato" id="prezziSealedSubtext">Aggiorna le quotazioni dei prodotti sealed sincronizzando la tua estensione.</p>
                     </div>
                 </div>
-
-                <button type="button" class="pz-avvia" id="pzAvvia" onclick="prezziAvviaSelezionati()"><i class="fa-solid fa-paper-plane"></i> Avvia controllo</button>
-                <p class="pz-stato pz-centro" id="pzEsito"></p>
-                <div class="pz-riquadro">
-                    <div class="pz-testa"><span class="pz-ico"><i class="fa-solid fa-list-check"></i></span><b>Controlli (ultimi 7 giorni)</b></div>
-                    <div class="pz-corpo" id="pzControlli"><p class="pz-nota">Caricamento…</p></div>
-                </div>
-                <button type="button" class="pz-secondario" onclick="apriDettaglioWidget('prezziagg', event)"><i class="fa-solid fa-clock-rotate-left"></i> Vedi i prezzi aggiornati</button>
 
                 <div style="display:none;">
                     <button id="btnControllaPrezzi" onclick="triggerExtensionPriceCheck()"></button>

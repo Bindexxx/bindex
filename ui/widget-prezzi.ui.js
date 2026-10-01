@@ -464,7 +464,21 @@ const _PZ_STATI_CONTROLLO = {
 };
 let _pzControlliRighe = [];
 
+// RESTYLE (tavole "Controlla prezzi"): righe con stato a icona, "Tipo · N"
+// e orario a destra; prima i controlli in corso.
+function _pzQuandoBreve(iso) {
+    const d = new Date(iso);
+    const oggi = new Date(); const ieri = new Date(); ieri.setDate(oggi.getDate() - 1);
+    const ora = d.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+    if (Date.now() - d.getTime() < 15 * 60000) return 'ora';
+    if (d.toDateString() === oggi.toDateString()) return ora;
+    if (d.toDateString() === ieri.toDateString()) return `ieri ${ora}`;
+    return d.toLocaleDateString('it-IT', { day: 'numeric', month: 'short' }).replace('.', '') + ` ${ora}`;
+}
+
 async function prezziCaricaControlli() {
+    prezziAggiornaScelta();
+    prezziRiepilogo();
     const cont = document.getElementById('pzControlli');
     if (!cont) return;
     const userId = await authGetUserId();
@@ -473,15 +487,115 @@ async function prezziCaricaControlli() {
     if (error) { cont.innerHTML = `<p class="pz-nota">Non riesco a leggere i controlli: ${escapeHtml(error.message)}</p>`; return; }
     _pzControlliRighe = data || [];
     if (_pzControlliRighe.length === 0) { cont.innerHTML = '<p class="pz-nota">Nessun controllo negli ultimi 7 giorni.</p>'; return; }
+    const sottoStato = {
+        completato: () => 'completato',
+        errore: o => o.errore_msg ? escapeHtml(o.errore_msg) : 'non riuscito',
+        in_corso: () => 'in corso · un dispositivo sta leggendo Cardmarket',
+    };
+    const iconaStato = { completato: 'fa-check', errore: 'fa-xmark', in_corso: 'fa-spinner' };
     cont.innerHTML = _pzControlliRighe.map(o => {
-        const [nome, icona] = _PZ_TIPI_CONTROLLO[o.tipo] || [o.tipo, 'fa-tag'];
-        const [etichetta, classe] = _PZ_STATI_CONTROLLO[o.stato] || ['In attesa', 'att'];
-        const quando = new Date(o.creato_il).toLocaleString('it-IT', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+        const [nome] = _PZ_TIPI_CONTROLLO[o.tipo] || [o.tipo];
+        const [, classe] = _PZ_STATI_CONTROLLO[o.stato] || ['In attesa', 'att'];
+        const sotto = (sottoStato[o.stato] || (() => 'in attesa che un dispositivo lo prenda'))(o);
+        const ico = iconaStato[o.stato] || 'fa-hourglass-half';
         const riprova = o.stato === 'errore'
-            ? `<button type="button" class="pz-link" onclick="prezziRiprovaControllo('${o.id}')">Riprova</button>` : '';
-        const errore = (o.stato === 'errore' && o.errore_msg) ? `<div class="pz-nota">${escapeHtml(o.errore_msg)}</div>` : '';
-        return `<div class="pz-controllo"><i class="fa-solid ${icona}"></i><div class="pz-controllo-info"><b>${nome}</b><span>${quando}</span>${errore}</div><span class="pz-stato-pill ${classe}">${etichetta}</span>${riprova}</div>`;
+            ? `<button type="button" class="pz-riprova" onclick="prezziRiprovaControllo('${o.id}')">Riprova</button>` : `<span class="pz-quando">${_pzQuandoBreve(o.completato_il || o.creato_il)}</span>`;
+        return `<div class="pz-controllo"><span class="pz-controllo-ico ${classe}"><i class="fa-solid ${ico}"></i></span><div class="pz-controllo-info"><b>${nome}</b><span>${sotto}</span></div>${riprova}</div>`;
     }).join('');
+}
+
+// ── Scelta: conteggi, chip, "Di chi", pulsante "Controlla N carte" ──────
+function _pzCarteColl() { return carteReali.filter(c => c.tabella === 'carte' && c.stato === 'collezione'); }
+
+function prezziAggiornaScelta() {
+    const coll = document.getElementById('pzCollezione');
+    if (!coll) return;
+    const wish = document.getElementById('pzWishlist'), seal = document.getElementById('pzSealed');
+    const carte = _pzCarteColl();
+    const nLoc = new Set(carte.map(c => c.location).filter(Boolean)).size;
+    const wl = carteReali.filter(c => c.tabella === 'wishlist');
+    const sealed = typeof prodottiSealedReali !== 'undefined' ? prodottiSealedReali : [];
+    const nScaf = document.querySelectorAll('.checkboxScaffalePrezziSealed').length;
+    const set = (id, t) => { const el = document.getElementById(id); if (el) el.textContent = t; };
+    set('pzContaColl', `${carte.length} carte · ${nLoc} location`);
+    set('pzContaWish', `${wl.length} carte`);
+    set('pzContaSealed', `${sealed.length} prodott${sealed.length === 1 ? 'o' : 'i'}${nScaf ? ` · ${nScaf} scaffal${nScaf === 1 ? 'e' : 'i'}` : ''}`);
+    document.querySelectorAll('#prezzi .pz-opz').forEach(l => l.classList.toggle('attivo', !!l.querySelector('input:checked')));
+    const bc = document.getElementById('pzBloccoColl'), bs = document.getElementById('pzBloccoSealed');
+    if (bc) bc.style.display = coll.checked ? '' : 'none';
+    if (bs) bs.style.display = seal && seal.checked ? '' : 'none';
+    const locSel = _locationSelezionate();
+    const tl = document.getElementById('btnToggleTutteLocation'); if (tl) { tl.textContent = 'Tutte'; tl.classList.toggle('attivo', locSel.length === 0); }
+    const ts = document.getElementById('btnToggleTutteScaffaliSealed'); if (ts) { ts.textContent = 'Tutti'; ts.classList.toggle('attivo', _scaffaliSelezionatiSealed().length === 0); }
+    let n = 0;
+    if (coll.checked) n += locSel.length ? carte.filter(c => locSel.includes(c.location)).length : carte.length;
+    if (wish && wish.checked) n += wl.length;
+    const nSealed = seal && seal.checked ? sealed.length : 0;
+    const testo = document.getElementById('pzAvviaTesto');
+    if (testo) {
+        if (!n && !nSealed) testo.textContent = 'Scegli cosa controllare';
+        else if (!nSealed) testo.textContent = `Controlla ${n} cart${n === 1 ? 'a' : 'e'}`;
+        else if (!n) testo.textContent = `Controlla ${nSealed} prodott${nSealed === 1 ? 'o' : 'i'}`;
+        else testo.textContent = `Controlla ${n + nSealed} oggetti`;
+    }
+}
+
+function prezziLocationTutte() {
+    document.querySelectorAll('.checkboxLocationPrezzi').forEach(cb => { cb.checked = false; });
+    prezziAggiornaScelta();
+}
+function prezziScaffaliTutti() {
+    document.querySelectorAll('.checkboxScaffalePrezziSealed').forEach(cb => { cb.checked = false; });
+    prezziAggiornaScelta();
+}
+// Una sola scelta "Di chi" per Collezione e Sealed.
+function prezziImpostaDiChi(ambito) {
+    _impostaAmbitoControlloPrezzi(ambito);
+    _impostaAmbitoControlloPrezziSealed(ambito);
+    document.getElementById('btnAmbitoSoloMie')?.classList.toggle('attivo', ambito === 'soloMie');
+    document.getElementById('btnAmbitoGruppo')?.classList.toggle('attivo', ambito === 'gruppo');
+}
+
+// Riquadri in alto: ultimo controllo (con salite/scese da allora), carte da
+// aggiornare (mai controllate o più vecchie di 7 giorni) e se qualcuno del
+// gruppo sta controllando adesso (solo presenza, mai un conteggio).
+async function prezziRiepilogo() {
+    const box = document.getElementById('pzStat');
+    if (!box) return;
+    const carte = _pzCarteColl();
+    const soglia = Date.now() - SOGLIA_GIORNI_PREZZO_SCADUTO * 86400000;
+    const scadute = carte.filter(c => !c.ultimoControllo || new Date(c.ultimoControllo).getTime() < soglia);
+    _elencoPrezziScaduti = scadute.map(c => ({ name: c.name, code: c.code,
+        ultimoTesto: c.ultimoControllo ? new Date(c.ultimoControllo).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' }) : 'mai' }));
+    const disegna = (ultimo, frecce, attivi) => {
+        box.innerHTML = `
+            <div class="pz-box"><span>Ultimo<em class="pz-solo-pc"> controllo</em></span><b>${ultimo || '—'}</b>${frecce || ''}</div>
+            <div class="pz-box"><span>Da aggiornare</span><b class="${scadute.length ? 'pz-allerta' : ''}">${scadute.length} cart${scadute.length === 1 ? 'a' : 'e'}</b>
+                ${scadute.length ? `<a class="pz-link-sotto" onclick="apriModalePrezziScaduti()"><em class="pz-solo-tel">vedi</em><em class="pz-solo-pc">mai controllate o più vecchie di ${SOGLIA_GIORNI_PREZZO_SCADUTO} giorni</em></a>` : '<small>tutte aggiornate</small>'}</div>
+            <div class="pz-box"><span><em class="pz-solo-tel">Pronti</em><em class="pz-solo-pc">Chi sta controllando adesso</em></span>
+                <b>${attivi == null ? '…' : (attivi ? '<i class="pz-pallino on"></i> al lavoro' : '<i class="pz-pallino"></i> nessuno')}</b>
+                <small><em class="pz-solo-tel">${attivi ? 'del gruppo' : 'al momento'}</em><em class="pz-solo-pc">${attivi ? 'un dispositivo del gruppo' : 'parte con l’estensione aperta'}</em></small></div>`;
+    };
+    disegna(null, '', null);
+    let ultimoTxt = null, frecce = '', attivi = null;
+    try {
+        const userId = await authGetUserId();
+        const [{ data }, presenza] = await Promise.all([
+            userId ? ordiniUltimoCompletato(userId) : Promise.resolve({ data: [] }),
+            typeof _dispositiviAttiviOra === 'function' ? _dispositiviAttiviOra() : Promise.resolve(false),
+        ]);
+        attivi = !!presenza;
+        const quando = data && data[0] ? data[0].completato_il : null;
+        if (quando) {
+            ultimoTxt = _pzQuandoBreve(quando).replace(/^ieri /, 'ieri, ');
+            const { data: varz } = await variazioniPrezziDa(new Date(new Date(quando).getTime() - 60000).toISOString());
+            const base = new Map((varz || []).filter(r => r.tabella === 'carte').map(r => [String(r.oggetto_id), Number(r.prezzo_base)]));
+            let su = 0, giu = 0;
+            carte.forEach(c => { const b = base.get(String(c.id)); if (b == null) return; const d = (Number(c.price) || 0) - b; if (d > 0.005) su++; else if (d < -0.005) giu++; });
+            frecce = `<small><span class="pz-su">▲ ${su}</span> <span class="pz-giu">▼ ${giu}</span></small>`;
+        }
+    } catch (e) { console.error('[controllo prezzi] riepilogo:', e); }
+    disegna(ultimoTxt, frecce, attivi);
 }
 
 // Riprova = nuovo ordine con lo stesso tipo e gli stessi parametri.
