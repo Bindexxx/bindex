@@ -188,6 +188,51 @@
   .adm-switch span::after { content: ''; position: absolute; width: 18px; height: 18px; left: 3px; top: 3px; background: #fff; border-radius: 50%; transition: transform .15s; box-shadow: 0 1px 3px rgba(0,0,0,.3); }
   .adm-switch input:checked + span { background: var(--primary); }
   .adm-switch input:checked + span::after { transform: translateX(20px); }
+
+  /* Shop (Fase 9) */
+  .ash-testa { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+  .ash-sotto { color: var(--text-muted); font-size: 13px; }
+  .ash-filtri { display: flex; gap: 6px; overflow-x: auto; margin-bottom: 14px; }
+  .ash-chip { flex: 0 0 auto; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--border-color); background: var(--card-bg); color: var(--text-muted); font-size: 13px; font-weight: 600; cursor: pointer; }
+  .ash-chip.on { background: var(--primary-light); color: var(--primary); border-color: var(--primary-light); }
+  .ash-griglia { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; }
+  .ash-tessera { display: flex; flex-direction: column; gap: 4px; text-align: left; padding: 10px; border-radius: 16px; border: 1px solid var(--border-color); background: var(--card-bg); cursor: pointer; color: var(--text-dark); font: inherit; }
+  .ash-tessera.sel { border: 2px solid var(--primary); }
+  .ash-tessera b { font-size: 15px; }
+  .ash-tessera .ash-sotto { display: flex; gap: 6px; }
+  .ash-tessera em { margin-left: auto; font-style: normal; color: var(--primary); font-weight: 700; }
+  .ash-img { position: relative; height: 130px; border-radius: 12px; background: #f3f1f7; display: flex; align-items: center; justify-content: center; margin-bottom: 6px; }
+  .ash-img img { max-width: 70%; max-height: 80%; object-fit: contain; }
+  .ash-noimg { font-size: 36px; font-weight: 800; color: var(--primary); opacity: .5; }
+  .ash-stato { position: absolute; top: 8px; left: 8px; padding: 2px 8px; border-radius: 7px; font-size: 11px; font-weight: 700; color: #fff; background: #6b6480; }
+  .ash-stato.s-in_vendita { background: #2e7d32; } .ash-stato.s-a_tempo { background: #c98a00; } .ash-stato.s-ritirato { background: #9e2b25; }
+  #shop-admin-pannello-bg { display: none; position: fixed; inset: 0; background: rgba(42,36,56,.4); z-index: 150; justify-content: flex-end; }
+  #shop-admin-pannello { width: min(480px, 100%); height: 100%; overflow-y: auto; background: var(--card-bg); padding: 20px; box-shadow: var(--shadow-soft); border-radius: 16px 0 0 16px; }
+  #shop-admin-pannello h4 { margin: 18px 0 8px; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); }
+  .ash-p-testa { display: flex; justify-content: space-between; gap: 10px; }
+  .ash-p-testa h2 { margin: 0; font-size: 20px; }
+  .ash-p-testa small { color: var(--text-muted); }
+  .ash-p-testa .modal-close { background: var(--border-color); width: 30px; height: 30px; border-radius: 50%; padding: 0; }
+  .ash-p-img { display: grid; grid-template-columns: 110px 1fr; gap: 6px 12px; align-items: center; }
+  .ash-p-img > span { grid-row: span 2; width: 110px; height: 110px; border-radius: 12px; background: #f3f1f7; display: flex; align-items: center; justify-content: center; font-size: 11px; color: var(--text-muted); text-align: center; }
+  .ash-p-img img { max-width: 85%; max-height: 85%; object-fit: contain; }
+  .ash-carica { position: relative; overflow: hidden; text-align: center; cursor: pointer; }
+  .ash-carica input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+  .ash-p-img small { color: var(--text-muted); font-size: 12px; }
+  .ash-campi { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px; }
+  #shop-admin-pannello input[type=text], #shop-admin-pannello input[type=number], #shop-admin-pannello input[type=datetime-local], #shop-admin-pannello select, #shop-admin-pannello textarea {
+    width: 100%; padding: 9px 11px; border-radius: 10px; border: 1.5px solid var(--border-color); font: inherit; font-size: 14px; background: var(--card-bg); color: var(--text-dark); box-sizing: border-box; }
+  .ash-lab { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--text-muted); font-weight: 600; margin-bottom: 8px; }
+  .ash-stati { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; padding: 4px; border-radius: 12px; background: var(--primary-light); margin-bottom: 10px; }
+  .ash-stati button { border: 0; border-radius: 9px; padding: 8px 4px; background: transparent; font-weight: 600; color: var(--text-muted); cursor: pointer; }
+  .ash-stati button.on { background: var(--card-bg); color: var(--text-dark); }
+  .ash-stati button:disabled { cursor: default; }
+  .ash-riga { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 6px 0; }
+  .ash-riga small { display: block; color: var(--text-muted); font-size: 12px; }
+  .ash-num { display: flex; justify-content: space-between; padding: 9px 11px; border-radius: 10px; border: 1.5px solid var(--border-color); color: var(--text-muted); }
+  .ash-num b { color: var(--primary); }
+  .ash-p-piede { display: flex; justify-content: space-between; align-items: center; margin-top: 20px; padding-top: 14px; border-top: 1px solid var(--border-color); }
+  @media (max-width: 899px) { #shop-admin-pannello { border-radius: 0; } }
 </style>
 </head>
 <body>
@@ -226,6 +271,7 @@
   <div class="tabs">
     <button class="tab-btn active" data-tab="richieste"><span class="tab-ico">📋</span><span class="tab-lbl">Da approvare</span> <span class="tab-count zero" id="count-richieste">0</span></button>
     <button class="tab-btn" data-tab="utenti"><span class="tab-ico">👥</span><span class="tab-lbl">Utenti</span></button>
+    <button class="tab-btn" data-tab="shop"><span class="tab-ico">🛍️</span><span class="tab-lbl">Shop</span></button>
     <button class="tab-btn" data-tab="wip"><span class="tab-ico">🚧</span><span class="tab-lbl">Lavori in corso</span></button>
     <button class="tab-btn" data-tab="logadmin"><span class="tab-ico">🛡️</span><span class="tab-lbl">Registro</span></button>
   </div>
@@ -289,6 +335,13 @@
   </div>
 
   <!-- LOG ADMIN -->
+  <div class="panel" id="panel-shop">
+    <div class="ash-testa"><div><h2 style="margin:0;">Shop</h2><div class="ash-sotto" id="shop-admin-conti"></div></div>
+      <button class="btn-main" onclick="admShopNuovo()">＋ Nuovo articolo</button></div>
+    <div class="ash-filtri" id="shop-admin-filtri"></div>
+    <div id="shop-admin-lista"><div class="empty-state">Caricamento…</div></div>
+  </div>
+
   <div class="panel" id="panel-logadmin">
     <div class="search-bar">
       <select id="logadmin-filtro"><option value="all">Tutte le azioni</option></select>
@@ -332,6 +385,9 @@
   </div>
 </div>
 
+<!-- ── SHOP (RESTYLE BINDEX FASE 9, ui/admin-shop.ui.js, sql/91) ── -->
+<div id="shop-admin-pannello-bg" onclick="if (event.target === this) admShopChiudi()"><div id="shop-admin-pannello"></div></div>
+
 <!-- ── DIALOGO INTERNO (Fase 7) ─────────────────────────────────── -->
 <div id="adm-dialog-bg"><div id="adm-dialog" role="dialog" aria-modal="true">
   <h3 id="adm-dialog-titolo"></h3>
@@ -368,6 +424,8 @@
 <script src="ui/admin-users.ui.js"></script>
 <script src="ui/admin-log.ui.js"></script>
 <script src="ui/admin-wip.ui.js"></script>
+<script src="data/shop.repository.js"></script>
+<script src="ui/admin-shop.ui.js"></script>
 <script>
 // SUPABASE_URL e SUPABASE_ANON_KEY arrivano da config/supabase.js
 // supabaseClient ora viene creato in config/supabase.js (data-client="admin"), dal 2026-09-25.

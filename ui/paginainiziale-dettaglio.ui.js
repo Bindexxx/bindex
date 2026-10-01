@@ -84,7 +84,7 @@ async function apriDettaglioWidget(tabId, evt) {
     // durante quella sessione — senza questa voce nella whitelist la
     // pagina non si apre mai, né dal tap sulla tessera né dal click
     // sulla notifica CSBar (vedi ui/widget-chat.ui.js per il dettaglio).
-    if (tabId === 'dafare' || tabId === 'match' || tabId === 'chat' || tabId === 'condividi' || tabId === 'missioni' || tabId === 'valore' || tabId === 'variazione' || tabId === 'wishlist' || tabId === 'location' || tabId === 'doppioni' || tabId === 'sealed' || tabId === 'set' || tabId === 'bustina' || tabId === 'scaffali' || tabId === 'richieste' || tabId === 'achievement' || tabId === 'primopiano' || tabId === 'contributi' || tabId === 'prezziagg' || tabId === 'foto') {
+    if (tabId === 'dafare' || tabId === 'match' || tabId === 'chat' || tabId === 'condividi' || tabId === 'missioni' || tabId === 'valore' || tabId === 'variazione' || tabId === 'wishlist' || tabId === 'location' || tabId === 'doppioni' || tabId === 'sealed' || tabId === 'set' || tabId === 'bustina' || tabId === 'scaffali' || tabId === 'richieste' || tabId === 'achievement' || tabId === 'primopiano' || tabId === 'contributi' || tabId === 'prezziagg' || tabId === 'foto' || tabId === 'shop') {
         // MAI switchTab() qui: quella funzione ha una whitelist fissa di 5
         // tab (navigation.ui.js r.199) ed è segnata nella memoria di
         // progetto come "deve restare stabile e intoccata" — un bug reale
@@ -117,6 +117,7 @@ async function apriDettaglioWidget(tabId, evt) {
         if (tabId === 'richieste') apriPaginaRichieste();
         if (tabId === 'prezziagg') renderPaginaPrezziAggiornati(); // RESTYLE FASE 3h, ui/widget-prezzi.ui.js
         if (tabId === 'foto') renderPaginaFoto(); // RESTYLE FASE 8c, ui/widget-foto.ui.js
+        if (tabId === 'shop') renderPaginaShop(); // RESTYLE FASE 9, ui/shop.ui.js
     } else {
         switchTab(tabId, null);
         // Fase 10 (2026-09-13): riparti sempre dall'hub Impostazioni, mai

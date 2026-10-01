@@ -55,7 +55,9 @@ function _widgetPolvereAggiorna() {
 }
 
 CATALOGO_WIDGET.polvere = {
-        titolo: 'Polvere', icona: 'fa-wand-sparkles', bloccato: true,
+        titolo: 'Polvere', icona: 'fa-wand-sparkles',
+        // RESTYLE BINDEX FASE 9: non più 'bloccato' — apre la pagina Polvere = Shop.
+        tab: 'shop',
         preview: () => {
             _widgetPolvereAggiorna();
             const s = _widgetPolvereSaldo.valore;
