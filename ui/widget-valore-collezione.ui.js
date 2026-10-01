@@ -197,56 +197,214 @@ CATALOGO_WIDGET.variazione_valore = {
 // #39/#83 dal ball-peek in Home (vedi _ballMiniCarta/_ballAzioneRiga):
 // cliccarle da qui deve contare allo stesso modo, è concettualmente la
 // stessa lista.
+// RESTYLE BINDEX (2026-10-01, tavole "Valore collezione"): valore grande con
+// la variazione a 7 giorni, grafico Andamento (7 g / 30 g / Tutto) da
+// storico_valore_collezione, valore Per location, Le più preziose con la
+// variazione dell'ultimo prezzo e "Cosa l'ha mosso" (ultimi 7 giorni, da
+// movimenti_collezione, stessi gruppi della pagina Variazione). Su PC
+// grafico e location a sinistra, preziose e movimenti a destra.
+// Solo letture: storico (fino a 400 giorni) e movimenti (ultimi 1000).
+let _valPeriodo = '30';      // '7' | '30' | 'tutto'
+let _valStorico = [];        // righe storico_valore_collezione, dalla più vecchia
+let _valMovimenti = [];      // movimenti_collezione, più recenti prima
+
+function _valImpostaPeriodo(p) { _valPeriodo = p; _valRender(); }
+
+function _valSerie() {
+    if (_valPeriodo === 'tutto') return _valStorico;
+    const limite = new Date(); limite.setHours(0, 0, 0, 0); limite.setDate(limite.getDate() - Number(_valPeriodo));
+    return _valStorico.filter(r => new Date(r.giorno) >= limite);
+}
+
+function _valDataBreve(g) { return new Date(g).toLocaleDateString('it-IT', { day: 'numeric', month: 'short' }).replace('.', ''); }
+
+// Grafico ad area in SVG (niente libreria): l'asse verticale parte poco
+// sotto il minimo, come nelle tavole, così le oscillazioni si vedono.
+function _valGraficoHtml(serie) {
+    if (serie.length < 2) {
+        return `<div class="val-grafico-vuoto">${serie.length ? 'Serve un secondo giorno per disegnare l’andamento.' : 'Lo storico del valore si riempie da solo, un punto al giorno.'}</div>`;
+    }
+    const W = 600, H = 200, pad = 6;
+    const v = serie.map(r => Number(r.valore_totale) || 0);
+    let min = Math.min(...v), max = Math.max(...v);
+    if (max === min) { max += 1; min -= 1; }
+    const marg = (max - min) * 0.15; min -= marg; max += marg;
+    const x = i => (i / (v.length - 1)) * W;
+    const y = val => pad + (1 - (val - min) / (max - min)) * (H - 2 * pad);
+    const punti = v.map((val, i) => `${x(i).toFixed(1)},${y(val).toFixed(1)}`);
+    const linea = 'M' + punti.join(' L');
+    const area = `${linea} L${W},${H} L0,${H} Z`;
+    const griglia = [0.25, 0.5, 0.75].map(f => `<line x1="0" x2="${W}" y1="${(H * f).toFixed(1)}" y2="${(H * f).toFixed(1)}" class="val-g-griglia"/>`).join('');
+    const etichette = [max - marg, (max + min) / 2, min + marg].map((val, i) =>
+        `<span style="top:${[8, 46, 84][i]}%">${formattaEuroTondo(val).replace(' €', '')}</span>`).join('');
+    const meta = Math.floor(serie.length / 2);
+    return `
+        <div class="val-grafico" data-n="${v.length}" onmousemove="_valGraficoPunta(event)" onmouseleave="_valGraficoVia()" ontouchstart="_valGraficoPunta(event)" ontouchmove="_valGraficoPunta(event)">
+            <div class="val-g-assey">${etichette}</div>
+            <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true">
+                ${griglia}
+                <path d="${area}" class="val-g-area"/>
+                <path d="${linea}" class="val-g-linea" vector-effect="non-scaling-stroke"/>
+            </svg>
+            <div class="val-g-cursore" hidden><span class="val-g-punto"></span></div>
+            <div class="val-g-tip" hidden></div>
+        </div>
+        <div class="val-g-assex"><span>${_valDataBreve(serie[0].giorno)}</span><span class="val-solo-pc">${_valDataBreve(serie[meta].giorno)}</span><span>oggi</span></div>`;
+}
+
+function _valGraficoPunta(evt) {
+    const box = evt.currentTarget;
+    const serie = _valSerie();
+    if (serie.length < 2) return;
+    const r = box.getBoundingClientRect();
+    const cx = (evt.touches ? evt.touches[0].clientX : evt.clientX) - r.left;
+    const i = Math.max(0, Math.min(serie.length - 1, Math.round(cx / r.width * (serie.length - 1))));
+    const v = serie.map(s => Number(s.valore_totale) || 0);
+    let min = Math.min(...v), max = Math.max(...v);
+    if (max === min) { max += 1; min -= 1; }
+    const marg = (max - min) * 0.15; min -= marg; max += marg;
+    const px = i / (serie.length - 1) * r.width;
+    const py = (6 / 200 + (1 - (v[i] - min) / (max - min)) * (188 / 200)) * r.height;
+    const cur = box.querySelector('.val-g-cursore'), tip = box.querySelector('.val-g-tip');
+    cur.hidden = false; tip.hidden = false;
+    cur.style.left = px + 'px';
+    cur.querySelector('.val-g-punto').style.top = py + 'px';
+    const prima = i > 0 ? v[i] - v[i - 1] : null;
+    const giorno = new Date(serie[i].giorno).toLocaleDateString('it-IT', { weekday: 'short', day: 'numeric', month: 'short' }).replace('.', '');
+    tip.innerHTML = `<b>${formattaEuro(v[i])}</b><span>${giorno}</span>` +
+        (prima != null ? `<span class="${prima > 0 ? 'bx-su' : (prima < 0 ? 'bx-giu' : '')}">${prima > 0 ? '▲' : (prima < 0 ? '▼' : '')} ${formattaEuro(Math.abs(prima))} sul giorno prima</span>` : '');
+    const sx = px > r.width * 0.6;
+    tip.style.left = sx ? '' : (px + 12) + 'px';
+    tip.style.right = sx ? (r.width - px + 12) + 'px' : '';
+    tip.style.top = Math.max(0, py - 30) + 'px';
+}
+function _valGraficoVia() {
+    document.querySelectorAll('#valore .val-g-cursore, #valore .val-g-tip').forEach(el => { el.hidden = true; });
+}
+
+function _valPerLocation() {
+    const mappa = new Map();
+    carteReali.filter(c => c.stato === 'collezione' && c.tabella === 'carte').forEach(c => {
+        const k = c.location || '?';
+        mappa.set(k, (mappa.get(k) || 0) + (Number(c.price) || 0) * (Number(c.qty) || 1));
+    });
+    const sealed = (typeof prodottiSealedReali !== 'undefined' ? prodottiSealedReali : [])
+        .reduce((t, s) => t + (Number(s.price) || 0) * (Number(s.qty) || 1), 0);
+    if (sealed > 0) mappa.set('Sealed', (mappa.get('Sealed') || 0) + sealed);
+    return [...mappa.entries()].map(([nome, valore]) => ({ nome, valore })).sort((a, b) => b.valore - a.valore);
+}
+
+function _valMossoHtml() {
+    const limite = new Date(); limite.setHours(0, 0, 0, 0); limite.setDate(limite.getDate() - 7);
+    const somme = {};
+    _valMovimenti.filter(m => new Date(m.avvenuto_il) >= limite).forEach(m => {
+        const g = _varGruppoDi(m);
+        somme[g] = somme[g] || { somma: 0, n: 0 };
+        somme[g].n += 1;
+        if (m.valore_delta != null) somme[g].somma += Number(m.valore_delta);
+    });
+    const sotto = { mercato: n => `${n} variazion${n === 1 ? 'e' : 'i'}`, aggiunte: n => `${n} cart${n === 1 ? 'a' : 'e'}`,
+        scambi: n => `${n} scambi${n === 1 ? 'o' : ''}`, rimozioni: n => `${n} rimozion${n === 1 ? 'e' : 'i'}`, manuali: n => `${n} modific${n === 1 ? 'a' : 'he'}` };
+    const righe = _GRUPPI_MOVIMENTO.filter(g => somme[g.id]).map(g => `
+        <div class="val-mosso-riga" onclick="apriDettaglioWidget('variazione', event)">
+            <span class="val-mosso-ico"><i class="fa-solid ${g.icona}"></i></span>
+            <div class="val-mosso-testo"><b>${g.label}</b><span>${sotto[g.id](somme[g.id].n)}</span></div>
+            <b class="val-mosso-delta ${_varSegno(somme[g.id].somma)}">${formattaEuroVariazione(somme[g.id].somma)}</b>
+        </div>`).join('');
+    return righe || '<div class="val-vuoto">Nessun movimento negli ultimi 7 giorni.</div>';
+}
+
+function _valRender() {
+    const container = document.getElementById('valoreContenuto');
+    if (!container) return;
+    const coll = carteReali.filter(c => c.stato === 'collezione' && c.tabella === 'carte');
+    const valore = coll.reduce((t, c) => t + (Number(c.price) || 0) * (Number(c.qty) || 1), 0);
+    const media = coll.length ? valore / coll.length : 0;
+
+    let pillola = '';
+    if (_valStorico.length >= 2) {
+        const s7 = _variazioneFinestra(_valStorico, 7);
+        pillola = `<span class="val-pillola ${s7.variazione >= 0 ? 'su' : 'giu'}">${s7.variazione >= 0 ? '▲' : '▼'} ${formattaEuroTondo(Math.abs(s7.variazione))} in ${s7.giorni} giorn${s7.giorni === 1 ? 'o' : 'i'}</span>`;
+    }
+
+    const loc = _valPerLocation();
+    const maxLoc = loc.length ? loc[0].valore : 0;
+    const righeLoc = loc.map(l => `
+        <div class="val-loc">
+            <div class="val-loc-testa"><b>${escapeHtml(l.nome)}</b><span>${formattaEuro(l.valore)}</span></div>
+            <div class="val-loc-pista"><div style="width:${maxLoc > 0 ? Math.max(1.5, l.valore / maxLoc * 100).toFixed(1) : 0}%"></div></div>
+        </div>`).join('');
+
+    const top = coll.slice().sort((a, b) => (Number(b.price) || 0) - (Number(a.price) || 0)).slice(0, 4);
+    const righeTop = top.map((c, i) => {
+        const src = c.immagine ? (_urlImmagineVisualizzabile(c.immagine, 96) || '') : '';
+        const v = c.variazioneNumerica;
+        const sotto = [c.code, c.lang, c.cond].filter(Boolean).join(' · ');
+        return `
+            <div class="val-top${i === 3 ? ' val-solo-pc-flex' : ''}" onclick="apriFlipCardHome('${escapeJsAttr(String(c.id))}', { origine: 'top_valore' })">
+                ${src ? `<img class="val-top-fig" src="${src}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">` : '<span class="val-top-fig"></span>'}
+                <div class="val-top-testo"><b>${escapeHtml(c.name || '—')}</b><span>${escapeHtml(sotto)}<em class="val-solo-pc"> · ${escapeHtml(c.location || '')}${Number(c.qty) > 1 ? ' · ×' + c.qty : ''}</em></span></div>
+                ${c.location ? `<span class="val-chip val-solo-tel">${escapeHtml(c.location)}</span>` : ''}
+                <div class="val-top-destra"><b>${formattaEuro(c.price)}</b>${v ? `<span class="${v > 0 ? 'bx-su' : 'bx-giu'}">${v > 0 ? '▲ +' : '▼ −'}${formattaEuro(Math.abs(v)).replace(' €', '')}</span>` : ''}</div>
+            </div>`;
+    }).join('');
+
+    const tab = (id, t) => `<button type="button" class="val-tab ${_valPeriodo === id ? 'attivo' : ''}" onclick="_valImpostaPeriodo('${id}')">${t}</button>`;
+
+    container.innerHTML = `
+        <div class="val-pagina">
+            <div class="val-testa">
+                <div class="val-testa-sx">
+                    <span class="page-title">Valore collezione</span>
+                    <div class="val-riga-valore">
+                        <div class="val-grande">${formattaEuro(valore)}</div>
+                        <div class="val-sotto">${pillola}<span>${coll.length} pezz${coll.length === 1 ? 'o' : 'i'} · media ${formattaEuro(media)}</span></div>
+                    </div>
+                </div>
+                <button type="button" class="val-btn" onclick="apriDettaglioWidget('prezzi', event)">Vai a Prezzi</button>
+            </div>
+            <div class="val-layout">
+                <div class="val-sinistra">
+                    <div class="val-scheda">
+                        <div class="val-scheda-testa"><b>Andamento</b><div class="val-tabs">${tab('7', '7 g')}${tab('30', '30 g')}${tab('tutto', 'Tutto')}</div></div>
+                        ${_valGraficoHtml(_valSerie())}
+                    </div>
+                    ${loc.length ? `<div class="val-scheda"><div class="val-scheda-testa"><b>Per location</b></div><div class="val-loc-griglia">${righeLoc}</div></div>` : ''}
+                </div>
+                <div class="val-destra">
+                    ${top.length ? `
+                    <div class="val-blocco">
+                        <div class="val-titoletto"><span>Le più preziose</span><small class="val-solo-pc">top ${top.length}</small></div>
+                        <div class="val-scheda val-scheda-lista">${righeTop}
+                            <div class="val-link" onclick="apriDettaglioWidget('visualizzazione', event)">Mostra tutte →</div></div>
+                    </div>` : ''}
+                    <div class="val-blocco">
+                        <div class="val-titoletto"><span>Cosa l’ha mosso <small>· ultimi 7 giorni</small></span></div>
+                        <div class="val-scheda val-scheda-lista">${_valMossoHtml()}
+                            <div class="val-link" onclick="apriDettaglioWidget('variazione', event)">Tutti i movimenti →</div></div>
+                    </div>
+                </div>
+            </div>
+        </div>`;
+}
+
 async function renderPaginaValoreCollezione() {
     const container = document.getElementById('valoreContenuto');
     if (!container) return;
-
-    const def = CATALOGO_WIDGET.valore_collezione;
-    let dati;
+    _valRender(); // subito con quello che c'è già in memoria, poi storico e movimenti
     try {
-        const anteprima = await def.preview();
-        dati = anteprima.dati;
+        const userId = await authGetUserId();
+        if (!userId) return;
+        const [st, mv] = await Promise.all([
+            storicoValoreUltimiGiorni(userId, 400),
+            movimentiCollezioneListMie(userId, _VAR_LIMITE_MOVIMENTI),
+        ]);
+        _valStorico = st && st.data ? st.data.slice() : [];
+        _valMovimenti = mv && mv.data ? mv.data : [];
     } catch (e) {
         console.error('renderPaginaValoreCollezione:', e);
-        container.innerHTML = '<p style="text-align:center; color:var(--text-muted); font-size:0.85rem; padding:1rem 0;">Errore nel caricamento.</p>';
-        return;
     }
-
-    const eur = (v) => formattaEuro(v); // formato unico "12.345,00 €" (decisione Claudio 2026-09-25)
-
-    const righeCarte = (dati.top && dati.top.length)
-        ? dati.top.map(c => {
-            const immagineSrc = c.immagine ? (_urlImmagineVisualizzabile(c.immagine, 96) || '') : '';
-            const fig = immagineSrc
-                ? `<img class="pg-fig" src="${immagineSrc}" alt="" onerror="this.style.display='none';">`
-                : '<div class="pg-fig"></div>';
-            return `
-                <div class="pg-riga" data-tocca onclick="apriFlipCardHome('${c.id}', { origine: 'top_valore' })">
-                    ${fig}
-                    <div class="pg-testo"><b>${escapeHtml(c.nome || '—')}</b></div>
-                    <div class="pg-destra"><b>${eur(c.valore)}</b></div>
-                </div>`;
-        }).join('')
-        : '<p style="text-align:center; color:var(--text-muted); font-size:0.85rem; padding:1rem 0;">Ancora nessuna carta in collezione.</p>';
-
-    container.innerHTML = `
-        <div class="page-header">
-            <span class="page-title">Valore collezione</span>
-            <span class="page-azione attiva" onclick="apriDettaglioWidget('prezzi', event)">Vai a Prezzi</span>
-        </div>
-        <div class="pg-pagina">
-            <div class="pg-intro">
-                <div class="pg-grande">${eur(dati.valore)}</div>
-                <div class="pg-sotto">${dati.pezzi} pezz${dati.pezzi === 1 ? 'o' : 'i'} · media ${eur(dati.media)}</div>
-            </div>
-            <div class="pg-stat">
-                <div><b>${dati.pezzi}</b><span>Carte totali</span></div>
-                <div><b>${eur(dati.media)}</b><span>Valore medio</span></div>
-            </div>
-            ${dati.top && dati.top.length ? '<div class="pg-titoletto">Le più preziose</div>' : ''}
-            <div class="pg-elenco">${righeCarte}</div>
-        </div>
-    `;
+    _valRender();
 }
 
 

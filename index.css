@@ -7304,3 +7304,100 @@
             #shop .pg-contenuto-pagina { max-width: none; }
             .sh-colonna > .sh-pannello:last-child { margin-bottom: 0; }
         }
+
+        /* ── Pagina Valore collezione (RESTYLE BINDEX, tavole "Valore") ─────
+           Telefono: tutto in colonna. PC (pagina larga): grafico e location
+           a sinistra, Le più preziose e Cosa l'ha mosso a destra. */
+        #valore { container-type: inline-size; }
+        #valore .val-pagina { max-width: 1240px; padding-bottom: 4.5rem; }
+        #valore .bx-su { color: #2e7d32; }
+        #valore .bx-giu { color: #d32f2f; }
+        body.dark-mode #valore .bx-su { color: #81c784; }
+        body.dark-mode #valore .bx-giu { color: #ef9a9a; }
+        #valore .val-solo-pc, #valore .val-solo-pc-flex, #valore [hidden] { display: none !important; }
+        #valore .val-testa { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+        #valore .val-testa .page-title { font-size: 1.5rem; font-weight: 800; letter-spacing: -0.3px; color: var(--text-dark); }
+        #valore .val-riga-valore { margin-top: 14px; }
+        #valore .val-grande { font: 800 2.3rem/1.1 'Space Grotesk', sans-serif; color: var(--text-dark); font-variant-numeric: tabular-nums; letter-spacing: -0.5px; }
+        #valore .val-sotto { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 8px; color: var(--text-muted); font-size: 0.9rem; }
+        #valore .val-pillola { font-weight: 800; font-size: 0.82rem; padding: 4px 10px; border-radius: 8px; }
+        #valore .val-pillola.su { background: #e3f1e4; color: #2e7d32; }
+        #valore .val-pillola.giu { background: #fbe4e4; color: #c62828; }
+        body.dark-mode #valore .val-pillola.su { background: rgba(129,199,132,.15); color: #81c784; }
+        body.dark-mode #valore .val-pillola.giu { background: rgba(239,154,154,.15); color: #ef9a9a; }
+        #valore .val-btn {
+            flex: 0 0 auto; font: inherit; font-weight: 700; font-size: 0.88rem; padding: 10px 16px; border-radius: 999px; cursor: pointer;
+            border: 1px solid var(--border-color); background: var(--card-bg); color: var(--text-dark);
+        }
+        #valore .val-layout, #valore .val-sinistra, #valore .val-destra { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+        #valore .val-scheda { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 18px; padding: 16px; }
+        #valore .val-scheda-lista { padding: 4px 16px 12px; }
+        #valore .val-scheda-testa { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
+        #valore .val-scheda-testa > b { font-weight: 800; color: var(--text-dark); }
+        #valore .val-tabs { display: flex; gap: 6px; }
+        #valore .val-tab {
+            font: inherit; font-size: 0.8rem; font-weight: 700; padding: 6px 12px; border-radius: 999px; cursor: pointer;
+            border: 1px solid var(--border-color); background: var(--card-bg); color: var(--text-muted);
+        }
+        #valore .val-tab.attivo { background: var(--primary-light); border-color: transparent; color: var(--primary); }
+        #valore .val-grafico { position: relative; height: 170px; cursor: crosshair; touch-action: pan-y; }
+        #valore .val-grafico svg { width: 100%; height: 100%; display: block; overflow: visible; }
+        #valore .val-g-area { fill: var(--primary); opacity: 0.12; }
+        #valore .val-g-linea { fill: none; stroke: var(--primary); stroke-width: 2.5; stroke-linejoin: round; stroke-linecap: round; }
+        #valore .val-g-griglia { stroke: var(--border-color); stroke-width: 1; vector-effect: non-scaling-stroke; }
+        #valore .val-g-assey { display: none; }
+        #valore .val-g-assex { display: flex; justify-content: space-between; font-size: 0.74rem; color: var(--text-muted); margin-top: 6px; }
+        #valore .val-g-cursore { position: absolute; top: 0; bottom: 0; width: 0; border-left: 1px dashed var(--text-muted); pointer-events: none; }
+        #valore .val-g-punto { position: absolute; left: -6px; width: 12px; height: 12px; margin-top: -6px; border-radius: 50%; background: var(--card-bg); border: 2.5px solid var(--primary); }
+        #valore .val-g-tip {
+            position: absolute; z-index: 2; pointer-events: none; display: flex; flex-direction: column; gap: 2px; white-space: nowrap;
+            background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 10px; padding: 8px 10px; font-size: 0.74rem;
+            color: var(--text-muted); box-shadow: 0 6px 18px rgba(0,0,0,.12);
+        }
+        #valore .val-g-tip b { font-size: 0.9rem; color: var(--text-dark); }
+        #valore .val-grafico-vuoto, #valore .val-vuoto { color: var(--text-muted); font-size: 0.85rem; padding: 1.2rem 0; text-align: center; }
+        #valore .val-loc-griglia { display: flex; flex-direction: column; gap: 14px; }
+        #valore .val-loc-testa { display: flex; justify-content: space-between; gap: 10px; font-size: 0.92rem; color: var(--text-dark); }
+        #valore .val-loc-testa span { font-variant-numeric: tabular-nums; }
+        #valore .val-loc-pista { height: 8px; border-radius: 6px; background: var(--primary-light); margin-top: 6px; overflow: hidden; }
+        #valore .val-loc-pista div { height: 100%; border-radius: 6px; background: var(--primary); }
+        #valore .val-titoletto { display: flex; justify-content: space-between; align-items: baseline; font-weight: 800; color: var(--text-muted); font-size: 0.95rem; margin: 2px 2px 8px; }
+        #valore .val-titoletto small { font-weight: 600; }
+        #valore .val-top { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--border-color); cursor: pointer; }
+        #valore .val-top-fig { width: 40px; height: 56px; border-radius: 5px; object-fit: cover; flex: 0 0 auto; background: var(--primary-light); box-shadow: 0 2px 6px rgba(0,0,0,.2); }
+        #valore .val-top-testo { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+        #valore .val-top-testo b { color: var(--text-dark); font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        #valore .val-top-testo span { font-size: 0.8rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        #valore .val-top-testo em { font-style: normal; }
+        #valore .val-chip { font-size: 0.74rem; font-weight: 700; padding: 3px 9px; border-radius: 999px; background: var(--primary-light); color: var(--primary); white-space: nowrap; }
+        #valore .val-top-destra { display: flex; flex-direction: column; align-items: flex-end; font-variant-numeric: tabular-nums; }
+        #valore .val-top-destra b { color: var(--text-dark); }
+        #valore .val-top-destra span { font-size: 0.8rem; font-weight: 700; }
+        #valore .val-mosso-riga { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--border-color); cursor: pointer; }
+        #valore .val-mosso-ico { width: 38px; height: 38px; border-radius: 11px; flex: 0 0 auto; display: flex; align-items: center; justify-content: center; background: var(--primary-light); color: var(--primary); }
+        #valore .val-mosso-testo { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+        #valore .val-mosso-testo b { color: var(--text-dark); font-size: 0.92rem; }
+        #valore .val-mosso-testo span { font-size: 0.8rem; color: var(--text-muted); }
+        #valore .val-mosso-delta { font-variant-numeric: tabular-nums; white-space: nowrap; }
+        #valore .val-link { text-align: right; color: var(--primary); font-weight: 700; font-size: 0.88rem; padding-top: 12px; cursor: pointer; }
+
+        @container (min-width: 780px) {
+            #valore .val-solo-pc:not([hidden]) { display: inline !important; }
+            #valore .val-solo-pc-flex { display: flex !important; }
+            #valore .val-solo-tel { display: none; }
+            #valore .val-testa { align-items: flex-end; }
+            #valore .val-riga-valore { display: flex; align-items: baseline; gap: 14px; margin-top: 6px; }
+            #valore .val-grande { font-size: 2.6rem; }
+            #valore .val-sotto { margin-top: 0; }
+            #valore .val-layout { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 16px; align-items: start; }
+            #valore .val-grafico { height: 240px; margin-left: 44px; }
+            #valore .val-g-assey { display: block; position: absolute; left: -44px; top: 0; bottom: 0; width: 40px; font-size: 0.7rem; color: var(--text-muted); }
+            #valore .val-g-assey span { position: absolute; left: 0; }
+            #valore .val-g-assex { margin-left: 44px; }
+            #valore .val-loc-griglia { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 28px; }
+            #valore .val-titoletto { display: none; }
+            #valore .val-blocco .val-scheda-lista { padding-top: 14px; }
+            #valore .val-blocco .val-scheda-lista::before { font-weight: 800; color: var(--text-dark); display: block; margin-bottom: 4px; }
+            #valore .val-blocco:first-child .val-scheda-lista::before { content: 'Le più preziose'; }
+            #valore .val-blocco:last-child .val-scheda-lista::before { content: 'Cosa l’ha mosso'; }
+        }
