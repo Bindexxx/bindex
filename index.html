@@ -1409,10 +1409,10 @@
                         </div>
                         <div class="imp-voce">
                             <span class="imp-ico"><i class="fa-solid fa-file-import"></i></span>
-                            <div class="imp-voce-testo"><h4>Importa da CSV</h4><p>Colonne: nome (obbligatoria), lingua, condizione, qty, reverse, first_ed, sigillata_originale, nota, location, destinazione. Le righe vanno in coda, come le carte inserite a mano.</p>
-                                <p id="importCsvEsito" style="font-size:0.8rem; margin-top:0.4rem;"></p></div>
+                            <div class="imp-voce-testo"><h4>Importa da CSV <span class="imp-nuovo">nuovo</span></h4><p>Hai la collezione segnata altrove? Caricala in un colpo solo</p></div>
+                            <!-- ui/import-csv.ui.js: file → colonne → controllo → coda a blocchi da 100 -->
                             <input type="file" id="importCsvFile" accept=".csv,text/csv" style="display:none;" onchange="importaCsvDaFile(this)">
-                            <button class="btn-secondary imp-btn" onclick="document.getElementById('importCsvFile').click()">Scegli file</button>
+                            <button class="btn-main imp-btn" onclick="importCsvApri()"><i class="fa-solid fa-file-import"></i> Importa</button>
                         </div>
                     </div>
                 </section>
@@ -1441,6 +1441,10 @@
 
                 </div>
             </div>
+            <!-- Importa da CSV (tavole PC-csv / PC-csv-prog): riempita da
+                 _importCsvRender() in ui/import-csv.ui.js; quando è aperta
+                 #impostazioni ha la classe imp-csv-aperto e il resto si nasconde. -->
+            <div id="importCsvVista"></div>
 
         </div>
 

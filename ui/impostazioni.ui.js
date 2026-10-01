@@ -228,6 +228,7 @@ async function _connessioniRicontrolla() {
 }
 
 function _impostazioniTornaHub() {
+    if (typeof importCsvChiudi === 'function') importCsvChiudi(); // riaprendo si riparte dalle impostazioni (non durante un invio)
     const cerca = document.getElementById('impCerca');
     if (cerca && cerca.value) { cerca.value = ''; _impostazioniCerca(''); }
     _impostazioniProfiloRiepilogo();
