@@ -7746,3 +7746,25 @@
             #doppioni .dp-pannello-pc { display: block; position: sticky; top: 8px; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 18px; padding: 18px; }
             #doppioni .dp-pannello-pc:empty { display: none; }
         }
+
+        /* ── Sealed PC: elenco + dettagli affiancati (RESTYLE, tavola "Sealed PC") ── */
+        #sealed { container-type: inline-size; }
+        @container (min-width: 780px) {
+            #sealed .sl-layout { display: grid; grid-template-columns: minmax(0, 1fr) 420px; gap: 18px; align-items: start; max-width: 1240px; }
+            #sealed .sl-layout .sl-pagina { max-width: none; }
+            #sealed #sealedVistaDettaglio { position: sticky; top: 8px; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 18px; padding: 18px 18px 8px; }
+            #sealed #sealedVistaDettaglio .sl-indietro { display: none; }
+            #sealed #sealedElenco { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 18px; padding: 6px 12px; }
+            #sealed .sl-riga { border-radius: 12px; padding-left: 8px; padding-right: 8px; }
+            #sealed .sl-riga.sel { background: var(--primary-light); }
+            #sealed .sl-stat { max-width: 640px; }
+        }
+
+        /* ── Scaffali PC: elenco a sinistra, scaffale aperto a destra (RESTYLE) ── */
+        #scaffali { container-type: inline-size; }
+        @container (min-width: 780px) {
+            #scaffali .sc-layout { max-width: 1240px; display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 18px; align-items: start; margin: 0; }
+            #scaffali #scaffaleDettaglioWrap { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 18px; padding: 18px; }
+            #scaffali #scaffaleDettaglioWrap .sc-indietro { display: none; }
+            #scaffali .sc-riga.sel { border-color: var(--primary); background: var(--primary-light); }
+        }

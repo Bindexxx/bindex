@@ -87,7 +87,10 @@ async function apriPaginaScaffali() {
     }
 
     await renderGrigliaScaffali();
+    if (_scaEPC() && _scaffaliElenco.length) apriScaffaleDettaglio(_scaffaliElenco[0].id);
 }
+
+function _scaEPC() { const s = document.getElementById('scaffali'); return !!s && s.clientWidth >= 780; }
 
 
 // ── Elenco degli scaffali ────────────────────────────────────────────────
@@ -153,7 +156,7 @@ async function renderGrigliaScaffali() {
         if (valore > 0) parti.push(formattaEuro(valore));
         parti.push(_scaStatoEtichetta(s));
         return `
-            <div class="sc-riga" onclick="apriScaffaleDettaglio('${idAttr}')">
+            <div class="sc-riga${String(s.id) === String(_scaffaleAttivo) ? ' sel' : ''}" data-id="${escapeHtml(String(s.id))}" onclick="apriScaffaleDettaglio('${idAttr}')">
                 <div class="sc-riga-icona"><i class="fa-solid ${icona}"></i></div>
                 <div class="sc-riga-testo">
                     <b>${escapeHtml(_scaNomeScaffale(s))}${fisso ? ' <i class="fa-solid fa-lock sc-lucchetto" title="Scaffale fisso"></i>' : ''}</b>
@@ -196,7 +199,8 @@ async function apriScaffaleDettaglio(scaffaleId) {
     _scaOrd = 'mio';
 
     const elenco = document.getElementById('scaffaliElencoVista');
-    if (elenco) elenco.style.display = 'none';
+    if (elenco) elenco.style.display = _scaEPC() ? '' : 'none'; // RESTYLE: su PC elenco e scaffale affiancati
+    document.querySelectorAll('#scaffaliContenitoriGrid .sc-riga').forEach(r => r.classList.toggle('sel', r.dataset.id === String(scaffaleId)));
     const wrapDettaglio = document.getElementById('scaffaleDettaglioWrap');
     if (wrapDettaglio) wrapDettaglio.style.display = 'block';
 
