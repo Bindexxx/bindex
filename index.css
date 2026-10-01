@@ -4480,6 +4480,28 @@
         /* RESTYLE BINDEX FASE 4c: bollino "⇄ N" del binder Scambio (era un'etichetta "Offerte: N") */
         .binder-slot-scambio-badge { border:none; cursor:pointer; font:inherit; display:inline-flex; align-items:center; gap:0.25rem; }
 
+        /* ═══ RESTYLE BINDEX FASE 4d — impostazioni binder ═══ */
+        #binderImpostazioniModal .settings-card .binder-modalita-toggle:not(#binderImpostazioniTabs) { display:none; } /* Libro|Elenco ora sta nella pagina del binder */
+        #binderImpostazioniModal .bn-interruttore { display:flex; align-items:center; justify-content:space-between; gap:1rem; width:100%; cursor:pointer; position:relative; }
+        #binderImpostazioniModal .bn-int-testo { display:flex; flex-direction:column; }
+        #binderImpostazioniModal .bn-int-testo b { font-size:1rem; color:var(--text-dark); }
+        #binderImpostazioniModal .bn-int-testo small { font-size:0.8rem; color:var(--text-muted); font-weight:400; }
+        #binderImpostazioniModal .bn-interruttore input { position:absolute; opacity:0; pointer-events:none; }
+        #binderImpostazioniModal .bn-switch { position:relative; width:48px; height:28px; border-radius:999px; background:var(--border-color); flex-shrink:0; transition:background 0.15s; }
+        #binderImpostazioniModal .bn-switch::after { content:''; position:absolute; top:3px; left:3px; width:22px; height:22px; border-radius:50%; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,0.3); transition:left 0.15s; }
+        #binderImpostazioniModal .bn-interruttore input:checked + .bn-switch { background:var(--primary); }
+        #binderImpostazioniModal .bn-interruttore input:checked + .bn-switch::after { left:23px; }
+        #binderPubblicazioneWrap { display:block; }
+        #binderImpostazioniModal .binder-layout-btn { display:flex; flex-direction:column; align-items:center; gap:0.4rem; padding:0.7rem 0.4rem; min-width:64px; }
+        #binderImpostazioniModal .bn-mini { display:grid; gap:2px; width:34px; padding:4px; border-radius:6px; background:color-mix(in srgb, var(--text-muted) 12%, transparent); }
+        #binderImpostazioniModal .bn-mini b { aspect-ratio:5/7; border-radius:1.5px; background:var(--text-muted); opacity:0.6; }
+        #binderImpostazioniModal .bn-mini-2x2 { grid-template-columns:repeat(2,1fr); }
+        #binderImpostazioniModal .bn-mini-3x3 { grid-template-columns:repeat(3,1fr); }
+        #binderImpostazioniModal .bn-mini-3x4 { grid-template-columns:repeat(4,1fr); }
+        #binderImpostazioniModal .bn-mini-4x4 { grid-template-columns:repeat(4,1fr); }
+        #binderImpostazioniModal .binder-layout-btn.active .bn-mini { background:rgba(255,255,255,0.25); }
+        #binderImpostazioniModal .binder-layout-btn.active .bn-mini b { background:#fff; opacity:1; }
+
         /* ═══ RESTYLE BINDEX FASE 4b — binder aperto: testata, scheda Libro|Elenco, Elenco ═══
            La testata non è più sovrapposta al libro: sta nel flusso, e il
            libro (#binderLibroWrap, flex:1) occupa lo spazio che resta — il

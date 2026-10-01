@@ -1654,9 +1654,10 @@
                              controllo qui non avrebbe senso e resta
                              nascosto. -->
                         <div id="binderPubblicazioneWrap" style="display:none; margin-bottom:1rem; align-items:center; gap:0.6rem;">
-                            <label style="display:inline-flex; align-items:center; gap:0.5rem; cursor:pointer; font-size:0.82rem; font-weight:700;">
+                            <label class="bn-interruttore">
+                                <span class="bn-int-testo"><b>Pubblico</b><small>Chi ha il link può sfogliarlo</small></span>
                                 <input type="checkbox" id="binderPubblicazioneCheckbox" onchange="impostaPubblicazioneBinderAttivo(this.checked)">
-                                Rendi pubblico (link condivisibile)
+                                <span class="bn-switch"></span>
                             </label>
                         </div>
 
@@ -1691,10 +1692,10 @@
                         <!-- Layout griglia immagini — nascosto via JS in modalità elenco -->
                         <div class="binder-layout-switcher" style="display:flex; align-items:center; gap:0.6rem; flex-wrap:wrap; margin-top:0.8rem;">
                             <div style="display:flex; gap:0.4rem;">
-                                <button type="button" class="binder-layout-btn" data-layout="2x2" onclick="cambiaLayoutBinder('2x2')">2×2</button>
-                                <button type="button" class="binder-layout-btn" data-layout="3x3" onclick="cambiaLayoutBinder('3x3')">3×3</button>
-                                <button type="button" class="binder-layout-btn" data-layout="3x4" onclick="cambiaLayoutBinder('3x4')">4×3</button>
-                                <button type="button" class="binder-layout-btn" data-layout="4x4" onclick="cambiaLayoutBinder('4x4')">4×4</button>
+                                <button type="button" class="binder-layout-btn" data-layout="2x2" onclick="cambiaLayoutBinder('2x2')"><span class="bn-mini bn-mini-2x2"><b></b><b></b><b></b><b></b></span><span>2×2</span></button>
+                                <button type="button" class="binder-layout-btn" data-layout="3x3" onclick="cambiaLayoutBinder('3x3')"><span class="bn-mini bn-mini-3x3"><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b></span><span>3×3</span></button>
+                                <button type="button" class="binder-layout-btn" data-layout="3x4" onclick="cambiaLayoutBinder('3x4')"><span class="bn-mini bn-mini-3x4"><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b></span><span>4×3</span></button>
+                                <button type="button" class="binder-layout-btn" data-layout="4x4" onclick="cambiaLayoutBinder('4x4')"><span class="bn-mini bn-mini-4x4"><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b></span><span>4×4</span></button>
                             </div>
                             <span style="font-size:0.72rem; color:var(--text-muted);">Per aggiungere carte al tuo binder personale, usa "Aggiungi al Binder" da Visualizzazione.</span>
                         </div>
