@@ -202,6 +202,7 @@ async function renderPaginaMatch() {
         chiave: `${m.mia_wishlist_id}_${m.altra_carta_id}`, lato: 'cerchi', tipo: 'carta', ownerAltro: m.altro_owner_id,
         ...daCarta(m.mia_wishlist_id), nome: m.mio_nome || daCarta(m.mia_wishlist_id).nome,
         prezzo: Number(m.altro_prezzo) || 0, obiettivo: m.mio_prezzo_obiettivo, oggettoId: m.altra_carta_id,
+        disponibili: m.altra_disponibili,
     }));
     // Sealed: stesse due forme (id diversi, sql/52 le ha disegnate a specchio).
     (dataScambioSealed || []).forEach(m => righe.push({
@@ -213,6 +214,7 @@ async function renderPaginaMatch() {
         chiave: `s_${m.mia_wishlist_sealed_id}_${m.altro_prodotto_id}`, lato: 'cerchi', tipo: 'sealed', ownerAltro: m.altro_owner_id,
         nome: m.mio_nome || '', code: '', lang: '', cond: '', img: null,
         prezzo: Number(m.altro_prezzo) || 0, obiettivo: m.mio_prezzo_obiettivo, oggettoId: m.altro_prodotto_id,
+        disponibili: m.altra_disponibili,
     }));
 
     // Collegato a preferenze_utente.match_nascosti (migration 30) —
@@ -222,8 +224,14 @@ async function renderPaginaMatch() {
     // Nickname in batch per tutti gli owner distinti — una sola RPC. Se
     // fallisce (rete, RPC non ancora sul DB) nessuna riga sparisce: il nome
     // diventa "Un utente del gruppo".
-    const idsDistinti = [...new Set(righe.map(r => r.ownerAltro).filter(Boolean))];
+    // RESTYLE BINDEX FASE 8e (sql/84): le 4 RPC ora restituiscono già
+    // altro_nickname; la RPC chatOttieniNicknames resta solo per chi manca
+    // (e per i DB senza sql/84 applicata).
     const nicknameMap = {};
+    [dataScambio, dataWishlist, dataScambioSealed, dataWishlistSealed].forEach(arr => {
+        (arr || []).forEach(m => { if (m.altro_nickname) nicknameMap[m.altro_owner_id] = m.altro_nickname; });
+    });
+    const idsDistinti = [...new Set(righe.map(r => r.ownerAltro).filter(id => id && !nicknameMap[id]))];
     if (idsDistinti.length > 0) {
         try {
             const { data: nicknamesData, error: errN } = await chatOttieniNicknames(idsDistinti);
@@ -390,7 +398,7 @@ function _matchRigaHtml(r, eCerchi, g, nascosta) {
     const meta = [r.code, r.lang, r.cond].filter(Boolean).map(escapeHtml).join(' · ');
     const eti = _matchEtichetta(r);
     const prezzoTesto = eCerchi
-        ? `Lo ha in Scambio a <b>${formattaEuro(r.prezzo)}</b>${r.obiettivo != null ? ` · tuo obiettivo ${formattaEuro(r.obiettivo)}` : ''}`
+        ? `Lo ha in Scambio a <b>${formattaEuro(r.prezzo)}</b>${r.obiettivo != null ? ` · tuo obiettivo ${formattaEuro(r.obiettivo)}` : ''}${r.disponibili > 0 ? ` · ne ha ${r.disponibili}` : ''}`
         : `Tuo in Scambio a <b>${formattaEuro(r.prezzo)}</b>${r.obiettivo != null ? ` · lo cerca fino a ${formattaEuro(r.obiettivo)}` : ' · nessun limite di prezzo'}`;
     const nuovo = _matchDati.nuovi.has(r.chiave) ? ' <span class="match-nuovo">NUOVO</span>' : '';
     const spunta = (eCerchi && !nascosta)

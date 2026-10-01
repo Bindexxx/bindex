@@ -418,6 +418,15 @@ let _chatAltroId = null;
 let _chatUserId = null;
 let _chatPollingHandle = null;
 
+// RESTYLE BINDEX FASE 8e (sql/83): "Scrivi a …" dalla pagina Richieste allega
+// al PRIMO messaggio l'etichetta della richiesta ({ id, altro }); si azzera
+// all'invio riuscito o alla chiusura della chat.
+let _chatRichiestaAllegata = null;
+function apriChatPerRichiesta(ownerAltro, personaLabel, richiestaId) {
+    _chatRichiestaAllegata = richiestaId ? { id: richiestaId, altro: ownerAltro } : null;
+    return apriChat(ownerAltro, personaLabel);
+}
+
 async function apriChat(ownerAltro, personaLabel) {
     if (!ownerAltro) return;
     _chatUserId = await authGetUserId();
@@ -480,6 +489,7 @@ function chiudiChat() {
     if (modal) modal.style.display = 'none';
     _chatConversazioneId = null;
     _chatAltroId = null;
+    _chatRichiestaAllegata = null;
     // La chat aperta potrebbe aver segnato letti dei messaggi contati nel
     // badge/inbox: se si torna all'inbox o alla home, meglio un
     // aggiornamento subito invece di aspettare i 60s del polling lento.
@@ -597,6 +607,7 @@ function _chatBubbleHtml(m, isPrimo, isUltimo, isNuovo) {
     return `
     <div class="chat-bubble-wrap ${lato}" style="margin-top:${margine};">
         <div class="chat-bubble ${lato}" style="border-radius:${radius};" ${isNuovo ? 'data-nuovo' : ''}>
+            ${m.richiesta_etichetta ? `<span class="chat-richiesta"><i class="fa-solid fa-handshake"></i> ${escapeHtml(m.richiesta_etichetta)}</span>` : ''}
             <span>${testoHtml}</span>
             <span class="chat-ora">${_chatFormattaOra(m.creato_il)}</span>
             ${_chatSpuntaHtml(m)}
@@ -691,8 +702,10 @@ async function _chatInviaMessaggioClick() {
 
     input.value = '';
     _chatSuInputCambiato(); // ridisabilita il bottone/svuota il contatore subito, non aspetta il prossimo input dell'utente
-    const { error } = await chatInviaMessaggio(_chatConversazioneId, testo);
+    const allegata = (_chatRichiestaAllegata && _chatRichiestaAllegata.altro === _chatAltroId) ? _chatRichiestaAllegata.id : null;
+    const { error } = await chatInviaMessaggio(_chatConversazioneId, testo, allegata);
     if (error) { alert('Errore invio: ' + error.message); return; }
+    if (allegata) _chatRichiestaAllegata = null;
     await _chatRenderMessaggi();
 }
 

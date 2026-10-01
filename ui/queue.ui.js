@@ -177,11 +177,11 @@
             // Email: mostrato solo il nome prima della chiocciola, come già
             // fa tutto il resto del sito (renderPaginaMatch, caricaMatch).
             if (typeof CSBar !== 'undefined') {
-                const _nomeUtenteMatch = (email) => (email || '').split('@')[0] || 'qualcuno del gruppo';
+                const _nomeUtenteMatch = (nick) => (nick || '').trim() || 'qualcuno del gruppo'; // sql/84: nickname, mai l'email
                 _notificaUnaVolta(nuoviScambio, m => _chiaveMatch(m, 'scambio'), m =>
-                    ['match-trovato', { text: `Hai una carta che interessa a ${_nomeUtenteMatch(m.altra_email)}.` }]);
+                    ['match-trovato', { text: `Hai una carta che interessa a ${_nomeUtenteMatch(m.altro_nickname)}.` }]);
                 _notificaUnaVolta(nuoviWishlist, m => _chiaveMatch(m, 'wishlist'), m =>
-                    ['match-trovato', { text: `${_nomeUtenteMatch(m.altra_email)} ha una carta della tua Wishlist.` }]);
+                    ['match-trovato', { text: `${_nomeUtenteMatch(m.altro_nickname)} ha una carta della tua Wishlist.` }]);
                 _notificaUnaVolta(carteAlertPrezzo, c => 'prezzo-' + c.id, c =>
                     ['prezzo-obiettivo', { text: `${c.name || 'Una carta della tua Wishlist'} ha raggiunto il tuo prezzo obiettivo.` }]);
             }
@@ -257,7 +257,7 @@
             _aggiornaPallinoMenu(tabId, 0);
 
             const righe = data.map(m => {
-                const persona = escapeHtml((m.altra_email || '').split('@')[0]);
+                const persona = escapeHtml((m.altro_nickname || '').trim() || 'qualcuno del gruppo');
                 // Fase 6, Step 3: bottone "Richiedi" SOLO quando l'oggetto è
                 // di qualcun altro (tab 'wishlist' — la mia wishlist ha
                 // trovato una carta/prodotto altrui in Scambio). Sulla tab
@@ -272,7 +272,7 @@
                     // solo l'apostrofo. personaAttr parte dal nome grezzo
                     // (non da 'persona', già HTML-escapato per la stampa).
                     const nomeAttr = escapeJsAttr(m.mio_nome || '');
-                    const personaAttr = escapeJsAttr((m.altra_email || '').split('@')[0]);
+                    const personaAttr = escapeJsAttr((m.altro_nickname || '').trim() || 'qualcuno del gruppo');
                     bottone = `<button class="btn-secondary" style="padding:0.35rem 0.7rem; font-size:0.78rem; white-space:nowrap;"
                         onclick="apriRichiediMatch('${m.altro_owner_id}', '${oggettoId}', '${tipoRichiesta}', '${nomeAttr}', '${personaAttr}')">
                         <i class="fa-solid fa-paper-plane"></i> Richiedi</button>`;

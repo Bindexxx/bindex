@@ -6601,6 +6601,7 @@
             from { opacity: 0; transform: translateY(4px); }
             to { opacity: 1; transform: translateY(0); }
         }
+        .chat-richiesta { display: block; flex: 1 0 100%; font-size: 0.68rem; font-weight: 700; opacity: 0.85; margin-bottom: 3px; }
         .chat-ora { font-size: 0.62rem; opacity: 0.75; white-space: nowrap; margin-left: auto; align-self: flex-end; }
         .chat-spunta { font-size: 0.62rem; margin-left: 2px; opacity: 0.8; }
         .chat-spunta.letto { color: #4fc3f7; opacity: 1; }

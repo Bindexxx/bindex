@@ -117,6 +117,19 @@ async function caricaRichieste() {
     }
   }
 
+  // Nome attuale ("prima") delle rinomine pending: una chiamata per richiesta,
+  // errori ignorati (es. sql/86 non ancora applicata → resta solo il "dopo").
+  _mappaPrimaRichieste = {};
+  await Promise.all(_ultimeRichiesteCaricate
+    .filter(r => (r.type === 'binder_nome' || r.type === 'scaffale_nome') && r.status === 'pending')
+    .map(async (r) => {
+      try {
+        const { data, error } = await adminContestoRichiesta(r.id);
+        const riga = Array.isArray(data) ? data[0] : data;
+        if (!error && riga && riga.prima) _mappaPrimaRichieste[r.id] = riga.prima;
+      } catch (e) { console.error('[admin] contesto richiesta:', e); }
+    }));
+
   renderRichieste();
 }
 
@@ -141,10 +154,14 @@ function renderRichieste() {
     if (r.type === 'username_change' && r.payload?.nuovo_username) {
       dettaglio = `<div class="rq-pd"><span class="prima">${utente}</span><span class="freccia">→</span><span class="dopo">${escAttr(r.payload.nuovo_username)}</span></div>`;
     }
-    if (r.type === 'binder_nome' && r.payload?.nome_proposto) {
+    if (r.type === 'binder_nome' && r.payload?.nome_proposto && _mappaPrimaRichieste[r.id]) {
+      dettaglio = `<div class="rq-pd"><span class="prima">${escAttr(_mappaPrimaRichieste[r.id])}</span><span class="freccia">→</span><span class="dopo">${escAttr(r.payload.nome_proposto)}</span></div>`;
+    } else if (r.type === 'binder_nome' && r.payload?.nome_proposto) {
       dettaglio = `<div class="rq-pd"><span class="freccia">Nuovo nome del binder:</span><span class="dopo">${escAttr(r.payload.nome_proposto)}</span></div>`;
     }
-    if (r.type === 'scaffale_nome' && r.payload?.nome_proposto) {
+    if (r.type === 'scaffale_nome' && r.payload?.nome_proposto && _mappaPrimaRichieste[r.id]) {
+      dettaglio = `<div class="rq-pd"><span class="prima">${escAttr(_mappaPrimaRichieste[r.id])}</span><span class="freccia">→</span><span class="dopo">${escAttr(r.payload.nome_proposto)}</span></div>`;
+    } else if (r.type === 'scaffale_nome' && r.payload?.nome_proposto) {
       dettaglio = `<div class="rq-pd"><span class="freccia">Nuovo nome dello scaffale:</span><span class="dopo">${escAttr(r.payload.nome_proposto)}</span></div>`;
     }
     const urlFoto = r.type === 'photo_upload' ? _mappaAnteprimaFotoRichieste[r.payload?.media_id] : null;
