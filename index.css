@@ -7848,3 +7848,60 @@
     #missioni .msn-recente b { color: var(--text-dark); font-size: 0.9rem; }
     #missioni .msn-recente em { font-style: normal; font-size: 0.74rem; font-weight: 700; color: var(--success); }
 }
+
+/* ── SET — tavole OK-set / PC-set (2026-10-01) ─────────────────────────
+   Telefono: Modifica come bottone, tre riquadri (in corso / completati /
+   il più avanti), ricerca, schede a pillola, sigla accanto al nome.
+   PC (>= 780px): elenco a sinistra in un riquadro, dettaglio del set a
+   destra (#setDettPc, riempito da _setUiRenderDettaglio inline). */
+#set { container-type: inline-size; }
+#set .page-header { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+#set .set-btn-modifica {
+    display: inline-flex; align-items: center; gap: 7px; flex: 0 0 auto;
+    background: var(--card-bg); color: var(--text-dark); border: 1px solid var(--border-color);
+    border-radius: 12px; padding: 8px 14px; font: inherit; font-size: 0.85rem; font-weight: 700; cursor: pointer;
+}
+#set .set-btn-modifica.attiva { background: var(--primary); border-color: var(--primary); color: #fff; }
+#set .set-solo-pc { display: none; }
+#set .set-dx { display: none; }
+#set .set-stat { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+#set .set-stat > div { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 12px; padding: 10px 12px; display: flex; flex-direction: column; gap: 2px; }
+#set .set-stat b { font-size: 1.15rem; font-weight: 800; color: var(--text-dark); font-variant-numeric: tabular-nums; }
+#set .set-stat span { font-size: 0.72rem; color: var(--text-muted); }
+#set .set-sx { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+#set .set-cerca {
+    display: flex; align-items: center; gap: 10px; background: var(--card-bg);
+    border: 1px solid var(--border-color); border-radius: 12px; padding: 0 14px; color: var(--text-muted);
+}
+#set .set-cerca input { flex: 1; min-width: 0; border: 0; background: transparent; padding: 11px 0; font: inherit; font-size: 0.88rem; color: var(--text-dark); outline: none; }
+#set .pg-filtri { gap: 6px; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+#set .pg-filtri::-webkit-scrollbar { display: none; }
+#set .pg-filtro { white-space: nowrap; flex: 0 0 auto; }
+#set .pg-filtro.attivo { background: var(--primary-light); border-color: var(--primary-light); color: var(--primary); }
+#set .set-ordine { font-size: 0.74rem; color: var(--text-muted); }
+#set .set-sigla { font-size: 0.66rem; font-weight: 700; color: var(--text-muted); letter-spacing: .3px; margin-left: 2px; }
+#set .set-riga.sel { background: var(--primary-light); border-radius: 10px; }
+#set .set-dett-testa { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+#set .set-dett-nome { font-size: 0.78rem; font-weight: 700; color: var(--text-muted); }
+#set .set-dett-testa .page-azione {
+    background: var(--card-bg); color: var(--text-dark); border: 1px solid var(--border-color);
+    border-radius: 10px; padding: 6px 12px; font-weight: 700;
+}
+#set .set-dett-testa .page-azione.attiva { background: var(--primary); border-color: var(--primary); color: #fff; }
+#set .set-dett-corpo { display: flex; flex-direction: column; gap: 10px; margin-top: 4px; }
+#set .set-vuoto-dx { text-align: center; color: var(--text-muted); font-size: 0.85rem; padding: 3rem 0; }
+
+@container (min-width: 780px) {
+    #set .set-solo-pc { display: block; }
+    #set .set-stat { display: none; }
+    #set .set-layout { display: grid; grid-template-columns: minmax(280px, 0.9fr) 2.1fr; gap: 16px; align-items: start; }
+    #set .set-sx, #set .set-dx {
+        display: flex; flex-direction: column; background: var(--card-bg);
+        border: 1px solid var(--border-color); border-radius: 16px; padding: 14px;
+    }
+    #set .set-sx { position: sticky; top: 0; max-height: calc(100vh - 170px); }
+    #set .set-sx #setElenco { overflow-y: auto; min-height: 0; flex: 1; }
+    #set .set-sx .set-riga { padding: 8px 8px; }
+    #set .set-dx .pg-intro { display: flex; flex-direction: row; align-items: baseline; gap: 14px; text-align: left; }
+    #set .set-dx .set-griglia { grid-template-columns: repeat(auto-fill, minmax(88px, 1fr)); }
+}

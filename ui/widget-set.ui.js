@@ -102,8 +102,17 @@ const _setUi = {
     modificaDett: false,    // dettaglio: ignora/riattiva carte
     classifica: false,      // schermata "carte X da classificare"
     msg: '',
+    cerca: '',              // elenco: testo della ricerca (nome o sigla)
     token: 0
 };
+
+// Pagina larga (PC, tavola PC-set): elenco a sinistra e dettaglio del set
+// scelto a destra, nella stessa schermata. Stessa soglia (780px) della
+// container query su #set in index.css.
+function _setEPC() {
+    const el = document.getElementById('set');
+    return !!el && el.clientWidth >= 780;
+}
 
 function _setUiAttr(s) {
     return String(s == null ? '' : s)
@@ -121,6 +130,7 @@ async function renderPaginaSet() {
     _setUi.modificaDett = false;
     _setUi.classifica = false;
     _setUi.msg = '';
+    _setUi.cerca = '';
     _setUi.dett = null;
 
     // Se c'è una notifica non vista, la pagina si apre direttamente sul set
@@ -153,8 +163,18 @@ async function _setUiRender() {
     const container = document.getElementById('setContenuto');
     if (!container) return;
     try {
-        if (_setUi.dett) await _setUiRenderDettaglio(container);
-        else if (_setUi.classifica) _setUiRenderClassifica(container);
+        if (_setUi.classifica) _setUiRenderClassifica(container);
+        else if (_setEPC()) {
+            // PC: elenco + dettaglio affiancati. Senza un set scelto si apre
+            // il primo della scheda corrente (come Location/Sealed su PC).
+            const elenco = _setUiRenderLista(container);
+            if (!_setUi.dett && elenco && elenco.length) _setUi.dett = elenco[0].sigla;
+            _setUiSegnaSelezione();
+            const destra = document.getElementById('setDettPc');
+            if (destra && _setUi.dett) await _setUiRenderDettaglio(destra, true);
+            else if (destra) destra.innerHTML = '<p class="set-vuoto-dx">Scegli un set dall\'elenco.</p>';
+        }
+        else if (_setUi.dett) await _setUiRenderDettaglio(container);
         else _setUiRenderLista(container);
     } catch (e) {
         console.error('renderPaginaSet:', e);
@@ -171,7 +191,7 @@ function _setUiRigaHtml(v) {
         ? `<i class="fa-solid ${v.nascosto ? 'fa-eye' : 'fa-eye-slash'} set-riga-occhio" title="${v.nascosto ? 'Mostra' : 'Nascondi'}"></i>`
         : '';
     return `<div class="pg-riga-set set-riga${v.nascosto ? ' nascosto' : ''}" data-sigla="${_setUiAttr(v.sigla)}" onclick="_setUiClickRiga(this.dataset.sigla)">
-        <div class="pg-riga-set-testa"><b>${_setUiAttr(v.nome)}</b><span>${v.hai}/${v.totale} · ${perc}%${occhio}</span></div>
+        <div class="pg-riga-set-testa"><b>${_setUiAttr(v.nome)}${v.nome !== v.sigla ? ` <small class="set-sigla">${_setUiAttr(v.sigla)}</small>` : ''}</b><span>${v.hai}/${v.totale} · ${perc}%${occhio}</span></div>
         <div class="pg-barra-track"><div class="pg-barra-fill" style="width:${perc}%"></div></div>
         <div class="set-riga-sub">${sub}</div>
     </div>`;
@@ -193,7 +213,7 @@ function _setUiRenderLista(container) {
     ).join('');
 
     const visibili = r.voci.length - g.nascosti.length;
-    const riepilogo = `${visibili} espansioni · ${g.completati.length} completate`;
+    const riepilogo = `${visibili} espansioni · ${g.completati.length} completate · conteggio sul totale`;
 
     const nSco = r.sconosciute.length;
     const avvisoSconosciute = nSco
@@ -211,25 +231,81 @@ function _setUiRenderLista(container) {
         ? '<div class="set-nota">Tocca un set per nasconderlo o farlo tornare visibile. I set nascosti notificano solo al 99% e al 100%.</div>'
         : '';
 
+    // Tre riquadri della tavola OK-set: set in corso, completati e la
+    // percentuale del set più avanti (fra quelli in corso).
+    const piuAvanti = g.inCorso.reduce((m, v) => Math.max(m, Math.floor(v.perc || 0)), 0);
+    const stat = `
+        <div class="set-stat">
+            <div><b>${g.inCorso.length}</b><span>in corso</span></div>
+            <div><b>${g.completati.length}</b><span>completati</span></div>
+            <div><b>${piuAvanti}%</b><span>il più avanti</span></div>
+        </div>`;
+    const ricerca = `
+        <label class="set-cerca"><i class="fa-solid fa-magnifying-glass"></i>
+            <input type="search" placeholder="Cerca un set…" value="${_setUiAttr(_setUi.cerca)}" oninput="_setUiCerca(this.value)" autocomplete="off">
+        </label>`;
+    const ordine = scheda.id === 'completati' ? 'Ordinati per nome' : 'Ordinati dal più vicino al completamento';
+
     container.innerHTML = `
         <div class="page-header">
             <span class="page-title">Set</span>
-            <span class="page-azione${_setUi.modifica ? ' attiva' : ''}" onclick="_setUiToggleModifica()">${_setUi.modifica ? 'Fine' : 'Modifica'}</span>
+            <button type="button" class="set-btn-modifica${_setUi.modifica ? ' attiva' : ''}" onclick="_setUiToggleModifica()"><i class="fa-solid ${_setUi.modifica ? 'fa-check' : 'fa-pen'}"></i> ${_setUi.modifica ? 'Fine' : 'Modifica'}</button>
         </div>
         <div class="pg-pagina">
-            <div class="pg-sotto">${riepilogo}</div>
+            <div class="pg-sotto set-solo-pc">${riepilogo}</div>
+            ${stat}
             ${avvisoStato}${avvisoClass}${avvisoSconosciute}${notaModifica}
-            <div class="pg-filtri">${schede}</div>
-            <div class="set-msg">${_setUiAttr(_setUi.msg)}</div>
-            <div class="pg-elenco">${elenco.length
-                ? elenco.map(_setUiRigaHtml).join('')
-                : `<p style="text-align:center; color:var(--text-muted); font-size:0.85rem; padding:1.5rem 0;">${_setUiAttr(scheda.vuoto)}</p>`}</div>
+            <div class="set-layout">
+                <div class="set-sx">
+                    ${ricerca}
+                    <div class="pg-filtri">${schede}</div>
+                    <div class="set-ordine">${ordine}</div>
+                    <div class="set-msg">${_setUiAttr(_setUi.msg)}</div>
+                    <div class="pg-elenco" id="setElenco">${_setUiElencoHtml(elenco, scheda)}</div>
+                </div>
+                <div class="set-dx" id="setDettPc"></div>
+            </div>
         </div>`;
+    return _setUiFiltraCerca(elenco);
+}
+
+function _setUiFiltraCerca(elenco) {
+    const q = (_setUi.cerca || '').trim().toLowerCase();
+    if (!q) return elenco;
+    return elenco.filter(v => String(v.nome || '').toLowerCase().includes(q) || String(v.sigla || '').toLowerCase().includes(q));
+}
+
+function _setUiElencoHtml(elenco, scheda) {
+    const filtrati = _setUiFiltraCerca(elenco);
+    if (filtrati.length) return filtrati.map(_setUiRigaHtml).join('');
+    const testo = elenco.length ? 'Nessun set con questo nome in questa scheda.' : scheda.vuoto;
+    return `<p style="text-align:center; color:var(--text-muted); font-size:0.85rem; padding:1.5rem 0;">${_setUiAttr(testo)}</p>`;
+}
+
+// Ricerca: ridisegna solo l'elenco (non tutta la pagina) così il campo
+// non perde il fuoco mentre si scrive.
+function _setUiCerca(testo) {
+    _setUi.cerca = testo || '';
+    const el = document.getElementById('setElenco');
+    if (!el) return;
+    const g = setMSuddividi(setMCalcolaTutti().voci);
+    const scheda = _SET_SCHEDE.find(s => s.id === _setUi.tab) || _SET_SCHEDE[0];
+    el.innerHTML = _setUiElencoHtml(g[scheda.chiave], scheda);
+    _setUiSegnaSelezione();
+}
+
+// Riga del set aperto evidenziata nell'elenco (solo PC, dove si vedono
+// insieme).
+function _setUiSegnaSelezione() {
+    document.querySelectorAll('#setElenco .set-riga').forEach(r => {
+        r.classList.toggle('sel', !!_setUi.dett && r.dataset.sigla === _setUi.dett);
+    });
 }
 
 function _setUiImpostaScheda(id) {
     _setUi.tab = id;
     _setUi.msg = '';
+    if (_setEPC()) _setUi.dett = null;   // su PC si apre il primo della nuova scheda
     _setUiRender();
 }
 
@@ -270,9 +346,20 @@ function _setUiApriDettaglio(sigla) {
     _setUi.filtro = 'tutte';
     _setUi.modificaDett = false;
     _setUi.msg = '';
+    if (_setUiRenderSoloDettaglio()) { _setUiSegnaSelezione(); return; }
     _setUiRender();
     const cont = document.querySelector('.container');
     if (cont && typeof cont.scrollTo === 'function') cont.scrollTo(0, 0);
+}
+
+// Su PC, se elenco e pannello sono già a schermo, ridisegna solo il
+// pannello destro (l'elenco tiene scorrimento e ricerca). Ritorna false
+// sul telefono: lì il chiamante ridisegna la pagina intera come prima.
+function _setUiRenderSoloDettaglio() {
+    const destra = document.getElementById('setDettPc');
+    if (!destra || !_setEPC() || !_setUi.dett || _setUi.classifica) return false;
+    _setUiRenderDettaglio(destra, true).catch(e => console.error('Set — dettaglio:', e));
+    return true;
 }
 
 function _setUiChiudiDettaglio() {
@@ -284,22 +371,30 @@ function _setUiChiudiDettaglio() {
 
 function _setUiImpostaFiltro(f) {
     _setUi.filtro = f;
+    if (_setUiRenderSoloDettaglio()) return;
     _setUiRender();
 }
 
 function _setUiToggleModificaDett() {
     _setUi.modificaDett = !_setUi.modificaDett;
     _setUi.msg = '';
+    if (_setUiRenderSoloDettaglio()) return;
     _setUiRender();
 }
 
-async function _setUiRenderDettaglio(container) {
+async function _setUiRenderDettaglio(container, inline) {
     const sigla = _setUi.dett;
     const token = ++_setUi.token;
     const lib = (typeof _ballLIBRERIA_SET !== 'undefined' && _ballLIBRERIA_SET) ? _ballLIBRERIA_SET : {};
     const nome = (lib[sigla] && lib[sigla].nome) || sigla;
 
-    const intestazione = (azione) => `
+    // inline = pannello destro su PC: niente "indietro", nome piccolo sopra
+    // la percentuale e "Ignora carte" a destra (tavola PC-set).
+    const intestazione = (azione) => inline ? `
+        <div class="set-dett-testa">
+            <span class="set-dett-nome">${_setUiAttr(nome)}${nome !== sigla ? ' · ' + _setUiAttr(sigla) : ''}</span>
+            ${azione || ''}
+        </div>` : `
         <div class="page-header">
             <span class="page-azione attiva" onclick="_setUiChiudiDettaglio()"><i class="fa-solid fa-chevron-left"></i> Set</span>
             <span class="page-title">${_setUiAttr(nome)}</span>
@@ -311,7 +406,7 @@ async function _setUiRenderDettaglio(container) {
         container.innerHTML = intestazione('') +
             '<p style="text-align:center; color:var(--text-muted); font-size:0.85rem; padding:2rem 0;">Caricamento…</p>';
         await setMCaricaRighe([sigla]);
-        if (token !== _setUi.token || _setUi.dett !== sigla) return;   // nel frattempo l'utente ha cambiato schermata
+        if (token !== _setUi.token || _setUi.dett !== sigla || !container.isConnected) return;   // nel frattempo l'utente ha cambiato schermata
         dati = setMVociSet(sigla);
         if (!dati) {
             container.innerHTML = intestazione('') +
@@ -357,7 +452,7 @@ async function _setUiRenderDettaglio(container) {
 
     container.innerHTML = intestazione(
         `<span class="page-azione${_setUi.modificaDett ? ' attiva' : ''}" onclick="_setUiToggleModificaDett()">${_setUi.modificaDett ? 'Fine' : 'Ignora carte'}</span>`) + `
-        <div class="pg-pagina${_setUi.modificaDett ? ' set-modifica' : ''}">
+        <div class="${inline ? 'set-dett-corpo' : 'pg-pagina'}${_setUi.modificaDett ? ' set-modifica' : ''}">
             <div class="pg-intro">
                 <div class="pg-grande">${percTesto}%</div>
                 <div class="pg-sotto">${hai}/${totale} · ${mancanti === 0 && totale > 0 ? 'completo' : mancanti + ' mancanti'} · ${dati.catalogo ? 'masterset' : (setMSenzaDatiVarianti(sigla) ? 'set base' : 'set base (catalogo per carta da caricare)')}</div>
