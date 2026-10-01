@@ -243,6 +243,13 @@ function _ballColoreDaChiave(k) {
     for (let i = 0; i < t.length; i++) h = (h * 31 + t.charCodeAt(i)) >>> 0;
     return _BALL_TAVOLOZZA[h % _BALL_TAVOLOZZA.length];
 }
+// RESTYLE BINDEX FASE 8a: colore scelto dall'utente se valido, altrimenti
+// la tinta automatica dal nome. Accetta solo '#rrggbb' (stessa regola del CHECK sul DB).
+function _binderColore(binder) {
+    const c = binder && binder.colore;
+    if (typeof c === 'string' && /^#[0-9a-fA-F]{6}$/.test(c)) return c;
+    return _ballColoreDaChiave((binder && (binder.nome || binder.tipo)) || '');
+}
 // Copertine di binder/contenitori come piccoli binder veri (dorso scuro a
 // sinistra, globo sui pubblici). voci: [{ nome, pubblico }]. Colore dalla
 // tinta fissa del nome (_ballTintaDaNome, sopra) finché non esiste il
@@ -251,7 +258,7 @@ function _ballColoreDaChiave(k) {
 function _ballCopertine(voci) {
     const esc = (t) => (typeof escapeHtml === 'function' ? escapeHtml(t) : String(t));
     return '<div class="ball-cov">' + voci.map(v =>
-        `<i style="background:${_ballColoreDaChiave(v.nome)}" title="${esc(v.nome)}">${v.pubblico ? '<b class="fa-solid fa-globe"></b>' : ''}</i>`
+        `<i style="background:${(v.colore && /^#[0-9a-fA-F]{6}$/.test(v.colore)) ? v.colore : _ballColoreDaChiave(v.nome)}" title="${esc(v.nome)}">${v.pubblico ? '<b class="fa-solid fa-globe"></b>' : ''}</i>`
     ).join('') + '</div>';
 }
 

@@ -83,7 +83,7 @@ CATALOGO_WIDGET.binder = {
         const pubblici = d.binders.filter(b => b.stato_pubblicazione === 'pubblico').length;
         const copertine = d.binders.slice()
             .sort((a, b) => (_WIDGET_BINDER_ORDINE[a.tipo] ?? 9) - (_WIDGET_BINDER_ORDINE[b.tipo] ?? 9) || String(a.nome || '').localeCompare(String(b.nome || '')))
-            .map(b => ({ nome: b.nome || '', tipo: b.tipo, pubblico: b.stato_pubblicazione === 'pubblico' }));
+            .map(b => ({ nome: b.nome || '', tipo: b.tipo, colore: b.colore || null, pubblico: b.stato_pubblicazione === 'pubblico' }));
         return {
             righe: [`${totale} binder${pubblici ? ` · ${pubblici} pubblic${pubblici === 1 ? 'o' : 'i'}` : ''}`],
             dati: { totale, pubblici, copertine },

@@ -207,6 +207,17 @@ async function binderAggiornaLayout(userId, binderId, layout) {
         .eq('owner_id', userId);
 }
 
+// RESTYLE BINDEX FASE 8a (sql/81): colore della copertina scelto dall'utente
+// ('#rrggbb' oppure null = tinta automatica). La colonna esiste solo dopo
+// aver eseguito sql/81_binder_colore.sql.
+async function binderImpostaColore(userId, binderId, colore) {
+    return supabaseClient
+        .from('binders')
+        .update({ colore: colore || null })
+        .eq('id', binderId)
+        .eq('owner_id', userId);
+}
+
 // ── binder_carte (solo per binder tipo 'extra') ──────────────────────────
 // Le righe qui sotto devono sempre includere binder_id quando riferite al
 // nuovo sistema — { owner_id, carta_id, binder_id }.

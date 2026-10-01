@@ -65,7 +65,7 @@ async function caricaCatalogo() {
 
     const nomeBinder = info[0].nome || 'Binder';
     _ownerUserId = info[0].owner_id;
-    _binderInfo = { nome: nomeBinder, tipo: info[0].tipo, location_valore: info[0].location_valore, layout: info[0].layout };
+    _binderInfo = { nome: nomeBinder, tipo: info[0].tipo, location_valore: info[0].location_valore, layout: info[0].layout, colore: info[0].colore || null };
     document.title = 'CardSync Pro — ' + nomeBinder;
     document.getElementById('titoloBinder').textContent = nomeBinder;
 

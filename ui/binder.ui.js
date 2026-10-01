@@ -114,7 +114,7 @@ async function _calcolaStatBinder(userId, binder) {
 
 function _bindersCopertinaHtml(binder, copertinaUrl, grande) {
     const nome = escapeHtml(binder.nome || '');
-    const colore = (typeof _ballColoreDaChiave === 'function') ? _ballColoreDaChiave(binder.nome || binder.tipo) : '#7F77DD';
+    const colore = (typeof _binderColore === 'function') ? _binderColore(binder) : '#7F77DD';
     const pubblico = binder.stato_pubblicazione === 'pubblico';
     // L'icona sta sempre sotto: se la foto non carica (onerror la toglie) resta quella.
     const sfondo = `<i class="bn-icona fa-solid ${_iconaFallbackBinder(binder.tipo)}"></i>` +
@@ -434,6 +434,39 @@ function apriImpostazioniBinderAttivo() {
     // rimasto l'ultima volta (es. editor sleeve ancora aperto). Chiude
     // anche l'editor da sola (vedi sotto: tab !== 'design').
     _binderImpostazioniTab('generali');
+    _binderColoreDisegnaScelte();
+}
+
+// RESTYLE BINDEX FASE 8a — scelta del colore copertina. Le tinte sono quelle
+// della tavolozza automatica (_BALL_TAVOLOZZA), più "Automatico" (= null).
+function _binderColoreDisegnaScelte() {
+    const box = document.getElementById('binderColoreScelte');
+    if (!box) return;
+    const binder = _bindersElenco.find(b => String(b.id) === String(_binderAttivo));
+    if (!binder) { box.innerHTML = ''; return; }
+    const attuale = (binder.colore || '').toLowerCase();
+    const tinte = (typeof _BALL_TAVOLOZZA !== 'undefined') ? _BALL_TAVOLOZZA : [];
+    box.innerHTML = `<button type="button" class="bn-colore-btn bn-colore-auto${attuale ? '' : ' attivo'}" onclick="binderSceltaColore(null)">Automatico</button>` +
+        tinte.map(t => `<button type="button" class="bn-colore-btn${attuale === t.toLowerCase() ? ' attivo' : ''}" style="background:${t}" aria-label="Colore ${t}" onclick="binderSceltaColore('${t}')"></button>`).join('');
+}
+
+async function binderSceltaColore(colore) {
+    const binder = _bindersElenco.find(b => String(b.id) === String(_binderAttivo));
+    const msg = document.getElementById('binderColoreMsg');
+    if (!binder) return;
+    const userId = await authGetUserId();
+    if (!userId) return;
+    const { error } = await binderImpostaColore(userId, binder.id, colore);
+    if (error) {
+        console.error('binderSceltaColore:', error.message);
+        if (msg) msg.textContent = 'Non sono riuscito a salvare il colore (la colonna sul database potrebbe non esistere ancora).';
+        return;
+    }
+    binder.colore = colore || null;
+    if (msg) msg.textContent = '';
+    _binderColoreDisegnaScelte();
+    if (typeof _widgetBinderCache !== 'undefined') _widgetBinderCache = null; // la tessera Binders rilegge i colori
+    if (typeof renderGrigliaBinders === 'function') renderGrigliaBinders();
 }
 
 function chiudiImpostazioniBinderAttivo() {
