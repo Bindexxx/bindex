@@ -13,24 +13,23 @@ async function caricaWip() {
         return;
     }
     if (!data || data.length === 0) {
-        cont.innerHTML = '<div class="empty-state">Nessun Work in Progress mai attivato.</div>';
+        cont.innerHTML = '<div class="empty-state">Nessun lavoro in corso mai attivato.</div>';
         return;
     }
 
+    // RESTYLE BINDEX FASE 7: stesse battute di sempre, ma con interruttore
+    // attivo/spento al posto dei due pulsanti Disattiva/Riattiva.
     cont.innerHTML = data.map(w => `
-        <div class="user-row">
-            <div>
-                <b>${w.target_tipo}</b> · <code>${w.target_id}</code>
-                <div style="font-size:0.82rem; color:#888; margin-top:0.2rem;">${w.messaggio}</div>
-                <div style="font-size:0.75rem; color:#aaa; margin-top:0.2rem;">
-                    ${w.attivo ? 'Attivo' : 'Disattivato'} — dal ${new Date(w.attivato_il).toLocaleString('it-IT')}
-                </div>
+        <div class="row">
+            <div class="main">
+                <div class="name">${escAttr(w.target_tipo)} · <code>${escAttr(w.target_id)}</code></div>
+                <div class="meta">${escAttr(w.messaggio)}</div>
+                <div class="meta">${w.attivo ? 'Attivo' : 'Spento'} — dal ${new Date(w.attivato_il).toLocaleString('it-IT')}</div>
             </div>
-            <div>
-                ${w.attivo
-                    ? `<button class="btn-secondary" onclick="disattivaWip('${w.id}')">Disattiva</button>`
-                    : `<button class="btn-main" onclick="riattivaWip('${w.id}')">Riattiva</button>`}
-            </div>
+            <label class="adm-switch" title="${w.attivo ? 'Spegni' : 'Accendi'}">
+                <input type="checkbox" ${w.attivo ? 'checked' : ''} onchange="this.checked ? riattivaWip('${w.id}') : disattivaWip('${w.id}')">
+                <span></span>
+            </label>
         </div>
     `).join('');
 }

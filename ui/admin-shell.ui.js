@@ -98,3 +98,67 @@ function mostraStatus(msg, ok) {
   clearTimeout(mostraStatus._t);
   mostraStatus._t = setTimeout(() => { el.className = 'status-msg'; }, 4500);
 }
+
+
+// ═══════════════════════════════════════════════════════════════════════
+// RESTYLE BINDEX FASE 7 — dialogo interno al posto di confirm()/prompt()
+// ═══════════════════════════════════════════════════════════════════════
+// adminDialog({ titolo, testo, conferma, pericolo, motivi, conNota, scriviPerConfermare })
+// → Promise: null se annullato; altrimenti { motivo, nota }.
+// motivi: elenco di scelte (radio) — la prima è preselezionata.
+// scriviPerConfermare: testo da digitare per abilitare "Conferma"
+// (sostituisce il prompt() dell'hard delete).
+function adminDialog(opz) {
+  return new Promise(resolve => {
+    const bg = document.getElementById('adm-dialog-bg');
+    const ok = document.getElementById('adm-dialog-ok');
+    const annulla = document.getElementById('adm-dialog-annulla');
+    const boxMotivi = document.getElementById('adm-dialog-motivi');
+    const nota = document.getElementById('adm-dialog-nota');
+    const conf = document.getElementById('adm-dialog-conferma-testo');
+
+    document.getElementById('adm-dialog-titolo').textContent = opz.titolo || 'Conferma';
+    document.getElementById('adm-dialog-testo').textContent = opz.testo || '';
+    ok.textContent = opz.conferma || 'Conferma';
+    ok.className = opz.pericolo ? 'btn-small btn-danger' : 'btn-main';
+    if (opz.pericolo) ok.style.padding = '9px 16px';
+
+    boxMotivi.innerHTML = '';
+    (opz.motivi || []).forEach((m, i) => {
+      const lab = document.createElement('label');
+      lab.innerHTML = '<input type="radio" name="adm-motivo"' + (i === 0 ? ' checked' : '') + '> <span></span>';
+      lab.querySelector('input').value = m;
+      lab.querySelector('span').textContent = m;
+      boxMotivi.appendChild(lab);
+    });
+    nota.style.display = opz.conNota ? '' : 'none';
+    nota.value = '';
+    conf.style.display = opz.scriviPerConfermare ? '' : 'none';
+    conf.value = '';
+    conf.placeholder = opz.scriviPerConfermare ? ('Scrivi: ' + opz.scriviPerConfermare) : '';
+    const aggiornaOk = () => { ok.disabled = !!opz.scriviPerConfermare && conf.value !== opz.scriviPerConfermare; };
+    conf.oninput = aggiornaOk;
+    aggiornaOk();
+
+    const chiudi = (esito) => {
+      bg.style.display = 'none';
+      ok.onclick = annulla.onclick = bg.onclick = null;
+      document.removeEventListener('keydown', tasto);
+      resolve(esito);
+    };
+    const tasto = (e) => { if (e.key === 'Escape') chiudi(null); };
+    ok.onclick = () => {
+      const r = boxMotivi.querySelector('input:checked');
+      chiudi({ motivo: r ? r.value : null, nota: nota.value.trim() || null });
+    };
+    annulla.onclick = () => chiudi(null);
+    bg.onclick = (e) => { if (e.target === bg) chiudi(null); };
+    document.addEventListener('keydown', tasto);
+    bg.style.display = 'flex';
+  });
+}
+
+// Etichette italiane degli stati richiesta.
+function _etichettaStatoRichiesta(s) {
+  return ({ pending: 'da approvare', approved: 'approvata', rejected: 'rifiutata' })[s] || s;
+}

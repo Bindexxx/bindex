@@ -57,7 +57,9 @@ async function _popolaFiltroUtenteRichieste() {
 // (altrimenti filtrando per tipo/utente il numero diventerebbe fuorviante).
 async function _aggiornaContatoreRichieste() {
   const { count } = await adminContaRichiestePendenti();
-  document.getElementById('count-richieste').textContent = count || 0;
+  const elC = document.getElementById('count-richieste');
+  elC.textContent = count || 0;
+  elC.classList.toggle('zero', !count); // badge rosso solo se c'è davvero qualcosa da fare
 }
 
 
@@ -131,29 +133,33 @@ function renderRichieste() {
   }
 
   cont.innerHTML = elenco.map(r => {
+    // RESTYLE BINDEX FASE 7: schede "prima → dopo" dove il "prima" è noto
+    // (username). Per nome binder/scaffale e foto l'admin non può leggere
+    // il valore attuale (RLS: solo il proprietario) → si mostra solo il "dopo".
+    const utente = escAttr(_mappaUsernameRichieste[r.user_id] || r.user_id);
     let dettaglio = '';
     if (r.type === 'username_change' && r.payload?.nuovo_username) {
-      dettaglio = `<div class="meta">→ nuovo username: <b>${escAttr(r.payload.nuovo_username)}</b></div>`;
+      dettaglio = `<div class="rq-pd"><span class="prima">${utente}</span><span class="freccia">→</span><span class="dopo">${escAttr(r.payload.nuovo_username)}</span></div>`;
     }
     if (r.type === 'binder_nome' && r.payload?.nome_proposto) {
-      dettaglio = `<div class="meta">→ nuovo nome binder: <b>${escAttr(r.payload.nome_proposto)}</b></div>`;
+      dettaglio = `<div class="rq-pd"><span class="freccia">Nuovo nome del binder:</span><span class="dopo">${escAttr(r.payload.nome_proposto)}</span></div>`;
     }
     if (r.type === 'scaffale_nome' && r.payload?.nome_proposto) {
-      dettaglio = `<div class="meta">→ nuovo nome scaffale: <b>${escAttr(r.payload.nome_proposto)}</b></div>`;
+      dettaglio = `<div class="rq-pd"><span class="freccia">Nuovo nome dello scaffale:</span><span class="dopo">${escAttr(r.payload.nome_proposto)}</span></div>`;
     }
     const urlFoto = r.type === 'photo_upload' ? _mappaAnteprimaFotoRichieste[r.payload?.media_id] : null;
     const slotFoto = r.type === 'photo_upload' ? _mappaSlotRichieste[r.payload?.media_id] : null;
 
     return `
-    <div class="row" data-id="${r.id}" data-type="${r.type}" data-user-id="${r.user_id || ''}" data-media-id="${r.payload?.media_id || ''}" data-slot="${slotFoto || ''}">
-      ${urlFoto ? `<img src="${urlFoto}" style="width:52px; height:52px; border-radius:8px; object-fit:cover; flex-shrink:0; cursor:pointer;" onclick="window.open('${urlFoto}','_blank')">` : ''}
+    <div class="rq-card row" data-id="${r.id}" data-type="${r.type}" data-user-id="${r.user_id || ''}" data-media-id="${r.payload?.media_id || ''}" data-slot="${slotFoto || ''}" data-utente="${utente}">
+      ${urlFoto ? `<img class="rq-foto" src="${urlFoto}" alt="Anteprima" onclick="window.open('${urlFoto}','_blank')">` : ''}
       <div class="main">
-        <div class="name">${_etichettaTipoRichiesta(r.type, slotFoto)} <span class="badge ${r.status}">${r.status}</span></div>
-        <div class="meta mono">${escAttr(_mappaUsernameRichieste[r.user_id] || r.user_id)} · ${fmtData(r.created_at)}</div>
+        <div class="name">${_etichettaTipoRichiesta(r.type, slotFoto)} <span class="badge ${r.status}">${_etichettaStatoRichiesta(r.status)}</span></div>
+        <div class="meta mono">${utente} · ${fmtData(r.created_at)}</div>
         ${dettaglio}
-        ${r.admin_note ? `<div class="meta">Nota: ${escAttr(r.admin_note)}</div>` : ''}
+        ${r.admin_note ? `<div class="rq-nota">Nota: ${escAttr(r.admin_note)}</div>` : ''}
       </div>
-      <div class="row-azioni" style="display:flex; gap:8px;">
+      <div class="row-azioni rq-azioni">
         ${r.status === 'pending' ? `
           <button class="btn-small btn-approve" data-action="approve">✔ Approva</button>
           <button class="btn-small btn-reject" data-action="reject">✘ Rifiuta</button>
@@ -173,24 +179,31 @@ function renderRichieste() {
       const ownerUserId = riga.dataset.userId;
 
       if (azione === 'approve' && tipo === 'username_change') {
-        if (!confirm('Confermi il cambio username? Le sessioni attive di questo utente verranno revocate: dovrà rifare login con il nuovo username. Verifica di aver letto correttamente il nuovo username prima di procedere.')) return;
+        if (!await adminDialog({ titolo: 'Cambio username', testo: 'Le sessioni attive di questo utente verranno revocate: dovrà rifare login con il nuovo username. Verifica di aver letto correttamente il nuovo username.', conferma: 'Approva' })) return;
       }
       if (azione === 'approve' && tipo === 'photo_upload') {
         const etichettaConferma = slotFoto === 'card_back' ? 'come retro carta personalizzato' : 'come copertina del Binder';
-        if (!confirm(`Approvare questa foto ${etichettaConferma}?`)) return;
+        if (!await adminDialog({ titolo: 'Approvare la foto?', testo: `Verrà usata ${etichettaConferma}.`, conferma: 'Approva' })) return;
       }
       if (azione === 'approve' && tipo === 'binder_nome') {
-        if (!confirm('Approvare il nuovo nome per questo binder?')) return;
+        if (!await adminDialog({ titolo: 'Approvare il nome?', testo: 'Il nuovo nome sostituirà quello del binder.', conferma: 'Approva' })) return;
       }
       if (azione === 'approve' && tipo === 'scaffale_nome') {
-        if (!confirm('Approvare il nuovo nome per questo scaffale?')) return;
+        if (!await adminDialog({ titolo: 'Approvare il nome?', testo: 'Il nuovo nome sostituirà quello dello scaffale.', conferma: 'Approva' })) return;
       }
 
       let nota = null;
       if (azione === 'reject') {
-        nota = prompt('Motivo del rifiuto (facoltativo, lasciare vuoto per saltare):');
-        if (nota === null) return; // annullato dal prompt
-        nota = nota.trim() || null;
+        // RESTYLE BINDEX FASE 7: rifiuto in-app (niente prompt()), motivo a
+        // scelte + nota libera; il tutto finisce nella stessa admin_note di prima.
+        const esito = await adminDialog({
+          titolo: 'Rifiutare la richiesta?',
+          testo: `Richiesta di ${riga.dataset.utente}. Il motivo resta nella nota della richiesta.`,
+          conferma: 'Rifiuta', pericolo: true, conNota: true,
+          motivi: ['Non appropriata', 'Immagine poco leggibile o di bassa qualità', 'Nome non consentito', 'Altro motivo']
+        });
+        if (!esito) return; // annullato
+        nota = esito.motivo + (esito.nota ? ' — ' + esito.nota : '');
       }
 
       riga.querySelectorAll('button').forEach(b => b.disabled = true);
