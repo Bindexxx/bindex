@@ -30,7 +30,7 @@
             const btnLogout = document.getElementById('profiloMenuLogout');
             btnLogout.onclick = async (e) => {
                 e.stopPropagation();
-                if (!confirm('Uscire da CardSync Pro (' + email + ')?')) return;
+                if (!confirm('Uscire da Bindex (' + email + ')?')) return;
                 await authLogout();
                 // Azzera la tab ricordata (per-dispositivo) — dispositivo
                 // condiviso tra il gruppo, il prossimo login non deve
