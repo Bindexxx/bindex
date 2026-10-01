@@ -4437,6 +4437,46 @@
         #contributi .ct-aiuta b { display: block; font-size: 1rem; color: var(--text-dark); }
         #contributi .ct-aiuta span { font-size: 0.82rem; color: var(--text-muted); }
 
+        /* ═══ RESTYLE BINDEX FASE 4a — pagina Binders (elenco copertine) ═══ */
+        #binder:not(.binder-dettaglio-attivo) > .settings-card { background: none; box-shadow: none; border: none; padding: 0; max-width: none; }
+        #binder { container-type: inline-size; }
+        #binder .bn-testata-riga { display:flex; align-items:flex-start; justify-content:space-between; gap:1rem; }
+        #binder .bn-titolo { margin:0; font-size:1.7rem; font-weight:800; color:var(--text-dark); }
+        #binder .bn-riepilogo { margin:0.3rem 0 0; font-size:0.9rem; color:var(--text-muted); }
+        #binder .bn-riepilogo b { color:var(--text-dark); font-size:1.05rem; }
+        #binder .bn-cerca-btn { width:46px; height:40px; border:none; border-radius:14px; background:var(--primary); color:#fff; font-size:1rem; cursor:pointer; flex-shrink:0; }
+        #binder .bn-ricerca { display:flex; align-items:center; gap:0.6rem; margin-top:0.8rem; padding:0.55rem 0.9rem; border-radius:14px; background:var(--card-bg); border:1px solid var(--border-color); color:var(--text-muted); }
+        #binder .bn-ricerca input { flex:1; border:none; background:transparent; font:inherit; color:var(--text-dark); outline:none; min-width:0; }
+        #binder .bn-pagina { display:block; margin-top:0.6rem; }
+        #binder .bn-sez { margin:1.1rem 0 0.5rem; font-size:0.72rem; font-weight:800; letter-spacing:0.08em; color:var(--text-muted); }
+        #binder .bn-righe { display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:0.9rem 0.8rem; }
+        #binder .bn-tessera { cursor:pointer; min-width:0; padding:0.3rem; border-radius:14px; border:2px solid transparent; }
+        #binder .bn-tessera.selezionata { border-color:var(--primary); background:color-mix(in srgb, var(--primary) 8%, transparent); }
+        #binder .bn-nome { margin-top:0.45rem; font-weight:800; font-size:0.95rem; color:var(--text-dark); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        #binder .bn-sotto { font-size:0.74rem; color:var(--text-muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        #binder .bn-legenda { margin:1.2rem 0 0; font-size:0.78rem; color:var(--text-muted); }
+        #binder .bn-cop { position:relative; width:100%; aspect-ratio:63/80; border-radius:12px; overflow:hidden; background:linear-gradient(160deg, var(--bn-colore), color-mix(in srgb, var(--bn-colore) 62%, #000)); box-shadow:0 4px 12px rgba(0,0,0,0.18); display:flex; align-items:center; justify-content:center; }
+        #binder .bn-dorso { position:absolute; left:0; top:0; bottom:0; width:13%; background:linear-gradient(90deg, rgba(0,0,0,0.28), rgba(0,0,0,0.06)); }
+        #binder .bn-icona { font-size:clamp(1.4rem, 9cqw, 2.4rem); color:rgba(255,255,255,0.92); margin-bottom:1.2rem; }
+        #binder .bn-foto { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
+        #binder .bn-globo { position:absolute; top:7px; right:7px; width:24px; height:24px; border-radius:50%; background:rgba(0,0,0,0.45); color:#fff; font-size:0.8rem; display:flex; align-items:center; justify-content:center; }
+        #binder .bn-etichetta { position:absolute; left:16%; right:8%; bottom:8px; padding:0.28rem 0.5rem; border-radius:8px; background:rgba(255,255,255,0.93); color:#14142a; font-size:0.72rem; font-weight:800; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        #binder .bn-anteprima { display:none; }
+        @container (min-width: 780px) {
+            #binder .bn-pagina { display:grid; grid-template-columns:minmax(0,1fr) 340px; gap:1.2rem; align-items:start; }
+            #binder .bn-colonna { background:var(--card-bg); border-radius:20px; padding:0.4rem 1.2rem 1.2rem; }
+            #binder .bn-righe { grid-template-columns:repeat(auto-fill, minmax(150px, 1fr)); }
+            #binder .bn-anteprima { display:flex; flex-direction:column; gap:0.7rem; background:var(--card-bg); border-radius:20px; padding:1.1rem; position:sticky; top:0.5rem; }
+            #binder .bn-anteprima.bn-vuota { color:var(--text-muted); font-size:0.85rem; }
+            #binder .bn-ant-testa { display:flex; gap:0.9rem; align-items:flex-start; }
+            #binder .bn-ant-testa .bn-cop { width:110px; flex-shrink:0; }
+            #binder .bn-ant-testa h4 { margin:0.2rem 0 0.2rem; font-size:1.3rem; font-weight:800; color:var(--text-dark); }
+            #binder .bn-ant-testa p { margin:0.15rem 0; font-size:0.85rem; color:var(--text-muted); }
+            #binder .bn-chip-riga { display:flex; gap:0.35rem; flex-wrap:wrap; margin-top:0.5rem !important; }
+            #binder .bn-chip-riga span { background:color-mix(in srgb, var(--primary) 12%, transparent); color:var(--primary); border-radius:999px; padding:0.2rem 0.6rem; font-size:0.74rem; font-weight:700; }
+            #binder .bn-nota { font-size:0.78rem; color:var(--text-muted); margin:0.4rem 0 0; }
+        }
+
         /* Toggle modalità immagini/elenco — preferenza per-utente, vedi
            impostaModalitaBinder() in ui/binder.ui.js */
         .binder-modalita-toggle { display: flex; gap: 0.4rem; margin: 0.8rem 0; }
