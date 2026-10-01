@@ -7401,3 +7401,69 @@
             #valore .val-blocco:first-child .val-scheda-lista::before { content: 'Le più preziose'; }
             #valore .val-blocco:last-child .val-scheda-lista::before { content: 'Cosa l’ha mosso'; }
         }
+
+        /* ── Prezzi aggiornati: riquadri, Salite/Scese e grafico (tavole PC) ── */
+        #prezziagg { container-type: inline-size; }
+        #prezziagg .pa-solo-pc, #prezziagg .pa-solo-pc-blocco { display: none !important; }
+        #prezziagg .pa-testa { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
+        #prezziagg .pa-testa-sx { display: flex; flex-direction: column; min-width: 0; }
+        #prezziagg .pa-testa .page-title { font-size: 1.5rem; font-weight: 800; letter-spacing: -0.3px; color: var(--text-dark); }
+        #prezziagg .pa-gruppo { display: flex; justify-content: space-between; align-items: baseline; }
+        #prezziagg .pa-gruppo small { font-weight: 600; font-size: 0.74rem; }
+        #prezziagg .pa-nessuna { font-size: 0.85rem; color: var(--text-muted); padding: 8px 2px; }
+        #prezziagg .pa-invariate { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; padding: 10px 12px; border: 1px dashed var(--border-color); border-radius: 12px; font-size: 0.85rem; color: var(--text-muted); }
+        #prezziagg .pa-invariate button { font: inherit; font-weight: 700; border: 0; background: none; color: var(--primary); cursor: pointer; }
+        #prezziagg .pa-riga-inv .pa-destra span { color: var(--text-muted); font-weight: 600; }
+        #prezziagg .pa-dettaglio { display: none; }
+        #prezziagg .pa-btn { font: inherit; font-weight: 700; font-size: 0.85rem; padding: 9px 14px; border-radius: 999px; border: 1px solid var(--border-color); background: var(--card-bg); color: var(--text-dark); cursor: pointer; white-space: nowrap; }
+        #prezziagg .pa-invito { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; text-align: center; min-height: 160px; color: var(--text-muted); font-size: 0.85rem; }
+        #prezziagg .pa-invito i { font-size: 1.6rem; margin-bottom: 6px; }
+        #prezziagg .pa-invito b { color: var(--text-dark); font-size: 0.95rem; }
+        #prezziagg .pa-det-testa { display: flex; gap: 16px; align-items: flex-start; margin-bottom: 18px; }
+        #prezziagg .pa-det-fig { width: 72px; height: 100px; border-radius: 7px; overflow: hidden; flex: 0 0 auto; background: var(--primary-light); display: flex; align-items: center; justify-content: center; color: var(--primary); cursor: pointer; box-shadow: 0 3px 10px rgba(0,0,0,.2); }
+        #prezziagg .pa-det-fig img { width: 100%; height: 100%; object-fit: cover; }
+        #prezziagg .pa-det-nome { font-size: 1.3rem; font-weight: 800; color: var(--text-dark); line-height: 1.15; }
+        #prezziagg .pa-det-sotto { font-size: 0.85rem; color: var(--text-muted); margin: 3px 0 6px; }
+        #prezziagg .pa-det-prezzi { font-variant-numeric: tabular-nums; color: var(--text-muted); }
+        #prezziagg .pa-det-prezzi b { color: var(--text-dark); }
+        #prezziagg .pa-det-titolo { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
+        #prezziagg .pa-det-titolo b { color: var(--text-dark); }
+        #prezziagg .pa-det-titolo span { font-size: 0.78rem; color: var(--text-muted); }
+        #prezziagg .pa-det-grafico { height: 170px; }
+        #prezziagg .pa-det-grafico svg { width: 100%; height: 100%; display: block; overflow: visible; }
+        #prezziagg .pa-det-carico { display: flex; align-items: center; justify-content: center; text-align: center; color: var(--text-muted); font-size: 0.85rem; padding: 0 1rem; }
+        #prezziagg .pa-g-area { fill: var(--primary); opacity: 0.12; }
+        #prezziagg .pa-g-linea { fill: none; stroke: var(--primary); stroke-width: 2.5; stroke-linejoin: round; }
+        #prezziagg .pa-det-assex { display: flex; justify-content: space-between; font-size: 0.74rem; color: var(--text-muted); margin-top: 8px; }
+        #prezziagg .pa-det-righe { display: grid; grid-template-columns: auto 1fr; gap: 6px 18px; margin-top: 14px; font-size: 0.88rem; color: var(--text-muted); }
+        #prezziagg .pa-det-righe b { color: var(--text-dark); font-variant-numeric: tabular-nums; }
+        #prezziagg .pa-det-nota { font-size: 0.82rem; color: var(--text-muted); margin-top: 12px; }
+
+        @container (min-width: 780px) {
+            #prezziagg .pa-pagina { max-width: none; }
+            #prezziagg .pa-solo-tel { display: none !important; }
+            #prezziagg .pa-solo-pc { display: initial !important; }
+            #prezziagg div.pa-solo-pc { display: flex !important; }
+            #prezziagg .pa-solo-pc-blocco { display: flex !important; }
+            #prezziagg .pa-testa { align-items: center; gap: 14px; }
+            #prezziagg .pa-testa-sx { flex: 1; }
+            #prezziagg .pa-testa .pa-tabs { margin: 0; width: 300px; }
+            #prezziagg .pa-quando { white-space: normal; }
+            #prezziagg .pa-stat { display: flex; gap: 12px; margin: 10px 0 18px; }
+            #prezziagg .pa-stat > div { min-width: 120px; padding: 12px 18px; }
+            #prezziagg .pa-layout { display: grid; grid-template-columns: minmax(0, 1fr) 400px; gap: 18px; align-items: start; }
+            #prezziagg .pa-colonne { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+            #prezziagg .pa-blocco { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 18px; padding: 6px 16px 14px; }
+            #prezziagg .pa-gruppo { font-size: 0.95rem; margin: 12px 2px 6px; }
+            #prezziagg .pa-blocco-su .pa-gruppo span { color: #2e7d32; }
+            #prezziagg .pa-blocco-giu .pa-gruppo span { color: #d32f2f; }
+            #prezziagg .pa-riga { padding: 10px 8px; border-radius: 12px; border-bottom-color: transparent; box-shadow: 0 1px 0 var(--border-color); }
+            #prezziagg .pa-riga.sel { background: var(--primary-light); }
+            #prezziagg .pa-fig { width: 34px; height: 47px; flex-basis: 34px; cursor: zoom-in; }
+            #prezziagg .pa-prima { align-items: baseline; gap: 6px; color: var(--text-muted); font-size: 0.85rem; font-variant-numeric: tabular-nums; white-space: nowrap; }
+            #prezziagg .pa-prima b { color: var(--text-dark); font-size: 0.95rem; }
+            #prezziagg .pa-destra { min-width: 130px; }
+            #prezziagg .pa-destra span.pa-solo-pc { font-size: 0.74rem; }
+            #prezziagg .pa-dettaglio { display: block; position: sticky; top: 8px; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 18px; padding: 18px; }
+        }
+        #prezziagg .pa-gruppo i { font-style: normal; }

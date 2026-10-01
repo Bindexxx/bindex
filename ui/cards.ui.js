@@ -145,6 +145,7 @@
                 notes: r.note || '',
                 immagine: r.immagine || null,
                 createdAt: r.created_at || null, // usato per l'ordine automatico nel Binder (Stage 1)
+                ultimoControllo: r.ultimo_controllo || null, // RESTYLE: "controllate" in Prezzi aggiornati e Controllo prezzi
             }));
 
             const righeWishlist = (dataWishlist || []).map(r => ({
