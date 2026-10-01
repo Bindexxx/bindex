@@ -263,7 +263,7 @@
                         : "Non hai l'estensione installata";
                     document.getElementById('statoNonInstallataTesto').textContent = versioneInstallata
                         ? `Hai la versione ${versioneInstallata}, l'ultima è la ${ultimaVersione} — non è possibile usare versioni vecchie, sorry not sorry.`
-                        : `Per usare CardSync Pro su questo PC serve l'estensione, versione ${ultimaVersione} o successiva.`;
+                        : `Per usare Bindex su questo PC serve l'estensione, versione ${ultimaVersione} o successiva.`;
                     _apriPannelloCardsync();
                     _mostraSoloStato('statoNonInstallata');
                     return;
