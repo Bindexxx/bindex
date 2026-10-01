@@ -208,3 +208,9 @@ html, body {
 }
 .bx-carta-aggiungi:disabled { opacity: 0.5; cursor: not-allowed; }
 
+
+/* RESTYLE BINDEX FASE 6 (correzione): il titolo dell'intestazione finiva
+   SOTTO la barra in alto (misurato: titolo a 41-53px, barra a 19-59px).
+   Spazio in più in cima all'intestazione, uguale all'altezza della barra. */
+#phoneContenutoScorribile > header { padding-top: calc(1rem + 40px); }
+.bx-proprietario { font-size: 0.8rem; font-weight: 700; color: var(--primary); margin-top: 0.2rem; }
