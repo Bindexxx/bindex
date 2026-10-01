@@ -52,13 +52,20 @@ function _refreshVistaCorrente() {
 function aggiornaTotale() {
     let totale = 0;
     let numCarte = 0;
+    let numDistinte = 0;
     carte.forEach(c => {
         const q = selezioni[c.id] || 0;
         totale += q * c.price;
         numCarte += q;
+        if (q > 0) numDistinte++;
     });
+    // RESTYLE BINDEX FASE 6: testo del conteggio parametrico — una pagina può
+    // definire _testoConteggioSelezione(distinte, pezzi); senza, resta il
+    // testo di sempre (nessun cambiamento per le altre pagine).
     document.getElementById('conteggioSelezionate').textContent =
-        `${numCarte} cart${numCarte === 1 ? 'a selezionata' : 'e selezionate'}`;
+        (typeof _testoConteggioSelezione === 'function')
+            ? _testoConteggioSelezione(numDistinte, numCarte)
+            : `${numCarte} cart${numCarte === 1 ? 'a selezionata' : 'e selezionate'}`;
     document.getElementById('totaleSelezionate').textContent = formattaEuro(totale);
     document.getElementById('btnCopiaRiepilogo').disabled = numCarte === 0;
     // Fase 4, Step 4 (2026-09-13): bottone "Richiedi" — presente solo su
