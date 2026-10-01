@@ -1513,6 +1513,13 @@
                             <option value="binder">Binder</option>
                         </select>
                     </div>
+                    <div class="setting-row">
+                        <div>
+                            <h4 style="font-size: 0.9rem; font-weight: 700;">Disposizione della home</h4>
+                            <p style="font-size: 0.75rem; color: var(--text-muted);">Riporta le tessere come al primo accesso (solo su questo dispositivo)</p>
+                        </div>
+                        <button class="btn-secondary" onclick="ripristinaDisposizioneHome()"><i class="fa-solid fa-rotate-left"></i> Ripristina</button>
+                    </div>
                     <!-- CHANGELOG (EASTER EGG) -->
                     <div class="setting-row" onclick="handleChangelogClick()" style="cursor: pointer; user-select: none;">
                         <div>
@@ -2085,11 +2092,18 @@
                 <div id="bossFieroLoginForm" style="display:none; text-align:left; max-width:340px; margin:0 auto;">
                     <div class="auth-field">
                         <label>Nome utente</label>
-                        <input type="text" id="authEmail" placeholder="es. irene" autocomplete="username">
+                        <div class="auth-input-wrap">
+                            <i class="fa-solid fa-user auth-input-ico"></i>
+                            <input type="text" id="authEmail" placeholder="es. irene" autocomplete="username">
+                        </div>
                     </div>
                     <div class="auth-field">
                         <label>Password</label>
-                        <input type="password" id="authPassword" placeholder="••••••••" autocomplete="current-password">
+                        <div class="auth-input-wrap">
+                            <i class="fa-solid fa-lock auth-input-ico"></i>
+                            <input type="password" id="authPassword" placeholder="••••••••" autocomplete="current-password">
+                            <button type="button" class="auth-occhio" onclick="authMostraNascondiPassword(this)" aria-label="Mostra o nascondi la password" aria-pressed="false"><i class="fa-solid fa-eye"></i></button>
+                        </div>
                     </div>
                     <div style="display:flex; align-items:center; justify-content:space-between; margin:0.8rem 0 1.2rem;">
                         <span style="font-size:0.88rem; color:var(--text-muted);">Mantienimi loggato — questo è il mio PC, mica il PC di Bill 💻</span>

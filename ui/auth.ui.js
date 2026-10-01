@@ -310,3 +310,16 @@
 
             _aggiornaControlliApriApp();
         }
+
+// RESTYLE BINDEX FASE 5: occhio sul campo password dell'accesso. Cambia solo
+// il tipo del campo (password ↔ text): nessuna logica di login toccata.
+function authMostraNascondiPassword(btn) {
+    const input = document.getElementById('authPassword');
+    if (!input) return;
+    const mostra = input.type === 'password';
+    input.type = mostra ? 'text' : 'password';
+    input.classList.toggle('auth-pw-visibile', mostra);
+    btn.setAttribute('aria-pressed', mostra ? 'true' : 'false');
+    const ico = btn.querySelector('i');
+    if (ico) ico.className = mostra ? 'fa-solid fa-eye-slash' : 'fa-solid fa-eye';
+}

@@ -8,9 +8,20 @@
 // invariato) — hub e sotto-pagine sono semplici div dentro di essa,
 // mostrate/nascoste da queste due funzioni soltanto.
 
+// RESTYLE BINDEX: su PC (pagina larga, stessa soglia del @container in
+// index.css) il menu resta a sinistra e la sotto-pagina si apre a destra.
+function _impostazioniEPC() {
+    const pg = document.getElementById('impostazioni');
+    return !!pg && pg.clientWidth >= 780;
+}
+
 function _impostazioniApri(pagina) {
     const hub = document.getElementById('impostazioniHub');
-    if (hub) hub.style.display = 'none';
+    const pc = _impostazioniEPC();
+    if (hub) hub.style.display = pc ? '' : 'none';
+    if (hub) hub.querySelectorAll('.setting-row[onclick]').forEach(r => {
+        r.classList.toggle('imp-attiva', pc && (r.getAttribute('onclick') || '').includes(`'${pagina}'`));
+    });
     document.querySelectorAll('#impostazioni [id^="impostazioniPagina-"]').forEach(el => { el.style.display = 'none'; });
     const target = document.getElementById('impostazioniPagina-' + pagina);
     if (target) target.style.display = '';
@@ -146,4 +157,6 @@ function _impostazioniTornaHub() {
     document.querySelectorAll('#impostazioni [id^="impostazioniPagina-"]').forEach(el => { el.style.display = 'none'; });
     const hub = document.getElementById('impostazioniHub');
     if (hub) hub.style.display = '';
+    if (_impostazioniEPC()) _impostazioniApri('generali'); // PC: a destra non resta mai vuoto
+    else if (hub) hub.querySelectorAll('.imp-attiva').forEach(r => r.classList.remove('imp-attiva'));
 }

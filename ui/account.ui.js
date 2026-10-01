@@ -61,6 +61,23 @@
         }
 
 
+        // ── RIPRISTINA DISPOSIZIONE HOME ───────────────────────────────────────────
+        // Il layout della home vive in localStorage per utente e dispositivo
+        // (prefWidgetLayout*): si toglie e si ricarica il layout di default.
+        // _caricaLayoutWidget() lo salva da sé con daAzioneUtente=false, quindi
+        // il ripristino NON conta come "personalizzazione" per le missioni.
+        async function ripristinaDisposizioneHome() {
+            if (!confirm('Ripristinare la disposizione della home? Le tessere tornano come al primo accesso, su questo dispositivo.')) return;
+            const userId = await authGetUserId();
+            if (!userId) return;
+            prefWidgetLayoutRemove(userId);
+            if (typeof _paginaWidgetCorrente !== 'undefined') _paginaWidgetCorrente = 0;
+            await _caricaLayoutWidget();
+            if (typeof renderWidgetHome === 'function') await renderWidgetHome();
+            alert('✅ Home ripristinata.');
+        }
+
+
         // ── ESPORTAZIONE DATI ──────────────────────────────────────────────────────
         async function esportaDati(formato) {
             const userId = await authGetUserId();
