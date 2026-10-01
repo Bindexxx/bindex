@@ -4186,6 +4186,69 @@
             color: var(--scaffale-tema-accent, var(--text-dark));
         }
 
+        /* ═══════════════════════════════════════════════════════════════
+           PAGINA SCAFFALI — RESTYLE BINDEX FASE 3f (2026-10-01)
+           Elenco a righe + dettaglio con prodotti su un ripiano.
+           ═══════════════════════════════════════════════════════════════ */
+        #scaffali .pg-contenuto-pagina { max-width: 760px; padding-bottom: 4.5rem; }
+        #scaffali .sc-testa { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+        #scaffali .sc-btn {
+            display: inline-flex; align-items: center; justify-content: center; gap: 7px; padding: 10px 16px; border-radius: 999px;
+            border: 1px solid var(--border-color); background: var(--card-bg); color: var(--text-dark);
+            font-family: inherit; font-weight: 800; font-size: 0.85rem; cursor: pointer;
+        }
+        #scaffali .sc-btn-pieno { background: var(--primary); border-color: var(--primary); color: #fff; }
+        #scaffali .sc-btn-largo { width: 100%; padding: 14px; border-radius: 14px; margin: 14px 0 10px; font-size: 0.92rem; }
+        #scaffali .sc-btn-pericolo { color: #d32f2f; }
+        #scaffali .sc-indietro { width: 34px; height: 34px; border: none; background: transparent; color: var(--text-muted); font-size: 1rem; cursor: pointer; flex: 0 0 auto; }
+        #scaffali .sc-senza { color: var(--primary); font-weight: 700; }
+        #scaffali .sc-elenco { display: flex; flex-direction: column; gap: 10px; }
+        #scaffali .sc-riga {
+            display: flex; align-items: center; gap: 14px; padding: 12px 14px; border-radius: 16px;
+            background: var(--card-bg); border: 1px solid var(--border-color); cursor: pointer;
+        }
+        #scaffali .sc-riga:hover { border-color: var(--primary); background: var(--primary-light); }
+        #scaffali .sc-riga-icona { width: 48px; height: 48px; border-radius: 14px; background: var(--primary-light); color: var(--primary); display: flex; align-items: center; justify-content: center; font-size: 1.15rem; flex: 0 0 48px; }
+        #scaffali .sc-riga-testo { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+        #scaffali .sc-riga-testo b { font-size: 1rem; color: var(--text-dark); }
+        #scaffali .sc-riga-testo span { font-size: 0.8rem; color: var(--text-muted); }
+        #scaffali .sc-lucchetto { font-size: 0.72rem; color: var(--text-muted); margin-left: 4px; }
+        #scaffali .sc-freccia { color: var(--text-muted); font-size: 0.85rem; }
+        #scaffali .sc-nota { text-align: center; font-size: 0.8rem; color: var(--text-muted); margin: 18px 10px 0; }
+        #scaffali .sc-banner { padding: 10px 14px; border-radius: 12px; background: var(--primary-light); color: var(--primary); font-weight: 700; font-size: 0.82rem; margin: 0 0 12px; }
+        #scaffali .sc-chips { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 16px; }
+        #scaffali .pg-filtro {
+            padding: 7px 11px; border-radius: 999px; border: 1px solid var(--border-color); background: var(--card-bg);
+            color: var(--text-muted); font-weight: 800; font-size: 0.8rem; cursor: pointer;
+        }
+        #scaffali .pg-filtro.attivo { background: var(--primary-light); border-color: var(--primary); color: var(--primary); }
+
+        /* Ripiano: ogni prodotto poggia su una barra */
+        #scaffali .sc-ripiano { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 22px 12px; padding-bottom: 6px; }
+        #scaffali .sc-prod { cursor: pointer; min-width: 0; text-align: center; position: relative; }
+        #scaffali .sc-prod-img {
+            position: relative; aspect-ratio: 1 / 1; border-radius: 14px; background: var(--primary-light);
+            display: flex; align-items: center; justify-content: center; margin-bottom: 10px;
+            box-shadow: 0 10px 0 -2px color-mix(in srgb, var(--text-muted) 55%, transparent);
+        }
+        #scaffali .sc-prod-img img { width: 100%; height: 100%; object-fit: contain; border-radius: 14px; }
+        #scaffali .sc-prod-img > i.fa-box { font-size: 2rem; color: var(--primary); }
+        #scaffali .sc-prod-nome { font-size: 0.8rem; font-weight: 800; color: var(--text-dark); line-height: 1.2; margin-top: 10px; }
+        #scaffali .sc-prod-prezzo { font-size: 0.76rem; color: var(--text-muted); }
+        #scaffali .sc-badge-off { position: absolute; top: 6px; left: 6px; background: #2e7d32; color: #fff; font-size: 0.68rem; font-weight: 800; padding: 3px 8px; border-radius: 999px; }
+        #scaffali .sc-x { position: absolute; top: -8px; right: -8px; width: 28px; height: 28px; border-radius: 50%; border: none; background: #d32f2f; color: #fff; cursor: pointer; font-size: 0.85rem; display: flex; align-items: center; justify-content: center; }
+        #scaffali .sc-sposta { position: absolute; left: 0; right: 0; bottom: 6px; display: flex; justify-content: space-between; padding: 0 6px; }
+        #scaffali .sc-sposta button { width: 28px; height: 28px; border-radius: 50%; border: none; background: rgba(255,255,255,.92); color: var(--primary); cursor: pointer; }
+        #scaffali .sc-sposta button:disabled { opacity: .35; cursor: default; }
+
+        #scaffali .sc-interruttore { display: flex; align-items: center; gap: 12px; margin: 8px 0 14px; font-weight: 700; color: var(--text-dark); cursor: pointer; }
+        #scaffali .sc-interruttore input { position: absolute; opacity: 0; pointer-events: none; }
+        #scaffali .sc-switch { width: 46px; height: 26px; border-radius: 999px; background: var(--border-color); position: relative; flex: 0 0 46px; transition: background .15s; }
+        #scaffali .sc-switch::after { content: ''; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: #fff; transition: left .15s; box-shadow: 0 1px 3px rgba(0,0,0,.25); }
+        #scaffali .sc-interruttore input:checked + .sc-switch { background: var(--primary); }
+        #scaffali .sc-interruttore input:checked + .sc-switch::after { left: 23px; }
+        #scaffali .sc-azioni { gap: 10px; flex-wrap: wrap; margin-top: 6px; }
+
         /* Toggle modalità immagini/elenco — preferenza per-utente, vedi
            impostaModalitaBinder() in ui/binder.ui.js */
         .binder-modalita-toggle { display: flex; gap: 0.4rem; margin: 0.8rem 0; }

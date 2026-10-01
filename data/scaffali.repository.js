@@ -11,7 +11,7 @@
 // chiamate dirette fuori da qui).
 
 async function scaffaliList(userId) {
-    return supabaseClient.from('scaffali').select('id, nome, tipo').eq('owner_id', userId).order('created_at');
+    return supabaseClient.from('scaffali').select('id, nome, tipo, stato_pubblicazione, condivisibile').eq('owner_id', userId).order('created_at');
 }
 
 // ── Aggiunte Step 5a (2026-09-12): gestione privata base ────────────────
@@ -43,7 +43,21 @@ async function scaffaleImpostaPubblicazione(userId, scaffaleId, pubblico) {
 
 // scaffale_prodotti: ponte multi-scaffale (Fase 1.3, sql/41).
 async function scaffaleProdottiList(userId, scaffaleId) {
-    return supabaseClient.from('scaffale_prodotti').select('prodotto_id').eq('owner_id', userId).eq('scaffale_id', scaffaleId);
+    // RESTYLE FASE 3f: anche ordine (colonna già esistente, "Come li metto io")
+    // e aggiunta_il (spareggio stabile).
+    return supabaseClient.from('scaffale_prodotti').select('prodotto_id, ordine, aggiunta_il').eq('owner_id', userId).eq('scaffale_id', scaffaleId);
+}
+
+// RESTYLE FASE 3f: scrive l'ordine scelto dall'utente (1..N) sulle righe
+// dello scaffale. Una update per riga (scaffale piccolo); RLS "utenti
+// gestiscono il proprio scaffale" (ALL, owner) verificata sul DB reale.
+async function scaffaleProdottiImpostaOrdine(userId, scaffaleId, prodottoIdsInOrdine) {
+    for (let i = 0; i < prodottoIdsInOrdine.length; i++) {
+        const { error } = await supabaseClient.from('scaffale_prodotti').update({ ordine: i + 1 })
+            .eq('owner_id', userId).eq('scaffale_id', scaffaleId).eq('prodotto_id', prodottoIdsInOrdine[i]);
+        if (error) return { error };
+    }
+    return { error: null };
 }
 
 async function scaffaleProdottoAggiungi(userId, scaffaleId, prodottoId) {
