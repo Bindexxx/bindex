@@ -6883,3 +6883,19 @@
                 width: min(100%, calc((var(--fc-altezza, 100dvh) - 1.5rem) * 5 / 7));
             }
         }
+
+        /* Foto profilo (ui/foto-profilo.ui.js, sql/90) */
+        .match-avatar.con-foto, .chat-avatar.con-foto { background-size: cover; background-position: center; color: transparent !important; }
+        .fp-box:empty { display: none; }
+        .fp-box { margin-bottom: 1.2rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border-color); }
+        .fp-riga { display: flex; gap: 14px; align-items: center; margin-bottom: 0.8rem; }
+        .fp-avatar { width: 72px; height: 72px; border-radius: 50%; flex: 0 0 auto; background: var(--primary-light) center / cover no-repeat; color: var(--primary); display: flex; align-items: center; justify-content: center; font-size: 1.6rem; }
+        .fp-testo { display: flex; flex-direction: column; gap: 3px; font-size: 0.8rem; color: var(--text-muted); }
+        .fp-testo b { color: var(--text-dark); font-size: 0.95rem; }
+        .fp-stato { font-weight: 700; font-size: 0.78rem; }
+        .fp-stato.ok { color: var(--success, #2e7d32); }
+        .fp-stato.ko { color: var(--danger, #c62828); }
+        .fp-stato.att { color: #b07800; }
+        .fp-scegli { display: inline-flex; align-items: center; gap: 0.5rem; cursor: pointer; }
+        .fp-scegli input { display: none; }
+        .fp-errore { color: var(--danger, #c62828); font-size: 0.8rem; margin-top: 0.5rem; }
