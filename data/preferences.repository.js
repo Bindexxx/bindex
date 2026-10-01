@@ -137,3 +137,32 @@ function prefScritteBallSet(attive) { localStorage.setItem('cardsyncScritteBall'
 // inciso nella pancia, quindi qualcuno lo vorrà spento.
 function prefBadgeWidgetGet() { const v = localStorage.getItem('cardsyncBadgeWidget'); return v === null ? true : v === 'true'; }
 function prefBadgeWidgetSet(attivo) { localStorage.setItem('cardsyncBadgeWidget', attivo ? 'true' : 'false'); }
+
+// ── RESTYLE TAVOLE IMPOSTAZIONI (2026-10-01) — preferenze di questo
+// dispositivo per le voci nuove (localStorage, come le altre qui sopra).
+
+// Badge sulle sfere: 'numero' (il conteggio, come prima) o 'pallino' (solo
+// un punto). Spento resta prefBadgeWidgetGet() === false.
+function prefBadgeStileGet() { return localStorage.getItem('cardsyncBadgeStile') === 'pallino' ? 'pallino' : 'numero'; }
+function prefBadgeStileSet(stile) { localStorage.setItem('cardsyncBadgeStile', stile === 'pallino' ? 'pallino' : 'numero'); }
+
+// Scorciatoie della tendina: elenco ordinato di id (vedi _SCORCIATOIE_TENDINA
+// in ui/paginainiziale-polling-avvio.ui.js). Default = le due di prima.
+const _PREF_SCORCIATOIE_DEFAULT = ['suoni', 'modifica-home'];
+function prefScorciatoieGet() {
+    try {
+        const v = JSON.parse(localStorage.getItem('cardsyncScorciatoie') || 'null');
+        return Array.isArray(v) ? v.filter(x => typeof x === 'string') : _PREF_SCORCIATOIE_DEFAULT.slice();
+    } catch (_) { return _PREF_SCORCIATOIE_DEFAULT.slice(); }
+}
+function prefScorciatoieSet(ids) { localStorage.setItem('cardsyncScorciatoie', JSON.stringify(ids || [])); }
+
+// Banner in alto: 'tutti' (ogni avviso), 'azioni' (solo quelli che
+// chiedono di fare qualcosa — il comportamento di prima), 'nessuno'.
+function prefBannerGet() { const v = localStorage.getItem('cardsyncBanner'); return ['tutti', 'azioni', 'nessuno'].includes(v) ? v : 'azioni'; }
+function prefBannerSet(modo) { localStorage.setItem('cardsyncBanner', modo); }
+
+// Posizione del banner su PC: 'alto' (in alto al centro, come prima) o
+// 'basso' (in basso a destra).
+function prefBannerPosGet() { return localStorage.getItem('cardsyncBannerPos') === 'basso' ? 'basso' : 'alto'; }
+function prefBannerPosSet(pos) { localStorage.setItem('cardsyncBannerPos', pos === 'basso' ? 'basso' : 'alto'); }

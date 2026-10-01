@@ -1163,6 +1163,7 @@
 
                 <!-- ── PROFILO ─────────────────────────────────────────── -->
                 <section class="imp-gruppo" id="impostazioniPagina-profilo" data-gruppo="profilo">
+                    <div class="imp-principale">
                     <h3 class="imp-gruppo-titolo">Profilo</h3>
                     <div class="imp-card">
                         <div class="imp-voce espandibile imp-profilo" onclick="_impostazioniEspandi(this)">
@@ -1181,16 +1182,18 @@
                             </div>
                         </div>
                     </div>
+                    </div>
                 </section>
 
                 <!-- ── ASPETTO ─────────────────────────────────────────── -->
                 <section class="imp-gruppo" id="impostazioniPagina-aspetto" data-gruppo="aspetto">
+                    <div class="imp-principale">
                     <h3 class="imp-gruppo-titolo">Aspetto</h3>
                     <div class="imp-card">
                         <label class="imp-voce">
                             <span class="imp-ico"><i class="fa-solid fa-moon"></i></span>
                             <div class="imp-voce-testo"><h4>Tema scuro</h4><p class="imp-solo-pc">Attiva il tema scuro</p></div>
-                            <span class="switch"><input type="checkbox" id="darkModeToggle" onchange="toggleDarkMode(this.checked)"><span class="slider"></span></span>
+                            <span class="switch"><input type="checkbox" id="darkModeToggle" onchange="toggleDarkMode(this.checked); _scorciatoieAggiorna(); _impAnteprime()"><span class="slider"></span></span>
                         </label>
                         <!-- Due color-picker liberi (STEP 1 restyle "cornice
                              Pokédex"): il resto della palette si deriva da
@@ -1198,13 +1201,18 @@
                         <label class="imp-voce">
                             <span class="imp-ico"><i class="fa-solid fa-palette"></i></span>
                             <div class="imp-voce-testo"><h4>Colore principale</h4><p>Colore delle sfere e dei widget: decide anche il resto della palette</p></div>
-                            <input type="color" class="imp-colore" id="temaColorePrincipale" value="#7c4dff" oninput="setColorePrincipale(this.value)">
+                            <input type="color" class="imp-colore" id="temaColorePrincipale" value="#7c4dff" oninput="setColorePrincipale(this.value); _impAnteprime()">
                         </label>
                         <label class="imp-voce">
                             <span class="imp-ico"><i class="fa-solid fa-droplet"></i></span>
                             <div class="imp-voce-testo"><h4>Colore secondario</h4><p>Contorni, linee e testo attenuato</p></div>
-                            <input type="color" class="imp-colore" id="temaColoreSecondario" value="#756a8a" oninput="setColoreSecondario(this.value)">
+                            <input type="color" class="imp-colore" id="temaColoreSecondario" value="#756a8a" oninput="setColoreSecondario(this.value); _impAnteprime()">
                         </label>
+                        <div class="imp-voce" onclick="_impApriZaino()" style="cursor:pointer;">
+                            <span class="imp-ico"><i class="fa-solid fa-circle-half-stroke"></i></span>
+                            <div class="imp-voce-testo"><h4>Sfere e skin <span class="imp-nuovo">nuovo</span></h4><p>Aspetto delle Poké Ball e dei ripiani: le attivi dallo Zaino dello Shop</p></div>
+                            <i class="fa-solid fa-chevron-right imp-freccia"></i>
+                        </div>
                         <div class="imp-voce espandibile" onclick="_impostazioniEspandi(this)">
                             <span class="imp-ico"><i class="fa-solid fa-up-right-and-down-left-from-center"></i></span>
                             <div class="imp-voce-testo"><h4>Dimensioni</h4></div>
@@ -1218,7 +1226,7 @@
                             <div class="imp-slider">
                                 <div class="imp-voce-testo"><h4>Widget</h4><p>Diametro delle sfere: è anche "1 unità" della griglia</p></div>
                                 <div class="imp-slider-riga">
-                                    <input type="range" id="temaDiametroWidget" min="80" max="220" step="10" value="90" oninput="setDiametroWidget(this.value)">
+                                    <input type="range" id="temaDiametroWidget" min="80" max="220" step="10" value="90" oninput="setDiametroWidget(this.value); _impAnteprime()">
                                     <span id="temaDiametroWidgetValore">90 px</span>
                                 </div>
                                 <p id="temaDiametroAnteprimaTesto" class="imp-nota">Con questa dimensione, per questo dispositivo, ci saranno 0 colonne e 0 righe</p>
@@ -1243,21 +1251,38 @@
                             </div>
                         </div>
                     </div>
+                    </div>
+                    <aside class="imp-lato"><div class="imp-lato-testa"><b>Anteprima</b><span>si aggiorna mentre cambi</span></div><div class="imp-anteprima" id="impAnteprimaAspetto"></div><p class="imp-nota" id="impAnteprimaAspettoNota"></p></aside>
                 </section>
 
                 <!-- ── HOME ────────────────────────────────────────────── -->
                 <section class="imp-gruppo" id="impostazioniPagina-home" data-gruppo="home">
+                    <div class="imp-principale">
                     <h3 class="imp-gruppo-titolo">Home</h3>
                     <div class="imp-card">
+                        <div class="imp-voce espandibile" onclick="_impostazioniEspandi(this)">
+                            <span class="imp-ico"><i class="fa-solid fa-table-cells-large"></i></span>
+                            <div class="imp-voce-testo"><h4>Scorciatoie della tendina <span class="imp-nuovo">nuovo</span></h4><p class="imp-solo-pc">Le sfere rapide che trovi tirando giù la barra</p></div>
+                            <span class="imp-valore" id="impScorciatoieN"></span>
+                            <i class="fa-solid fa-chevron-right imp-freccia"></i>
+                        </div>
+                        <div class="imp-corpo">
+                            <p class="imp-nota">Scegli quali compaiono in alto nella tendina (nell'ordine qui sotto).</p>
+                            <div class="imp-scorciatoie" id="impScorciatoieLista"></div>
+                        </div>
                         <label class="imp-voce">
                             <span class="imp-ico"><i class="fa-solid fa-circle"></i></span>
-                            <div class="imp-voce-testo"><h4>Badge sulle sfere</h4><p>Il pallino col conteggio in alto a destra</p></div>
-                            <span class="switch"><input type="checkbox" id="chkBadgeWidget" onchange="toggleBadgeWidget(this.checked)"><span class="slider"></span></span>
+                            <div class="imp-voce-testo"><h4>Badge sulle sfere</h4><p class="imp-solo-pc">Il pallino col conteggio in alto a destra</p></div>
+                            <select class="filter-select imp-select" id="impBadgeStile" onchange="_impBadgeCambia(this.value)">
+                                <option value="numero">Numero</option>
+                                <option value="pallino">Pallino</option>
+                                <option value="nascosto">Nascosto</option>
+                            </select>
                         </label>
                         <label class="imp-voce">
                             <span class="imp-ico"><i class="fa-solid fa-font"></i></span>
                             <div class="imp-voce-testo"><h4>Scritte sulle Poké Ball</h4><p>Il nome inciso sulla parte bianca dei widget piccoli</p></div>
-                            <span class="switch"><input type="checkbox" id="chkScritteBall" onchange="toggleScritteBall(this.checked)"><span class="slider"></span></span>
+                            <span class="switch"><input type="checkbox" id="chkScritteBall" onchange="toggleScritteBall(this.checked); _impAnteprime()"><span class="slider"></span></span>
                         </label>
                         <label class="imp-voce">
                             <span class="imp-ico"><i class="fa-solid fa-house"></i></span>
@@ -1276,16 +1301,19 @@
                             <button class="btn-secondary imp-btn" onclick="ripristinaDisposizioneHome()">Ripristina</button>
                         </div>
                     </div>
+                    </div>
+                    <aside class="imp-lato"><div class="imp-lato-testa"><b>Anteprima</b><span>la tua home</span></div><div class="imp-anteprima" id="impAnteprimaHome"></div><p class="imp-nota">Con "Scritte" spente restano le sfere nude; il badge mostra un numero o solo un pallino.</p></aside>
                 </section>
 
                 <!-- ── ANIMAZIONI ──────────────────────────────────────── -->
                 <section class="imp-gruppo" id="impostazioniPagina-animazioni" data-gruppo="animazioni">
+                    <div class="imp-principale">
                     <h3 class="imp-gruppo-titolo">Animazioni</h3>
                     <div class="imp-card">
                         <label class="imp-voce">
                             <span class="imp-ico"><i class="fa-solid fa-wand-magic-sparkles"></i></span>
                             <div class="imp-voce-testo"><h4>Animazioni dei widget</h4><p class="imp-solo-pc">Movimento delle Poké Ball: cattura all'apertura e richiami quando c'è qualcosa da fare</p></div>
-                            <span class="switch"><input type="checkbox" id="chkAnimWidget" onchange="toggleAnimWidget(this.checked)"><span class="slider"></span></span>
+                            <span class="switch"><input type="checkbox" id="chkAnimWidget" onchange="toggleAnimWidget(this.checked); _scorciatoieAggiorna()"><span class="slider"></span></span>
                         </label>
                         <label class="imp-voce" id="rigaAnimCattura">
                             <span class="imp-ico"><i class="fa-solid fa-bullseye"></i></span>
@@ -1298,16 +1326,46 @@
                             <span class="switch"><input type="checkbox" id="riduciAnimazioniToggle" onchange="toggleRiduciAnimazioni(this.checked)"><span class="slider"></span></span>
                         </label>
                     </div>
+                    </div>
+                    <aside class="imp-lato"><div class="imp-lato-testa"><b>Prova</b><span>senza aprire nulla</span></div><div class="imp-anteprima imp-prova-cattura" id="impProvaCattura"></div><button type="button" class="btn-main" onclick="_impProvaCattura()"><i class="fa-solid fa-play"></i> Riproduci la cattura</button><p class="imp-nota">Valgono solo su questo dispositivo.</p></aside>
                 </section>
 
                 <!-- ── NOTIFICHE E SUONI ───────────────────────────────── -->
                 <section class="imp-gruppo" id="impostazioniPagina-notifiche" data-gruppo="notifiche">
+                    <div class="imp-principale">
                     <h3 class="imp-gruppo-titolo">Notifiche e suoni</h3>
                     <div class="imp-card">
                         <label class="imp-voce">
+                            <span class="imp-ico"><i class="fa-solid fa-bell"></i></span>
+                            <div class="imp-voce-testo"><h4>Banner <span class="imp-nuovo">nuovo</span></h4><p class="imp-solo-pc">Quali avvisi compaiono in alto</p></div>
+                            <select class="filter-select imp-select" id="impBanner" onchange="_impBannerCambia(this.value)">
+                                <option value="tutti">Tutti</option>
+                                <option value="azioni">Solo azioni</option>
+                                <option value="nessuno">Nessuno</option>
+                            </select>
+                        </label>
+                        <label class="imp-voce imp-voce-pc">
+                            <span class="imp-ico"><i class="fa-solid fa-display"></i></span>
+                            <div class="imp-voce-testo"><h4>Posizione del banner</h4><p>Su questo schermo largo</p></div>
+                            <select class="filter-select imp-select" id="impBannerPos" onchange="_impBannerPosCambia(this.value)">
+                                <option value="alto">In alto al centro</option>
+                                <option value="basso">In basso a destra</option>
+                            </select>
+                        </label>
+                        <label class="imp-voce">
                             <span class="imp-ico"><i class="fa-solid fa-music"></i></span>
                             <div class="imp-voce-testo"><h4>Suoni dell'app</h4><p class="imp-solo-pc">Beep di apertura dei widget e notifiche sonore (solo su questo dispositivo)</p></div>
-                            <span class="switch"><input type="checkbox" id="suoniAppToggle" onchange="toggleSuoniWidgetHome()"><span class="slider"></span></span>
+                            <span class="switch"><input type="checkbox" id="suoniAppToggle" onchange="toggleSuoniWidgetHome(); _scorciatoieAggiorna()"><span class="slider"></span></span>
+                        </label>
+                        <label class="imp-voce">
+                            <span class="imp-ico"><i class="fa-solid fa-drum"></i></span>
+                            <div class="imp-voce-testo"><h4>Suono</h4><p class="imp-solo-pc">Quale suono usare per gli avvisi</p></div>
+                            <select class="filter-select imp-select" id="impSuono" onchange="_impSuonoCambia(this.value)"></select>
+                        </label>
+                        <label class="imp-voce">
+                            <span class="imp-ico"><i class="fa-solid fa-mobile-screen"></i></span>
+                            <div class="imp-voce-testo"><h4>Vibrazione</h4><p class="imp-solo-pc">Solo sui telefoni che la supportano</p></div>
+                            <span class="switch"><input type="checkbox" id="impVibrazione" onchange="_impVibrazioneCambia(this.checked)"><span class="slider"></span></span>
                         </label>
                         <div class="imp-voce espandibile" onclick="_impostazioniEspandi(this)">
                             <span class="imp-ico"><i class="fa-solid fa-envelope"></i></span>
@@ -1327,10 +1385,13 @@
                             <button class="btn-main" onclick="salvaPreferenzeNotifiche()"><i class="fa-solid fa-floppy-disk"></i> Salva preferenze</button>
                         </div>
                     </div>
+                    </div>
+                    <aside class="imp-lato"><div class="imp-lato-testa"><b>Prova</b><span>così arrivano</span></div><div class="imp-banner-finto"><span class="imp-banner-ico"><i class="fa-solid fa-bell"></i></span><div><b>Irene ti ha scritto</b><span>Ce l'hai ancora il Moonbreon?</span></div><em>ora</em></div><div class="imp-bottoni"><button type="button" class="btn-secondary" onclick="_impProvaBanner()"><i class="fa-solid fa-bell"></i> Mostra un banner</button><button type="button" class="btn-secondary" onclick="_impProvaSuono()"><i class="fa-solid fa-volume-high"></i> Prova suono</button></div></aside>
                 </section>
 
                 <!-- ── GRUPPO E CONNESSIONI ────────────────────────────── -->
                 <section class="imp-gruppo" id="impostazioniPagina-gruppo" data-gruppo="gruppo">
+                    <div class="imp-principale">
                     <h3 class="imp-gruppo-titolo">Gruppo e connessioni</h3>
                     <div class="imp-card">
                         <!-- Preferenze estensione: visibili solo se
@@ -1373,10 +1434,12 @@
                         </div>
                         <pre id="impostazioniLogViewer" style="max-height:280px; overflow:auto; background:var(--bg-secondary, rgba(0,0,0,0.05)); border-radius:10px; padding:0.8rem; font-size:0.72rem; white-space:pre-wrap; word-break:break-word; margin:0;">(nessun evento registrato in questa sessione)</pre>
                     </div>
+                    </div>
                 </section>
 
                 <!-- ── ACCOUNT E DATI ──────────────────────────────────── -->
                 <section class="imp-gruppo" id="impostazioniPagina-account" data-gruppo="account">
+                    <div class="imp-principale">
                     <h3 class="imp-gruppo-titolo">Account e dati</h3>
                     <div class="imp-card">
                         <div class="imp-voce espandibile" onclick="_impostazioniEspandi(this)">
@@ -1415,10 +1478,12 @@
                             <button class="btn-main imp-btn" onclick="importCsvApri()"><i class="fa-solid fa-file-import"></i> Importa</button>
                         </div>
                     </div>
+                    </div>
                 </section>
 
                 <!-- ── INFO E SEGNALAZIONI ─────────────────────────────── -->
                 <section class="imp-gruppo" id="impostazioniPagina-info" data-gruppo="info">
+                    <div class="imp-principale">
                     <h3 class="imp-gruppo-titolo">Info e segnalazioni</h3>
                     <div class="imp-card">
                         <!-- CHANGELOG (EASTER EGG) -->
@@ -1436,6 +1501,7 @@
                             <textarea id="bugDescrizione" rows="5" maxlength="1500" placeholder="Cosa non funzionava come dovrebbe?" style="width:100%; box-sizing:border-box; border-radius:12px; padding:0.7rem; font:inherit;"></textarea>
                             <button class="btn-main" onclick="(async()=>{const t=document.getElementById('bugDescrizione'); if(!t||!t.value.trim()) return; await segnalaCaterpie(t.value); t.value='';})()"><i class="fa-solid fa-bug"></i> Segnala un Caterpie</button>
                         </div>
+                    </div>
                     </div>
                 </section>
 

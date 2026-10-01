@@ -107,7 +107,11 @@
        un mockup di telefono dentro una pagina desktop più grande: la barra
        deve restare dentro lo "schermo" del telefono, non coprire tutta la
        finestra del browser. */
-    container: null
+    container: null,
+
+    /* Bindex (2026-10-01): vedi pumpQueue e renderQuick */
+    bannerMode: null,           // function () -> "tutti" | "azioni" | "nessuno"
+    onEditQuick: null           // se c'è, sotto le scorciatoie compare "Scegli le scorciatoie"
   };
 
   var el = {};
@@ -1199,7 +1203,11 @@
     buzz([18, 60, 18]);
     announce(displayTitle(item) + ". " + (item.text || ""));
 
-    var useBanner = item.priority === "high" && !state.locked;
+    /* Bindex (2026-10-01): opts.bannerMode() decide quali avvisi mostrano
+       il banner — "tutti", "azioni" (solo priority high, come prima) o
+       "nessuno". Senza l'opzione resta il comportamento originale. */
+    var modo = typeof opts.bannerMode === "function" ? opts.bannerMode() : "azioni";
+    var useBanner = !state.locked && (modo === "tutti" || (modo !== "nessuno" && item.priority === "high"));
     if (useBanner) showHeads(item);
 
     var wait = useBanner ? opts.bannerDuration + 450 : 1400;
@@ -1252,10 +1260,26 @@
         '<span class="csb-quick-label">' + escapeHtml(qa.label) + "</span>" +
         "</button>";
     }
+    if (typeof opts.onEditQuick === "function") {
+      html += '<button type="button" class="csb-quick-edit" data-quick-edit="1">\u270e Scegli le scorciatoie</button>';
+    }
     el.quick.innerHTML = html;
   }
 
+  function mapQuickActions(list) {
+    return (list || []).map(function (qa) {
+      var type = qa.type || "toggle";
+      if (type !== "action" && qa.active !== undefined) state.settings[qa.id] = qa.active !== false;
+      else if (type !== "action" && state.settings[qa.id] === undefined) state.settings[qa.id] = true;
+      return { id: qa.id, label: qa.label, glyph: qa.glyph, type: type, onToggle: qa.onToggle };
+    });
+  }
+
   function handleQuickClick(ev) {
+    if (closestEl(ev.target, "[data-quick-edit]")) {
+      if (typeof opts.onEditQuick === "function") opts.onEditQuick();
+      return;
+    }
     var btn = closestEl(ev.target, "[data-quick]");
     if (!btn) return;
     var id = btn.getAttribute("data-quick");
@@ -2278,6 +2302,20 @@
     setCountdown: setCountdown,
     clearCountdown: function () { setCountdown(null); },
     setCurrency: setCurrency,
+
+    /* Bindex (2026-10-01): scorciatoie scelte dall'utente e banner di prova */
+    setQuickActions: function (list) {
+      state.quickActions = mapQuickActions(list);
+      save();
+      if (state.mounted) renderQuick();
+    },
+    provaBanner: function (item) {
+      if (!state.mounted) return;
+      var it = item || {};
+      showHeads({ id: "prova", title: it.title || "Prova", text: it.text || "", icon: it.icon || "\u25cf" });
+      blip(true);
+      buzz([18, 60, 18]);
+    },
 
     /* impostazioni dei tasti rapidi */
     getSetting: function (id) { return !!state.settings[id]; },

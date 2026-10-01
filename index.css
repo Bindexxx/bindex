@@ -8015,8 +8015,14 @@ body.dark-mode #achievement { --ach-legg-bg: #4a3a12; --ach-rara-bg: #173450; --
     #impostazioni .imp-menu button.attivo { background: var(--primary-light); color: var(--primary); }
     #impostazioni .imp-gruppi:not(.cercando) .imp-gruppo:not(.attivo) { display: none; }
     #impostazioni .imp-gruppo-titolo { font-size: 1.1rem; text-transform: none; letter-spacing: 0; color: var(--text-dark); margin: 0; padding: 14px 14px 0; }
-    #impostazioni .imp-gruppo { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 16px; max-width: 760px; }
-    #impostazioni .imp-gruppo > .imp-card { border: 0; border-radius: 16px; background: transparent; }
+    #impostazioni .imp-gruppo.attivo, #impostazioni .imp-gruppi.cercando .imp-gruppo { display: grid; grid-template-columns: minmax(0, 1fr) minmax(260px, 340px); gap: 16px; align-items: start; }
+    #impostazioni .imp-gruppo:not(:has(.imp-lato)) { grid-template-columns: minmax(0, 760px); }
+    #impostazioni .imp-gruppi.cercando .imp-lato { display: none; }
+    #impostazioni .imp-gruppi.cercando .imp-gruppo { grid-template-columns: minmax(0, 760px); }
+    #impostazioni .imp-principale { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 16px; min-width: 0; }
+    #impostazioni .imp-principale > .imp-card { border: 0; border-radius: 16px; background: transparent; }
+    #impostazioni .imp-lato { margin-top: 0; position: sticky; top: 0; }
+    #impostazioni .imp-voce-pc { display: flex; }
     #impostazioni .imp-voce.espandibile { cursor: default; border-bottom: 0; padding-bottom: 4px; }
     #impostazioni .imp-voce.espandibile .imp-freccia { display: none; }
     #impostazioni .imp-corpo { display: flex; padding-left: 46px; }
@@ -8089,3 +8095,33 @@ body.dark-mode #achievement { --ach-legg-bg: #4a3a12; --ach-rara-bg: #173450; --
 @container (min-width: 780px) {
     #importCsvVista .csv-layout { display: grid; grid-template-columns: minmax(300px, 0.75fr) 2fr; align-items: start; }
 }
+
+/* ── IMPOSTAZIONI — voci nuove, anteprime e prove (2026-10-01) ──────── */
+#impostazioni .imp-voce-pc { display: none; }
+@container (min-width: 780px) { #impostazioni .imp-voce-pc { display: flex; } }
+#impostazioni .imp-lato { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 16px; padding: 14px; display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
+#impostazioni .imp-lato-testa { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+#impostazioni .imp-lato-testa b { font-size: 0.92rem; color: var(--text-dark); }
+#impostazioni .imp-lato-testa span { font-size: 0.72rem; color: var(--text-muted); }
+#impostazioni .imp-anteprima { background: var(--primary-light); border-radius: 12px; padding: 16px 10px; display: flex; flex-wrap: wrap; justify-content: center; gap: 14px 10px; min-height: 90px; align-items: center; }
+#impostazioni .imp-ball { --ball: var(--imp-ball, 56px); display: flex; flex-direction: column; align-items: center; gap: 4px; position: relative; }
+#impostazioni .imp-ball .pkdx-icon-wrap { position: relative; width: var(--ball); height: var(--ball); }
+#impostazioni .imp-ball-nome { font-size: 0.68rem; font-weight: 700; color: var(--text-dark); }
+#impostazioni .imp-prova-cattura { min-height: 130px; }
+#impostazioni .imp-prova-cattura .imp-ball { --ball: 84px; }
+#impostazioni .imp-lato > .btn-main { align-self: center; }
+#impostazioni .imp-banner-finto { display: flex; align-items: center; gap: 12px; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 14px; padding: 12px; box-shadow: 0 6px 18px rgba(0,0,0,.08); }
+#impostazioni .imp-banner-finto > div { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+#impostazioni .imp-banner-finto b { font-size: 0.84rem; color: var(--text-dark); }
+#impostazioni .imp-banner-finto span:not(.imp-banner-ico) { font-size: 0.76rem; color: var(--text-muted); }
+#impostazioni .imp-banner-finto em { font-style: normal; font-size: 0.7rem; color: var(--text-muted); }
+#impostazioni .imp-banner-ico { width: 32px; height: 32px; border-radius: 50%; background: var(--primary); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; flex: 0 0 auto; }
+#impostazioni .imp-lato .imp-bottoni { flex-wrap: wrap; }
+#impostazioni .imp-scorciatoie { display: grid; grid-template-columns: repeat(auto-fill, minmax(128px, 1fr)); gap: 6px; }
+#impostazioni .imp-scorciatoia { display: flex; align-items: center; gap: 8px; border: 1px solid var(--border-color); border-radius: 10px; padding: 8px 10px; font-size: 0.82rem; font-weight: 600; color: var(--text-muted); cursor: pointer; }
+#impostazioni .imp-scorciatoia.on { border-color: var(--primary); background: var(--primary-light); color: var(--primary); }
+#impostazioni .imp-scorciatoia input { width: auto; margin: 0; accent-color: var(--primary); }
+#impostazioni .imp-scorciatoia-glifo { width: 16px; text-align: center; }
+
+/* Badge a pallino (Impostazioni → Home → Badge sulle sfere) */
+body.badge-pallino .widget-badge { font-size: 0 !important; min-width: 12px !important; width: 12px !important; height: 12px !important; padding: 0 !important; }

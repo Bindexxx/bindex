@@ -374,14 +374,18 @@ async function initPhoneShell() {
             // toggleModificaWidgetHome() invariata (#btnModificaWidgetHome
             // resta nel DOM, nascosto, cos\u00ec quella funzione continua a
             // trovarlo senza modifiche).
-            quickActions: [
-                { id: 'suoni', label: 'Suoni', glyph: '\u266a', active: prefSuoniWidgetGet(), onToggle: () => toggleSuoniWidgetHome() },
-                { id: 'modifica-home', label: 'Modifica home', glyph: '\u270e', type: 'action', onToggle: () => {
-                    if (typeof CSBar !== 'undefined') CSBar.close();
-                    if (document.body.classList.contains('phone-detail-open')) chiudiDettaglioWidget();
-                    toggleModificaWidgetHome();
-                } },
-            ],
+            // RESTYLE TAVOLE (2026-10-01, tavola OK-tendina): le scorciatoie
+            // le sceglie l'utente (Impostazioni → Home → Scorciatoie della
+            // tendina, o "Scegli le scorciatoie" qui sotto) fra quelle di
+            // _SCORCIATOIE_TENDINA (fondo file); default = le due di prima.
+            quickActions: _scorciatoieTendina(),
+            onEditQuick: () => {
+                if (typeof CSBar !== 'undefined') CSBar.close();
+                apriDettaglioWidget('impostazioni');
+                setTimeout(() => { if (typeof _impostazioniApri === 'function') _impostazioniApri('home'); }, 50);
+            },
+            // Quali avvisi mostrano il banner (Impostazioni → Notifiche e suoni).
+            bannerMode: () => (typeof prefBannerGet === 'function' ? prefBannerGet() : 'azioni'),
 
             onSettings: () => apriDettaglioWidget('impostazioni'),
             // Riusa il vero menu profilo (#profiloContainer, spostato qui
@@ -389,6 +393,11 @@ async function initPhoneShell() {
             // apriva/chiudeva il menu dalla vecchia barra.
             onProfile: () => { if (typeof toggleMenuProfilo === 'function') toggleMenuProfilo(); },
         });
+        // Le scorciatoie partono dallo stato vero (quello salvato da CSBar
+        // potrebbe essere rimasto indietro), e il badge/banner dalle preferenze.
+        _scorciatoieAggiorna();
+        if (typeof _impApplicaBadgeStile === 'function') _impApplicaBadgeStile();
+        if (typeof _impApplicaBannerPos === 'function') _impApplicaBannerPos();
 
         // STEP 13 fix restyle "cornice Pokédex" (2026-09-17), seconda
         // versione — corregge lo Step 11: la pallina NON è più figlia di
@@ -542,4 +551,70 @@ async function initPhoneShell() {
         frameBox.classList.add('phone-accensione');
         setTimeout(() => frameBox.classList.remove('phone-accensione'), 700);
     }
+}
+
+
+// ── SCORCIATOIE DELLA TENDINA (restyle tavole, 2026-10-01) ─────────────────
+// Catalogo delle scorciatoie possibili. 'toggle' = interruttore che riflette
+// lo stato vero (letto da 'stato' ogni volta che si ricostruiscono), 'action'
+// = fa una cosa e basta. Ogni onToggle passa SEMPRE dalla funzione reale del
+// progetto, come la vecchia 'suoni'.
+const _SCORCIATOIE_TENDINA = {
+    'suoni': { label: 'Suoni', glyph: '\u266a', stato: () => prefSuoniWidgetGet(), onToggle: () => toggleSuoniWidgetHome() },
+    'vibrazione': { label: 'Vibrazione', glyph: '\u224b', stato: () => (typeof CSBar !== 'undefined' ? CSBar.getSetting('vibrazione') : true), onToggle: () => { _impSincronizzaControlli(); } },
+    'tema-scuro': { label: 'Tema scuro', glyph: '\u25d6', stato: () => document.body.classList.contains('dark-mode'), onToggle: (on) => { toggleDarkMode(on); _impSincronizzaControlli(); } },
+    'animazioni': { label: 'Animazioni', glyph: '\u2726', stato: () => prefAnimWidgetGet(), onToggle: (on) => { toggleAnimWidget(on); _impSincronizzaControlli(); } },
+    'aggiorna-prezzi': { label: 'Aggiorna prezzi', glyph: '\u27f3', type: 'action', onToggle: () => {
+        if (typeof CSBar !== 'undefined') CSBar.close();
+        apriDettaglioWidget('prezzi');
+    } },
+    'estensione': { label: 'Estensione', glyph: '\u29c9', type: 'action', onToggle: () => {
+        if (typeof CSBar !== 'undefined') CSBar.close();
+        // Estensione trovata: apre la sua app; altrimenti porta a Gruppo e
+        // connessioni, dove si vede se è installata e come va.
+        if (typeof _versioneVecchiaRilevata !== 'undefined' && _versioneVecchiaRilevata && typeof _mandaAperturaAppAEstensione === 'function') {
+            _mandaAperturaAppAEstensione();
+        } else {
+            apriDettaglioWidget('impostazioni');
+            setTimeout(() => { if (typeof _impostazioniApri === 'function') _impostazioniApri('gruppo'); }, 50);
+        }
+    } },
+    'modifica-home': { label: 'Modifica home', glyph: '\u270e', type: 'action', onToggle: () => {
+        if (typeof CSBar !== 'undefined') CSBar.close();
+        if (document.body.classList.contains('phone-detail-open')) chiudiDettaglioWidget();
+        toggleModificaWidgetHome();
+    } },
+    'badge-pallino': { label: 'Badge a pallino', glyph: '\u25cf', stato: () => prefBadgeStileGet() === 'pallino', onToggle: (on) => {
+        prefBadgeStileSet(on ? 'pallino' : 'numero');
+        if (on) prefBadgeWidgetSet(true);
+        if (typeof _impApplicaBadgeStile === 'function') _impApplicaBadgeStile();
+        _impSincronizzaControlli();
+    } },
+};
+
+function _scorciatoieTendina() {
+    return prefScorciatoieGet().filter(id => _SCORCIATOIE_TENDINA[id]).map(id => {
+        const d = _SCORCIATOIE_TENDINA[id];
+        return { id, label: d.label, glyph: d.glyph, type: d.type || 'toggle', active: d.stato ? !!d.stato() : undefined, onToggle: d.onToggle };
+    });
+}
+
+// Ricostruisce le scorciatoie con lo stato vero (dopo una scelta o un
+// cambio fatto da Impostazioni).
+function _scorciatoieAggiorna() {
+    if (typeof CSBar !== 'undefined' && CSBar.setQuickActions) CSBar.setQuickActions(_scorciatoieTendina());
+}
+
+// Tiene allineati i controlli di Impostazioni e le scorciatoie della tendina
+// quando una delle due parti cambia qualcosa.
+function _impSincronizzaControlli() {
+    const imposta = (id, v) => { const el = document.getElementById(id); if (el) el.checked = !!v; };
+    imposta('darkModeToggle', document.body.classList.contains('dark-mode'));
+    imposta('chkAnimWidget', prefAnimWidgetGet());
+    imposta('suoniAppToggle', prefSuoniWidgetGet());
+    if (typeof CSBar !== 'undefined' && CSBar.getSetting) imposta('impVibrazione', CSBar.getSetting('vibrazione'));
+    const badge = document.getElementById('impBadgeStile');
+    if (badge) badge.value = !prefBadgeWidgetGet() ? 'nascosto' : prefBadgeStileGet();
+    if (typeof _impAnteprime === 'function') _impAnteprime();
+    _scorciatoieAggiorna();
 }
