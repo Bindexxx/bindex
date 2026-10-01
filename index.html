@@ -1473,7 +1473,7 @@
                     </h3>
                     <div class="setting-row">
                         <div>
-                            <h4 style="font-size: 0.9rem; font-weight: 700;">Sezione all'apertura</h4>
+                            <h4 style="font-size: 0.9rem; font-weight: 700;">Pagina all'apertura</h4>
                             <p style="font-size: 0.75rem; color: var(--text-muted);">Da quale scheda vuoi partire ogni volta che apri il sito</p>
                         </div>
                         <select class="filter-select" id="tabPredefinitaSelect" onchange="salvaTabPredefinita(this.value)">
@@ -1505,7 +1505,9 @@
                         <i class="fa-solid fa-bug" style="color: var(--primary);"></i> Hai trovato un Caterpie?
                     </h3>
                     <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 1rem;">Se qualcosa non funziona come dovrebbe, probabilmente hai incontrato un Caterpie selvatico (cioè un bug). Catturalo segnalandolo:</p>
-                    <button class="btn-secondary" onclick="segnalaCaterpie()"><i class="fa-solid fa-bug"></i> Segnala un Caterpie</button>
+                    <!-- RESTYLE BINDEX FASE 3i: descrizione scritta qui, non più in un prompt() del browser -->
+                    <textarea id="bugDescrizione" rows="5" maxlength="1500" placeholder="Cosa non funzionava come dovrebbe?" style="width:100%; box-sizing:border-box; margin-bottom:0.8rem; border-radius:12px; padding:0.7rem; font:inherit;"></textarea>
+                    <button class="btn-main" onclick="(async()=>{const t=document.getElementById('bugDescrizione'); if(!t||!t.value.trim()) return; await segnalaCaterpie(t.value); t.value='';})()"><i class="fa-solid fa-bug"></i> Segnala un Caterpie</button>
                 </div>
             </div>
 
@@ -2598,6 +2600,15 @@
                  partire già nello stato corretto (campo vuoto = bottone
                  disabilitato) invece di lasciarlo abilitato finché
                  l'utente non tocca l'input. -->
+            <!-- RESTYLE BINDEX FASE 3i: frasi pronte fisse (tocco = invio
+                 diretto, passa dagli stessi filtri di _chatInviaMessaggioClick).
+                 "Mostra il mio Scambio" con anteprima richiede un tipo di
+                 messaggio nuovo sul DB: rimandato alla FASE 8. -->
+            <div class="chat-frasi" id="chatFrasi">
+                <button type="button" onclick="_chatInviaFrase('Ce l\'hai ancora?')">Ce l'hai ancora?</button>
+                <button type="button" onclick="_chatInviaFrase('Mi interessa, come facciamo?')">Mi interessa</button>
+                <button type="button" onclick="_chatInviaFrase('Grazie mille!')">Grazie!</button>
+            </div>
             <div class="chat-input-bar">
                 <input type="text" id="chatInput" class="chat-input-campo" maxlength="2000" placeholder="Scrivi un messaggio…" oninput="_chatSuInputCambiato()" onkeydown="if(event.key==='Enter'){_chatInviaMessaggioClick();}">
                 <button class="btn-main chat-invia-btn" id="chatInviaBtn" onclick="_chatInviaMessaggioClick()" disabled><i class="fa-solid fa-paper-plane"></i></button>

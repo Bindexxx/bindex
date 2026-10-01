@@ -696,6 +696,16 @@ async function _chatInviaMessaggioClick() {
     await _chatRenderMessaggi();
 }
 
+// RESTYLE BINDEX FASE 3i: frase pronta = riempie il campo e invia con lo
+// stesso percorso di un messaggio scritto a mano (filtri compresi).
+function _chatInviaFrase(testo) {
+    const input = document.getElementById('chatInput');
+    if (!input) return;
+    input.value = testo;
+    _chatSuInputCambiato();
+    _chatInviaMessaggioClick();
+}
+
 // Bottone invio disabilitato a campo vuoto (evita l'invio di un
 // messaggio bianco per doppio tap accidentale) + contatore caratteri,
 // visibile solo avvicinandosi al limite (maxlength 2000 in index.html) —
