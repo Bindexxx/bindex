@@ -309,5 +309,56 @@ async function prezziAvviaSelezionati() {
         if (esito) esito.textContent = 'Errore nell\'avvio del controllo.';
     } finally {
         if (btn) btn.disabled = false;
+        prezziCaricaControlli();
     }
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════
+// RESTYLE BINDEX FASE 8e — elenco "Controlli" (ultimi 7 giorni) con Riprova
+// ═══════════════════════════════════════════════════════════════════════
+const _PZ_TIPI_CONTROLLO = {
+    controlla_prezzi: ['Collezione', 'fa-layer-group'],
+    controlla_prezzi_wishlist: ['Wishlist', 'fa-bookmark'],
+    controlla_prezzi_sealed: ['Sealed', 'fa-box'],
+};
+const _PZ_STATI_CONTROLLO = {
+    completato: ['Completato', 'ok'],
+    errore: ['Non riuscito', 'ko'],
+    in_corso: ['In corso', 'att'],
+};
+let _pzControlliRighe = [];
+
+async function prezziCaricaControlli() {
+    const cont = document.getElementById('pzControlli');
+    if (!cont) return;
+    const userId = await authGetUserId();
+    if (!userId) { cont.innerHTML = '<p class="pz-nota">Accedi per vedere i tuoi controlli.</p>'; return; }
+    const { data, error } = await ordiniControlliRecentiUtente(userId, 7);
+    if (error) { cont.innerHTML = `<p class="pz-nota">Non riesco a leggere i controlli: ${escapeHtml(error.message)}</p>`; return; }
+    _pzControlliRighe = data || [];
+    if (_pzControlliRighe.length === 0) { cont.innerHTML = '<p class="pz-nota">Nessun controllo negli ultimi 7 giorni.</p>'; return; }
+    cont.innerHTML = _pzControlliRighe.map(o => {
+        const [nome, icona] = _PZ_TIPI_CONTROLLO[o.tipo] || [o.tipo, 'fa-tag'];
+        const [etichetta, classe] = _PZ_STATI_CONTROLLO[o.stato] || ['In attesa', 'att'];
+        const quando = new Date(o.creato_il).toLocaleString('it-IT', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+        const riprova = o.stato === 'errore'
+            ? `<button type="button" class="pz-link" onclick="prezziRiprovaControllo('${o.id}')">Riprova</button>` : '';
+        const errore = (o.stato === 'errore' && o.errore_msg) ? `<div class="pz-nota">${escapeHtml(o.errore_msg)}</div>` : '';
+        return `<div class="pz-controllo"><i class="fa-solid ${icona}"></i><div class="pz-controllo-info"><b>${nome}</b><span>${quando}</span>${errore}</div><span class="pz-stato-pill ${classe}">${etichetta}</span>${riprova}</div>`;
+    }).join('');
+}
+
+// Riprova = nuovo ordine con lo stesso tipo e gli stessi parametri.
+async function prezziRiprovaControllo(ordineId) {
+    const o = _pzControlliRighe.find(x => String(x.id) === String(ordineId));
+    if (!o) return;
+    const userId = await authGetUserId();
+    if (!userId) return;
+    const payload = { tipo: o.tipo, creato_da: userId };
+    if (o.parametri) payload.parametri = o.parametri;
+    const { error } = await ordiniInsert(payload);
+    const esito = document.getElementById('pzEsito');
+    if (esito) esito.textContent = error ? ('Non sono riuscito a riprovare: ' + error.message) : 'Controllo rimesso in coda.';
+    prezziCaricaControlli();
 }

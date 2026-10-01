@@ -137,6 +137,7 @@
                 document.querySelectorAll('.view-section').forEach(sec => sec.classList.remove('active'));
                 document.getElementById(tabId).classList.add('active');
                 if (tabId === 'prezzi' && !_locationCaricate) caricaListaLocationCheckbox();
+                if (tabId === 'prezzi' && typeof prezziCaricaControlli === 'function') prezziCaricaControlli();
                 // Fase 1.2/1.3 (2026-09-12): stesso aggancio, per il pannello
                 // sealed dentro la stessa sezione 'prezzi' — Scaffali, non
                 // location (sql/41/42).

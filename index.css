@@ -6701,3 +6701,15 @@
     border-radius: 999px; padding: 0 0.8rem; width: auto; height: 34px; font-size: 0.75rem; font-weight: 700;
     background: var(--card-bg); color: var(--text-dark);
 }
+
+
+/* ═══ RESTYLE BINDEX FASE 8e — elenco Controlli prezzi ═══ */
+#prezzi .pz-controllo { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border-color); }
+#prezzi .pz-controllo:last-child { border-bottom: none; }
+#prezzi .pz-controllo > i { color: var(--primary); width: 18px; text-align: center; }
+#prezzi .pz-controllo-info { flex: 1; min-width: 0; display: flex; flex-direction: column; font-size: 0.85rem; }
+#prezzi .pz-controllo-info span { font-size: 0.72rem; color: var(--text-muted); }
+#prezzi .pz-stato-pill { font-size: 0.68rem; font-weight: 800; padding: 3px 9px; border-radius: 999px; white-space: nowrap; background: var(--bg-color); color: var(--text-muted); }
+#prezzi .pz-stato-pill.ok { background: rgba(46,125,50,0.14); color: #2e7d32; }
+#prezzi .pz-stato-pill.ko { background: rgba(211,47,47,0.14); color: #d32f2f; }
+#prezzi .pz-stato-pill.att { background: rgba(184,134,11,0.16); color: #b8860b; }
