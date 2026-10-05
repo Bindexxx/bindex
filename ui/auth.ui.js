@@ -256,6 +256,21 @@
         // è loggato — richiamata sia al primo avvio (se già tutto ok), sia
         // subito dopo un login riuscito, sia cliccando "Continua come...".
         async function _avviaSitoDopoAccesso() {
+            // LAYOUT HOME dopo un login "fresco" (senza ricaricare la pagina).
+            // initPhoneShell() carica il layout dei widget all'apertura della
+            // pagina, quando chi sta facendo il login non è ancora autenticato:
+            // _caricaLayoutWidget() non trova un userId, usa il layout di
+            // default e lascia _layoutWidgetUserId = null. Senza questo
+            // passaggio la home restava sul default (finché non si ricaricava)
+            // e _salvaLayoutWidget() usciva subito senza scrivere, perdendo le
+            // modifiche fatte dopo il login. Con la sessione già presente
+            // all'apertura (refresh, "Continua come...") l'userId c'è già:
+            // qui non si fa nulla.
+            if (!_layoutWidgetUserId) {
+                await _caricaLayoutWidget();
+                await renderWidgetHome();
+            }
+
             await caricaCarteReali();
             // FASE 1 (2026-09-12): prodotti sealed, array parallelo — non
             // blocca l'avvio se fallisce (stesso spirito già in uso qui
