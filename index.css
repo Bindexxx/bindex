@@ -1224,7 +1224,16 @@
             min-height: 96px;
             display: flex; flex-direction: column; gap: 0.3rem;
             transition: transform 0.15s ease, box-shadow 0.15s ease;
-            touch-action: none; /* i gesti (drag/peek) sono gestiti a mano via Pointer Events */
+            /* FIX swipe iPhone: era "touch-action: none" su TUTTE le tessere,
+               sempre. Con "none" il browser non scorre per i tocchi che
+               iniziano su una tessera, e le tessere coprono quasi tutta la
+               pagina: lo swipe tra le pagine della home funzionava solo se
+               partiva dagli spazi fra una tessera e l'altra. Il drag e il
+               peek a mano (Pointer Events) esistono solo in modalità
+               modifica (_attivaDragEResize), e per quella c'è già la regola
+               ".in-modifica-widget .widget-tile { touch-action: none }" più
+               sotto. Fuori dalla modifica lo scorrimento resta al browser. */
+            touch-action: pan-x pan-y;
         }
         /* FIX (Claudio: "dopo aver fatto back i widget spariscono ma
            restano cliccabili"): opacity:0 era sulla regola BASE
