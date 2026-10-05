@@ -448,7 +448,12 @@ body[data-tema="retro"] .csb-pop {
 
 .csb-icon:active { opacity: 0.6; }
 
-.csb-icon svg { width: 16px; height: 16px; display: block; }
+.csb-icon svg { width: 16px; height: 16px; display: block; transition: transform 0.45s ease; }
+
+/* Pagina aperta dal tasto (es. Impostazioni): acceso e ruotato, per far
+   capire che toccarlo di nuovo la chiude. */
+.csb-icon.is-attivo { color: #fff; background: var(--csb-accento); }
+.csb-icon.is-attivo svg { transform: rotate(180deg); }
 
 .csb-root :focus-visible {
   outline: 2px solid var(--csb-accento);
