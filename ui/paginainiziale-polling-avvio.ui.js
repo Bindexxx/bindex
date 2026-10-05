@@ -592,8 +592,18 @@ const _SCORCIATOIE_TENDINA = {
     } },
 };
 
+// La vibrazione esiste solo dove il browser espone navigator.vibrate
+// (Android; mai su iPhone/iPad, nemmeno con Chrome o Firefox). Dove non c'e'
+// non mostriamo ne' la voce in Impostazioni ne' la scorciatoia.
+function _vibrazioneSupportata() {
+    return typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function';
+}
+function _scorciatoiaDisponibile(id) {
+    return !!_SCORCIATOIE_TENDINA[id] && (id !== 'vibrazione' || _vibrazioneSupportata());
+}
+
 function _scorciatoieTendina() {
-    return prefScorciatoieGet().filter(id => _SCORCIATOIE_TENDINA[id]).map(id => {
+    return prefScorciatoieGet().filter(_scorciatoiaDisponibile).map(id => {
         const d = _SCORCIATOIE_TENDINA[id];
         return { id, label: d.label, glyph: d.glyph, type: d.type || 'toggle', active: d.stato ? !!d.stato() : undefined, onToggle: d.onToggle };
     });
