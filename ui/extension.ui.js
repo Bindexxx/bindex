@@ -229,6 +229,70 @@
         }
 
 
+        // ── Accesso a ZERO scorrimento anche con zoom del browser molto alto ──
+        // Es. zoom 500% su un 1920×1080 = finestra di ~384×216 px CSS: i
+        // breakpoint di index.css (.pdx-login-*) non bastano a quell'altezza.
+        // Qui si riduce con `zoom` il SOLO contenuto dello stato "accesso"
+        // fino alla scala massima che sta nello schermo del Pokédex. Con il
+        // browser a 500% anche una scala 0.3 lascia il testo grande quanto a
+        // zoom normale. Il resto del pannello e gli altri stati non si toccano.
+        let _adattamentoAccessoAttivo = false;
+        let _adattamentoAccessoUltimaLarghezza = 0;
+
+        function _adattaAccessoAlloSchermo() {
+            const panel = document.getElementById('cardsyncPanel');
+            const login = document.getElementById('statoBossFiero');
+            const schermo = panel && panel.querySelector('.pdx-schermo');
+            if (!login || !schermo || panel.style.display === 'none' || login.style.display === 'none') return;
+
+            const sta = (z) => {
+                login.style.zoom = String(z);
+                return schermo.scrollHeight <= schermo.clientHeight;
+            };
+            if (sta(1)) { login.style.zoom = ''; return; }
+            // Ricerca binaria della scala massima che sta (il padding non
+            // scala, quindi un semplice rapporto sprecherebbe spazio).
+            let basso = 0.15, alto = 1;
+            for (let i = 0; i < 10; i++) {
+                const medio = (basso + alto) / 2;
+                if (sta(medio)) basso = medio; else alto = medio;
+            }
+            login.style.zoom = String(basso);
+            // Rete di sicurezza contro gli arrotondamenti dei pixel: se per 1px
+            // comparisse comunque la barra, stringi a piccoli passi.
+            for (let i = 0; i < 8 && schermo.scrollHeight > schermo.clientHeight; i++) {
+                basso *= 0.98;
+                login.style.zoom = String(basso);
+            }
+        }
+
+        function _avviaAdattamentoAccesso() {
+            if (_adattamentoAccessoAttivo) return;
+            _adattamentoAccessoAttivo = true;
+            _adattamentoAccessoUltimaLarghezza = window.innerWidth;
+
+            let rafId = 0;
+            const rimanda = () => {
+                cancelAnimationFrame(rafId);
+                rafId = requestAnimationFrame(_adattaAccessoAlloSchermo);
+            };
+            window.addEventListener('resize', () => {
+                // Tastiera mobile aperta mentre si digita: cambia solo
+                // l'altezza, non la larghezza — non rimpicciolire il form.
+                const el = document.activeElement;
+                const tastiera = !!el && el.tagName === 'INPUT' && window.innerWidth === _adattamentoAccessoUltimaLarghezza;
+                _adattamentoAccessoUltimaLarghezza = window.innerWidth;
+                if (!tastiera) rimanda();
+            });
+            window.addEventListener('orientationchange', rimanda);
+            // Il messaggio d'errore del login aggiunge una riga: rifai il calcolo.
+            const err = document.getElementById('authError');
+            if (err) new MutationObserver(rimanda).observe(err, { attributes: true, childList: true, characterData: true, subtree: true });
+            // I font web cambiano gli a-capo quando finiscono di caricare.
+            if (document.fonts && document.fonts.ready) document.fonts.ready.then(rimanda);
+        }
+
+
         // Punto d'ingresso principale — chiamato all'avvio della pagina.
         // Controlla PRIMA l'estensione, poi (solo se è a posto) il login.
         async function controlloIngressoCardsync() {
@@ -321,8 +385,11 @@
             } else {
                 document.getElementById('bossFieroGiaLoggato').style.display = 'none';
                 document.getElementById('bossFieroLoginForm').style.display = 'block';
-                authEmail.focus();
             }
+            // Dopo aver scelto form/"continua come": adatta all'altezza reale.
+            _avviaAdattamentoAccesso();
+            _adattaAccessoAlloSchermo();
+            if (!sessione) authEmail.focus();
         }
 
 
