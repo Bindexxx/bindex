@@ -64,6 +64,40 @@ function _impostaOrigineAnimazione(container, evt) {
     container.style.setProperty('--pokeball-y', y + 'px');
 }
 
+// Il banner di CSBar (.csb-heads) sta dentro #phoneShell (stacking z-index 10),
+// quindi con una pagina aperta (.container, z-index 11) resta coperto — la
+// stessa trappola del tasto fisico qui sotto. Finche' il dettaglio e' aperto
+// lo spostiamo in #csbHeadsFuori, un livello su <body> sovrapposto a
+// #phoneScreen; alla chiusura torna al suo posto. Il nodo e' lo stesso: i
+// riferimenti e gli handler di CSBar continuano a funzionare.
+function _csbBannerSopraPagina(sopra) {
+    const heads = document.querySelector('.csb-heads');
+    if (!heads) return;
+    let strato = document.getElementById('csbHeadsFuori');
+    if (sopra) {
+        const schermo = document.getElementById('phoneScreen');
+        if (!schermo) return;
+        if (!strato) {
+            strato = document.createElement('div');
+            strato.id = 'csbHeadsFuori';
+            strato.className = 'csb-root';
+            document.body.appendChild(strato);
+        }
+        const r = schermo.getBoundingClientRect();
+        strato.style.left = r.left + 'px';
+        strato.style.top = r.top + 'px';
+        strato.style.width = r.width + 'px';
+        strato.style.height = r.height + 'px';
+        if (heads.parentElement !== strato) strato.appendChild(heads);
+    } else if (strato && heads.parentElement === strato) {
+        const radice = document.querySelector('#phoneScreen > .csb-root');
+        if (radice) radice.insertBefore(heads, radice.querySelector('.csb-bar'));
+    }
+}
+window.addEventListener('resize', () => {
+    if (document.body.classList.contains('phone-detail-open')) _csbBannerSopraPagina(true);
+});
+
 async function apriDettaglioWidget(tabId, evt) {
     clearTimeout(_chiusuraDettaglioTimeout); // annulla un'eventuale chiusura ancora in corso (riapertura rapida)
 
@@ -126,6 +160,7 @@ async function apriDettaglioWidget(tabId, evt) {
         if (tabId === 'impostazioni' && typeof _impostazioniTornaHub === 'function') _impostazioniTornaHub();
     }
     document.body.classList.add('phone-detail-open');
+    _csbBannerSopraPagina(true);
 
     // FIX (2026-08-30, "non c'è modo di tornare indietro"): #btnFisicoTelefono
     // vive dentro #phoneFrameBox → #phoneShell, e #phoneShell è un
@@ -197,6 +232,7 @@ function chiudiDettaglioWidget() {
             frameBox.appendChild(btnFisico);
             btnFisico.classList.remove('a-schermo-intero');
         }
+        _csbBannerSopraPagina(false);
         renderWidgetHome();
     }, DURATA_ANIMAZIONE_DETTAGLIO_MS);
 }
