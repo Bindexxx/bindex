@@ -373,6 +373,12 @@
                     : 'Puoi usare il sito tranquillamente anche senza l\'estensione su questo dispositivo — accedi per continuare.';
             }
 
+            // "Voglio disinstallarla comunque" non ha senso dove l'estensione
+            // non si può installare (telefono, tablet, Mac/Linux): lì non c'è
+            // niente da disinstallare. Il flag è sempre riapplicato, perché
+            // lo stato viene riaperto più volte nella stessa sessione.
+            document.getElementById('btnDisinstallaDaAccesso').style.display = nonWindows ? 'none' : 'flex';
+
             const sessione = await assicuraLoginSupabase();
             _apriPannelloCardsync();
             _mostraSoloStato('statoBossFiero');
