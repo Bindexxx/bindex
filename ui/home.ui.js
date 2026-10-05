@@ -129,6 +129,13 @@
         // applica GIÀ la sua soglia di 10 minuti di default (sql/13,
         // p_soglia_minuti default 10) — non serve passare nulla.
         async function _dispositiviAttiviOra() {
+            // Senza sessione (schermata di accesso aperta) non si chiama la
+            // RPC: leggi_stato_claim_gruppo è revocata ad anon (sql/77, ACL
+            // verificata sul DB reale: solo postgres/authenticated/service_role),
+            // quindi dava 401 rosso in console a ogni giro del polling lento.
+            // authGetUserId legge la sessione salvata: nessuna richiesta di rete.
+            if (!(await authGetUserId())) return false;
+
             const { data, error } = await claimGruppoStato();
 
             if (error) { console.error('Errore lettura dispositivi attivi:', error.message); return false; }
