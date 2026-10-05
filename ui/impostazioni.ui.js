@@ -425,8 +425,9 @@ async function _impProvaCattura() {
     const tile = prova.querySelector('.imp-ball');
     if (!tile) return;
     prova.dataset.inCorso = '1';
-    const anim = prefAnimWidgetGet(), cattura = prefAnimCatturaGet();
+    const anim = prefAnimWidgetGet(), cattura = prefAnimCatturaGet(), ridotte = prefRiduciAnimazioniGet();
     try {
+        if (ridotte) { prefRiduciAnimazioniSet(false); _ballApplicaClasseAnimazioni(); } // la prova la fa vedere comunque
         if (!anim) prefAnimWidgetSet(true);
         if (!cattura) prefAnimCatturaSet(true);
         await _ballGiocaCattura(tile);
@@ -435,6 +436,7 @@ async function _impProvaCattura() {
     } finally {
         prefAnimWidgetSet(anim);
         prefAnimCatturaSet(cattura);
+        if (ridotte) { prefRiduciAnimazioniSet(true); _ballApplicaClasseAnimazioni(); }
         delete prova.dataset.inCorso;
     }
 }

@@ -467,8 +467,10 @@ function _ballAnimaFinito(el, f, o) {
 
 // Vera o falsa a seconda delle due preferenze: "spegni tutto" vince su
 // "spegni solo la cattura".
-function _ballAnimazioniAttive() { return prefAnimWidgetGet(); }
-function _ballCatturaAttiva() { return prefAnimWidgetGet() && prefAnimCatturaGet(); }
+// "Riduci animazioni" (Impostazioni > Animazioni) vince su tutto: con quello
+// acceso i widget restano fermi e i widget si aprono senza cattura.
+function _ballAnimazioniAttive() { return prefAnimWidgetGet() && !prefRiduciAnimazioniGet(); }
+function _ballCatturaAttiva() { return _ballAnimazioniAttive() && prefAnimCatturaGet(); }
 
 async function _ballGiocaCattura(tile) {
     if (!_ballCatturaAttiva()) return;
@@ -728,7 +730,10 @@ function toggleAnimWidget(attive) {
 // cattura e semaforo li fermano già le due funzioni _ballAnimazioni*, ma il
 // riflesso olografico delle miniature è puro CSS e va fermato da qui.
 function _ballApplicaClasseAnimazioni() {
-    document.body.classList.toggle('senza-anim-widget', !prefAnimWidgetGet());
+    const ridotte = prefRiduciAnimazioniGet();
+    document.body.classList.toggle('senza-anim-widget', !prefAnimWidgetGet() || ridotte);
+    // Regola globale in index.css: azzera animazioni e transizioni di tutta l'interfaccia.
+    document.body.classList.toggle('riduci-animazioni', ridotte);
 }
 function toggleAnimCattura(attiva) { prefAnimCatturaSet(attiva); }
 function toggleScritteBall(attive) { prefScritteBallSet(attive); _ballSvutaCache(); renderWidgetHome(); }

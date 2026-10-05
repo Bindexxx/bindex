@@ -2891,6 +2891,19 @@
             25% { background-color: var(--danger-bg); }
             100% { background-color: transparent; }
         }
+        /* "Riduci animazioni" (Impostazioni > Animazioni, per-dispositivo):
+           classe messa su <body> da _ballApplicaClasseAnimazioni(). Azzera
+           movimento e transizioni di tutta l'interfaccia (stessa tecnica di
+           prefers-reduced-motion): gli eventi animationend/transitionend
+           scattano comunque, quindi nessun flusso resta in attesa. */
+        body.riduci-animazioni *, body.riduci-animazioni *::before, body.riduci-animazioni *::after {
+            animation-duration: 0.01ms !important;
+            animation-delay: 0s !important;
+            animation-iteration-count: 1 !important;
+            transition-duration: 0.01ms !important;
+            transition-delay: 0s !important;
+            scroll-behavior: auto !important;
+        }
         .prezzo-flash-su { animation: prezzoFlashSu 0.9s ease; border-radius: 6px; }
         .prezzo-flash-giu { animation: prezzoFlashGiu 0.9s ease; border-radius: 6px; }
         code { font-family: 'JetBrains Mono', monospace; }
