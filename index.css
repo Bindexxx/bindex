@@ -8206,6 +8206,12 @@ body.dark-mode #achievement { --ach-legg-bg: #4a3a12; --ach-rara-bg: #173450; --
 #impostazioni .imp-ball .pkdx-icon-wrap { position: relative; width: var(--ball); height: var(--ball); }
 #impostazioni .imp-ball-nome { font-size: 0.68rem; font-weight: 700; color: var(--text-dark); }
 #impostazioni .imp-prova-cattura { min-height: 130px; }
+/* Telefono: l'anteprima di Aspetto resta ancorata in basso mentre si
+   scorrono i controlli, cosi' si vede cambiare mentre si regola. */
+@container (max-width: 779px) {
+    #impostazioni .imp-gruppo:has(#impAnteprimaAspetto) .imp-lato { position: sticky; bottom: 4.6rem; z-index: 3; box-shadow: 0 -4px 18px rgba(0,0,0,.12); }
+    #impostazioni .imp-gruppo:has(#impAnteprimaAspetto) .imp-anteprima { max-height: 30vh; overflow-y: auto; }
+}
 #impostazioni .imp-prova-cattura .imp-ball { --ball: 84px; }
 #impostazioni .imp-lato > .btn-main { align-self: center; }
 #impostazioni .imp-banner-finto { display: flex; align-items: center; gap: 12px; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 14px; padding: 12px; box-shadow: 0 6px 18px rgba(0,0,0,.08); }

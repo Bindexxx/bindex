@@ -146,7 +146,6 @@
         // pannello ridiventi opaco.
         let _ritardoRenderDiametro = null;
         const RITARDO_RENDER_DIAMETRO_MS = 150;
-        const RITARDO_OPACO_DIAMETRO_MS = 500; // un po' più lungo del render, per dare tempo di vedere il risultato
 
         // Stima colonne/righe SENZA aspettare il ridisegno vero — calcolata
         // dallo spazio reale di #phoneScreen con la stessa formula
@@ -170,8 +169,6 @@
             return { colonne, righe };
         }
 
-        let _ritardoOpacoDiametro = null;
-
         function applicaDiametroWidget() {
             const diametro = prefDiametroWidgetGet() || DIAMETRO_WIDGET_DEFAULT;
             document.documentElement.style.setProperty('--ball-misura', diametro + 'px');
@@ -188,19 +185,11 @@
                 testo.textContent = `Con questa dimensione, per questo dispositivo, ci saranno ${colonne} colonne e ${righe} righe`;
             }
 
-            // STEP 12: rende trasparente il pannello Impostazioni per far
-            // vedere la VERA Home (sempre montata sotto, vedi
-            // apriDettaglioWidget) aggiornarsi dal vivo — meglio di un
-            // cerchio di anteprima disegnato a mano, che Claudio non si
-            // fidava rispecchiasse davvero la resa reale.
-            const pannello = document.querySelector('.container.container-visibile');
-            if (pannello) {
-                pannello.classList.add('container-trasparente-diametro');
-                clearTimeout(_ritardoOpacoDiametro);
-                _ritardoOpacoDiametro = setTimeout(() => {
-                    pannello.classList.remove('container-trasparente-diametro');
-                }, RITARDO_OPACO_DIAMETRO_MS);
-            }
+            // (Il vecchio trucco STEP 12 — pannello Impostazioni reso
+            // trasparente per mostrare la Home vera sotto — e' stato tolto:
+            // ora l'anteprima nella pagina Aspetto mostra la misura reale
+            // delle sfere e si aggiorna dal vivo, senza far vedere le
+            // tessere sotto.)
 
             // Cambiare il diametro cambia quante colonne/righe entrano nella
             // pagina (la griglia CSS è auto-fill su var(--ball-misura), vedi

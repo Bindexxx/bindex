@@ -383,7 +383,7 @@ function _impAnteprime() {
     if (aspetto) {
         const misura = parseInt(document.getElementById('temaDiametroWidget')?.value, 10) || 90;
         aspetto.classList.add('ball-ui');
-        aspetto.style.setProperty('--imp-ball', Math.min(misura, 80) + 'px');
+        aspetto.style.setProperty('--imp-ball', misura + 'px'); // misura reale: l'anteprima mostra davvero la dimensione scelta
         aspetto.innerHTML = ['missioni', 'chat', 'match'].map(id => _impBallHtml(id, {})).join('');
         const nota = document.getElementById('impAnteprimaAspettoNota');
         const testo = document.getElementById('temaDiametroAnteprimaTesto');
