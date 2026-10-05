@@ -1943,7 +1943,7 @@
          problema alla radice invece di continuare a inseguirlo.
     ═══════════════════════════════════════════════════════════════════ -->
     <div id="cardsyncPanel" style="display:none; position:fixed; inset:0; width:100%; height:100%; z-index:9999999; background:var(--bg-color); overflow-y:auto;">
-        <div style="min-height:100%; display:flex; align-items:center; justify-content:center; padding:2rem 1.2rem;">
+        <div class="pdx-wrap">
         <!-- RESTYLE BINDEX FASE 5: tutto dentro un "Bindex" disegnato come un
              Pokédex (lente, led, BINDEX inciso, croce). Solo aspetto: gli
              stati, gli id e i TESTI sono quelli di prima. -->
@@ -2043,14 +2043,14 @@
             </div>
 
             <!-- STATO: estensione aggiornata — accesso -->
-            <div id="statoBossFiero" style="display:none; text-align:center;">
+            <div id="statoBossFiero" class="pdx-login" style="display:none; text-align:center;">
                 <div class="cardsync-motivo-tema" id="motivoBossFiero">🎉</div>
-                <h2 style="font-weight:800; margin-bottom:0.6rem; font-size:1.5rem;" id="statoBossFieroTitolo">Il boss è fiero di te!</h2>
-                <p style="font-size:1.02rem; color:var(--text-muted); margin-bottom:1.8rem;" id="statoBossFieroTesto">Hai l'estensione installata e aggiornata all'ultima versione — valuta di attivare la funzione "Aiuta il gruppo" per far sì che non sia solo il PC di Bill a fare i calcoli per gli altri. In questo modo l'app sarà più veloce per tutti noi. Bill ringrazia. 🙏</p>
+                <h2 class="pdx-login-tit" id="statoBossFieroTitolo">Il boss è fiero di te!</h2>
+                <p class="pdx-login-txt" id="statoBossFieroTesto">Hai l'estensione installata e aggiornata all'ultima versione — valuta di attivare la funzione "Aiuta il gruppo" per far sì che non sia solo il PC di Bill a fare i calcoli per gli altri. In questo modo l'app sarà più veloce per tutti noi. Bill ringrazia. 🙏</p>
 
                 <!-- Se già loggato -->
                 <div id="bossFieroGiaLoggato" style="display:none;">
-                    <button class="btn-main" style="width:100%; justify-content:center; padding:0.9rem;" id="btnContinuaComeUtente" onclick="_continuaAlSito()"></button>
+                    <button class="btn-main pdx-login-btn" style="width:100%; justify-content:center;" id="btnContinuaComeUtente" onclick="_continuaAlSito()"></button>
                 </div>
 
                 <!-- Se non loggato: stesso form del sito, spostato qui -->
@@ -2070,18 +2070,18 @@
                             <button type="button" class="auth-occhio" onclick="authMostraNascondiPassword(this)" aria-label="Mostra o nascondi la password" aria-pressed="false"><i class="fa-solid fa-eye"></i></button>
                         </div>
                     </div>
-                    <div style="display:flex; align-items:center; justify-content:space-between; margin:0.8rem 0 1.2rem;">
-                        <span style="font-size:0.88rem; color:var(--text-muted);">Mantienimi loggato — questo è il mio PC, mica il PC di Bill 💻</span>
+                    <div class="pdx-login-mant">
+                        <span>Mantienimi loggato — questo è il mio PC, mica il PC di Bill 💻</span>
                         <label class="toggle"><input type="checkbox" id="mantieniAccesso" checked><span class="toggle-slider"></span></label>
                     </div>
                     <div id="authError"></div>
-                    <button class="btn-main" id="authSubmit" style="width: 100%; padding:0.9rem;">Accedi</button>
-                    <div style="text-align:center; margin-top:0.8rem;">
-                        <a href="#" onclick="apriModaleResetPassword(); return false;" style="font-size:0.85rem; color:var(--text-muted); text-decoration:underline;">Password dimenticata?</a>
+                    <button class="btn-main pdx-login-btn" id="authSubmit" style="width: 100%;">Accedi</button>
+                    <div class="pdx-login-reset">
+                        <a href="#" onclick="apriModaleResetPassword(); return false;">Password dimenticata?</a>
                     </div>
                 </div>
 
-                <button class="btn-secondary" style="width:100%; justify-content:center; display:flex; padding:0.8rem; margin-top:1rem; font-size:0.88rem;" onclick="mostraIstruzioniDisinstallazione()">
+                <button class="btn-secondary pdx-login-disinst" style="width:100%; justify-content:center; display:flex;" onclick="mostraIstruzioniDisinstallazione()">
                     <i class="fa-solid fa-trash"></i> Voglio disinstallarla comunque — lascio che sia il PC di Bill a fare i calcoli per me
                 </button>
             </div>

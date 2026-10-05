@@ -4471,14 +4471,24 @@
         #binderImpostazioniModal .binder-layout-btn.active .bn-mini b { background:#fff; opacity:1; }
 
         /* ═══ RESTYLE BINDEX FASE 5 — Accesso come un Pokédex (solo aspetto) ═══ */
-        .pdx { width:100%; max-width:520px; background:linear-gradient(180deg, #7c4dff 0%, #4a2d9c 100%); border-radius:34px 34px 30px 30px; padding:18px 18px 16px; box-shadow:0 18px 40px rgba(60,30,140,0.35); box-sizing:border-box; }
-        .pdx-top { display:flex; align-items:center; gap:12px; padding:2px 6px 14px; }
+        /* Altezza: .pdx non supera mai lo schermo (dvh = area realmente visibile
+           su telefono, a differenza di vh che include la barra del browser) e
+           .pdx-schermo (flex:1) assorbe la differenza. Se il contenuto sta,
+           niente barra di scorrimento; negli stati lunghi (wizard) scorre solo
+           dentro lo schermo, come prima. */
+        #cardsyncPanel { --pdx-py:2rem; --pdx-px:1.2rem; }
+        .pdx-wrap { min-height:100%; box-sizing:border-box; display:flex; align-items:center; justify-content:center;
+                    padding:calc(var(--pdx-py) + env(safe-area-inset-top, 0px)) calc(var(--pdx-px) + env(safe-area-inset-right, 0px)) calc(var(--pdx-py) + env(safe-area-inset-bottom, 0px)) calc(var(--pdx-px) + env(safe-area-inset-left, 0px)); }
+        .pdx { width:100%; max-width:520px; background:linear-gradient(180deg, #7c4dff 0%, #4a2d9c 100%); border-radius:34px 34px 30px 30px; padding:18px 18px 16px; box-shadow:0 18px 40px rgba(60,30,140,0.35); box-sizing:border-box;
+               display:flex; flex-direction:column; max-height:calc(100vh - 2 * var(--pdx-py) - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+               max-height:calc(100dvh - 2 * var(--pdx-py) - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)); }
+        .pdx-top { display:flex; align-items:center; gap:12px; padding:2px 6px 14px; flex-shrink:0; }
         .pdx-lente { width:46px; height:46px; border-radius:50%; background:radial-gradient(circle at 35% 30%, #aee3ff, #1c7fd1 70%); border:4px solid #fff; box-shadow:0 0 0 2px rgba(0,0,0,0.12); flex-shrink:0; }
         .pdx-led { width:13px; height:13px; border-radius:50%; display:block; box-shadow:inset 0 -2px 3px rgba(0,0,0,0.25); }
         .pdx-led-r { background:#d93a3a; } .pdx-led-g { background:#f0b429; } .pdx-led-v { background:#34b45a; }
         .pdx-nome { margin-left:auto; font-weight:800; letter-spacing:0.28em; color:rgba(255,255,255,0.85); font-size:0.95rem; text-shadow:0 1px 0 rgba(0,0,0,0.3); }
-        .pdx-schermo { background:var(--card-bg); border:3px solid #e6e6ea; border-radius:20px; padding:1.6rem 1.3rem; max-height:calc(100vh - 11rem); overflow-y:auto; }
-        .pdx-fondo { display:flex; align-items:center; justify-content:space-between; padding:14px 8px 2px; }
+        .pdx-schermo { background:var(--card-bg); border:3px solid #e6e6ea; border-radius:20px; padding:1.6rem 1.3rem; flex:1 1 auto; min-height:0; overflow-y:auto; }
+        .pdx-fondo { display:flex; align-items:center; justify-content:space-between; padding:14px 8px 2px; flex-shrink:0; }
         .pdx-croce { position:relative; width:44px; height:44px; flex-shrink:0; }
         .pdx-croce::before, .pdx-croce::after { content:''; position:absolute; background:#1f1f24; border-radius:4px; }
         .pdx-croce::before { left:15px; top:0; width:14px; height:44px; }
@@ -4492,6 +4502,94 @@
         .pdx-passo-tit { font-weight:800; margin:0 0 0.4rem; color:var(--text-dark); }
         .pdx-passo-txt { font-size:0.9rem; color:var(--text-muted); margin:0; }
         .pdx-schermo .auth-field input { background:color-mix(in srgb, var(--primary) 6%, var(--card-bg)); border-radius:14px; padding:0.8rem 1rem; }
+
+        /* ── Accesso a ZERO scorrimento ──────────────────────────────────────
+           I valori base qui sotto sono quelli che prima stavano inline
+           nell'HTML (aspetto invariato sugli schermi alti). Sugli schermi
+           bassi la schermata si compatta a gradini in base all'ALTEZZA: prima
+           si stringono margini e font, poi sparisce il tondo con l'emoji e si
+           riduce la cornice Pokédex. I testi non vengono mai tagliati. */
+        .pdx-login-tit { font-weight:800; margin-bottom:0.6rem; font-size:1.5rem; }
+        .pdx-login-txt { font-size:1.02rem; color:var(--text-muted); margin-bottom:1.8rem; }
+        .pdx-login-mant { display:flex; align-items:center; justify-content:space-between; gap:0.6rem; margin:0.8rem 0 1.2rem; }
+        .pdx-login-mant > span { font-size:0.88rem; color:var(--text-muted); }
+        .pdx-login-btn { padding:0.9rem; }
+        .pdx-login-reset { text-align:center; margin-top:0.8rem; }
+        .pdx-login-reset a { font-size:0.85rem; color:var(--text-muted); text-decoration:underline; }
+        .pdx-login-disinst { padding:0.8rem; margin-top:1rem; font-size:0.88rem; }
+
+        /* Gradino A — schermi medio-bassi (laptop piccoli) e telefoni in
+           generale: stretti = il testo va a capo di più, serve compattare
+           anche se sono alti */
+        @media (max-height: 960px), (max-width: 480px) {
+            #cardsyncPanel { --pdx-py:0.9rem; }
+            .pdx { padding:12px 12px 10px; border-radius:28px 28px 24px 24px; }
+            .pdx-top { padding:0 4px 8px; gap:10px; }
+            .pdx-lente { width:34px; height:34px; border-width:3px; }
+            .pdx-nome { font-size:0.8rem; }
+            .pdx-schermo { padding:1rem; border-radius:16px; }
+            .pdx-fondo { padding:8px 6px 0; }
+            .pdx-croce { width:30px; height:30px; }
+            .pdx-croce::before { left:10px; width:10px; height:30px; }
+            .pdx-croce::after { top:10px; width:30px; height:10px; }
+            .pdx-login .cardsync-motivo-tema { width:60px; height:60px; font-size:2rem; margin-bottom:0.4rem; }
+            .pdx-login .cardsync-motivo-tema::after { top:-24px; left:22px; }
+            .pdx-login-tit { font-size:1.3rem; margin-bottom:0.4rem; }
+            .pdx-login-txt { font-size:0.9rem; line-height:1.35; margin-bottom:1rem; }
+            .pdx-login .auth-field { margin-bottom:0.55rem; }
+            .pdx-schermo .pdx-login .auth-field input { padding:0.6rem 1rem 0.6rem 2.5rem !important; }
+            .pdx-schermo .pdx-login .auth-field input[type="password"] { padding-right:2.6rem !important; }
+            .pdx-login-mant { margin:0.5rem 0 0.8rem; }
+            .pdx-login-mant > span { font-size:0.78rem; }
+            .pdx-login-btn { padding:0.7rem; }
+            .pdx-login-reset { margin-top:0.5rem; }
+            .pdx-login-disinst { padding:0.55rem 0.7rem; margin-top:0.7rem; font-size:0.76rem; line-height:1.25; }
+        }
+
+        /* Gradino B — telefoni medi (≈ 640–780px di altezza, stretti) e schermi
+           molto bassi: via il tondo con l'emoji */
+        @media (max-height: 700px), (max-width: 480px) and (max-height: 780px) {
+            #cardsyncPanel { --pdx-py:0.5rem; --pdx-px:0.5rem; }
+            .pdx-top { padding:0 4px 6px; }
+            .pdx-lente { width:26px; height:26px; }
+            .pdx-led { width:10px; height:10px; }
+            .pdx-schermo { padding:0.7rem 0.8rem; }
+            .pdx-login .cardsync-motivo-tema { display:none; }
+            .pdx-login-tit { font-size:1.15rem; margin-bottom:0.3rem; }
+            .pdx-login-txt { font-size:0.8rem; line-height:1.3; margin-bottom:0.7rem; }
+            .pdx-login .auth-field { margin-bottom:0.4rem; }
+            .pdx-login .auth-field label { font-size:0.7rem; margin-bottom:0.15rem; }
+            .pdx-schermo .pdx-login .auth-field input { padding-top:0.5rem !important; padding-bottom:0.5rem !important; }
+            .pdx-login-mant { margin:0.35rem 0 0.6rem; }
+            .pdx-login-btn { padding:0.6rem; }
+            .pdx-login-disinst { margin-top:0.5rem; padding:0.45rem 0.6rem; font-size:0.72rem; }
+            .pdx-fondo { padding:6px 6px 0; }
+            .pdx-croce { width:22px; height:22px; }
+            .pdx-croce::before { left:7px; width:8px; height:22px; }
+            .pdx-croce::after { top:7px; width:22px; height:8px; }
+            .pdx-pill { height:6px; width:26px; }
+        }
+
+        /* Gradino C — telefoni piccoli (≈ 568px e meno) */
+        @media (max-height: 600px) {
+            .pdx { padding:8px 8px 6px; border-radius:22px 22px 18px 18px; }
+            .pdx-top { padding:0 2px 4px; }
+            .pdx-nome { font-size:0.7rem; letter-spacing:0.2em; }
+            .pdx-schermo { padding:0.55rem 0.65rem; border-width:2px; }
+            .pdx-login-tit { font-size:1.05rem; }
+            .pdx-login-txt { font-size:0.72rem; line-height:1.25; margin-bottom:0.5rem; }
+            .pdx-login .auth-field { margin-bottom:0.3rem; }
+            .pdx-login .auth-field label { font-size:0.65rem; }
+            .pdx-schermo .pdx-login .auth-field input { padding-top:0.4rem !important; padding-bottom:0.4rem !important; font-size:0.85rem; }
+            .pdx-login-mant { margin:0.25rem 0 0.45rem; }
+            .pdx-login-mant > span { font-size:0.7rem; line-height:1.2; }
+            .pdx-login-btn { padding:0.5rem; font-size:0.85rem; }
+            .pdx-login-reset { margin-top:0.35rem; }
+            .pdx-login-reset a { font-size:0.75rem; }
+            .pdx-login-disinst { margin-top:0.35rem; padding:0.35rem 0.5rem; font-size:0.66rem; line-height:1.2; }
+            .pdx-fondo { padding:4px 6px 0; }
+            .pdx-pill { display:none; }
+        }
 
         /* ═══ RESTYLE BINDEX FASE 4b — binder aperto: testata, scheda Libro|Elenco, Elenco ═══
            La testata non è più sovrapposta al libro: sta nel flusso, e il
