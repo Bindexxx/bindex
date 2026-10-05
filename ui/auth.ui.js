@@ -270,6 +270,14 @@
             aggiornaBadgeMatch();
             caricaCarteConProblemi();
 
+            // Saldo polvere (barra di stato) ed effetti del negozio: all'apertura
+            // della pagina non c'era ancora un utente (login fresco), quindi
+            // initPhoneShell() li ha saltati. Se erano già stati caricati
+            // (refresh con sessione) non si rifà nulla. Fire-and-forget.
+            if (typeof _caricaSaldoEEffettiStatusBar === 'function' && !_saldoEEffettiStatusBarCaricati) {
+                _caricaSaldoEEffettiStatusBar();
+            }
+
             // Missioni/Traguardi Fase 2 — streak accessi (2026-08-29).
             // Fire-and-forget: un fallimento qui non deve mai bloccare
             // l'avvio del sito. Dedup a 1/giorno gestito dentro la
