@@ -570,13 +570,13 @@ const _SCORCIATOIE_TENDINA = {
     } },
     'estensione': { label: 'Estensione', glyph: '\u29c9', type: 'action', onToggle: () => {
         if (typeof CSBar !== 'undefined') CSBar.close();
-        // Estensione trovata: apre la sua app; altrimenti porta a Gruppo e
-        // connessioni, dove si vede se è installata e come va.
+        // Estensione trovata: apre la sua app; altrimenti porta a Account e
+        // dati, dove stanno gli interruttori dell'estensione (visibili se rilevata).
         if (typeof _versioneVecchiaRilevata !== 'undefined' && _versioneVecchiaRilevata && typeof _mandaAperturaAppAEstensione === 'function') {
             _mandaAperturaAppAEstensione();
         } else {
             apriDettaglioWidget('impostazioni');
-            setTimeout(() => { if (typeof _impostazioniApri === 'function') _impostazioniApri('gruppo'); }, 50);
+            setTimeout(() => { if (typeof _impostazioniApri === 'function') _impostazioniApri('account'); }, 50);
         }
     } },
     'modifica-home': { label: 'Modifica home', glyph: '\u270e', type: 'action', onToggle: () => {
