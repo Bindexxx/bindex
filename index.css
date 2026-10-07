@@ -8065,7 +8065,7 @@ body.dark-mode #achievement { --ach-legg-bg: #4a3a12; --ach-rara-bg: #173450; --
    icona/testo/controllo); le voci .espandibile aprono il loro .imp-corpo.
    PC (>= 780px): menu a sinistra, a destra solo il gruppo .attivo con
    tutti i corpi aperti. */
-#impostazioni { container-type: inline-size; }
+#impostazioni { container-type: inline-size; max-width: 1040px; margin-inline: auto; } /* su PC non si stira su tutta la finestra */
 #impostazioni .imp-solo-pc { display: none; }
 #impostazioni .imp-sotto { font-size: 0.8rem; color: var(--text-muted); margin: -0.4rem 0 0.9rem; }
 #impostazioni .imp-gruppo { margin-bottom: 1.1rem; }
