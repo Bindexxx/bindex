@@ -64,23 +64,24 @@ function _impostaOrigineAnimazione(container, evt) {
     container.style.setProperty('--pokeball-y', y + 'px');
 }
 
-// Il banner di CSBar (.csb-heads) sta dentro #phoneShell (stacking z-index 10),
-// quindi con una pagina aperta (.container, z-index 11) resta coperto — la
-// stessa trappola del tasto fisico qui sotto. Finche' il dettaglio e' aperto
-// lo spostiamo in #csbHeadsFuori, un livello su <body> sovrapposto a
-// #phoneScreen; alla chiusura torna al suo posto. Il nodo e' lo stesso: i
-// riferimenti e gli handler di CSBar continuano a funzionare.
-function _csbBannerSopraPagina(sopra) {
-    const heads = document.querySelector('.csb-heads');
-    if (!heads) return;
+// CSBar (barra, tendina, velo, banner) e la pallina della tendina stanno dentro
+// #phoneShell (stacking z-index 10), quindi con una pagina aperta (.container,
+// z-index 11) resterebbero coperti — la stessa trappola del tasto fisico qui
+// sotto: la tendina scesa finiva SOTTO la pagina, che per questo veniva
+// nascosta. Finche' il dettaglio e' aperto spostiamo tutto in #csbHeadsFuori,
+// un livello su <body> sovrapposto esattamente a #phoneScreen; alla chiusura
+// tutto torna al suo posto. I nodi sono gli stessi: riferimenti e handler di
+// CSBar continuano a funzionare, e la pagina resta visibile sotto la tendina.
+function _csbSopraPagina(sopra) {
+    const radice = document.querySelector('.csb-root:not(#csbHeadsFuori)');
+    const pallina = document.getElementById('pallinaTendinaVisibile');
+    const schermo = document.getElementById('phoneScreen');
     let strato = document.getElementById('csbHeadsFuori');
     if (sopra) {
-        const schermo = document.getElementById('phoneScreen');
-        if (!schermo) return;
+        if (!schermo || !radice) return;
         if (!strato) {
             strato = document.createElement('div');
             strato.id = 'csbHeadsFuori';
-            strato.className = 'csb-root';
             document.body.appendChild(strato);
         }
         const r = schermo.getBoundingClientRect();
@@ -88,14 +89,18 @@ function _csbBannerSopraPagina(sopra) {
         strato.style.top = r.top + 'px';
         strato.style.width = r.width + 'px';
         strato.style.height = r.height + 'px';
-        if (heads.parentElement !== strato) strato.appendChild(heads);
-    } else if (strato && heads.parentElement === strato) {
-        const radice = document.querySelector('#phoneScreen > .csb-root');
-        if (radice) radice.insertBefore(heads, radice.querySelector('.csb-bar'));
+        strato.style.borderRadius = getComputedStyle(schermo).borderRadius;
+        strato.classList.toggle('csb-solo-supabase', schermo.classList.contains('csb-solo-supabase'));
+        if (radice.parentElement !== strato) strato.appendChild(radice);
+        if (pallina && pallina.parentElement !== strato) strato.appendChild(pallina);
+    } else if (strato && schermo) {
+        const eraFuori = radice && radice.parentElement === strato;
+        if (eraFuori) schermo.appendChild(radice);
+        if (pallina && pallina.parentElement === strato) schermo.appendChild(pallina);
     }
 }
 window.addEventListener('resize', () => {
-    if (document.body.classList.contains('phone-detail-open')) _csbBannerSopraPagina(true);
+    if (document.body.classList.contains('phone-detail-open')) _csbSopraPagina(true);
 });
 
 async function apriDettaglioWidget(tabId, evt) {
@@ -160,7 +165,7 @@ async function apriDettaglioWidget(tabId, evt) {
         if (tabId === 'impostazioni' && typeof _impostazioniTornaHub === 'function') _impostazioniTornaHub();
     }
     document.body.classList.add('phone-detail-open');
-    _csbBannerSopraPagina(true);
+    _csbSopraPagina(true);
 
     // FIX (2026-08-30, "non c'è modo di tornare indietro"): #btnFisicoTelefono
     // vive dentro #phoneFrameBox → #phoneShell, e #phoneShell è un
@@ -254,7 +259,7 @@ function chiudiDettaglioWidget() {
             frameBox.appendChild(btnFisico);
             btnFisico.classList.remove('a-schermo-intero');
         }
-        _csbBannerSopraPagina(false);
+        _csbSopraPagina(false);
         renderWidgetHome();
     }, DURATA_ANIMAZIONE_DETTAGLIO_MS);
 }

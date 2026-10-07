@@ -1813,6 +1813,8 @@
     hideHeads();
     togglePop(false);
     el.shade.classList.add("is-visible");
+    var inner = el.shade.querySelector(".csb-shade-inner");
+    el.shade.classList.toggle("csb-scrolla", !!inner && inner.scrollHeight > inner.clientHeight + 1);
     el.shade.setAttribute("aria-hidden", "false");
     el.backdrop.classList.add("is-active");
     el.backdrop.style.opacity = "";
@@ -2032,6 +2034,13 @@
     el.countdown.addEventListener("pointerdown", onPointerDown);
     el.cta.addEventListener("pointerdown", onPointerDown);
     el.pending.addEventListener("pointerdown", onPointerDown);
+    /* tutto il pannello e' afferrabile (le singole notifiche hanno il loro
+       gesto di scarto laterale, e l'elenco scorrevole il suo scorrimento: li escludiamo). */
+    el.shade.addEventListener("pointerdown", function (ev) {
+      if (closestEl(ev.target, ".csb-notif")) return;
+      if (el.shade.classList.contains("csb-scrolla") && closestEl(ev.target, ".csb-list")) return;
+      onPointerDown(ev);
+    });
 
     el.ctaBtn.addEventListener("click", function () {
       if (el.cta.getAttribute("data-kind") === "install") CSBar.promptInstall();
