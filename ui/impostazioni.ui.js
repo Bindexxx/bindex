@@ -268,6 +268,9 @@ function _impostazioniCompila() {
     }
     const vib = document.getElementById('impVibrazione');
     if (vib && typeof CSBar !== 'undefined' && CSBar.getSetting) vib.checked = CSBar.getSetting('vibrazione');
+    // Senza supporto del browser (iPhone/iPad, molti PC) la voce non serve.
+    const rigaVib = vib && vib.closest('label');
+    if (rigaVib) rigaVib.style.display = _vibrazioneSupportata() ? '' : 'none';
     _impScorciatoieRender();
     _impAnteprime();
 }
@@ -285,10 +288,10 @@ function _impScorciatoieRender() {
     const n = document.getElementById('impScorciatoieN');
     if (typeof _SCORCIATOIE_TENDINA === 'undefined') return;
     const scelte = prefScorciatoieGet();
-    if (n) n.textContent = String(scelte.filter(id => _SCORCIATOIE_TENDINA[id]).length);
+    if (n) n.textContent = String(scelte.filter(_scorciatoiaDisponibile).length);
     if (!box) return;
     // Prima quelle scelte (nel loro ordine), poi le altre.
-    const ordine = [...scelte.filter(id => _SCORCIATOIE_TENDINA[id]), ...Object.keys(_SCORCIATOIE_TENDINA).filter(id => !scelte.includes(id))];
+    const ordine = [...scelte.filter(_scorciatoiaDisponibile), ...Object.keys(_SCORCIATOIE_TENDINA).filter(id => !scelte.includes(id) && _scorciatoiaDisponibile(id))];
     box.innerHTML = ordine.map(id => {
         const d = _SCORCIATOIE_TENDINA[id];
         const on = scelte.includes(id);
