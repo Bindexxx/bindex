@@ -239,6 +239,27 @@ async function _avviaPresenzaLive() {
 }
 
 // ── AVVIO ─────────────────────────────────────────────────────────────
+
+// Saldo polvere nella barra di stato + effetti del negozio (cornice/retro
+// della carta a tutto schermo). Servono un utente loggato. initPhoneShell() li
+// chiama all'apertura della pagina, ma con un login "fresco" (senza ricaricare)
+// in quel momento l'utente non c'è ancora: la funzione esce subito e il saldo
+// restava vuoto e gli effetti non caricati fino al refresh. Per questo viene
+// richiamata anche da _avviaSitoDopoAccesso() (ui/auth.ui.js), solo se non è
+// ancora andata a buon fine (_saldoEEffettiStatusBarCaricati).
+let _saldoEEffettiStatusBarCaricati = false;
+async function _caricaSaldoEEffettiStatusBar() {
+    try {
+        if (typeof CSBar === 'undefined') return;
+        const userId = await authGetUserId();
+        if (!userId) return;
+        _saldoEEffettiStatusBarCaricati = true;
+        const { data: saldo, error } = await polvereSaldoLeggi();
+        if (!error) CSBar.setCurrency({ value: saldo || 0, glyph: '✧', label: 'Polvere' });
+        if (typeof shopCaricaEffetti === 'function') shopCaricaEffetti(); // FASE 9: cornice/retro pronti per la carta a tutto schermo
+    } catch (e) { console.error('[statusbar] saldo polvere iniziale:', e); }
+}
+
 async function initPhoneShell() {
     // _spostaHomeNellaPaginaPrincipale() rimossa con la home fissa.
 
@@ -508,15 +529,10 @@ async function initPhoneShell() {
         // traguardi, non inventato. Aggiornata di nuovo dopo ogni
         // valutazione missioni (vedi renderPaginaMissioni), dove vengono
         // davvero accreditate nuove ricompense.
-        (async () => {
-            try {
-                const userId = await authGetUserId();
-                if (!userId) return;
-                const { data: saldo, error } = await polvereSaldoLeggi();
-                if (!error) CSBar.setCurrency({ value: saldo || 0, glyph: '\u2727', label: 'Polvere' });
-                if (typeof shopCaricaEffetti === 'function') shopCaricaEffetti(); // FASE 9: cornice/retro pronti per la carta a tutto schermo
-            } catch (e) { console.error('[statusbar] saldo polvere iniziale:', e); }
-        })();
+        // Estratto in _caricaSaldoEEffettiStatusBar() (sopra, vicino a
+        // initPhoneShell) per poterlo rifare anche DOPO un login fresco \u2014
+        // vedi la funzione. Qui il comportamento all'avvio resta identico.
+        _caricaSaldoEEffettiStatusBar();
     }
 
     avviaPollingWidgetHome();
