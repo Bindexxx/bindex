@@ -436,7 +436,7 @@ function _potaContenutoFuoriTessera() {
         // la nasconda — stesso ragionamento di .ball-quota sopra, nessun
         // altro widget usa questa classe quindi nessun comportamento
         // esistente cambia.
-        blocco.querySelectorAll(':scope > .ball-riga, :scope > .ball-gruppi > .ball-gruppo, :scope > .ball-spark, :scope > .ball-strip, :scope > .ball-quota, :scope > .ball-foto-carta, ' +
+        blocco.querySelectorAll(':scope > .ball-riga, :scope > .ball-gruppi > .ball-gruppo, :scope > .ball-spark, :scope > .ball-strip:not(.ball-strip-fill), :scope > .ball-strip-fill > .ball-mini, :scope > .ball-quota, :scope > .ball-foto-carta, ' +
             // RESTYLE BINDEX FASE 2 (2026-09-30): i mattoncini nuovi delle tessere.
             ':scope > .ball-riga-set, :scope > .ball-cov, :scope > .ball-ripiano, :scope > .ball-medaglie, :scope > .ball-th, :scope > .ball-chips, :scope > .ball-k-lab, :scope > .ball-azione, :scope > .ball-ul > div, :scope > .ball-co > *').forEach(pezzo => {
             // Sempre ripristinato prima di misurare: la tessera puo' essere

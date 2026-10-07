@@ -196,6 +196,16 @@
             caricaUltimaSincronizzazioneHome();
             caricaAttivitaRecentiHome();
             renderBinderInPrimoPianoHome();
+            // Widget della home (Collezione, Valore, Doppioni...): i dati sono
+            // appena cambiati (realtime, import, modifica), ridisegnarli subito
+            // invece di aspettare il giro automatico da 15 secondi. Stesse
+            // condizioni del giro automatico: non durante la modifica della
+            // home (spezzerebbe il trascinamento) e non con una pagina aperta
+            // (alla chiusura si ridisegna comunque).
+            if (typeof renderWidgetHome === 'function' && typeof _editModeWidget !== 'undefined' && !_editModeWidget
+                && !document.body.classList.contains('phone-detail-open')) {
+                renderWidgetHome();
+            }
         }
 
 

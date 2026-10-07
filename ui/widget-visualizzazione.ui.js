@@ -41,7 +41,7 @@ CATALOGO_WIDGET.visualizzazione = {
             // Le ultime quattro entrate, stesso ordinamento di ultima_carta.
             const ultime = collezione.slice()
                 .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
-                .slice(0, 4)
+                .slice(0, 40) // quante ne servono lo decide lo spazio: il CSS e la potatura nascondono le carte che non ci stanno
                 .map(c => ({ id: c.id, nome: c.name || '', immagine: c.immagine, rarita: c.rarita }));
 
             // Andamento VERO degli inserimenti negli ultimi 14 giorni, per
