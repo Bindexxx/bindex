@@ -1350,7 +1350,8 @@ html.csb-has-bar #crt { z-index: 9300; }
    e le loro combinazioni). Bastano queste per far seguire alla barra
    qualunque tema/combinazione già esistente, via normale cascata CSS —
    nessun JavaScript di sincronizzazione tema necessario. */
-#phoneScreen {
+#phoneScreen,
+#csbHeadsFuori {
   --sfondo: var(--bg-color);
   --tile: var(--card-bg);
   --tile-bordo: var(--border-color);
@@ -1374,6 +1375,7 @@ html.csb-has-bar #crt { z-index: 9300; }
    della libreria che usano position:fixed, nessun altro toccato. */
 #phoneScreen .csb-bar,
 #phoneScreen .csb-heads,
+#csbHeadsFuori .csb-heads,
 #phoneScreen .csb-backdrop,
 #phoneScreen .csb-shade {
   position: absolute;
@@ -1469,10 +1471,24 @@ body.dark-mode #phoneScreen .csb-root {
   cursor: pointer;
 }
 
+/* Bindex (2026-10-05): con una pagina aperta (.container, z-index 11) il
+   banner dentro #phoneShell (z-index 10) restava coperto dalla pagina. Mentre
+   il dettaglio e' aperto il banner vive in questo strato sopra la pagina,
+   sovrapposto esattamente a #phoneScreen (posizione/dimensione da JS, vedi
+   _csbBannerSopraPagina in ui/paginainiziale-dettaglio.ui.js). */
+#csbHeadsFuori {
+  position: fixed;
+  z-index: 9100;
+  pointer-events: none;
+  overflow: hidden;
+}
+#csbHeadsFuori .csb-heads { pointer-events: auto; }
+
 /* Bindex (2026-10-01, tavola PC-banner-bd): banner in basso a destra sugli
    schermi larghi, se scelto in Impostazioni → Notifiche e suoni. */
 @media (min-width: 900px) {
-  body.banner-basso #phoneScreen .csb-heads {
+  body.banner-basso #phoneScreen .csb-heads,
+  body.banner-basso #csbHeadsFuori .csb-heads {
     top: auto;
     bottom: 28px;
     left: auto;
@@ -1480,5 +1496,6 @@ body.dark-mode #phoneScreen .csb-root {
     width: min(420px, calc(100% - 56px));
     transform: translateY(calc(100% + 40px));
   }
-  body.banner-basso #phoneScreen .csb-heads.is-visible { transform: translateY(0); }
+  body.banner-basso #phoneScreen .csb-heads.is-visible,
+  body.banner-basso #csbHeadsFuori .csb-heads.is-visible { transform: translateY(0); }
 }
