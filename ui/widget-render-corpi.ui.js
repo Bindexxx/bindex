@@ -696,7 +696,10 @@ const _ballCORPI = {
         let blocco = '<div class="ball-chips">' +
             `<span>Carte ${d.totale || 0}</span><span>Sealed ${d.nSealed || 0}</span><span>Wishlist ${d.nWishlist || 0}</span></div>`;
         if (d.ultime && d.ultime.length) {
-            blocco += '<div class="ball-strip">' + d.ultime.map(c => _ballMiniCarta(c)).join('') + '</div>' +
+            // ball-strip-fill: le carte vanno a capo e riempiono tutto lo spazio della
+            // tessera (larghezza E altezza); quelle che non ci stanno le nasconde
+            // _potaContenutoFuoriTessera, intere, mai tagliate a meta'.
+            blocco += '<div class="ball-strip ball-strip-fill">' + d.ultime.map(c => _ballMiniCarta(c)).join('') + '</div>' +
                 (d.aggiunteRecenti ? `<span class="ball-k-lab">+${d.aggiunteRecenti} negli ultimi 14 giorni</span>` : '');
         }
         return { inline, blocco };

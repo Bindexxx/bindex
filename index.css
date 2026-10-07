@@ -1883,6 +1883,15 @@
             aspect-ratio: 63 / 88; flex: none;
         }
         .ball-ui .wf-largo .ball-slot-blocco:has(> .ball-foto-carta) .ball-foto-carta { display: block; }
+        /* Collezione (Claudio, 2026-10-07): nella forma larga e bassa il blocco
+           (contatori + ultime carte) sta a destra della testata, non sotto la
+           sfera, e le carte riempiono tutto lo spazio. */
+        .ball-ui .wf-largo:has(> .ball-slot-blocco > .ball-strip-fill) .ball-testa { width: auto; flex: 0 0 auto; }
+        .ball-ui .wf-largo .ball-slot-blocco:has(> .ball-strip-fill) {
+            flex: 1 1 0; min-width: 0; max-height: none; align-self: stretch; margin: 0;
+        }
+        .ball-ui .wf-largo .ball-slot-blocco:has(> .ball-strip-fill) > .ball-strip-fill { display: flex; }
+        .ball-ui .wf-largo .ball-slot-blocco:has(> .ball-strip-fill) > .ball-k-lab { display: block; }
         .ball-ui .wf-largo .ball-spark { height: 22px; }
         .ball-ui .wf-largo .ball-k-big { font-size: 21px; }
 
@@ -1970,6 +1979,9 @@
         .ball-ui .ball-gruppo .ball-strip { margin-top: 4px; }
 
         .ball-ui .ball-strip { display: flex; gap: 7px; }
+        /* Carte che riempiono lo spazio: vanno a capo, ognuna sta intera o non
+           si vede (vedi _potaContenutoFuoriTessera). */
+        .ball-ui .ball-strip-fill { flex-wrap: wrap; flex: 0 0 auto; }
         /* Miniature ingrandite (Claudio, 2026-09-03). Le misure di prima
            (32x44) erano tarate sul vecchio modello a 2 colonne, dove una
            tessera grande era mezzo schermo. Ora un widget puo' occupare
@@ -2061,6 +2073,9 @@
                percentuale li renderebbe sproporzionati. */
             .ball-ui .ball-slot-blocco > .ball-strip .ball-mini {
                 width: clamp(38px, 7cqw, 130px);
+            }
+            .ball-ui .ball-slot-blocco > .ball-strip-fill .ball-mini {
+                width: clamp(44px, 10cqw, 140px);
             }
         }
 
