@@ -143,6 +143,16 @@ function _aggiornaTastoFisico() {
     if (!btn) return;
     const icona = btn.querySelector('i');
 
+    // Ingranaggio della barra: acceso (ruotato) mentre Impostazioni e' aperta,
+    // cosi' si capisce che toccarlo di nuovo la chiude.
+    const btnImp = document.querySelector('[data-csb="settings"]');
+    if (btnImp) {
+        const impAperte = document.body.classList.contains('phone-detail-open')
+            && !!document.getElementById('impostazioni')?.classList.contains('active');
+        btnImp.classList.toggle('is-attivo', impAperte);
+        btnImp.setAttribute('aria-label', impAperte ? 'Chiudi impostazioni' : 'Impostazioni');
+    }
+
     if (document.body.classList.contains('phone-detail-open')) {
         btn.classList.remove('nascosto');
         if (icona) icona.className = 'fa-solid fa-arrow-left';
@@ -408,7 +418,7 @@ async function initPhoneShell() {
             // Quali avvisi mostrano il banner (Impostazioni → Notifiche e suoni).
             bannerMode: () => (typeof prefBannerGet === 'function' ? prefBannerGet() : 'azioni'),
 
-            onSettings: () => apriDettaglioWidget('impostazioni'),
+            onSettings: () => toggleImpostazioniBarra(),
             // Riusa il vero menu profilo (#profiloContainer, spostato qui
             // sotto), non ricostruito — chiama la stessa funzione che
             // apriva/chiudeva il menu dalla vecchia barra.

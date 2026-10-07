@@ -178,6 +178,28 @@ async function apriDettaglioWidget(tabId, evt) {
     }
 }
 
+// L'ingranaggio della barra e' un interruttore: se Impostazioni e' gia'
+// aperta, un secondo tocco la chiude (il cerchio si richiude verso
+// l'ingranaggio, perche' l'origine dell'animazione e' il suo click).
+// Se e' aperto un altro dettaglio, porta alle Impostazioni come prima.
+function toggleImpostazioniBarra(evt) {
+    // Dalla status bar CSBar il callback non porta l'evento: l'origine del
+    // cerchio e' il centro del tasto ingranaggio.
+    if (!evt) {
+        const g = document.querySelector('[data-csb="settings"]');
+        if (g) { const r = g.getBoundingClientRect(); evt = { clientX: r.left + r.width / 2, clientY: r.top + r.height / 2 }; }
+    }
+    const impostazioniAperte = document.body.classList.contains('phone-detail-open')
+        && document.getElementById('impostazioni')?.classList.contains('active');
+    if (impostazioniAperte) {
+        const container = document.querySelector('.container');
+        if (container) _impostaOrigineAnimazione(container, evt);
+        chiudiDettaglioWidget();
+        return;
+    }
+    apriDettaglioWidget('impostazioni', evt);
+}
+
 function chiudiDettaglioWidget() {
     const container = document.querySelector('.container');
     if (container) container.classList.remove('container-aperto'); // la transizione CSS dichiarata fa il resto (150%→0%)
