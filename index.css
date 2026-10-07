@@ -2332,14 +2332,10 @@
         .container.container-visibile {
             padding-top: 0.9rem;
         }
-        /* Tendina aperta (o trascinata) da una pagina interna: la tendina
-           vive nello schermo del telefono, sotto .container (z-index 11) —
-           la pagina si nasconde finché la tendina è giù, e sotto il velo
-           scuro si vede la home (decisione Claudio). Nessun cambio a
-           statusbar.js: basta la classe che la barra ha già. */
-        body.phone-detail-open:has(#phoneScreen .csb-bar.is-shade-open) .container.container-visibile {
-            visibility: hidden;
-        }
+        /* Tendina aperta da una pagina interna: la pagina RESTA visibile sotto il
+           velo scuro (prima veniva nascosta e si vedeva la home). Per questo
+           CSBar viene spostata sopra la pagina mentre il dettaglio e' aperto,
+           vedi _csbSopraPagina in ui/paginainiziale-dettaglio.ui.js. */
         .container:not(.container-visibile) { display: none; }
 
         /* AGGIUNTO (STEP 12 fix restyle "cornice Pokédex", 2026-09-17):
@@ -2582,6 +2578,7 @@
                tutto il trascinamento come se l'utente avesse toccato la
                maniglia vera, in entrambe le direzioni. */
             cursor: grab;
+            touch-action: none; /* da telefono: senza questo il browser interrompe il trascinamento (pointercancel) */
             z-index: 9010; /* sopra .csb-bar (9004) — non più figlia di .csb-shade, stacking normale, nessun trucco necessario */
         }
         .pokedex-ball-tendina:active { cursor: grabbing; }

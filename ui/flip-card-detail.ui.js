@@ -263,7 +263,7 @@
             if (!modale || !contenuto || !schermo || window.innerWidth >= 700) return;
             const r = schermo.getBoundingClientRect();
             if (r.width < 200 || r.height < 300) return; // cornice non visibile: resta a tutto schermo
-            const barra = schermo.querySelector('.csb-bar');
+            const barra = document.querySelector('.csb-bar');
             const rb = barra ? barra.getBoundingClientRect() : null;
             const alto = rb && rb.height ? Math.max(r.top, rb.bottom) : r.top;
             const altezza = r.bottom - alto;

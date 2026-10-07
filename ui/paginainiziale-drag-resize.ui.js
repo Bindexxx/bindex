@@ -437,7 +437,7 @@ function _rettangoloPaginaSottoBarra() {
     const r = _rettangoloSchermoCornice();
     if (!r) return null;
     const schermo = document.getElementById('phoneScreen');
-    const barra = schermo ? schermo.querySelector('.csb-bar') : null;
+    const barra = document.querySelector('.csb-bar'); // globale: con una pagina aperta la barra sta in #csbHeadsFuori
     let alto = 0;
     if (barra) {
         const rb = barra.getBoundingClientRect();

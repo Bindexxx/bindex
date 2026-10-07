@@ -1375,9 +1375,12 @@ html.csb-has-bar #crt { z-index: 9300; }
    della libreria che usano position:fixed, nessun altro toccato. */
 #phoneScreen .csb-bar,
 #phoneScreen .csb-heads,
-#csbHeadsFuori .csb-heads,
 #phoneScreen .csb-backdrop,
-#phoneScreen .csb-shade {
+#phoneScreen .csb-shade,
+#csbHeadsFuori .csb-bar,
+#csbHeadsFuori .csb-heads,
+#csbHeadsFuori .csb-backdrop,
+#csbHeadsFuori .csb-shade {
   position: absolute;
 }
 
@@ -1385,7 +1388,8 @@ html.csb-has-bar #crt { z-index: 9300; }
    il tema si cambia da Impostazioni, che già esiste nel sito — un secondo
    selettore qui sarebbe un doppione, e per di più non funzionante (scrive
    data-tema, che il sito reale non legge). */
-#phoneScreen .csb-swatches {
+#phoneScreen .csb-swatches,
+#csbHeadsFuori .csb-swatches {
   display: none;
 }
 
@@ -1393,7 +1397,8 @@ html.csb-has-bar #crt { z-index: 9300; }
    JS il vero #profiloContainer del sito (menu completo: nome, email,
    cambio username, logout — già esistente e testato), non ricostruito da
    zero. Vedi initPhoneShell() in ui/phone.ui.js. */
-#phoneScreen .csb-profile {
+#phoneScreen .csb-profile,
+#csbHeadsFuori .csb-profile {
   display: none;
 }
 
@@ -1404,7 +1409,9 @@ html.csb-has-bar #crt { z-index: 9300; }
    del tema scelto dall'utente (--primary), in chiaro e in scuro. Prima era
    il blu fisso della libreria (#3b7dd8 / #5a95e4 in scuro). */
 #phoneScreen .csb-root,
-body.dark-mode #phoneScreen .csb-root {
+body.dark-mode #phoneScreen .csb-root,
+#csbHeadsFuori .csb-root,
+body.dark-mode #csbHeadsFuori .csb-root {
   --csb-accento: var(--primary, #3b7dd8);
 }
 
@@ -1426,7 +1433,8 @@ body.dark-mode #phoneScreen .csb-root {
 /* Centro della barra ("N notifiche nuove") sostituito dal contatore rosso
    accanto all'ora (.csb-nbadge, vedi statusbar.js). Il bottone resta nel
    DOM (invisibile): la barra intera continua ad aprire la tendina. */
-#phoneScreen .csb-center-btn { visibility: hidden; }
+#phoneScreen .csb-center-btn,
+#csbHeadsFuori .csb-center-btn { visibility: hidden; }
 
 .csb-nbadge {
   min-width: 18px;
@@ -1482,7 +1490,21 @@ body.dark-mode #phoneScreen .csb-root {
   pointer-events: none;
   overflow: hidden;
 }
-#csbHeadsFuori .csb-heads { pointer-events: auto; }
+#csbHeadsFuori .csb-bar,
+#csbHeadsFuori .csb-heads,
+#csbHeadsFuori .csb-backdrop,
+#csbHeadsFuori .csb-shade,
+#csbHeadsFuori .pokedex-ball-tendina { pointer-events: auto; }
+
+/* Tendina: tutto il pannello e' afferrabile col dito (prima solo la barra e
+   la pallina: da telefono, per richiuderla, bisognava centrare quelle).
+   touch-action:none sul pannello impedisce al browser di rubare il gesto
+   (pointercancel) mentre si trascina; se il contenuto e' piu' alto del
+   pannello (.csb-scrolla, messa da statusbar.js) si torna a pan-y, cosi' si
+   puo' scorrere l'elenco. La pallina in fondo trascina sempre. */
+.csb-shade,
+.csb-shade-inner { touch-action: none; }
+.csb-shade.csb-scrolla .csb-shade-inner { touch-action: pan-y; }
 
 /* Bindex (2026-10-01, tavola PC-banner-bd): banner in basso a destra sugli
    schermi larghi, se scelto in Impostazioni → Notifiche e suoni. */
