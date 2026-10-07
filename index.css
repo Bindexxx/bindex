@@ -1873,6 +1873,16 @@
         .ball-ui .wf-largo .ball-slot-blocco .ball-stat-griglia,
         .ball-ui .wf-largo .ball-slot-blocco .ball-foto-carta,
         .ball-ui .wf-largo .ball-azione { display: none; }
+        /* Vetrina nella forma larga e bassa (Claudio, 2026-10-07): prima la foto
+           spariva e il widget restava vuoto. Ora la carta, sempre in
+           proporzione 63:88 (vedi _ballCorpoFotoCarta), occupa tutta l'altezza
+           della tessera, centrata. */
+        .ball-ui .wf-largo .ball-slot-blocco:has(> .ball-foto-carta) {
+            position: absolute; top: 10px; bottom: 10px; left: 50%; transform: translateX(-50%);
+            width: auto; max-height: none; margin: 0; overflow: visible;
+            aspect-ratio: 63 / 88; flex: none;
+        }
+        .ball-ui .wf-largo .ball-slot-blocco:has(> .ball-foto-carta) .ball-foto-carta { display: block; }
         .ball-ui .wf-largo .ball-spark { height: 22px; }
         .ball-ui .wf-largo .ball-k-big { font-size: 21px; }
 

@@ -333,16 +333,28 @@ function _ballCorpoFotoCarta(d) {
     const coloreVar = d.variazioneNumerica > 0 ? 'var(--success)'
         : (d.variazioneNumerica < 0 ? 'var(--danger)' : 'var(--text-muted)');
 
+    // PROPORZIONE DELLA CARTA (Claudio, 2026-10-07): prima la foto riempiva
+    // tutto il riquadro (object-fit:contain dentro un box largo quanto la
+    // tessera, con il velo scuro e le scritte stese su tutta la larghezza) e,
+    // nella forma "larga e bassa", spariva del tutto. Ora il contenitore
+    // (.ball-foto-carta) e' solo lo spazio disponibile — container-type:size —
+    // e la carta e' un riquadro 63:88 centrato, grande quanto ci sta in
+    // altezza O in larghezza (min fra i due, in unita' del contenitore).
+    // Velo e scritte stanno DENTRO la carta e scalano con la sua larghezza
+    // (cqw), cosi' restano leggibili e proporzionate a qualunque taglia.
+    const ombra = 'text-shadow:0 1px 3px rgba(0,0,0,.6);';
     return `
-        <div class="ball-foto-carta" style="position:relative; width:100%; height:100%; min-height:120px; border-radius:12px; overflow:hidden; background:transparent;">
-            <img src="${url}" alt="" style="position:absolute; inset:0; width:100%; height:100%; object-fit:contain;" onerror="this.style.display='none'; this.parentElement.style.background='linear-gradient(150deg, ${_ballTintaDaNome(d.nome)}, rgba(0,0,0,.35))';">
-            <div style="position:absolute; inset:0; background:linear-gradient(180deg, transparent 45%, rgba(0,0,0,.85) 100%);"></div>
-            <div style="position:absolute; left:0; right:0; bottom:0; padding:0.6rem 0.7rem; color:#fff;">
-                <div style="font-weight:800; font-size:0.85rem; text-shadow:0 1px 3px rgba(0,0,0,.6);">${esc(d.nome || '')}</div>
-                ${d.codice ? `<div style="font-size:0.68rem; opacity:.85; margin-top:0.05rem; text-shadow:0 1px 3px rgba(0,0,0,.6);">${esc(d.codice)}</div>` : ''}
-                <div style="display:flex; align-items:baseline; gap:0.5rem; margin-top:0.25rem;">
-                    ${d.prezzo != null ? `<span style="font-weight:700; font-size:0.85rem; text-shadow:0 1px 3px rgba(0,0,0,.6);">${eur(d.prezzo)}</span>` : ''}
-                    ${d.variazione ? `<span style="font-size:0.72rem; font-weight:700; color:${coloreVar}; text-shadow:0 1px 3px rgba(0,0,0,.6);">${esc(d.variazione)}</span>` : ''}
+        <div class="ball-foto-carta" style="position:relative; width:100%; flex:1 1 0; min-height:0; container-type:size;">
+            <div class="ball-foto-carta-c" style="position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); height:min(100cqh, calc(100cqw * 88 / 63)); aspect-ratio:63 / 88; border-radius:6% / 4.3%; overflow:hidden; background:transparent; container-type:size; box-shadow:0 4px 14px rgba(0,0,0,.25);">
+                <img src="${url}" alt="" style="position:absolute; inset:0; width:100%; height:100%; object-fit:contain;" onerror="this.style.display='none'; this.parentElement.style.background='linear-gradient(150deg, ${_ballTintaDaNome(d.nome)}, rgba(0,0,0,.35))';">
+                <div style="position:absolute; inset:0; background:linear-gradient(180deg, transparent 55%, rgba(0,0,0,.85) 100%);"></div>
+                <div style="position:absolute; left:0; right:0; bottom:0; padding:6cqw 7cqw; color:#fff; min-width:0;">
+                    <div style="font-weight:800; font-size:clamp(0.6rem, 8cqw, 0.95rem); line-height:1.15; ${ombra} overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${esc(d.nome || '')}</div>
+                    ${d.codice ? `<div style="font-size:clamp(0.5rem, 6cqw, 0.72rem); opacity:.85; margin-top:0.05rem; ${ombra}">${esc(d.codice)}</div>` : ''}
+                    <div style="display:flex; align-items:baseline; gap:0.5rem; margin-top:0.2rem;">
+                        ${d.prezzo != null ? `<span style="font-weight:700; font-size:clamp(0.6rem, 8cqw, 0.95rem); ${ombra}">${eur(d.prezzo)}</span>` : ''}
+                        ${d.variazione ? `<span style="font-size:clamp(0.5rem, 6.5cqw, 0.75rem); font-weight:700; color:${coloreVar}; ${ombra}">${esc(d.variazione)}</span>` : ''}
+                    </div>
                 </div>
             </div>
         </div>`;
