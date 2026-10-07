@@ -192,7 +192,7 @@ async function renderPaginaContributi() {
             </div>
             <div class="ct-scheda ct-aiuta">
                 <div class="ct-aiuta-ico"><i class="fa-solid fa-hands-helping"></i></div>
-                <div><b>Aiuta il gruppo</b><span>Si attiva dall’estensione, in Impostazioni › Gruppo e connessioni.</span></div>
+                <div><b>Aiuta il gruppo</b><span>Si attiva dall’estensione, in Impostazioni › Account e dati.</span></div>
             </div>
         </div>
     `;

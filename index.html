@@ -1136,7 +1136,7 @@
             <!-- RESTYLE TAVOLA (2026-10-01, tavole OK-impostazioni /
                  OK-impostazioni2 / PC-imp*): gli 8 gruppi della tavola
                  (Profilo, Aspetto, Home, Animazioni, Notifiche e suoni,
-                 Gruppo e connessioni, Account e dati, Info e segnalazioni).
+                 Account e dati, Info e segnalazioni; "Gruppo e connessioni" rimosso 2026-10-05).
                  Telefono: un unico elenco a gruppi, le voci semplici con
                  l'interruttore in riga, quelle con più campi si aprono al
                  tocco (.imp-voce.espandibile). PC (>= 780px): menu a
@@ -1154,7 +1154,6 @@
                     <button type="button" data-gruppo="home" onclick="_impostazioniApri('home')"><i class="fa-solid fa-house"></i> Home</button>
                     <button type="button" data-gruppo="animazioni" onclick="_impostazioniApri('animazioni')"><i class="fa-solid fa-wand-magic-sparkles"></i> Animazioni</button>
                     <button type="button" data-gruppo="notifiche" onclick="_impostazioniApri('notifiche')"><i class="fa-solid fa-bell"></i> Notifiche e suoni</button>
-                    <button type="button" data-gruppo="gruppo" onclick="_impostazioniApri('gruppo')"><i class="fa-solid fa-handshake-angle"></i> Gruppo e connessioni</button>
                     <button type="button" data-gruppo="account" onclick="_impostazioniApri('account')"><i class="fa-solid fa-key"></i> Account e dati</button>
                     <button type="button" data-gruppo="info" onclick="_impostazioniApri('info')"><i class="fa-solid fa-circle-info"></i> Info e segnalazioni</button>
                 </nav>
@@ -1378,54 +1377,6 @@
                     <aside class="imp-lato"><div class="imp-lato-testa"><b>Prova</b><span>così arrivano</span></div><div class="imp-banner-finto"><span class="imp-banner-ico"><i class="fa-solid fa-bell"></i></span><div><b>Irene ti ha scritto</b><span>Ce l'hai ancora il Moonbreon?</span></div><em>ora</em></div><div class="imp-bottoni"><button type="button" class="btn-secondary" onclick="_impProvaBanner()"><i class="fa-solid fa-bell"></i> Mostra un banner</button><button type="button" class="btn-secondary" onclick="_impProvaSuono()"><i class="fa-solid fa-volume-high"></i> Prova suono</button></div></aside>
                 </section>
 
-                <!-- ── GRUPPO E CONNESSIONI ────────────────────────────── -->
-                <section class="imp-gruppo" id="impostazioniPagina-gruppo" data-gruppo="gruppo">
-                    <div class="imp-principale">
-                    <h3 class="imp-gruppo-titolo">Gruppo e connessioni</h3>
-                    <div class="imp-card">
-                        <!-- Preferenze estensione: visibili solo se
-                             l'estensione risponde (_aggiornaControlliApriApp
-                             in ui/extension.ui.js imposta display). -->
-                        <div id="impostazioniEstensioneGroup" style="display:none;">
-                            <label class="imp-voce">
-                                <span class="imp-ico"><i class="fa-solid fa-handshake-angle"></i></span>
-                                <div class="imp-voce-testo"><h4>Aiuta il gruppo da questo dispositivo</h4><p class="imp-solo-pc">L'app aperta qui aiuta gli altri a fare i calcoli (risolve anche le carte del resto del gruppo)</p></div>
-                                <span class="switch"><input type="checkbox" id="chkAiutaGruppoDispositivo" onchange="salvaPreferenzaAiutaGruppoDispositivo(this.checked)"><span class="slider"></span></span>
-                            </label>
-                            <label class="imp-voce">
-                                <span class="imp-ico"><i class="fa-solid fa-arrow-up-right-from-square"></i></span>
-                                <div class="imp-voce-testo"><h4>Apri sempre l'app all'apertura</h4><p class="imp-solo-pc">Apre l'app dell'estensione ogni volta che visiti il sito da questo dispositivo</p></div>
-                                <span class="switch"><input type="checkbox" id="chkApriSempreApp" onchange="salvaPreferenzaApriSempreApp(this.checked)"><span class="slider"></span></span>
-                            </label>
-                        </div>
-                        <div class="imp-voce espandibile" onclick="_impostazioniEspandi(this); _connessioniRicontrolla();">
-                            <span class="imp-ico"><i class="fa-solid fa-signal"></i></span>
-                            <div class="imp-voce-testo"><h4>Stato delle connessioni</h4><p class="imp-solo-pc">Utile per capire se un problema è "solo qui" o riguarda tutti</p></div>
-                            <i class="fa-solid fa-chevron-right imp-freccia"></i>
-                        </div>
-                        <div class="imp-corpo">
-                            <div class="imp-conn"><div><h4>Supabase</h4><p>Database e autenticazione</p></div><span id="statoConnSupabase" class="badge-connessione">Verifica...</span></div>
-                            <div class="imp-conn"><div><h4>Estensione Chrome</h4><p>Solo su questo dispositivo</p></div><span id="statoConnEstensione" class="badge-connessione">Verifica...</span></div>
-                            <div class="imp-conn"><div><h4>Presenza in tempo reale</h4><p>Canale "chi è online adesso"</p></div><span id="statoConnPresenza" class="badge-connessione">Verifica...</span></div>
-                            <div class="imp-conn"><div><h4>Worker del gruppo</h4><p>Dispositivi che stanno elaborando prezzi in questo momento</p></div><span id="statoConnWorker" class="badge-connessione">Verifica...</span></div>
-                            <button class="btn-secondary" onclick="_connessioniRicontrolla()"><i class="fa-solid fa-rotate"></i> Ricontrolla</button>
-                        </div>
-                    </div>
-                    <!-- FASE 10, STEP 3: "Diagnostica" — SOLO admin, mostrata
-                         da _impostazioniAggiornaDiagnostica() se authGetRuolo()
-                         conferma role='admin'. -->
-                    <div id="impostazioniDiagnosticaCard" class="imp-card imp-card-pad" style="display:none;">
-                        <h4 class="imp-card-titolo"><i class="fa-solid fa-stethoscope"></i> Diagnostica (admin)</h4>
-                        <p class="imp-nota">Log di QUESTA sessione soltanto — riparte vuoto ad ogni refresh, non può leggere retroattivamente la console.</p>
-                        <div style="display:flex; gap:0.6rem; flex-wrap:wrap; margin:0.6rem 0 0.8rem;">
-                            <button class="btn-secondary" onclick="document.getElementById('impostazioniLogViewer').textContent = _logDiagnosticoTesto(80);"><i class="fa-solid fa-arrows-rotate"></i> Aggiorna log</button>
-                            <button class="btn-secondary" onclick="_impostazioniCopiaLog()"><i class="fa-solid fa-copy"></i> Copia (Report to admin)</button>
-                        </div>
-                        <pre id="impostazioniLogViewer" style="max-height:280px; overflow:auto; background:var(--bg-secondary, rgba(0,0,0,0.05)); border-radius:10px; padding:0.8rem; font-size:0.72rem; white-space:pre-wrap; word-break:break-word; margin:0;">(nessun evento registrato in questa sessione)</pre>
-                    </div>
-                    </div>
-                </section>
-
                 <!-- ── ACCOUNT E DATI ──────────────────────────────────── -->
                 <section class="imp-gruppo" id="impostazioniPagina-account" data-gruppo="account">
                     <div class="imp-principale">
@@ -1466,6 +1417,34 @@
                             <input type="file" id="importCsvFile" accept=".csv,text/csv" style="display:none;" onchange="importaCsvDaFile(this)">
                             <button class="btn-main imp-btn" onclick="importCsvApri()"><i class="fa-solid fa-file-import"></i> Importa</button>
                         </div>
+                    </div>
+                        <!-- Preferenze estensione: visibili solo se
+                             l'estensione risponde (_aggiornaControlliApriApp
+                             in ui/extension.ui.js imposta display). Spostate qui da
+                             'Gruppo e connessioni' (rimosso 2026-10-05). -->
+                        <div id="impostazioniEstensioneGroup" class="imp-card" style="display:none;">
+                            <label class="imp-voce">
+                                <span class="imp-ico"><i class="fa-solid fa-handshake-angle"></i></span>
+                                <div class="imp-voce-testo"><h4>Aiuta il gruppo da questo dispositivo</h4><p class="imp-solo-pc">L'app aperta qui aiuta gli altri a fare i calcoli (risolve anche le carte del resto del gruppo)</p></div>
+                                <span class="switch"><input type="checkbox" id="chkAiutaGruppoDispositivo" onchange="salvaPreferenzaAiutaGruppoDispositivo(this.checked)"><span class="slider"></span></span>
+                            </label>
+                            <label class="imp-voce">
+                                <span class="imp-ico"><i class="fa-solid fa-arrow-up-right-from-square"></i></span>
+                                <div class="imp-voce-testo"><h4>Apri sempre l'app all'apertura</h4><p class="imp-solo-pc">Apre l'app dell'estensione ogni volta che visiti il sito da questo dispositivo</p></div>
+                                <span class="switch"><input type="checkbox" id="chkApriSempreApp" onchange="salvaPreferenzaApriSempreApp(this.checked)"><span class="slider"></span></span>
+                            </label>
+                        </div>
+                    <!-- FASE 10, STEP 3: "Diagnostica" — SOLO admin, mostrata
+                         da _impostazioniAggiornaDiagnostica() se authGetRuolo()
+                         conferma role='admin'. -->
+                    <div id="impostazioniDiagnosticaCard" class="imp-card imp-card-pad" style="display:none;">
+                        <h4 class="imp-card-titolo"><i class="fa-solid fa-stethoscope"></i> Diagnostica (admin)</h4>
+                        <p class="imp-nota">Log di QUESTA sessione soltanto — riparte vuoto ad ogni refresh, non può leggere retroattivamente la console.</p>
+                        <div style="display:flex; gap:0.6rem; flex-wrap:wrap; margin:0.6rem 0 0.8rem;">
+                            <button class="btn-secondary" onclick="document.getElementById('impostazioniLogViewer').textContent = _logDiagnosticoTesto(80);"><i class="fa-solid fa-arrows-rotate"></i> Aggiorna log</button>
+                            <button class="btn-secondary" onclick="_impostazioniCopiaLog()"><i class="fa-solid fa-copy"></i> Copia (Report to admin)</button>
+                        </div>
+                        <pre id="impostazioniLogViewer" style="max-height:280px; overflow:auto; background:var(--bg-secondary, rgba(0,0,0,0.05)); border-radius:10px; padding:0.8rem; font-size:0.72rem; white-space:pre-wrap; word-break:break-word; margin:0;">(nessun evento registrato in questa sessione)</pre>
                     </div>
                     </div>
                 </section>
