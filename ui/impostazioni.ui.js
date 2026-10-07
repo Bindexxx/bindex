@@ -355,6 +355,20 @@ function _impVibrazioneCambia(on) {
 }
 
 // ── Anteprime (sfere vere, stesso disegno della Home) ──
+// _ballSvgCache restituisce la STESSA stringa per sfere uguali: inserita piu'
+// volte nella pagina (anteprima Aspetto, anteprima Home, Prova cattura, Home
+// vera) ripete gli stessi id dei gradienti, e il browser li risolve sul
+// primo elemento trovato — se sta in un gruppo nascosto (display:none) la
+// sfera resta senza riempimento, cioe' trasparente. Qui ogni copia
+// dell'anteprima riceve id propri.
+let _impSvgContatore = 0;
+function _impSvgIdUnici(svg) {
+    const suffisso = '-i' + (++_impSvgContatore);
+    return String(svg).replace(/\bid="([^"]+)"/g, (m, id) => `id="${id}${suffisso}"`)
+        .replace(/url\(#([^)]+)\)/g, (m, id) => `url(#${id}${suffisso})`)
+        .replace(/href="#([^"]+)"/g, (m, id) => `href="#${id}${suffisso}"`);
+}
+
 function _impBallHtml(id, opz) {
     const o = opz || {};
     if (typeof _ballSvgCache !== 'function') return '';
@@ -367,7 +381,7 @@ function _impBallHtml(id, opz) {
             <span class="pkdx-ball-glow"></span>
             <span class="pkdx-dust"></span>
             <span class="ball-shadow"></span>
-            <div class="pkdx-ball-body">${_ballSvgCache(asp.emblema, asp.colore, inciso)}</div>
+            <div class="pkdx-ball-body">${_impSvgIdUnici(_ballSvgCache(asp.emblema, asp.colore, inciso))}</div>
             <div class="ball-glass"><div class="ball-sweep"></div></div>
             <span class="pkdx-lock-ring"></span>
             <span class="pkdx-lock-ring ring-2"></span>
