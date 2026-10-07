@@ -358,6 +358,10 @@
 
         function toggleRiduciAnimazioni(ridotte) {
             prefRiduciAnimazioniSet(ridotte);
+            // Applica subito: classe globale (CSS) + widget Home ridisegnati
+            // senza semaforo/cattura.
+            if (typeof _ballApplicaClasseAnimazioni === 'function') _ballApplicaClasseAnimazioni();
+            if (typeof renderWidgetHome === 'function' && typeof _layoutWidget !== 'undefined' && _layoutWidget) renderWidgetHome();
         }
 
 
