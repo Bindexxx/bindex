@@ -62,6 +62,56 @@ function _temaRgbaConAlpha(hex, alpha) {
     return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
+// ── CONTRASTO AUTOMATICO (2026-10-05) ──────────────────────────────────
+// I colori scelti dall'utente possono dare testi illeggibili (es. un
+// Principale giallo con testo bianco sopra, o un Secondario chiaro usato
+// come testo attenuato su fondo bianco). Qui il sito calcola da solo i
+// colori delle scritte con il rapporto di contrasto WCAG, e li corregge
+// SOLO quando serve, col minimo spostamento: un colore gia' leggibile
+// resta identico. Sui default (#7c4dff / #756a8a, appena sotto 4.5 su
+// alcuni fondi) il cambio e' una leggera scurita del testo.
+const TEMA_CONTRASTO_MIN_TESTO = 4.5;   // WCAG AA, testo normale
+const TEMA_COLORE_SCRITTA_SCURA = '#17171a';
+const TEMA_COLORE_SCRITTA_CHIARA = '#ffffff';
+
+function _temaLuminanza(hex) {
+    const { r, g, b } = _temaEsadecimaleARgb(hex);
+    const lin = (v) => { const c = v / 255; return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); };
+    return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+}
+
+function _temaContrasto(hexA, hexB) {
+    const la = _temaLuminanza(hexA), lb = _temaLuminanza(hexB);
+    return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05);
+}
+
+// Colore (bianco o quasi nero) da usare SOPRA `sfondo`: quello col
+// contrasto migliore.
+function temaColoreSuSfondo(sfondo) {
+    return _temaContrasto(TEMA_COLORE_SCRITTA_CHIARA, sfondo) >= _temaContrasto(TEMA_COLORE_SCRITTA_SCURA, sfondo)
+        ? TEMA_COLORE_SCRITTA_CHIARA : TEMA_COLORE_SCRITTA_SCURA;
+}
+
+// Sfumatura di `colore` (verso nero se `versoScuro`, altrimenti verso
+// bianco) col MINIMO spostamento che raggiunge il contrasto richiesto su
+// TUTTI gli sfondi indicati. Se gia' leggibile torna `colore` invariato.
+function temaColoreLeggibile(colore, sfondi, versoScuro, minimo) {
+    const soglia = minimo || TEMA_CONTRASTO_MIN_TESTO;
+    const ok = (c) => sfondi.every(sf => _temaContrasto(c, sf) >= soglia);
+    if (ok(colore)) return colore;
+    for (let q = 0.05; q <= 1.0001; q += 0.05) {
+        const c = _temaMiscela(colore, versoScuro ? 0 : 255, q);
+        if (ok(c)) return c;
+    }
+    return versoScuro ? '#000000' : '#ffffff';
+}
+
+// Fondo "effettivo" di un colore rgba(P, alpha) steso su `base`.
+function _temaSuSfondoOpaco(hex, alpha, base) {
+    const a = _temaEsadecimaleARgb(hex), b = _temaEsadecimaleARgb(base);
+    return _temaRgbAEsadecimale(a.r * alpha + b.r * (1 - alpha), a.g * alpha + b.g * (1 - alpha), a.b * alpha + b.b * (1 - alpha));
+}
+
 // ── VARIABILI CSS DEL SITO (le stesse ~11 che ogni preset ridefiniva a
 // mano) ────────────────────────────────────────────────────────────────
 // Ritorna un oggetto {nomeVariabileCss: valore} pronto per essere
@@ -71,10 +121,19 @@ function derivaVariabiliTema(principale, secondario, scuro) {
     const S = secondario || TEMA_COLORE_SECONDARIO_DEFAULT;
 
     if (!scuro) {
+        const bgChiaro = _temaSchiarisci(P, 0.91);
+        const primaryLight = _temaSchiarisci(P, 0.86);
+        const sfondiChiari = ['#ffffff', bgChiaro, primaryLight];
         return {
-            '--bg-color': _temaSchiarisci(P, 0.91),
+            '--bg-color': bgChiaro,
             '--card-bg': '#ffffff',
             '--primary': P,
+            // Scritte calcolate (vedi CONTRASTO AUTOMATICO in cima):
+            // --on-primary = colore del testo SOPRA --primary (bottoni,
+            // voci attive); --primary-text = il Principale usato COME testo
+            // su fondi chiari, scurito solo se serve.
+            '--on-primary': temaColoreSuSfondo(P),
+            '--primary-text': temaColoreLeggibile(P, sfondiChiari, true),
             // --secondary: STEP 2 (2026-09-17) — colore grezzo, non
             // mixato, usato dalla cornice CSS (gradiente #phoneFrameBox)
             // e da chiunque altro serva il Secondario "puro" invece delle
@@ -82,10 +141,10 @@ function derivaVariabiliTema(principale, secondario, scuro) {
             // Stesso valore in chiaro/scuro (un dispositivo fisico non
             // cambia colore col tema software).
             '--secondary': S,
-            '--primary-light': _temaSchiarisci(P, 0.86),
+            '--primary-light': primaryLight,
             '--primary-dark': _temaScurisci(P, 0.24),
             '--text-dark': _temaScurisci(P, 0.80),
-            '--text-muted': S,
+            '--text-muted': temaColoreLeggibile(S, sfondiChiari, true),
             '--border-color': _temaSchiarisci(S, 0.86),
             '--row-hover': _temaSchiarisci(P, 0.95),
             '--row-selected-bg': _temaSchiarisci(P, 0.80),
@@ -102,15 +161,20 @@ function derivaVariabiliTema(principale, secondario, scuro) {
     // (invariato), --primary-dark pure (comportamento identico a prima).
     // --shadow-soft in dark era già neutro/nero in tutti e 3 i vecchi
     // preset (non tinto), quindi resta così anche qui.
+    const bgScuro = _temaScurisci(P, 0.93);
+    const cardScuro = _temaScurisci(P, 0.86);
+    const sfondiScuri = [bgScuro, cardScuro, _temaSuSfondoOpaco(P, 0.2, cardScuro)];
     return {
-        '--bg-color': _temaScurisci(P, 0.93),
-        '--card-bg': _temaScurisci(P, 0.86),
+        '--bg-color': bgScuro,
+        '--card-bg': cardScuro,
         '--primary': P,
+        '--on-primary': temaColoreSuSfondo(P),
+        '--primary-text': temaColoreLeggibile(P, sfondiScuri, false),
         '--secondary': S,
         '--primary-light': _temaRgbaConAlpha(P, 0.2),
         '--primary-dark': _temaScurisci(P, 0.24),
         '--text-dark': _temaSchiarisci(P, 0.92),
-        '--text-muted': _temaSchiarisci(S, 0.55),
+        '--text-muted': temaColoreLeggibile(_temaSchiarisci(S, 0.55), sfondiScuri, false),
         '--border-color': _temaScurisci(S, 0.65),
         '--row-hover': _temaScurisci(P, 0.80),
         '--row-selected-bg': _temaScurisci(P, 0.45),
