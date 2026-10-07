@@ -17,7 +17,6 @@
                 document.getElementById('notificaPrezziCheck').checked = !!data.notifica_prezzi;
                 document.getElementById('notificaPrezziSoglia').value = data.soglia_prezzi ?? 5;
                 document.getElementById('notificaWishlistCheck').checked = !!data.notifica_wishlist;
-                document.getElementById('tabPredefinitaSelect').value = data.tab_predefinita || 'visualizzazione';
                 document.getElementById('nascondiScambioCheck').checked = !!data.nascondi_scambio_da_match;
                 document.getElementById('nascondiWishlistCheck').checked = !!data.nascondi_wishlist_da_match;
             }
@@ -50,14 +49,6 @@
             });
             if (error) { alert('❌ Errore nel salvare le preferenze: ' + error.message); return; }
             alert('✅ Preferenze salvate! (le notifiche vere e proprie non sono ancora attive — questa è la lista d\'attesa)');
-        }
-
-
-        async function salvaTabPredefinita(valore) {
-            const userId = await authGetUserId();
-            if (!userId) return;
-            const { error } = await userSettingsUpsertTabPredefinita(userId, valore);
-            if (error) console.error('Errore nel salvare la tab predefinita:', error.message);
         }
 
 

@@ -317,17 +317,10 @@
             })();
 
 
-            // Ripristina l'ultima scheda visitata; se non c'è (prima visita
-            // su questo dispositivo, o storage svuotato), usa la sezione
-            // predefinita scelta nelle Impostazioni.
-            // FIX: prima "ricorda l'ultima tab visitata" (salvato ad ogni
-            // navigazione) aveva SEMPRE la precedenza sulla preferenza
-            // esplicita "Sezione all'apertura" — quindi quest'ultima non
-            // aveva mai effetto reale, dato che dopo la prima visita
-            // qualunque restava sempre salvato qualcosa in activeTab. Una
-            // scelta fatta apposta nelle Impostazioni deve vincere sempre
-            // su un comportamento "di comodo" automatico.
-            const savedTab = prefUtente?.tab_predefinita || prefActiveTabGet() || 'home';
+            // Ripristina l'ultima scheda visitata (o 'home'). L'impostazione
+            // "Pagina all'apertura" e' stata tolta (2026-10-05): non c'e'
+            // piu' una scheda predefinita scelta dall'utente.
+            const savedTab = prefActiveTabGet() || 'home';
             const navBtn = document.querySelector(`nav .nav-item[onclick*="'${savedTab}'"]`);
             switchTab(savedTab, navBtn);
 
