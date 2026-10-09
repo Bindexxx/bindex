@@ -7795,7 +7795,11 @@
         #inserimento tbody tr.ins-vuota .ins-td-nome input { font-weight: 500; font-size: 0.95rem; }
         #inserimento tbody tr.ins-vuota .ins-sommario { display: none; }
         /* sealed: scheda semplice, sempre aperta */
-        #inserimento #entryTableBodySealed tr td { display: block !important; }
+        /* telefono/stretto: ogni cella a tutta larghezza. Da 980px (tabella) NON va forzato
+           display:block !important: batteva display:table-cell e le colonne diventavano una pila. */
+        @container (max-width: 979px) {
+            #inserimento #entryTableBodySealed tr td { display: block !important; }
+        }
         #inserimento #entryTableBodySealed td:first-child { flex: 1 1 100%; }
         #inserimento #entryTableBodySealed td input:not(.qty-input), #inserimento #entryTableBodySealed td select { font: inherit; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--border-color); background: var(--card-bg); }
         #inserimento #entryTableBodySealed td:first-child input { width: 100%; }
