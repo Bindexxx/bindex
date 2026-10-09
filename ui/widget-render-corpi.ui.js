@@ -473,16 +473,27 @@ const _ballCORPI = {
             (n > 0
                 ? `<div class="ball-k-big ball-k-mono" style="color:#d32f2f">${n}</div><span class="ball-k-lab">da correggere${q ? ` · ${q} in coda` : ''}</span>`
                 : `<div class="ball-k-big ball-k-mono">${q}</div><span class="ball-k-lab">in coda · ${q ? 'in lavorazione' : 'tutto inviato'}</span>`);
+        // 2026-10-09 (Claudio: "allargata al massimo si rompe, non sfrutta la
+        // tessera"): il blocco è UN solo contenitore (.ball-ins) con ultimo
+        // invio + barra di esito, tre riquadri (in coda / trovate / da
+        // correggere) e il pulsante, così le regole di taglia in index.css
+        // lo dispongono e lo allargano per intero (vedi .ball-ins).
         const u = d.ultimoInvio;
-        let blocco = '';
+        let ultimo = '<span class="ball-k-lab">Nessun invio recente</span>';
+        let pista = '';
         if (u) {
             const esito = u.inCorso ? `${u.inCorso} ancora in coda`
                 : (u.errori ? `${u.errori} da correggere` : (u.quante === 1 ? 'trovata' : 'tutte trovate'));
-            blocco += `<span class="ball-k-lab">Ultimo invio: ${u.quante} cart${u.quante === 1 ? 'a' : 'e'} ${_ballQuando(u.quando)}, ${esito}</span>`;
+            ultimo = `<span class="ball-k-lab ball-ins-ultimo">Ultimo invio: ${u.quante} cart${u.quante === 1 ? 'a' : 'e'} ${_ballQuando(u.quando)}, ${esito}</span>`;
+            const perc = u.quante ? Math.round((u.trovate / u.quante) * 100) : 0;
+            pista = `<div class="ball-ins-pista"><div style="width:${perc}%"></div></div>`;
         }
-        blocco += n > 0
+        const stat = (v, et) => `<div class="ball-stat"><b>${v}</b><span>${et}</span></div>`;
+        const griglia = '<div class="ball-stat-griglia">' + stat(q, 'in coda') + stat(u ? u.trovate : '—', 'trovate') + stat(n, 'da correggere') + '</div>';
+        const pulsante = n > 0
             ? _ballPulsante('Correggi', `_ballAzioneRiga(event,'tab','inserimento')`)
             : _ballPulsante('Aggiungi carta', `_ballAzioneRiga(event,'tab','inserimento')`);
+        const blocco = `<div class="ball-ins">${ultimo}${pista}${griglia}${pulsante}</div>`;
         return { inline, blocco };
     },
 
