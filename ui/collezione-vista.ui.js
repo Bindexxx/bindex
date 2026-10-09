@@ -111,11 +111,28 @@ function collAzzeraFiltri() {
 // ── helper di riga ──────────────────────────────────────────────────────
 function _collAttr(v) { return escapeJsAttr(String(v == null ? '' : v)); }
 
+// 2026-10-09: i prodotti sealed vivono in prodotti_sealed (non in carteReali).
+// Per mostrarli in Collezione si costruiscono righe "finte" con tabella
+// 'sealed', SOLO per la vista (carteReali non viene toccato, quindi statistiche,
+// Binder, Doppioni ecc. restano come prima). Azioni limitate: Modifica
+// (modale sealed), Cardmarket, Elimina.
+function _collRigheSealed() {
+    if (typeof prodottiSealedReali === 'undefined' || !Array.isArray(prodottiSealedReali)) return [];
+    return prodottiSealedReali.map(p => ({
+        id: p.id, tabella: 'sealed', stato: 'collezione', tipo: 'sealed',
+        name: p.name || '', code: p.codice || '', location: '', qty: p.qty || 1,
+        lang: p.lingua || 'IT', cond: '', price: Number(p.price) || 0, variation: '—',
+        link: p.url || '#', notes: p.note || '', immagine: p.immagine || null,
+    }));
+}
+function _collEdSealed(card) { return card && card.tabella === 'sealed'; }
+
 function _collMiniatura(card, classe) {
     const id = _collAttr(card.id);
     const src = _urlImmagineVisualizzabile(card.immagine);
     const segnaposto = card.tipo === 'sealed' ? 'fa-box' : 'fa-clone';
-    return `<button type="button" class="${classe}" onclick="event.stopPropagation(); apriImmagineIngrandita('${id}')" aria-label="Apri la carta a tutto schermo">
+    const apri = _collEdSealed(card) ? `apriModificaSealed('${id}')` : `apriImmagineIngrandita('${id}')`;
+    return `<button type="button" class="${classe}" onclick="event.stopPropagation(); ${apri}" aria-label="Apri la carta a tutto schermo">
         ${src ? `<img src="${src}" alt="" loading="lazy" onerror="this.remove()">` : ''}
         <i class="fa-solid ${segnaposto} coll-segnaposto"></i>
         <span class="coll-lente"><i class="fa-solid fa-magnifying-glass-plus"></i></span></button>`;
@@ -133,6 +150,7 @@ function _collVarHtml(card) {
 
 function _collChip(card) {
     if (card.tabella === 'wishlist') return '<span class="coll-chip wish">Wishlist</span>';
+    if (_collEdSealed(card)) return '<span class="coll-chip">Sealed</span>';
     return `<span class="coll-chip">${escapeHtml(card.location || '—')}</span>`;
 }
 
@@ -146,6 +164,12 @@ function _collMeta(card, conQta) {
 
 function _collAzioniHtml(card) {
     const id = _collAttr(card.id), nome = _collAttr(card.name);
+    if (_collEdSealed(card)) {
+        return `
+        <button type="button" onclick="event.stopPropagation(); apriModificaSealed('${id}')"><i class="fa-solid fa-pen"></i> Modifica</button>
+        ${card.link && card.link !== '#' ? `<a href="${escapeHtml(card.link)}" target="_blank" rel="noopener" onclick="event.stopPropagation()"><i class="fa-solid fa-arrow-up-right-from-square"></i> Cardmarket</a>` : ''}
+        <button type="button" class="coll-elimina" onclick="event.stopPropagation(); collEliminaSealed('${id}')"><i class="fa-solid fa-trash"></i> Elimina</button>`;
+    }
     const inCollezione = card.tabella === 'carte' && card.stato === 'collezione';
     return `
         <button type="button" onclick="event.stopPropagation(); apriImmagineIngrandita('${id}')"><i class="fa-solid fa-expand"></i> Apri carta</button>
@@ -157,6 +181,12 @@ function _collAzioniHtml(card) {
         ${inCollezione ? `<button type="button" onclick="event.stopPropagation(); fotoApriCarta('${id}')"><i class="fa-solid fa-camera"></i> Foto reali</button>` : ''}
         ${card.link && card.link !== '#' ? `<a href="${escapeHtml(card.link)}" target="_blank" rel="noopener" onclick="event.stopPropagation()"><i class="fa-solid fa-arrow-up-right-from-square"></i> Cardmarket</a>` : ''}
         <button type="button" class="coll-elimina" onclick="event.stopPropagation(); eliminaCarta('${id}')"><i class="fa-solid fa-trash"></i> Elimina</button>`;
+}
+
+async function collEliminaSealed(id) {
+    await eliminaSealed(id);
+    await caricaProdottiSealedReali();
+    filterTable();
 }
 
 // ── TELEFONO: lista ─────────────────────────────────────────────────────
@@ -195,10 +225,10 @@ function _collGriglia(data) {
     return `<div class="coll-griglia">${data.map(card => {
         const id = _collAttr(card.id);
         const src = _urlImmagineVisualizzabile(card.immagine);
-        return `<button type="button" class="coll-tessera${card.tipo === 'sealed' ? ' e-sealed' : ''}${card.tabella === 'wishlist' ? ' e-wish' : ''}" onclick="apriImmagineIngrandita('${id}')">
+        return `<button type="button" class="coll-tessera${card.tipo === 'sealed' ? ' e-sealed' : ''}${card.tabella === 'wishlist' ? ' e-wish' : ''}" onclick="${_collEdSealed(card) ? `apriModificaSealed('${id}')` : `apriImmagineIngrandita('${id}')`}">
             <span class="coll-tessera-img">${src ? `<img src="${src}" alt="" loading="lazy" onerror="this.remove()">` : ''}<i class="fa-solid ${card.tipo === 'sealed' ? 'fa-box' : 'fa-clone'} coll-segnaposto"></i></span>
             <span class="coll-tessera-nome">${escapeHtml(card.name || '(senza nome)')}</span>
-            <span class="coll-tessera-sotto"><span>${card.tabella === 'wishlist' ? 'Wishlist' : escapeHtml(card.location || '—')}</span><b>${formattaEuro(card.price)}</b></span>
+            <span class="coll-tessera-sotto"><span>${card.tabella === 'wishlist' ? 'Wishlist' : (_collEdSealed(card) ? 'Sealed' : escapeHtml(card.location || '—'))}</span><b>${formattaEuro(card.price)}</b></span>
         </button>`;
     }).join('')}</div>`;
 }
@@ -216,7 +246,7 @@ function _collTabellaPC(data) {
         const sel = String(_collSelId) === String(card.id);
         const wish = card.tabella === 'wishlist';
         return `<tr class="${sel ? 'sel' : ''}${wish ? ' e-wish' : ''}" onclick="collToccaRiga('${id}')">
-            <td class="coll-td-check"><input type="checkbox" class="riga-checkbox" data-id="${escapeHtml(String(card.id))}" data-tabella="${card.tabella}" onclick="event.stopPropagation(); aggiornaSelezioneMultipla();"></td>
+            <td class="coll-td-check">${_collEdSealed(card) ? '' : `<input type="checkbox" class="riga-checkbox" data-id="${escapeHtml(String(card.id))}" data-tabella="${card.tabella}" onclick="event.stopPropagation(); aggiornaSelezioneMultipla();">`}</td>
             <td><div class="coll-td-carta">${_collMiniatura(card, 'coll-mini piccola')}<div><div class="coll-nome">${escapeHtml(card.name || '(senza nome)')}</div><div class="coll-meta">${escapeHtml([card.code, card.tipo === 'sealed' ? 'Sealed' : null].filter(Boolean).join(' · '))}</div></div></div></td>
             <td>${_collChip(card)}</td>
             <td>${escapeHtml(card.lang || '—')}</td>
@@ -251,6 +281,21 @@ function _collDettaglioHtml(data) {
     const src = _urlImmagineVisualizzabile(card.immagine);
     const campo = (etichetta, valore, azione) => `<div class="coll-campo${azione ? ' editabile' : ''}"${azione ? ` onclick="${azione}" title="Clicca per modificare"` : ''}><span>${etichetta}</span><b>${valore}</b></div>`;
     const wish = t === 'wishlist';
+    if (_collEdSealed(card)) {
+        return `
+        <button type="button" class="coll-dett-img" onclick="apriModificaSealed('${id}')" aria-label="Apri il prodotto">
+            ${src ? `<img src="${src}" alt="" onerror="this.remove()">` : ''}<i class="fa-solid fa-box coll-segnaposto"></i></button>
+        <div class="coll-dett-nome">${escapeHtml(card.name || '(senza nome)')}</div>
+        <div class="coll-meta">Sealed</div>
+        <div class="coll-dett-prezzo"><span>${formattaEuro(card.price)}</span></div>
+        <div class="coll-campi">
+            ${campo('Lingua', escapeHtml(card.lang || '—'))}
+            ${campo('Quantità', Number(card.qty) || 0)}
+            ${campo('Prezzo', formattaEuro(card.price))}
+        </div>
+        <div class="coll-campo coll-note"><span>Note</span><b>${card.notes ? escapeHtml(card.notes) : '—'}</b></div>
+        <div class="coll-azioni coll-azioni-pc">${_collAzioniHtml(card)}</div>`;
+    }
     return `
         <button type="button" class="coll-dett-img" onclick="apriImmagineIngrandita('${id}')" aria-label="Apri la carta a tutto schermo">
             ${src ? `<img src="${src}" alt="" onerror="this.remove()">` : ''}<i class="fa-solid ${card.tipo === 'sealed' ? 'fa-box' : 'fa-clone'} coll-segnaposto"></i>

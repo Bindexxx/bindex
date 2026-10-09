@@ -75,6 +75,19 @@
                 return locVal === "" || card.location === locVal;
             });
 
+            // 2026-10-09: prodotti sealed (prodotti_sealed) nella lista della
+            // Collezione — solo nelle viste dove "sealed" ha senso.
+            const mostraSealed = currentMode === 'sealed' ||
+                (currentMode === 'visualizzazione' ? _filtriTipo.sealed : (currentMode !== 'wishlist' && currentMode !== 'scambio'));
+            if (mostraSealed && typeof _collRigheSealed === 'function') {
+                _collRigheSealed().forEach(card => {
+                    if (!card.name.toLowerCase().includes(searchVal) && !card.code.toLowerCase().includes(searchVal)) return;
+                    if (langVal !== '' && card.lang !== langVal) return;
+                    if (locVal !== '') return; // i sealed non hanno location
+                    filtered.push(card);
+                });
+            }
+
             renderViewTable(filtered);
         }
 

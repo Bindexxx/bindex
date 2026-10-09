@@ -72,6 +72,12 @@
             document.querySelectorAll('.drawer-item').forEach(item => item.classList.remove('active'));
 
             document.getElementById('visualizzazione').classList.add('active');
+
+            // 2026-10-09: i sealed aggiunti dall'estensione (coda) non fanno
+            // scattare il realtime di carte/wishlist: li rileggo all'apertura.
+            if (typeof caricaProdottiSealedReali === 'function') {
+                caricaProdottiSealedReali().then(() => { if (currentMode === tabId) filterTable(); }).catch(() => {});
+            }
             
             if (element) element.classList.add('active');
             const mobileBtn = document.getElementById(`mNav-${tabId}`);

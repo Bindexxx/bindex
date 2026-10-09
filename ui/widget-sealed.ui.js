@@ -356,7 +356,14 @@ function _sealedVaiAScaffale(scaffaleId) {
 // Dopo una modifica (scheda sealed o quantità offerta): ricalcola e, se il
 // dettaglio è aperto, lo ridisegna.
 async function _sealedRinfrescaDopoModifica() {
-    if (!document.getElementById('sealedVistaElenco')) { if (document.getElementById('sealedContenuto')) renderPaginaSealed(); return; }
+    if (!document.getElementById('sealedVistaElenco')) {
+        if (document.getElementById('sealedContenuto')) renderPaginaSealed();
+        else { // 2026-10-09: modifica fatta dalla lista Collezione
+            await caricaProdottiSealedReali();
+            if (typeof filterTable === 'function') filterTable();
+        }
+        return;
+    }
     const aperto = _sealedDettaglioId;
     await caricaProdottiSealedReali();
     const userId = await authGetUserId();
