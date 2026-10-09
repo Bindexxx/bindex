@@ -8303,3 +8303,8 @@ body.badge-pallino .widget-badge { font-size: 0 !important; min-width: 12px !imp
    alzano la specificità sopra la regola display:table-cell !important delle righe. */
 #inserimento.ins-dest-wishlist .colonna-location,
 #inserimento.ins-dest-wishlist tbody tr:not(.x1):not(.x2):not(.x3) td.ins-td-loc.ins-td-loc.ins-td-loc { display: none !important; }
+
+/* Inserimento sealed: in collezione il prezzo lo da' Cardmarket (ricerca via
+   estensione) — la colonna Prezzo c'e' solo in Wishlist (prezzo obiettivo). */
+#inserimento:not(.ins-dest-wishlist) #tabellaInserimentoSealed th:nth-child(5),
+#inserimento:not(.ins-dest-wishlist) #tabellaInserimentoSealed td:nth-child(5) { display: none !important; }
