@@ -70,6 +70,10 @@ async function _widgetBinderLeggi() {
 // (stesso ordine logico della pagina: Scambio, Wishlist, il mio binder).
 const _WIDGET_BINDER_ORDINE = { scambio: 0, wishlist: 1, extra: 2, location: 3 };
 
+// Icona sulla costa dei binder speciali, cosi' Scambio e Wishlist si riconoscono
+// a colpo d'occhio (le coste normali si distinguono solo per colore).
+const _WIDGET_BINDER_ICONE = { scambio: 'fa-right-left', wishlist: 'fa-heart', extra: 'fa-star' };
+
 CATALOGO_WIDGET.binder = {
     titolo: 'Binders', icona: 'fa-layer-group',
     preview: async () => {
@@ -81,9 +85,23 @@ CATALOGO_WIDGET.binder = {
             + ['wishlist', 'extra', 'scambio'].filter(t => !tipi.has(t)).length;
         const totale = d.binders.length + mancanti;
         const pubblici = d.binders.filter(b => b.stato_pubblicazione === 'pubblico').length;
-        const copertine = d.binders.slice()
+        // I binder che la pagina Binders creera' all'apertura (Scambio, Wishlist,
+        // "Il mio binder", location senza binder) esistono GIA' per il conteggio
+        // qui sopra: si mostrano anche fra le copertine, altrimenti Scambio
+        // spariva dalla tessera finche' non si apriva la pagina Binders. Solo
+        // visualizzazione, niente viene creato qui. Pubblici per definizione:
+        // Scambio e Wishlist.
+        const nomiSpeciali = { scambio: 'Scambio', wishlist: 'Wishlist', extra: 'Il mio binder' };
+        const daMostrare = d.binders.map(b => ({ nome: b.nome, tipo: b.tipo, colore: b.colore, stato_pubblicazione: b.stato_pubblicazione }));
+        ['scambio', 'wishlist', 'extra'].filter(t => !tipi.has(t)).forEach(t => {
+            daMostrare.push({ nome: nomiSpeciali[t], tipo: t, colore: null, stato_pubblicazione: t === 'extra' ? 'privato' : 'pubblico' });
+        });
+        d.nomiLocation.filter(n => !materializzate.has(n)).forEach(n => {
+            daMostrare.push({ nome: n, tipo: 'location', colore: null, stato_pubblicazione: 'privato' });
+        });
+        const copertine = daMostrare
             .sort((a, b) => (_WIDGET_BINDER_ORDINE[a.tipo] ?? 9) - (_WIDGET_BINDER_ORDINE[b.tipo] ?? 9) || String(a.nome || '').localeCompare(String(b.nome || '')))
-            .map(b => ({ nome: b.nome || '', tipo: b.tipo, colore: b.colore || null, pubblico: b.stato_pubblicazione === 'pubblico' }));
+            .map(b => ({ nome: b.nome || '', tipo: b.tipo, colore: b.colore || null, pubblico: b.stato_pubblicazione === 'pubblico', icona: _WIDGET_BINDER_ICONE[b.tipo] || '' }));
         return {
             righe: [`${totale} binder${pubblici ? ` · ${pubblici} pubblic${pubblici === 1 ? 'o' : 'i'}` : ''}`],
             dati: { totale, pubblici, copertine },

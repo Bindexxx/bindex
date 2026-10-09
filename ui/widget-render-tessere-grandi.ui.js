@@ -258,7 +258,7 @@ function _binderColore(binder) {
 function _ballCopertine(voci) {
     const esc = (t) => (typeof escapeHtml === 'function' ? escapeHtml(t) : String(t));
     return '<div class="ball-cov">' + voci.map(v =>
-        `<i style="background:${(v.colore && /^#[0-9a-fA-F]{6}$/.test(v.colore)) ? v.colore : _ballColoreDaChiave(v.nome)}" title="${esc(v.nome)}">${v.pubblico ? '<b class="fa-solid fa-globe"></b>' : ''}</i>`
+        `<i style="background:${(v.colore && /^#[0-9a-fA-F]{6}$/.test(v.colore)) ? v.colore : _ballColoreDaChiave(v.nome)}" title="${esc(v.nome)}">${v.icona ? `<em class="fa-solid ${v.icona}"></em>` : ''}${v.pubblico ? '<b class="fa-solid fa-globe"></b>' : ''}</i>`
     ).join('') + '</div>';
 }
 

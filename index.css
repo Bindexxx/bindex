@@ -1756,6 +1756,10 @@
             content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 5px;
             background: rgba(0,0,0,.25); border-radius: 3px 0 0 3px;
         }
+        .ball-ui .ball-cov i em {
+            position: absolute; left: 50%; top: 6px; transform: translateX(-35%); font-style: normal;
+            font-size: 12px; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.4);
+        }
         .ball-ui .ball-cov i b {
             position: absolute; right: 3px; bottom: 3px; font-size: 9px; color: #fff;
             text-shadow: 0 1px 2px rgba(0,0,0,.4);
