@@ -8293,3 +8293,9 @@ body.dark-mode #achievement { --ach-legg-bg: #4a3a12; --ach-rara-bg: #173450; --
 
 /* Badge a pallino (Impostazioni → Home → Badge sulle sfere) */
 body.badge-pallino .widget-badge { font-size: 0 !important; min-width: 12px !important; width: 12px !important; height: 12px !important; padding: 0 !important; }
+
+/* Inserimento: in modalità Wishlist la location non si sceglie (la Wishlist è
+   una destinazione, non una location) — colonna/cella nascoste. I :not(.xN)
+   alzano la specificità sopra la regola display:table-cell !important delle righe. */
+#inserimento.ins-dest-wishlist .colonna-location,
+#inserimento.ins-dest-wishlist tbody tr:not(.x1):not(.x2):not(.x3) td.ins-td-loc.ins-td-loc.ins-td-loc { display: none !important; }
