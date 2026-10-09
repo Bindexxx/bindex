@@ -8336,3 +8336,21 @@ body.badge-pallino .widget-badge { font-size: 0 !important; min-width: 12px !imp
 .ball-ui .wf-largo:has(> .ball-slot-blocco > .ball-ins) .ball-testa .ball-slot-inline { min-width: 0; overflow: hidden; }
 .ball-ui .wf-largo .ball-slot-blocco:has(> .ball-ins) { flex-basis: 124px; flex-shrink: 0; }
 .ball-ui .wf-largo .ball-ins .ball-stat:first-child { display: none; }
+
+/* Widget Controllo prezzi (Claudio, 2026-10-09: "alto 1 si rompe, non sfrutta la
+   tessera"). Contenitore unico .ball-prz nel blocco:
+   - grande: barra, tre riquadri che si allargano e pulsante in fondo;
+   - largo e basso: la barra sta a destra della testata, centrata in altezza. */
+.ball-ui .ball-prz { display: flex; flex-direction: column; gap: 8px; flex: 1 1 auto; min-height: 0; min-width: 0; }
+.ball-ui .ball-prz .ball-stat-griglia { flex: 1 1 auto; min-height: 0; align-items: stretch; }
+.ball-ui .ball-prz .ball-stat { display: flex; flex-direction: column; justify-content: center; }
+.ball-ui .ball-prz .ball-azione { margin-top: auto; }
+.ball-ui .ball-prz .ball-barra-out { height: 8px; }
+.ball-ui .wf-grande .ball-prz .ball-stat b { font-size: 26px; }
+.ball-ui .wf-grande .ball-prz .ball-stat span { font-size: 12px; }
+.ball-ui .wf-grande .ball-prz .ball-azione { font-size: 14px; padding: 9px 18px; }
+.ball-ui .wf-largo:has(> .ball-slot-blocco > .ball-prz) .ball-testa { width: auto; flex: 0 1 auto; min-width: 0; }
+.ball-ui .wf-largo:has(> .ball-slot-blocco > .ball-prz) .ball-testa .ball-slot-inline { min-width: 0; overflow: hidden; }
+.ball-ui .wf-largo .ball-slot-blocco:has(> .ball-prz) { flex: 1 1 0; min-width: 0; max-height: none; align-self: stretch; justify-content: center; margin: 0; }
+.ball-ui .wf-largo .ball-slot-blocco > .ball-prz { display: flex; flex: 0 0 auto; }
+.ball-ui .wf-largo .ball-prz > :not(.ball-quota) { display: none; }

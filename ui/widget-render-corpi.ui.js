@@ -682,15 +682,22 @@ const _ballCORPI = {
         // la riga "Aggiornati N/M" veniva tagliata a meta' dal bordo.
         // Difetto preesistente, stesso identico caso gia' corretto sul
         // widget 'contributi'.
-        let blocco =
+        // 2026-10-09 (Claudio: "alto 1 si rompe, non sfrutta la tessera"):
+        // un unico contenitore .ball-prz (barra + riquadri + pulsante) che le
+        // regole di taglia in index.css dispongono: grande = riempie la
+        // tessera; largo e basso = barra a destra della testata.
+        const stat = (v, et) => `<div class="ball-stat"><b>${v}</b><span>${et}</span></div>`;
+        const blocco =
+            '<div class="ball-prz">' +
             '<div class="ball-quota">' +
             `<div class="ball-barra-testo"><span>Aggiornati</span><span>${aggiornati} di ${totale}</span></div>` +
             `<div class="ball-barra-out"><div class="ball-barra-in" style="width:${perc.toFixed(1)}%"></div></div>` +
+            '</div>' +
+            '<div class="ball-stat-griglia">' + stat(aggiornati, 'aggiornati') + stat(scaduti, 'da aggiornare') + stat(totale, 'totale') + '</div>' +
+            // Il bottone apre la pagina Controllo prezzi (tavole approvate); il
+            // tocco sulla tessera fa lo stesso.
+            _ballPulsante('Apri Controllo prezzi', `_ballAzioneRiga(event,'tab','prezzi')`) +
             '</div>';
-        // Il bottone apre la pagina Controllo prezzi (tavole approvate); il
-        // tocco sulla tessera fa lo stesso. L'elenco delle scadute resta
-        // nella pagina/modale, non ripetuto qui.
-        blocco += _ballPulsante('Apri Controllo prezzi', `_ballAzioneRiga(event,'tab','prezzi')`);
         return { inline, blocco };
     },
 
