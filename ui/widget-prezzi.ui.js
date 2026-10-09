@@ -510,6 +510,7 @@ function _pzCarteColl() { return carteReali.filter(c => c.tabella === 'carte' &&
 function prezziAggiornaScelta() {
     const coll = document.getElementById('pzCollezione');
     if (!coll) return;
+    prezziMostraDiChi();
     const wish = document.getElementById('pzWishlist'), seal = document.getElementById('pzSealed');
     const carte = _pzCarteColl();
     const nLoc = new Set(carte.map(c => c.location).filter(Boolean)).size;
@@ -548,12 +549,12 @@ function prezziScaffaliTutti() {
     document.querySelectorAll('.checkboxScaffalePrezziSealed').forEach(cb => { cb.checked = false; });
     prezziAggiornaScelta();
 }
-// Una sola scelta "Di chi" per Collezione e Sealed.
-function prezziImpostaDiChi(ambito) {
-    _impostaAmbitoControlloPrezzi(ambito);
-    _impostaAmbitoControlloPrezziSealed(ambito);
-    document.getElementById('btnAmbitoSoloMie')?.classList.toggle('attivo', ambito === 'soloMie');
-    document.getElementById('btnAmbitoGruppo')?.classList.toggle('attivo', ambito === 'gruppo');
+// "Di chi": una sola scelta per Collezione e Sealed, fatta una volta sola in
+// Impostazioni (prefAmbitoPrezziSet, 2026-10-09). Qui la pagina mostra solo
+// la scelta attuale.
+function prezziMostraDiChi() {
+    const el = document.getElementById('pzDiChiTesto');
+    if (el) el.textContent = _ambitoControlloPrezzi === 'gruppo' ? 'tutto il gruppo' : 'solo le tue carte';
 }
 
 // Riquadri in alto: ultimo controllo (con salite/scese da allora), carte da

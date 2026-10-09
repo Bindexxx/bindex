@@ -68,6 +68,11 @@ function prefAlertPrezzoVistiSet(visti) { localStorage.setItem('alertPrezzoVisti
 function prefBinderLayoutGet() { return localStorage.getItem(CHIAVE_BINDER_LAYOUT); }
 function prefBinderLayoutSet(layout) { localStorage.setItem(CHIAVE_BINDER_LAYOUT, layout); }
 
+// Controllo prezzi — "di chi" (2026-10-09): scelta fatta una volta sola in
+// Impostazioni, per dispositivo ('soloMie' | 'gruppo'; default 'soloMie').
+function prefAmbitoPrezziGet() { return localStorage.getItem('cardsyncAmbitoPrezzi') === 'gruppo' ? 'gruppo' : 'soloMie'; }
+function prefAmbitoPrezziSet(ambito) { localStorage.setItem('cardsyncAmbitoPrezzi', ambito === 'gruppo' ? 'gruppo' : 'soloMie'); }
+
 function prefApriSempreAppGet() { return localStorage.getItem(CHIAVE_APRI_SEMPRE_APP) === 'true'; }
 function prefApriSempreAppSet(attivo) { localStorage.setItem(CHIAVE_APRI_SEMPRE_APP, attivo ? 'true' : 'false'); }
 
