@@ -164,10 +164,10 @@
         async function salvaCarteReali() {
             // FASE 1: il bottone "Salva" è unico (onclick fisso in
             // index.html) — smista qui invece di duplicare il markup HTML.
-            // Fase 6, Step 2 (2026-09-13): terzo ramo, sealed+wishlist →
-            // wishlist_sealed invece di prodotti_sealed.
+            // 2026-10-09: sealed (collezione e wishlist) → coda con ricerca
+            // Cardmarket, vedi salvaSealedInCoda().
             if (_tipoInserimento === 'sealed') {
-                return _destinazioneInserimento === 'wishlist' ? salvaWishlistSealedReali() : salvaProdottiSealedReali();
+                return salvaSealedInCoda();
             }
 
             const userId = await authGetUserId();
@@ -673,7 +673,7 @@
                         <button type="button" class="qty-btn" onclick="stepEntryQtySealed(this, 1)">+</button>
                     </div>
                 </td>
-                <td data-label="Prezzo"><input type="number" step="0.01" min="0" placeholder="€" value="${escapeHtml(String(prezzoVal))}" oninput="handleEntryInputSealed(this)"></td>
+                <td data-label="Prezzo"><input type="number" step="0.01" min="0" placeholder="€ obiettivo" value="${escapeHtml(String(prezzoVal))}" oninput="handleEntryInputSealed(this)"></td>
                 <td data-label="Note"><input type="text" placeholder="Note" value="${escapeHtml(notesVal)}" oninput="handleEntryInputSealed(this)"></td>
                 <td style="text-align: center;">
                     <button type="button" class="btn-danger" onclick="removeEntryRowSealed(this)"><i class="fa-solid fa-trash"></i></button>
@@ -718,150 +718,47 @@
         }
 
 
-        // Fase 1.3 (sql/42, 2026-09-12): niente più location — sostituita da
-        // Scaffali. Rimossa dai parametri e dal payload: un INSERT con
-        // questo campo fallirebbe con "colonna inesistente" (la colonna
-        // non c'è più su prodotti_sealed).
-        function _rigaEntrySealedToRigaDb(row, userId) {
-            const nome = (row.name || '').trim();
-            if (!nome) return null;
-            const qty = Math.max(1, parseInt(row.qty, 10) || 1);
-            const prezzo = row.prezzo !== '' && row.prezzo != null ? parseFloat(row.prezzo) : null;
-            return {
-                owner_id: userId,
-                nome,
-                lingua: row.lang || 'IT',
-                integrita_packaging: row.integrita || 'sigillato_integro',
-                qty,
-                prezzo: (prezzo != null && !isNaN(prezzo)) ? prezzo : null,
-                note: (row.notes || '').trim() || null,
-            };
-        }
-
-
-        async function salvaProdottiSealedReali() {
+        // ═══════════════════════════════════════════════════════════════════
+        // INSERIMENTO SEALED (2026-10-09) — passa dalla coda, con ricerca
+        // Cardmarket
+        // ═══════════════════════════════════════════════════════════════════
+        // Prima i sealed venivano scritti DIRETTAMENTE in prodotti_sealed /
+        // wishlist_sealed: nessuna verifica, qualunque testo veniva accettato
+        // ("✅ salvato") e non c'era né immagine né prezzo. Ora seguono la
+        // stessa strada delle carte: coda_carte (tipo 'sealed') → l'estensione
+        // cerca su Cardmarket (/Products/) e, se trova il prodotto, chiama la
+        // RPC completa_riga_coda_carte, che (sql/94) scrive in prodotti_sealed
+        // (collezione) o wishlist_sealed (wishlist). Se non lo trova la riga va
+        // in "carte da correggere" come per le carte. Niente più Prezzo
+        // manuale in collezione (lo da' Cardmarket); in wishlist la colonna
+        // Prezzo e' il prezzo obiettivo.
+        async function salvaSealedInCoda() {
             const userId = await authGetUserId();
             if (!userId) {
                 await assicuraLoginSupabase();
                 return;
             }
 
-            const righe = document.querySelectorAll('#entryTableBodySealed tr');
-            const righeValide = [];
-            righe.forEach(tr => {
-                const name = tr.querySelector('td:nth-child(1) input')?.value.trim();
-                if (!name) return;
-                righeValide.push({
-                    name,
-                    lang: tr.querySelector('td:nth-child(2) select')?.value,
-                    integrita: tr.querySelector('td:nth-child(3) select')?.value,
-                    qty: tr.querySelector('.qty-input')?.value,
-                    prezzo: tr.querySelector('td:nth-child(5) input')?.value,
-                    notes: tr.querySelector('td:nth-child(6) input')?.value,
-                });
-            });
-
-            if (righeValide.length === 0) {
-                alert('Non ci sono prodotti sealed da salvare — scrivi almeno un nome.');
-                return;
-            }
-
-            const btn = document.getElementById('btnSalvaCarte');
-            const originalHtml = btn.innerHTML;
-            btn.disabled = true;
-            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Salvataggio...';
-
-            const righeDb = righeValide
-                .map(r => _rigaEntrySealedToRigaDb(r, userId))
-                .filter(Boolean);
-
-            const { data: inseriti, error } = await sealedInsertRighe(righeDb);
-
-            btn.disabled = false;
-            btn.innerHTML = originalHtml;
-
-            if (error) {
-                alert('❌ Errore nel salvataggio dei prodotti sealed: ' + error.message);
-                return;
-            }
-
-            // Fase 8, Step 2 (2026-09-13): log "aggiunta" — fire-and-forget,
-            // un fallimento qui non deve mai bloccare il flusso principale
-            // (l'inserimento vero è già andato a buon fine sopra). sealed
-            // insert restituisce le righe complete (.select() in
-            // data/sealed.repository.js), quindi qui c'è già l'id reale.
-            if (inseriti && inseriti.length) {
-                const movimenti = inseriti.map(r => ({
+            const wish = _destinazioneInserimento === 'wishlist';
+            const righeDb = [];
+            document.querySelectorAll('#entryTableBodySealed tr').forEach(tr => {
+                const nome = tr.querySelector('td:nth-child(1) input')?.value.trim();
+                if (!nome) return;
+                const prezzo = parseFloat(tr.querySelector('td:nth-child(5) input')?.value);
+                righeDb.push({
                     owner_id: userId,
-                    tipo_evento: 'aggiunta',
-                    oggetto_tipo: 'sealed',
-                    oggetto_id: r.id,
-                    nome_snapshot: r.nome,
-                    quantita_delta: r.qty,
-                    prezzo_unitario: r.prezzo,
-                    valore_delta: r.prezzo != null ? r.prezzo * r.qty : null,
-                    fonte: 'sito',
-                }));
-                movimentiCollezioneInsertRighe(movimenti).then(({ error: errMov }) => {
-                    if (errMov) console.error('Log movimenti (aggiunta sealed):', errMov.message);
-                });
-            }
-
-            initEntryTableSealed();
-            alert(`✅ ${righeDb.length} prodott${righeDb.length === 1 ? 'o sealed salvato' : 'i sealed salvati'} in collezione!`);
-        }
-
-
-        // ═══════════════════════════════════════════════════════════════════
-        // FASE 6, STEP 2 (2026-09-13) — INSERIMENTO WISHLIST SEALED
-        // ═══════════════════════════════════════════════════════════════════
-        // Stessa tabella di inserimento (#entryTableBodySealed) riusata per
-        // entrambe le destinazioni — cambia solo dove va l'insert e quale
-        // campo riceve il prezzo digitato (prezzo_obiettivo, non prezzo: qui
-        // non si possiede ancora nulla). codice/set_espansione non sono
-        // raccolti in questa riga rapida, stessa scelta già presa per
-        // prodotti_sealed — editabili dopo dal modale in ui/widget-
-        // wishlist.ui.js (apriModificaWishlistSealed).
-        function _rigaEntryWishlistSealedToRigaDb(row, userId) {
-            const nome = (row.name || '').trim();
-            if (!nome) return null;
-            const qty = Math.max(1, parseInt(row.qty, 10) || 1);
-            const prezzo = row.prezzo !== '' && row.prezzo != null ? parseFloat(row.prezzo) : null;
-            return {
-                owner_id: userId,
-                nome,
-                lingua: row.lang || 'IT',
-                integrita_minima: row.integrita || 'sigillato_integro',
-                qty,
-                prezzo_obiettivo: (prezzo != null && !isNaN(prezzo)) ? prezzo : null,
-                note: (row.notes || '').trim() || null,
-            };
-        }
-
-
-        async function salvaWishlistSealedReali() {
-            const userId = await authGetUserId();
-            if (!userId) {
-                await assicuraLoginSupabase();
-                return;
-            }
-
-            const righe = document.querySelectorAll('#entryTableBodySealed tr');
-            const righeValide = [];
-            righe.forEach(tr => {
-                const name = tr.querySelector('td:nth-child(1) input')?.value.trim();
-                if (!name) return;
-                righeValide.push({
-                    name,
-                    lang: tr.querySelector('td:nth-child(2) select')?.value,
-                    integrita: tr.querySelector('td:nth-child(3) select')?.value,
-                    qty: tr.querySelector('.qty-input')?.value,
-                    prezzo: tr.querySelector('td:nth-child(5) input')?.value,
-                    notes: tr.querySelector('td:nth-child(6) input')?.value,
+                    nome,
+                    lingua: tr.querySelector('td:nth-child(2) select')?.value || 'IT',
+                    integrita_packaging: tr.querySelector('td:nth-child(3) select')?.value || 'sigillato_integro',
+                    qty: Math.max(1, parseInt(tr.querySelector('.qty-input')?.value, 10) || 1),
+                    nota: (tr.querySelector('td:nth-child(6) input')?.value || '').trim() || null,
+                    destinazione: wish ? 'wishlist' : 'collezione',
+                    tipo: 'sealed',
+                    ...(wish && !isNaN(prezzo) ? { prezzo_obiettivo: prezzo } : {}),
                 });
             });
 
-            if (righeValide.length === 0) {
+            if (righeDb.length === 0) {
                 alert('Non ci sono prodotti sealed da salvare — scrivi almeno un nome.');
                 return;
             }
@@ -869,22 +766,19 @@
             const btn = document.getElementById('btnSalvaCarte');
             const originalHtml = btn.innerHTML;
             btn.disabled = true;
-            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Salvataggio...';
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Invio in corso...';
 
-            const righeDb = righeValide
-                .map(r => _rigaEntryWishlistSealedToRigaDb(r, userId))
-                .filter(Boolean);
-
-            const { error } = await wishlistSealedInsertRighe(righeDb);
+            const { error } = await queueInsertRighe(righeDb);
 
             btn.disabled = false;
             btn.innerHTML = originalHtml;
 
             if (error) {
-                alert('❌ Errore nel salvataggio della wishlist sealed: ' + error.message);
+                alert('❌ Errore nell\'invio dei prodotti sealed: ' + error.message);
                 return;
             }
 
             initEntryTableSealed();
-            alert(`✅ ${righeDb.length} prodott${righeDb.length === 1 ? 'o sealed aggiunto' : 'i sealed aggiunti'} alla Wishlist!`);
+            insAggiornaPagina();
+            alert(`✅ ${righeDb.length} prodott${righeDb.length === 1 ? 'o sealed inviato' : 'i sealed inviati'} nella coda!\n\nApri l'estensione sulla sezione "Aggiungi Carte": cerca ogni prodotto su Cardmarket e, se lo trova, lo aggiunge a ${wish ? 'la Wishlist' : 'Sealed'}. Se non lo trova lo vedrai tra le carte da correggere.`);
         }
