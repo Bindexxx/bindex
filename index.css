@@ -7803,7 +7803,14 @@
         #inserimento .ins-piede .autosave-status { font-size: 0.8rem; color: var(--text-muted); }
         #inserimento .ins-piede .btn-main { margin: 0; white-space: nowrap; border-radius: 14px; }
 
-        @container (min-width: 780px) {
+        /* Zoom del browser (Claudio, 2026-10-09: "lo zoom taglia completamente la
+           visualizzazione"): la tabella a colonne ha bisogno di circa 960px, piu'
+           i 260px del pannello "Ultimo invio" accanto. Prima partiva a 780px:
+           fra 780 e ~1240px Q.ta', Location e Note finivano tagliate (la scatola
+           ha overflow:hidden) senza modo di raggiungerle. Ora: tabella da 980px,
+           pannello laterale accanto solo da 1260px (sotto, va sotto la tabella),
+           e al limite la tabella scorre in orizzontale invece di tagliarsi. */
+        @container (min-width: 980px) {
             #inserimento .ins-solo-tel { display: none !important; }
             #inserimento .ins-solo-pc { display: initial !important; }
             #inserimento .ins-solo-pc-blocco { display: block !important; }
@@ -7812,8 +7819,7 @@
             #inserimento .ins-segbtn { padding: 8px 16px; }
             #inserimento .ins-location { flex: 0 1 380px; }
             #inserimento .ins-nuova-box { position: absolute; top: 100%; left: 0; right: 0; z-index: 3; margin-top: 6px; padding: 10px; border-radius: 12px; background: var(--card-bg); border: 1px solid var(--border-color); box-shadow: 0 8px 20px rgba(0,0,0,.1); }
-            #inserimento .ins-layout { display: grid; grid-template-columns: minmax(0, 1fr) 260px; gap: 16px; align-items: start; }
-            #inserimento .ins-tabella-box { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 18px; overflow: hidden; }
+            #inserimento .ins-tabella-box { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 18px; overflow-x: auto; overflow-y: hidden; }
             #inserimento table { display: table; }
             #inserimento thead { position: static; display: table-header-group; }
             #inserimento tbody { display: table-row-group; }
@@ -7841,6 +7847,16 @@
             #inserimento .ins-td-note input { width: 70px; }
             #inserimento .ins-ultimo-lista { display: block; }
             #inserimento .ins-ultimo-riga b { font-size: 0.82rem; }
+        }
+        @container (min-width: 1260px) {
+            #inserimento .ins-layout { display: grid; grid-template-columns: minmax(0, 1fr) 260px; gap: 16px; align-items: start; }
+        }
+        /* Schermo basso (zoom alto): la barra "Salva" fissa in basso coprirebbe
+           una parte troppo grande dell'area visibile, la riga in modifica
+           compresa. Con poca altezza resta in fondo alla pagina. */
+        @media (max-height: 560px) {
+            #inserimento .ins-piede { position: static; }
+            #inserimento .ins-pagina { padding-bottom: 1rem; }
         }
 
         /* ── Doppioni PC: pannello copie a destra (RESTYLE, tavola "Doppioni PC") ── */
