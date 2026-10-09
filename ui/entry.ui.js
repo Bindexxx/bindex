@@ -143,33 +143,21 @@
             // l'inserimento dalla pagina Scaffali (stesso schema di Binder
             // per le carte: si sceglie dopo, non durante l'inserimento
             // massivo). Pannello nascosto del tutto per questo tipo.
+            // 2026-10-09: la Wishlist è una destinazione (tab Collezione/
+            // Wishlist), NON una location: niente voce "WISHLIST" tra le
+            // location e, in modalità Wishlist, pannello e colonna Location
+            // nascosti (classe ins-dest-wishlist). Il valore 'WISHLIST' viene
+            // comunque inviato in coda (salvaCarteReali) perché l'estensione
+            // lo usa come contenitore di sistema delle carte in wishlist.
             const pannelloLoc = document.getElementById('pannelloLocationComune');
-            if (_tipoInserimento === 'sealed') {
-                pannelloLoc.style.display = 'none';
-            } else {
-                pannelloLoc.style.display = '';
-                const selectLoc = document.getElementById('selectLocationComune');
-                if (_destinazioneInserimento === 'wishlist') _impostaLocationComuneFissa(selectLoc, 'WISHLIST');
-                else selectLoc.value = '';
-            }
+            const wish = _destinazioneInserimento === 'wishlist';
+            document.getElementById('inserimento')?.classList.toggle('ins-dest-wishlist', wish);
+            pannelloLoc.style.display = (_tipoInserimento === 'sealed' || wish) ? 'none' : '';
+            const selectLoc = document.getElementById('selectLocationComune');
+            if (selectLoc) selectLoc.value = '';
 
             insAggiornaBottone();
             document.querySelectorAll('#entryTableBody tr').forEach(_insSommario);
-        }
-
-
-        // Imposta la location comune su un valore fisso (WISHLIST/SEALED),
-        // aggiungendolo alla tendina se non è già tra le opzioni presenti
-        // (non serve registrarlo nella tabella 'location' vera e propria —
-        // qui basta che sia selezionabile e venga inviato correttamente).
-        function _impostaLocationComuneFissa(select, valore) {
-            if (![...select.options].some(o => o.value === valore)) {
-                const opt = document.createElement('option');
-                opt.value = valore;
-                opt.textContent = valore;
-                select.appendChild(opt);
-            }
-            select.value = valore;
         }
 
 
@@ -213,7 +201,10 @@
                 return;
             }
 
-            const locationComune = document.getElementById('selectLocationComune')?.value.trim() || '';
+            // Wishlist: la location non si sceglie (vedi sopra) — contenitore di sistema fisso.
+            const locationComune = _destinazioneInserimento === 'wishlist'
+                ? 'WISHLIST'
+                : (document.getElementById('selectLocationComune')?.value.trim() || '');
             const btn = document.getElementById('btnSalvaCarte');
             const originalHtml = btn.innerHTML;
             btn.disabled = true;
@@ -436,7 +427,6 @@
         function _insOpzioniLocation(valore) {
             const nomi = ['?', ..._insLocationNomi.filter(n => n !== '?')];
             if (valore && !nomi.includes(valore)) nomi.push(valore);
-            if (!nomi.includes('WISHLIST')) nomi.push('WISHLIST');
             return nomi.map(n => `<option value="${escapeHtml(n)}" ${n === valore ? 'selected' : ''}>${escapeHtml(n === '?' ? '? (da decidere)' : n)}</option>`).join('');
         }
 
@@ -454,7 +444,7 @@
             const nome = tr.querySelector('td:nth-child(1) input').value.trim();
             tr.classList.toggle('ins-vuota', !nome);
             const comune = document.getElementById('selectLocationComune')?.value || '';
-            const loc = comune || tr.querySelector('td:nth-child(8) select').value;
+            const loc = _destinazioneInserimento === 'wishlist' ? '' : (comune || tr.querySelector('td:nth-child(8) select').value);
             const parti = [tr.querySelector('td:nth-child(2) select').value, tr.querySelector('td:nth-child(3) select').value];
             if (tr.querySelector('td:nth-child(4) input').checked) parti.push('Reverse');
             if (tr.querySelector('td:nth-child(5) input').checked) parti.push('1ª ed.');
