@@ -14,7 +14,7 @@
         let _filtriTipo = { carte: true, sealed: true, wishlist: false };
         let _fotoDettaglioCartaId = null;
         let _fotoDettaglioTabella = null;
-        let _ambitoControlloPrezzi = 'soloMie';
+        let _ambitoControlloPrezzi = prefAmbitoPrezziGet(); // scelta in Impostazioni
         let _pollOrdineInterval = null;
         let _pollOrdineWishlistInterval = null;
         // Fase 1.2 (2026-09-12): stato del pannello Controllo Prezzi Sealed,
@@ -22,7 +22,7 @@
         // _locationSealedCaricate → _scaffaliSealedCaricati, Scaffali ha
         // sostituito location come organizzatore dei sealed.
         let _scaffaliSealedCaricati = false;
-        let _ambitoControlloPrezziSealed = 'soloMie';
+        let _ambitoControlloPrezziSealed = prefAmbitoPrezziGet(); // idem (una sola scelta per carte e sealed)
         let _pollOrdineSealedInterval = null;
         const SOGLIA_GIORNI_PREZZO_SCADUTO = 7;
         let _elencoPrezziScaduti = [];

@@ -183,6 +183,8 @@ function _impostazioniCompila() {
     if (badge) badge.value = !prefBadgeWidgetGet() ? 'nascosto' : prefBadgeStileGet();
     const banner = document.getElementById('impBanner');
     if (banner) banner.value = prefBannerGet();
+    const ambitoPrezzi = document.getElementById('impAmbitoPrezzi');
+    if (ambitoPrezzi) ambitoPrezzi.value = prefAmbitoPrezziGet();
     const pos = document.getElementById('impBannerPos');
     if (pos) pos.value = prefBannerPosGet();
     const suono = document.getElementById('impSuono');
@@ -245,6 +247,14 @@ function _impBadgeCambia(valore) {
         toggleBadgeWidget(true);
     }
     if (typeof _impSincronizzaControlli === 'function') _impSincronizzaControlli();
+}
+
+// ── Controllo prezzi: di chi (2026-10-09, prima era nella pagina Controllo prezzi) ──
+function _impAmbitoPrezziCambia(valore) {
+    prefAmbitoPrezziSet(valore);
+    _impostaAmbitoControlloPrezzi(valore);
+    _impostaAmbitoControlloPrezziSealed(valore);
+    if (typeof prezziMostraDiChi === 'function') prezziMostraDiChi();
 }
 
 // ── Banner ──

@@ -62,8 +62,8 @@
         // l'ordine ed è quella che conta.
         function _impostaAmbitoControlloPrezzi(ambito) {
             _ambitoControlloPrezzi = ambito;
-            document.getElementById('btnAmbitoSoloMie').classList.toggle('active', ambito === 'soloMie');
-            document.getElementById('btnAmbitoGruppo').classList.toggle('active', ambito === 'gruppo');
+            document.getElementById('btnAmbitoSoloMie')?.classList.toggle('active', ambito === 'soloMie');
+            document.getElementById('btnAmbitoGruppo')?.classList.toggle('active', ambito === 'gruppo');
         }
 
 
@@ -464,8 +464,8 @@
 
         function _impostaAmbitoControlloPrezziSealed(ambito) {
             _ambitoControlloPrezziSealed = ambito;
-            document.getElementById('btnAmbitoSoloMieSealed').classList.toggle('active', ambito === 'soloMie');
-            document.getElementById('btnAmbitoGruppoSealed').classList.toggle('active', ambito === 'gruppo');
+            document.getElementById('btnAmbitoSoloMieSealed')?.classList.toggle('active', ambito === 'soloMie');
+            document.getElementById('btnAmbitoGruppoSealed')?.classList.toggle('active', ambito === 'gruppo');
         }
 
 

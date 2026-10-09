@@ -658,17 +658,17 @@
                                 </div>
                             </div>
 
+                            <!-- 2026-10-09: "Di chi" si sceglie una volta sola in Impostazioni
+                                 (Account e dati). Qui resta solo la scelta attuale. I quattro
+                                 pulsanti nascosti servono a ui/prices.ui.js (stato dei toggle). -->
                             <div class="pz-blocco">
-                                <div class="pz-etichetta"><span>Di chi</span></div>
-                                <div class="pz-seg">
-                                    <button type="button" class="pz-segbtn attivo" id="btnAmbitoSoloMie" onclick="prezziImpostaDiChi('soloMie')">Solo le mie</button>
-                                    <button type="button" class="pz-segbtn" id="btnAmbitoGruppo" onclick="prezziImpostaDiChi('gruppo')">Tutto il gruppo</button>
-                                </div>
+                                <p class="pz-nota">Controllo: <b id="pzDiChiTesto">solo le tue carte</b> · <a class="pz-link-sotto" onclick="apriDettaglioWidget('impostazioni'); setTimeout(() => _impostazioniApri('account'), 50);">cambia in Impostazioni</a></p>
                                 <div style="display:none;">
+                                    <button type="button" id="btnAmbitoSoloMie"></button>
+                                    <button type="button" id="btnAmbitoGruppo"></button>
                                     <button type="button" id="btnAmbitoSoloMieSealed" class="active"></button>
                                     <button type="button" id="btnAmbitoGruppoSealed"></button>
                                 </div>
-                                <p class="pz-nota pz-solo-pc">"Tutto il gruppo" controlla anche le carte degli altri (vale per Collezione e Sealed).</p>
                             </div>
 
                             <button type="button" class="pz-avvia" id="pzAvvia" onclick="prezziAvviaSelezionati()"><i class="fa-solid fa-paper-plane"></i> <span id="pzAvviaTesto">Controlla</span></button>
@@ -1402,6 +1402,14 @@
                             <div class="imp-voce-testo"><h4>Nascondi la mia Wishlist dal match</h4><p class="imp-solo-pc">Stessa cosa per le carte che cerchi</p></div>
                             <span class="switch"><input type="checkbox" id="nascondiWishlistCheck" onchange="salvaPreferenzePrivacy()"><span class="slider"></span></span>
                         </label>
+                        <div class="imp-voce">
+                            <span class="imp-ico"><i class="fa-solid fa-tags"></i></span>
+                            <div class="imp-voce-testo"><h4>Controllo prezzi: di chi</h4><p class="imp-solo-pc">Si sceglie una volta sola: quali carte controlla un ordine che lanci tu (vale per Collezione e Sealed)</p></div>
+                            <select class="filter-select imp-select" id="impAmbitoPrezzi" onchange="_impAmbitoPrezziCambia(this.value)">
+                                <option value="soloMie">Solo le mie</option>
+                                <option value="gruppo">Tutto il gruppo</option>
+                            </select>
+                        </div>
                         <div class="imp-voce">
                             <span class="imp-ico"><i class="fa-solid fa-file-export"></i></span>
                             <div class="imp-voce-testo"><h4>Esporta i tuoi dati</h4><p>Collezione, sealed e wishlist, tutto insieme</p></div>
