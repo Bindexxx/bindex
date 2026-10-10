@@ -8419,6 +8419,7 @@ body.badge-pallino .widget-badge { font-size: 0 !important; min-width: 12px !imp
 /* Collezione in forma larga e stretta (telefono): le chips impilate mangiavano lo spazio delle carte. */
 @container (max-width: 520px) {
     .ball-ui .wf-largo .ball-slot-blocco:has(> .ball-strip-fill) > .ball-chips { display: none; }
+}
 
 /* ═══ VETRINA — la carta si vede intera a TUTTE le taglie (Claudio, 2026-10-10) ═══
    Con una carta scelta la tessera (.widget-tile-foto, vedi renderWidgetHome) e' solo
@@ -8436,4 +8437,44 @@ body.badge-pallino .widget-badge { font-size: 0 !important; min-width: 12px !imp
 }
 .ball-ui .widget-tile.widget-tile-foto > .ball-slot-blocco.ball-slot-foto > .ball-foto-carta {
     display: block !important; flex: 1 1 0; min-height: 0; width: 100%;
+}
+
+/* ═══ Forma larga e bassa (wf-largo: 5-6 colonne x 2 righe, telefono a tutta larghezza x 2) — regola generale (Claudio, 2026-10-10) ═══
+   L'audit delle tessere ha mostrato che solo i widget con un corpo dedicato (Collezione, Binders, Primo piano,
+   Inserimento, Prezzi, Vetrina) reggevano questa forma: per tutti gli altri il blocco prendeva il 100% della
+   larghezza, la testata (sfera + titolo + dato) si schiacciava a 0 px e il corpo finiva SOTTO la sfera, oppure
+   collassava. Regola di base: testata a sinistra con la sua larghezza, blocco a destra che prende il resto e
+   la stessa altezza della tessera; quello che non entra lo pota _potaContenutoFuoriTessera. Le regole dei corpi
+   dedicati (con :has) restano piu' specifiche e prevalgono. */
+.ball-ui .wf-largo > .ball-testa { flex: 0 1 auto; width: auto; min-width: 0; max-width: 62%; }
+.ball-ui .wf-largo > .ball-testa .ball-slot-inline { min-width: 0; overflow: hidden; }
+.ball-ui .wf-largo > .ball-slot-blocco {
+    flex: 1 1 0; min-width: 0; width: auto; max-height: none; align-self: stretch;
+    margin: 0; justify-content: safe center; overflow: hidden;
+}
+
+/* 4x2 (wf-piccolo con corpo): testata a misura e blocco che prende il resto per TUTTI i widget, non solo quelli
+   con carte/copertine; titolo che puo' andare su 2 righe invece di "Achieve…"; il dato grande non va a capo. */
+.ball-ui .wf-piccolo:not(.widget-tile-mini):has(> .ball-slot-blocco) > .ball-testa { flex: 0 1 auto; width: auto; min-width: 0; max-width: 58%; }
+.ball-ui .wf-piccolo:not(.widget-tile-mini) > .ball-slot-blocco {
+    align-self: stretch; margin: 0; min-height: 0; max-height: 100%; flex: 1 1 0; min-width: 0; justify-content: safe center;
+}
+.ball-ui .wf-piccolo:not(.widget-tile-mini) > .ball-testa .ball-slot-inline { min-width: 0; overflow: hidden; }
+.ball-ui .wf-piccolo:not(.widget-tile-mini) .ball-slot-inline .ball-k-tit {
+    white-space: normal; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; line-height: 1.15;
+}
+.ball-ui .wf-piccolo:not(.widget-tile-mini) .ball-slot-inline .ball-k-big { font-size: 22px; white-space: nowrap; }
+
+/* Tessere alte (3x3+): la riga descrittiva di Estensione e Set usciva dal bordo destro. */
+.ball-ui .wf-alto .ball-testa { min-width: 0; max-width: 100%; }
+.ball-ui .wf-alto .ball-testa .ball-slot-inline { min-width: 0; overflow: hidden; }
+
+/* wf-alto: le descrizioni (ball-k-lab) vanno a capo invece di tagliarsi */
+.ball-ui .wf-alto .ball-slot-inline .ball-k-lab { white-space: normal; overflow: visible; text-overflow: clip; }
+
+/* wf-largo: titolo su max 2 righe (tessere strette, es. telefono) */
+.ball-ui .wf-largo .ball-slot-inline .ball-k-tit { white-space: normal; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; line-height: 1.15; }
+@container (max-width: 360px) {
+  .ball-ui .wf-largo > .ball-testa { max-width: 56%; }
+  .ball-ui .wf-largo .ball-slot-inline .ball-k-big { font-size: 17px; white-space: nowrap; }
 }
