@@ -7015,7 +7015,7 @@
             min-width: 18px; height: 18px; border-radius: 9px; padding: 0 5px;
             background: var(--primary); color: var(--on-primary, #fff); font-size: 0.7rem; display: inline-flex; align-items: center; justify-content: center;
         }
-        .coll-conti-tel { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.6rem; margin-bottom: 0.8rem; }
+        .coll-conti-tel { display: grid; grid-template-columns: 1fr 1.6fr 1fr; gap: 0.6rem; margin-bottom: 0.8rem; }
         .coll-conto {
             background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 16px;
             padding: 0.75rem 0.8rem; display: flex; flex-direction: column; gap: 0.15rem; min-width: 0;
