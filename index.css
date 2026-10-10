@@ -4497,7 +4497,7 @@
         .binder-slot-scambio-badge { border:none; cursor:pointer; font:inherit; display:inline-flex; align-items:center; gap:0.25rem; }
 
         /* ═══ RESTYLE BINDEX FASE 4d — impostazioni binder ═══ */
-        #binderImpostazioniModal .settings-card .binder-modalita-toggle:not(#binderImpostazioniTabs) { display:none; } /* Libro|Elenco ora sta nella pagina del binder */
+        /* 2026-10-10: Libro|Elenco torna visibile anche qui (la scheda "Visualizzazione" restava vuota in modalita' elenco). */
         #binderImpostazioniModal .bn-interruttore { display:flex; align-items:center; justify-content:space-between; gap:1rem; width:100%; cursor:pointer; position:relative; }
         #binderImpostazioniModal .bn-int-testo { display:flex; flex-direction:column; }
         #binderImpostazioniModal .bn-int-testo b { font-size:1rem; color:var(--text-dark); }
@@ -8354,3 +8354,26 @@ body.badge-pallino .widget-badge { font-size: 0 !important; min-width: 12px !imp
 .ball-ui .wf-largo .ball-slot-blocco:has(> .ball-prz) { flex: 1 1 0; min-width: 0; max-height: none; align-self: stretch; justify-content: center; margin: 0; }
 .ball-ui .wf-largo .ball-slot-blocco > .ball-prz { display: flex; flex: 0 0 auto; }
 .ball-ui .wf-largo .ball-prz > :not(.ball-quota) { display: none; }
+
+/* Widget Binders (Claudio, 2026-10-10: "allargata si rompe, non sfrutta la
+   tessera"): copertine con il nome sotto che riempiono lo spazio. Grande:
+   piu' righe (quelle che non ci stanno spariscono intere, vedi potatura);
+   largo e basso: una riga alta quanto la tessera, a destra della testata. */
+.ball-ui .ball-cov.ball-cov-fill { flex: 1 1 auto; min-height: 0; height: auto; flex-wrap: wrap; align-content: flex-start; gap: 10px 14px; margin-top: 2px; overflow: hidden; }
+.ball-ui .ball-cov-fill .ball-cov-v { flex: 0 0 auto; display: flex; flex-direction: column; align-items: center; gap: 4px; width: 70px; min-width: 0; }
+.ball-ui .ball-cov-fill .ball-cov-v i { width: 62px; height: 84px; }
+.ball-ui .ball-cov-fill .ball-cov-v i em { font-size: 15px; top: 8px; }
+.ball-ui .ball-cov-fill .ball-cov-v small { max-width: 100%; font-size: 11px; line-height: 1.15; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ball-ui .wf-largo:has(> .ball-slot-blocco > .ball-cov-fill) .ball-testa { width: auto; flex: 0 1 auto; min-width: 0; }
+.ball-ui .wf-largo:has(> .ball-slot-blocco > .ball-cov-fill) .ball-testa .ball-slot-inline { min-width: 0; overflow: hidden; }
+.ball-ui .wf-largo .ball-slot-blocco:has(> .ball-cov-fill) { flex: 1 1 0; min-width: 0; max-height: none; align-self: stretch; margin: 0; justify-content: center; }
+.ball-ui .wf-largo .ball-slot-blocco > .ball-cov-fill { display: flex; flex: 0 0 auto; flex-wrap: nowrap; height: 118px; align-content: center; }
+.ball-ui .wf-largo .ball-slot-blocco > .ball-cov-fill .ball-cov-v i { height: 90px; }
+/* Binders, tessera alta: copertine piu' grandi in proporzione allo spazio. */
+.ball-ui .ball-cov.ball-cov-fill { container-type: size; }
+@container (min-height: 215px) {
+    .ball-ui .ball-cov-fill .ball-cov-v { width: 96px; }
+    .ball-ui .ball-cov-fill .ball-cov-v i { width: 88px; height: 118px; }
+    .ball-ui .ball-cov-fill .ball-cov-v i em { font-size: 19px; }
+    .ball-ui .ball-cov-fill .ball-cov-v small { font-size: 12px; }
+}

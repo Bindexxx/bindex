@@ -581,8 +581,24 @@ function renderBinderContenuto() {
     // immagini — il libro lo usa ancora per decidere quante tasche per
     // pagina (scelta di Opus), l'elenco non ha nessuna paginazione a
     // griglia. Nascosto qui, non serve toccare ogni singolo bottone.
+    //
+    // 2026-10-10 (Claudio: "Impostazioni: visualizzazione assente, non si puo'
+    // modificare la griglia"): il selettore sta nel modale Impostazioni del
+    // binder, dove in modalita' elenco restava una scheda "Visualizzazione"
+    // VUOTA (selettore nascosto + toggle Libro|Elenco nascosto da CSS). La
+    // griglia e' una scelta salvata per binder, valida per la vista Libro:
+    // si puo' cambiare sempre. Resta solo una nota quando si e' in elenco, e
+    // i pulsanti attivi (modalita' e griglia) sono sempre allineati.
     const layoutSwitcher = document.querySelector('.binder-layout-switcher');
-    if (layoutSwitcher) layoutSwitcher.style.display = modalitaEffettiva === 'elenco' ? 'none' : 'flex';
+    if (layoutSwitcher) layoutSwitcher.style.display = 'flex';
+    const notaGriglia = document.getElementById('binderLayoutNota');
+    if (notaGriglia) notaGriglia.style.display = modalitaEffettiva === 'elenco' ? '' : 'none';
+    document.querySelectorAll('#binderImpostazioniModal .binder-modalita-btn[data-modalita]').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.modalita === modalitaEffettiva);
+    });
+    document.querySelectorAll('.binder-layout-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.layout === _binderLayout);
+    });
 
     if (modalitaEffettiva === 'elenco') {
         renderBinderElenco();
