@@ -510,7 +510,7 @@ const _ballCORPI = {
             '<p class="ball-k-tit">Binders</p>' +
             `<div class="ball-k-big ball-k-mono">${d.totale || 0}</div>` +
             `<span class="ball-k-lab">binder${pubblici ? ` · ${pubblici} pubblic${pubblici === 1 ? 'o' : 'i'}` : ''}</span>`;
-        const blocco = (d.copertine && d.copertine.length) ? _ballCopertine(d.copertine) : '';
+        const blocco = (d.copertine && d.copertine.length) ? _ballCopertine(d.copertine, true) : '';
         return { inline, blocco };
     },
 

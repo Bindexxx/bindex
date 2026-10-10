@@ -255,8 +255,16 @@ function _binderColore(binder) {
 // tinta fissa del nome (_ballTintaDaNome, sopra) finché non esiste il
 // colore scelto dall'utente. Il CSS (.ball-cov) ne mostra quante ci
 // stanno in una riga, le altre si nascondono.
-function _ballCopertine(voci) {
+function _ballCopertine(voci, riempi) {
     const esc = (t) => (typeof escapeHtml === 'function' ? escapeHtml(t) : String(t));
+    // 2026-10-09: con riempi=true (tessera Binders) ogni copertina ha il nome
+    // sotto e il gruppo occupa tutto lo spazio della tessera (.ball-cov-fill,
+    // index.css); senza, resta la riga piccola di sempre (Condividi).
+    if (riempi) {
+        return '<div class="ball-cov ball-cov-fill">' + voci.map(v =>
+            `<span class="ball-cov-v"><i style="background:${(v.colore && /^#[0-9a-fA-F]{6}$/.test(v.colore)) ? v.colore : _ballColoreDaChiave(v.nome)}" title="${esc(v.nome)}">${v.icona ? `<em class="fa-solid ${v.icona}"></em>` : ''}${v.pubblico ? '<b class="fa-solid fa-globe"></b>' : ''}</i><small>${esc(v.nome)}</small></span>`
+        ).join('') + '</div>';
+    }
     return '<div class="ball-cov">' + voci.map(v =>
         `<i style="background:${(v.colore && /^#[0-9a-fA-F]{6}$/.test(v.colore)) ? v.colore : _ballColoreDaChiave(v.nome)}" title="${esc(v.nome)}">${v.icona ? `<em class="fa-solid ${v.icona}"></em>` : ''}${v.pubblico ? '<b class="fa-solid fa-globe"></b>' : ''}</i>`
     ).join('') + '</div>';

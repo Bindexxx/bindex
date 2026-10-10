@@ -438,12 +438,15 @@ function _potaContenutoFuoriTessera() {
         // esistente cambia.
         blocco.querySelectorAll(':scope > .ball-riga, :scope > .ball-gruppi > .ball-gruppo, :scope > .ball-spark, :scope > .ball-strip:not(.ball-strip-fill), :scope > .ball-strip-fill > .ball-mini, :scope > .ball-quota, :scope > .ball-foto-carta, ' +
             // RESTYLE BINDEX FASE 2 (2026-09-30): i mattoncini nuovi delle tessere.
-            ':scope > .ball-riga-set, :scope > .ball-cov, :scope > .ball-ripiano, :scope > .ball-medaglie, :scope > .ball-th, :scope > .ball-chips, :scope > .ball-k-lab, :scope > .ball-azione, :scope > .ball-ul > div, :scope > .ball-co > *').forEach(pezzo => {
+            ':scope > .ball-riga-set, :scope > .ball-cov:not(.ball-cov-fill), :scope > .ball-cov-fill > .ball-cov-v, :scope > .ball-ripiano, :scope > .ball-medaglie, :scope > .ball-th, :scope > .ball-chips, :scope > .ball-k-lab, :scope > .ball-azione, :scope > .ball-ul > div, :scope > .ball-co > *').forEach(pezzo => {
             // Sempre ripristinato prima di misurare: la tessera puo' essere
             // stata ingrandita dall'ultimo giro e cio' che prima non ci
             // stava ora ci sta.
             pezzo.style.display = '';
-            if (pezzo.getBoundingClientRect().bottom > fondo + 1) pezzo.style.display = 'none';
+            const r = pezzo.getBoundingClientRect();
+            // Copertine del widget Binders (riga unica nella forma larga): quelle che
+            // sporgono a destra spariscono intere invece di restare tagliate.
+            if (r.bottom > fondo + 1 || (pezzo.classList.contains('ball-cov-v') && r.right > blocco.getBoundingClientRect().right + 1)) pezzo.style.display = 'none';
         });
     });
 }
