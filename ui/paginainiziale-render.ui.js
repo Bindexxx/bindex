@@ -459,6 +459,15 @@ function _potaContenutoFuoriTessera() {
             // sporgono a destra spariscono intere invece di restare tagliate.
             if (r.bottom > fondo + 1 || (pezzo.classList.contains('ball-cov-v') && r.right > blocco.getBoundingClientRect().right + 1)) pezzo.style.display = 'none';
         });
+        // File di miniature in riga unica (Doppioni, Valore collezione...): la carta
+        // che sporge a destra sparisce intera invece di restare tagliata a meta'.
+        blocco.querySelectorAll('.ball-strip:not(.ball-strip-fill)').forEach(fila => {
+            const destra = fila.getBoundingClientRect().right;
+            fila.querySelectorAll(':scope > .ball-mini').forEach(m => {
+                m.style.display = '';
+                if (m.getBoundingClientRect().right > destra + 1) m.style.display = 'none';
+            });
+        });
     });
 }
 

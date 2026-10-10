@@ -2135,7 +2135,7 @@
             position: absolute; inset: 0 0 calc(var(--pp-sotto) * -1) 0;
             container-type: size; container-name: pp;
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(var(--pp-gmin), 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(min(var(--pp-gmin), 100%), 1fr));
             grid-template-rows: repeat(auto-fit, minmax(calc(var(--pp-tit) + var(--pp-h) + var(--pp-sotto)), 1fr));
             grid-auto-rows: 0;
             gap: 0 14px;
@@ -8478,3 +8478,18 @@ body.badge-pallino .widget-badge { font-size: 0 !important; min-width: 12px !imp
   .ball-ui .wf-largo > .ball-testa { max-width: 56%; }
   .ball-ui .wf-largo .ball-slot-inline .ball-k-big { font-size: 17px; white-space: nowrap; }
 }
+
+/* Tessere strette (telefono, ~330px): sfera piu' piccola cosi' titolo e numero grande
+   restano interi invece di finire in "Achieve…" o andare a capo ("113,00 / €"). */
+@container (max-width: 360px) {
+  .ball-ui .wf-largo > .ball-testa,
+  .ball-ui .wf-piccolo:not(.widget-tile-mini) > .ball-testa { --ball: min(var(--ball-misura, 90px), 68px); max-width: 60%; }
+  .ball-ui .wf-largo > .ball-testa .ball-k-big,
+  .ball-ui .wf-piccolo:not(.widget-tile-mini) > .ball-testa .ball-k-big { font-size: 19px; }
+  .ball-ui .wf-largo > .ball-testa .ball-k-tit,
+  .ball-ui .wf-piccolo:not(.widget-tile-mini) > .ball-testa .ball-k-tit { font-size: 13px; }
+}
+
+/* Etichetta di gruppo ("Prossime da fotografare"): puntini invece di taglio netto. */
+.ball-ui .ball-gruppo { min-width: 0; }
+.ball-ui .ball-gruppo > .ball-k-lab { display: block; max-width: 100%; }
