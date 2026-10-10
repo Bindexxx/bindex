@@ -8389,3 +8389,23 @@ body.badge-pallino .widget-badge { font-size: 0 !important; min-width: 12px !imp
         #binderImpostazioniModal .binder-layout-switcher > div { flex-wrap: wrap; }
         #binderImpostazioniModal .binder-layout-btn { flex: 1 1 56px; min-width: 56px; }
         #binderImpostazioniModal .bn-int-spento { opacity: 0.55; cursor: not-allowed; }
+
+/* ═══ Tessere 4xN basse (wf-piccolo con corpo ricco) — fix overflow (Claudio, 2026-10-10) ═══
+   Con 4 colonne e 2 righe la tessera e' wf-piccolo ma ha anche il blocco (corpo ricco): il
+   blocco non era vincolato all'altezza (align-items:center + altezza naturale), quindi le carte
+   di Collezione andavano a capo per 500+ px, uscivano sopra e sotto la tessera e la potatura
+   non le nascondeva. Ora il blocco prende l'altezza della tessera (stretch) e quello che non
+   ci sta lo pota _potaContenutoFuoriTessera. Le chips (Carte/Sealed/Wishlist) qui non servono:
+   il numero e' gia' accanto alla sfera e lo spazio va alle carte. */
+.ball-ui .wf-piccolo:not(.widget-tile-mini) > .ball-slot-blocco:has(> .ball-strip-fill) {
+    align-self: stretch; margin: 0; min-height: 0; max-height: 100%;
+    flex: 1 1 0; min-width: 0; justify-content: safe center;
+}
+.ball-ui .wf-piccolo:not(.widget-tile-mini) > .ball-slot-blocco:has(> .ball-strip-fill) > .ball-chips,
+.ball-ui .wf-piccolo:not(.widget-tile-mini) > .ball-slot-blocco:has(> .ball-strip-fill) > .ball-k-lab { display: none; }
+.ball-ui .wf-piccolo:not(.widget-tile-mini) > .ball-slot-blocco:has(> .ball-strip-fill) > .ball-strip-fill { align-content: flex-start; justify-content: center; }
+.ball-ui .wf-piccolo:not(.widget-tile-mini):has(> .ball-slot-blocco > .ball-strip-fill) > .ball-testa { width: auto; flex: 0 0 auto; }
+/* Collezione in forma larga e stretta (telefono): le chips impilate mangiavano lo spazio delle carte. */
+@container (max-width: 520px) {
+    .ball-ui .wf-largo .ball-slot-blocco:has(> .ball-strip-fill) > .ball-chips { display: none; }
+}
