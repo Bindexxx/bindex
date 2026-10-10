@@ -353,6 +353,38 @@ function _aggiornaControlliRinominaPubblicazioneCondivisione(binder) {
     if (condivisioneNonDisponibileWrap) condivisioneNonDisponibileWrap.style.display = 'none'; // non serve più, ogni binder pubblico è condivisibile
 }
 
+// sql/95 — "Escludi dal valore della collezione". Nascosto per la Wishlist
+// (non e' mai nel valore). Scrive la colonna e ricarica le carte: il flag
+// esclusoValore viene ricalcolato in caricaCarteReali() e tutti i widget si
+// ridisegnano da soli.
+function _binderEscludiValoreSincronizza(binder) {
+    const riga = document.getElementById('binderEscludiValoreRiga');
+    const check = document.getElementById('binderEscludiValoreCollezioneCheckbox');
+    const msg = document.getElementById('binderEscludiValoreMsg');
+    if (msg) msg.textContent = '';
+    if (riga) riga.style.display = binder && binder.tipo === 'wishlist' ? 'none' : 'flex';
+    if (check && binder) check.checked = !!binder.escludi_valore_collezione;
+}
+
+async function impostaEscludiValoreBinderAttivo(escludi) {
+    const binder = _bindersElenco.find(b => String(b.id) === String(_binderAttivo));
+    if (!binder) return;
+    const check = document.getElementById('binderEscludiValoreCollezioneCheckbox');
+    const msg = document.getElementById('binderEscludiValoreMsg');
+    const userId = await authGetUserId();
+    if (!userId) return;
+    const { error } = await binderImpostaEscludiValore(userId, binder.id, escludi);
+    if (error) {
+        console.error('impostaEscludiValoreBinderAttivo:', error.message);
+        if (check) check.checked = !escludi; // rollback visivo
+        if (msg) msg.textContent = 'Non sono riuscito a salvare (la colonna sul database potrebbe non esistere ancora).';
+        return;
+    }
+    binder.escludi_valore_collezione = !!escludi;
+    if (typeof _widgetBinderCache !== 'undefined') _widgetBinderCache = null;
+    if (typeof caricaCarteReali === 'function') await caricaCarteReali();
+}
+
 // Pubblicazione libera (2026-08-25) — nessuna approvazione admin, vedi
 // 19_binder_pubblicazione_libera.sql. Il trigger DB ignora comunque questo
 // update per wishlist/SCAMBIO (sempre pubblici), ma la UI non mostra il
@@ -436,6 +468,7 @@ function apriImpostazioniBinderAttivo() {
     // anche l'editor da sola (vedi sotto: tab !== 'design').
     _binderImpostazioniTab('generali');
     _binderColoreDisegnaScelte();
+    _binderEscludiValoreSincronizza(_bindersElenco.find(b => String(b.id) === String(_binderAttivo)));
 }
 
 // RESTYLE BINDEX FASE 8a — scelta del colore copertina. Le tinte sono quelle

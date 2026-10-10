@@ -24,7 +24,7 @@
         function aggiornaStatCardHome() {
             const collezione = carteReali.filter(c => c.stato === 'collezione');
             const totalQty = collezione.reduce((somma, c) => somma + (c.qty || 0), 0);
-            const totalSum = collezione.reduce((somma, c) => somma + (c.price || 0) * (c.qty || 0), 0);
+            const totalSum = collezione.filter(c => !c.esclusoValore).reduce((somma, c) => somma + (c.price || 0) * (c.qty || 0), 0); // sql/95
             const elCount = document.getElementById('stat-count-home');
             const elValue = document.getElementById('stat-value-home');
             if (elCount) elCount.innerText = totalQty;

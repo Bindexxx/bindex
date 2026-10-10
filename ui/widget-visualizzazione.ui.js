@@ -61,7 +61,7 @@ CATALOGO_WIDGET.visualizzazione = {
             // Restyle FASE 2 (tavola "Collezione = carte · valore,
             // Carte/Sealed/Wishlist, ultime 4"): valore (Σ prezzo × qty, stessa
             // formula di Valore collezione) e i tre conteggi, tutto in memoria.
-            const valore = collezione.reduce((t, c) => t + (Number(c.price) || 0) * (Number(c.qty) || 1), 0);
+            const valore = collezione.filter(c => !c.esclusoValore).reduce((t, c) => t + (Number(c.price) || 0) * (Number(c.qty) || 1), 0); // sql/95
             const nSealed = (typeof prodottiSealedReali !== 'undefined' && Array.isArray(prodottiSealedReali)) ? prodottiSealedReali.length : 0;
             const nWishlist = carteReali.filter(c => c.tabella === 'wishlist').length;
 

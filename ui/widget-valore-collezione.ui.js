@@ -80,7 +80,7 @@ async function _storicoValoreConCache() {
 CATALOGO_WIDGET.valore_collezione = {
         titolo: 'Valore collezione', icona: 'fa-sack-dollar',
         preview: () => {
-            const coll = carteReali.filter(c => c.stato === 'collezione');
+            const coll = carteReali.filter(c => c.stato === 'collezione' && !c.esclusoValore); // sql/95
             const valore = coll.reduce((t, c) => t + (Number(c.price) || 0) * (Number(c.qty) || 1), 0);
             const top = coll.slice()
                 .sort((a, b) => (Number(b.price) || 0) - (Number(a.price) || 0))
@@ -284,7 +284,7 @@ function _valGraficoVia() {
 
 function _valPerLocation() {
     const mappa = new Map();
-    carteReali.filter(c => c.stato === 'collezione' && c.tabella === 'carte').forEach(c => {
+    carteReali.filter(c => c.stato === 'collezione' && c.tabella === 'carte' && !c.esclusoValore).forEach(c => {
         const k = c.location || '?';
         mappa.set(k, (mappa.get(k) || 0) + (Number(c.price) || 0) * (Number(c.qty) || 1));
     });
@@ -317,7 +317,7 @@ function _valMossoHtml() {
 function _valRender() {
     const container = document.getElementById('valoreContenuto');
     if (!container) return;
-    const coll = carteReali.filter(c => c.stato === 'collezione' && c.tabella === 'carte');
+    const coll = carteReali.filter(c => c.stato === 'collezione' && c.tabella === 'carte' && !c.esclusoValore); // sql/95
     const valore = coll.reduce((t, c) => t + (Number(c.price) || 0) * (Number(c.qty) || 1), 0);
     const media = coll.length ? valore / coll.length : 0;
 
@@ -467,7 +467,7 @@ function _varOggetto(m) {
 }
 
 function _varValoreOggi() {
-    const carte = carteReali.filter(c => c.stato === 'collezione').reduce((t, c) => t + (Number(c.price) || 0) * (Number(c.qty) || 1), 0);
+    const carte = carteReali.filter(c => c.stato === 'collezione' && !c.esclusoValore).reduce((t, c) => t + (Number(c.price) || 0) * (Number(c.qty) || 1), 0);
     const sealed = prodottiSealedReali.reduce((t, s) => t + (Number(s.price) || 0) * (Number(s.qty) || 1), 0);
     return carte + sealed;
 }

@@ -73,11 +73,16 @@
             // uniamo in un solo array per riusare la stessa tabella/filtri sul
             // sito. 'tabella' su ogni riga ricorda da dove viene, così
             // modifica/eliminazione sanno su quale tabella agire dopo.
-            const [{ data: dataCarte, error: errCarte }, { data: dataWishlist, error: errWishlist }, { data: dataBinder, error: errBinder }, { data: dataScambio, error: errScambio }] = await Promise.all([
+            const [{ data: dataCarte, error: errCarte }, { data: dataWishlist, error: errWishlist }, { data: dataBinder, error: errBinder }, { data: dataScambio, error: errScambio }, { data: dataTuttiBinder }, { data: dataAppartenenze }] = await Promise.all([
                 _selectTuttePagine(cardsQueryCollezione(userId)),
                 _selectTuttePagine(wishlistQueryOrdinata(userId)),
                 _binderExtraId ? _selectTuttePagine(binderCarteQuery(userId, _binderExtraId)) : Promise.resolve({ data: [], error: null }),
                 _binderScambioId ? _selectTuttePagine(binderCarteQueryConQuantita(userId, _binderScambioId)) : Promise.resolve({ data: [], error: null }),
+                // sql/95: serve per le carte escluse dai totali di valore. Non
+                // bloccante: se fallisce (o la colonna non esiste ancora) nessuna
+                // carta risulta esclusa e il sito funziona come prima.
+                bindersQueryTutti(userId),
+                _selectTuttePagine(binderCarteQueryTutteAppartenenze(userId)),
             ]);
 
             if (errCarte || errWishlist) {
@@ -106,10 +111,15 @@
                 (dataScambio || []).forEach(r => { _quantitaOfferteScambio[String(r.carta_id)] = r.quantita_offerta; });
             }
 
+            const _idsEsclusiValore = (typeof calcolaIdsEsclusiValore === 'function')
+                ? calcolaIdsEsclusiValore((dataCarte || []).map(r => ({ id: r.id, location: r.location })), dataTuttiBinder, dataAppartenenze)
+                : new Set();
+
             const righeCarte = (dataCarte || []).map(r => ({
                 id: r.id,
                 tabella: 'carte',
                 stato: 'collezione',
+                esclusoValore: _idsEsclusiValore.has(String(r.id)), // sql/95: non conta nei totali di valore
                 tipo: r.tipo || null,
                 name: r.nome || '',
                 code: r.codice || '',

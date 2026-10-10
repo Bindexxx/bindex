@@ -218,6 +218,23 @@ async function binderImpostaColore(userId, binderId, colore) {
         .eq('owner_id', userId);
 }
 
+// sql/95: interruttore "Non aggiungere il valore di queste carte alla mia
+// collezione". La colonna esiste solo dopo aver eseguito sql/95.
+async function binderImpostaEscludiValore(userId, binderId, escludi) {
+    return supabaseClient
+        .from('binders')
+        .update({ escludi_valore_collezione: !!escludi })
+        .eq('id', binderId)
+        .eq('owner_id', userId);
+}
+
+// Appartenenze (binder_id, carta_id) di TUTTI i binder dell'utente
+// (extra + scambio): servono a decidere quali carte escludere dai totali
+// di valore (utils/valore-escluso.js).
+function binderCarteQueryTutteAppartenenze(userId) {
+    return supabaseClient.from('binder_carte').select('binder_id, carta_id').eq('owner_id', userId);
+}
+
 // ── binder_carte (solo per binder tipo 'extra') ──────────────────────────
 // Le righe qui sotto devono sempre includere binder_id quando riferite al
 // nuovo sistema — { owner_id, carta_id, binder_id }.
