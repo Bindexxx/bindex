@@ -164,7 +164,15 @@ async function renderWidgetHome() {
         // entrambe le cose, gonfiata dalle colonne fantasma.
         const _t = _tagliaEffettiva(w, misura);
         const _ta = _tagliaAspettoWidget(w, misura);
-        const _iconaStatica = w.mini || _ta.col < CELLE_MIN_PER_SFERA || _ta.row < 2;
+        // VETRINA (Claudio, 2026-10-10): con una carta scelta e con foto, la
+        // tessera mostra SEMPRE la carta intera (63:88, centrata, col nome/
+        // codice/prezzo sopra) a QUALUNQUE taglia, icona 2x2 compresa. Prima
+        // le taglie piccole davano stellina/miniatura/scritta e alcune
+        // forme la potavano via. Niente sfera, niente testata: il corpo e'
+        // solo il blocco foto (_ballCorpoFotoCarta).
+        const _fotoVetrina = (w.id === 'ultima_carta' && anteprima.dati && !anteprima.dati.vuoto && typeof _ballCorpoFotoCarta === 'function')
+            ? _ballCorpoFotoCarta(anteprima.dati) : '';
+        const _iconaStatica = !_fotoVetrina && (w.mini || _ta.col < CELLE_MIN_PER_SFERA || _ta.row < 2);
 
         let visuale;
         // RESTYLE BINDEX FASE 1 (2026-09-30): "badge SEMPRE sulla sfera".
@@ -239,7 +247,9 @@ async function renderWidgetHome() {
         // sfera, niente corpo ricco. Sopra, tutto come prima.
         const grande = BALL_ATTIVA && !_iconaStatica && !(_ta.col === 3 && _ta.row === 2);
         let corpo;
-        if (grande) {
+        if (_fotoVetrina) {
+            corpo = `<div class="ball-slot-blocco ball-slot-foto">${_fotoVetrina}</div>`;
+        } else if (grande) {
             const c = _ballCorpoWidget(w.id, anteprima);
             // AGGIUNTO (Claudio, sessione bugfix widget Vetrina — vedi chat):
             // niente più titolo/icona sopra la foto — il nome carta è già
@@ -294,7 +304,7 @@ async function renderWidgetHome() {
         }
 
         return `
-            <div class="widget-tile ${classeStato} ${classeCascata} widget-size-${w.size} widget-col-${_t.col} widget-row-${_t.row} ${_formaWidget(_ta.col, _ta.row)} ${_iconaStatica ? 'widget-tile-mini' : ''}" ${stileRitardo} data-widget-id="${w.instanceId}" data-widget-index="${indice}" ${azioneClick}>
+            <div class="widget-tile ${classeStato} ${classeCascata} widget-size-${w.size} widget-col-${_t.col} widget-row-${_t.row} ${_formaWidget(_ta.col, _ta.row)} ${_iconaStatica ? 'widget-tile-mini' : ''} ${_fotoVetrina ? 'widget-tile-foto' : ''}" ${stileRitardo} data-widget-id="${w.instanceId}" data-widget-index="${indice}" ${azioneClick}>
                 ${controlliEdit}
                 ${badgeSuSfera ? '' : badge}
                 <div class="tile-tinta"></div><div class="tile-alone"></div>
@@ -436,7 +446,8 @@ function _potaContenutoFuoriTessera() {
         // la nasconda — stesso ragionamento di .ball-quota sopra, nessun
         // altro widget usa questa classe quindi nessun comportamento
         // esistente cambia.
-        blocco.querySelectorAll(':scope > .ball-riga, :scope > .ball-gruppi > .ball-gruppo, :scope > .ball-spark, :scope > .ball-strip:not(.ball-strip-fill), :scope > .ball-strip-fill > .ball-mini, :scope > .ball-quota, :scope > .ball-foto-carta, ' +
+        blocco.querySelectorAll(':scope > .ball-riga, :scope > .ball-gruppi > .ball-gruppo, :scope > .ball-spark, :scope > .ball-strip:not(.ball-strip-fill), :scope > .ball-strip-fill > .ball-mini, :scope > .ball-quota, ' +
+            // (.ball-foto-carta NON si pota piu': la carta della Vetrina resta sempre visibile, 2026-10-10)
             // RESTYLE BINDEX FASE 2 (2026-09-30): i mattoncini nuovi delle tessere.
             ':scope > .ball-riga-set, :scope > .ball-cov:not(.ball-cov-fill), :scope > .ball-cov-fill > .ball-cov-v, :scope > .ball-ripiano, :scope > .ball-medaglie, :scope > .ball-th, :scope > .ball-chips, :scope > .ball-k-lab, :scope > .ball-azione, :scope > .ball-ul > div, :scope > .ball-co > *').forEach(pezzo => {
             // Sempre ripristinato prima di misurare: la tessera puo' essere

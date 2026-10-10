@@ -8389,3 +8389,21 @@ body.badge-pallino .widget-badge { font-size: 0 !important; min-width: 12px !imp
         #binderImpostazioniModal .binder-layout-switcher > div { flex-wrap: wrap; }
         #binderImpostazioniModal .binder-layout-btn { flex: 1 1 56px; min-width: 56px; }
         #binderImpostazioniModal .bn-int-spento { opacity: 0.55; cursor: not-allowed; }
+
+/* ═══ VETRINA — la carta si vede intera a TUTTE le taglie (Claudio, 2026-10-10) ═══
+   Con una carta scelta la tessera (.widget-tile-foto, vedi renderWidgetHome) e' solo
+   il blocco foto: carta 63:88 centrata, grande quanto ci sta, nome/codice/prezzo
+   dentro la carta. Sovrascrive le regole per forma (wf-piccolo/largo/alto/grande) e
+   la modalita' icona. Niente sfera, niente testata, niente potatura. */
+.ball-ui .widget-tile.widget-tile-foto {
+    display: flex; flex-direction: column; align-items: stretch; justify-content: stretch;
+    padding: 6px; gap: 0; min-width: 0;
+}
+.ball-ui .widget-tile.widget-tile-foto > .ball-slot-blocco.ball-slot-foto {
+    position: relative; inset: auto; transform: none;
+    flex: 1 1 0; min-height: 0; width: 100%; max-height: none; aspect-ratio: auto;
+    margin: 0; overflow: visible; display: flex; flex-direction: column; gap: 0;
+}
+.ball-ui .widget-tile.widget-tile-foto > .ball-slot-blocco.ball-slot-foto > .ball-foto-carta {
+    display: block !important; flex: 1 1 0; min-height: 0; width: 100%;
+}
