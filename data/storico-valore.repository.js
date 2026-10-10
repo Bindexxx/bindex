@@ -35,7 +35,7 @@ function _giornoLocaleISO(quando) {
 async function storicoValoreRegistraOggi(userId) {
     if (!userId || typeof carteReali === 'undefined') return { error: null };
 
-    const collezione = carteReali.filter(c => c.stato === 'collezione');
+    const collezione = carteReali.filter(c => c.stato === 'collezione' && !c.esclusoValore); // sql/95: escluse dai totali
     const valoreTotale = collezione.reduce((tot, c) => tot + (Number(c.price) || 0) * (Number(c.qty) || 0), 0);
     const pezziTotali = collezione.reduce((tot, c) => tot + (Number(c.qty) || 0), 0);
 

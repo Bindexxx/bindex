@@ -8389,4 +8389,3 @@ body.badge-pallino .widget-badge { font-size: 0 !important; min-width: 12px !imp
         #binderImpostazioniModal .binder-layout-switcher > div { flex-wrap: wrap; }
         #binderImpostazioniModal .binder-layout-btn { flex: 1 1 56px; min-width: 56px; }
         #binderImpostazioniModal .bn-int-spento { opacity: 0.55; cursor: not-allowed; }
-        #binderImpostazioniModal .bn-int-spento .bn-int-testo b { font-size: 0.85rem; }

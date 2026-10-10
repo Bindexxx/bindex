@@ -425,7 +425,7 @@ const _PP_PODIO = 3;
 // Valore totale della collezione (carte + sealed): serve a dire "27% della
 // collezione". Stessa definizione della pagina Variazione.
 function _ppValoreCollezione() {
-    const carte = (typeof carteReali !== 'undefined' ? carteReali : []).filter(c => c.stato === 'collezione' && c.tipo !== 'sealed')
+    const carte = (typeof carteReali !== 'undefined' ? carteReali : []).filter(c => c.stato === 'collezione' && c.tipo !== 'sealed' && !c.esclusoValore) // sql/95
         .reduce((t, c) => t + (Number(c.price) || 0) * (Number(c.qty) || 1), 0);
     const sealed = (typeof prodottiSealedReali !== 'undefined' ? prodottiSealedReali : [])
         .reduce((t, s) => t + (Number(s.price) || 0) * (Number(s.qty) || 1), 0);

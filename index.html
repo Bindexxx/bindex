@@ -1578,11 +1578,15 @@
                             <span class="bn-switch"></span>
                         </label>
                         <select id="binderAutoAggiornaGiorni" disabled style="display:none;"><option value="7" selected>7 giorni</option></select>
-                        <label class="bn-interruttore bn-int-spento" style="margin-top:0.8rem;">
-                            <span class="bn-int-testo"><b>Escludi dal valore della collezione</b><small>Non conta queste carte nel totale · in arrivo</small></span>
-                            <input type="checkbox" id="binderEscludiValoreCollezioneCheckbox" disabled>
+                        <!-- sql/95: collegato a binders.escludi_valore_collezione. Le carte
+                             contenute SOLO in binder esclusi non entrano nei totali di valore
+                             (valore collezione, storico, home). Nascosto per il binder Wishlist. -->
+                        <label id="binderEscludiValoreRiga" class="bn-interruttore" style="margin-top:0.8rem;">
+                            <span class="bn-int-testo"><b>Escludi dal valore della collezione</b><small>Le carte presenti solo in binder esclusi non contano nei totali</small></span>
+                            <input type="checkbox" id="binderEscludiValoreCollezioneCheckbox" onchange="impostaEscludiValoreBinderAttivo(this.checked)">
                             <span class="bn-switch"></span>
                         </label>
+                        <div id="binderEscludiValoreMsg" style="font-size:0.72rem; color:var(--danger); min-height:1em; margin-top:0.3rem;"></div>
                     </div>
 
                     <!-- Rinomina + Pubblicazione + Condivisione raggruppate
@@ -2742,6 +2746,7 @@
     <script src="utils/foto-reali.js"></script><!-- FASE 8c: foto reali delle carte (funzioni pure) -->
     <script src="utils/formatters.js"></script>
     <script src="utils/pagination.utils.js"></script>
+    <script src="utils/valore-escluso.js"></script><!-- sql/95: carte escluse dai totali di valore (funzione pura) -->
     <!-- utils/theme-colori.js: STEP 1 restyle "cornice Pokédex" (2026-09-17)
          — deriva le variabili CSS del tema e la palette Poké Ball da 2
          colori liberi (Principale/Secondario). Deve caricarsi PRIMA di
