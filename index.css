@@ -8377,3 +8377,16 @@ body.badge-pallino .widget-badge { font-size: 0 !important; min-width: 12px !imp
     .ball-ui .ball-cov-fill .ball-cov-v i em { font-size: 19px; }
     .ball-ui .ball-cov-fill .ball-cov-v small { font-size: 12px; }
 }
+
+        /* ═══ Impostazioni binder — fix visualizzazione/attivazione (Claudio, 2026-10-10) ═══
+           1) La modale occupa tutto #phoneScreen ma la barra di stato (.csb-bar,
+              z-index 9004, ~40px) sta sopra: titolo e X di chiusura finivano nascosti
+              e la modale non si poteva chiudere. Contenuto e X scendono sotto la barra.
+           2) I 4 bottoni griglia andavano a capo fuori dalla card: ora flex-wrap.
+           3) Interruttori non ancora collegati al DB: stato spento/disabilitato. */
+        #binderImpostazioniModal .modal-content { padding-top: 58px; overflow-y: auto; }
+        #binderImpostazioniModal .close-modal-btn { top: 52px; right: 14px; }
+        #binderImpostazioniModal .binder-layout-switcher > div { flex-wrap: wrap; }
+        #binderImpostazioniModal .binder-layout-btn { flex: 1 1 56px; min-width: 56px; }
+        #binderImpostazioniModal .bn-int-spento { opacity: 0.55; cursor: not-allowed; }
+        #binderImpostazioniModal .bn-int-spento .bn-int-testo b { font-size: 0.85rem; }
