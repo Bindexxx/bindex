@@ -8389,3 +8389,14 @@ body.badge-pallino .widget-badge { font-size: 0 !important; min-width: 12px !imp
         #binderImpostazioniModal .binder-layout-switcher > div { flex-wrap: wrap; }
         #binderImpostazioniModal .binder-layout-btn { flex: 1 1 56px; min-width: 56px; }
         #binderImpostazioniModal .bn-int-spento { opacity: 0.55; cursor: not-allowed; }
+
+/* ═══ Widget Binders in forma 4x2 (wf-piccolo con corpo ricco) — copertine invisibili (Claudio, 2026-10-10) ═══
+   Stesso difetto e stessa cura della Collezione: il blocco non era vincolato all'altezza (4 px) e
+   le copertine (container-type:size) collassavano a 2 px. Ora il blocco prende l'altezza della
+   tessera, la testata non occupa piu' tutta la larghezza e le copertine vanno a capo; quelle che
+   non entrano le pota _potaContenutoFuoriTessera. */
+.ball-ui .wf-piccolo:not(.widget-tile-mini):has(> .ball-slot-blocco > .ball-cov-fill) > .ball-testa { width: auto; flex: 0 0 auto; }
+.ball-ui .wf-piccolo:not(.widget-tile-mini) > .ball-slot-blocco:has(> .ball-cov-fill) {
+    align-self: stretch; margin: 0; min-height: 0; max-height: 100%; flex: 1 1 0; min-width: 0;
+}
+.ball-ui .wf-piccolo:not(.widget-tile-mini) > .ball-slot-blocco > .ball-cov-fill { flex: 1 1 0; align-content: flex-start; justify-content: center; }
