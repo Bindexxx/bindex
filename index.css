@@ -1545,7 +1545,11 @@
         }
         .ball-ui .pkdx-avviso i {
             position: relative; display: flex; align-items: center; justify-content: center;
-            font-style: normal; font-weight: 800; color: #fff;
+            font-style: normal; font-weight: 800;
+            /* (Audit tessere 2026-10-11) testo calcolato sul Principale (--on-primary,
+               utils/theme-colori.js): con un Principale chiaro (es. giallo) il bianco
+               fisso era illeggibile. Default viola: resta bianco. */
+            color: var(--on-primary, #fff);
             background: var(--accent);
             border: calc(var(--ball) * 0.022) solid #141416;
             border-radius: 50%; opacity: 0;
@@ -1686,7 +1690,8 @@
             background: color-mix(in srgb, var(--text-muted) 15%, transparent);
             color: var(--text-muted);
         }
-        .ball-ui .ball-pill.acceso { background: var(--accent); color: #fff; }
+        /* (Audit tessere 2026-10-11) --on-primary invece di #fff fisso: vedi .pkdx-avviso i. */
+        .ball-ui .ball-pill.acceso { background: var(--accent); color: var(--on-primary, #fff); }
 
         /* Barre di avanzamento */
         .ball-ui .ball-barra-out {
@@ -1738,7 +1743,8 @@
         .ball-ui .ball-azione {
             align-self: flex-start;
             padding: 6px 13px; border-radius: 99px;
-            background: var(--accent); color: #fff;
+            /* (Audit tessere 2026-10-11) --on-primary invece di #fff fisso: vedi .pkdx-avviso i. */
+            background: var(--accent); color: var(--on-primary, #fff);
             font-size: 12px; font-weight: 600;
             border: none; font-family: inherit; cursor: pointer;
         }
@@ -1870,13 +1876,15 @@
            2x1: largo ma basso. Resta la prima riga del blocco e nulla più:
            strisce, riquadri e pulsanti verrebbero schiacciati. */
         .ball-ui .wf-largo .ball-slot-blocco {
-            flex: 0 0 auto; max-height: 34px; overflow: hidden; margin-top: 0.3rem;
+            flex: 0 0 auto; overflow: hidden; margin-top: 0.3rem;
         }
-        .ball-ui .wf-largo .ball-slot-blocco > *:nth-child(n+2) { display: none; }
-        .ball-ui .wf-largo .ball-slot-blocco .ball-strip,
-        .ball-ui .wf-largo .ball-slot-blocco .ball-stat-griglia,
-        .ball-ui .wf-largo .ball-slot-blocco .ball-foto-carta,
-        .ball-ui .wf-largo .ball-azione { display: none; }
+        /* (Audit tessere 2026-10-11) Tolti i tagli fissi "solo la prima riga del blocco" e "niente
+           strisce, riquadri e pulsanti": venivano dal modello a taglie fisse, quando qui il blocco era
+           alto 34px. Ora il blocco ha l'altezza della tessera (regola generale wf-largo in fondo al
+           file) e quello che non entra lo nasconde _potaContenutoFuoriTessera, come nella 4x2. Prima
+           una 5x2 o una 13x2 mostravano MENO della 4x2 (Doppioni e Valore senza carte, Chat con una
+           sola conversazione, Missioni con una sola riga). */
+        .ball-ui .wf-largo .ball-slot-blocco .ball-foto-carta { display: none; }
         /* Vetrina nella forma larga e bassa (Claudio, 2026-10-07): prima la foto
            spariva e il widget restava vuoto. Ora la carta, sempre in
            proporzione 63:88 (vedi _ballCorpoFotoCarta), occupa tutta l'altezza
@@ -1905,9 +1913,10 @@
         .ball-ui .wf-alto .ball-k-tit { font-size: 13px; }
         .ball-ui .wf-alto .ball-k-mid { font-size: 15px; }
         .ball-ui .wf-alto .ball-k-big { font-size: 22px; }
-        /* Oltre la terza riga non c'è spazio: si taglia invece di traboccare. */
-        .ball-ui .wf-alto .ball-slot-blocco > .ball-riga:nth-child(n+4),
-        .ball-ui .wf-alto .ball-slot-blocco > .ball-riga-set:nth-child(n+4) { display: none; }
+        /* (Audit tessere 2026-10-11) Tolto il taglio fisso "oltre la terza riga": con le taglie
+           libere una tessera alta va da 3 a 24 righe di griglia, e in una 4x5 restavano nascoste la
+           quarta missione o le ultime due carte di Prezzi aggiornati con mezza tessera vuota sotto.
+           Le righe che non entrano davvero le nasconde _potaContenutoFuoriTessera. */
 
         /* 2x2: c'è spazio, tutto respira. */
         .ball-ui .wf-grande { padding: 16px; }
@@ -2143,6 +2152,11 @@
         }
         .ball-ui .pp-gruppo {
             display: grid; grid-template-rows: auto minmax(0, 1fr);
+            /* (Audit tessere 2026-10-11) Colonna lunga quanto il gruppo, mai di piu':
+               senza, un titolo lungo ("Salite dall'ultima visita") allargava la colonna
+               oltre il gruppo, il titolo restava tagliato senza puntini e la fila
+               metteva una seconda carta tagliata dal bordo (telefono, sfera 140/220). */
+            grid-template-columns: minmax(0, 1fr);
             min-height: 0; min-width: 0; overflow: hidden;
             padding-bottom: var(--pp-sotto);
         }
@@ -2189,7 +2203,11 @@
         /* Stessa altezza minima di --pp-tit + --pp-h + --pp-sotto (20 + 76,7
            + 10): var() non e' ammessa nelle condizioni di @container, il
            numero va tenuto allineato a mano. */
-        @container pp (max-height: 106px) { .pp-gruppo { display: none; } }
+        /* (Audit tessere 2026-10-11) Prefisso .ball-ui aggiunto: senza, questa regola
+           (specificita' 0,1,0) perdeva contro ".ball-ui .pp-gruppo { display: grid }"
+           (0,2,0) e non scattava MAI — su telefono piccolo (320px, 3x3) le carte
+           restavano tagliate a meta' dal fondo invece di sparire come previsto. */
+        @container pp (max-height: 106px) { .ball-ui .pp-gruppo { display: none; } }
         /* Pagina "In primo piano" (2026-09-19): griglia di tessere alla
            maniera di Doppioni, con TUTTE le voci della categoria in ordine.
            Classi DEDICATE pp-pag-* (non si aggiunge un consumer a
@@ -8493,3 +8511,122 @@ body.badge-pallino .widget-badge { font-size: 0 !important; min-width: 12px !imp
 /* Etichetta di gruppo ("Prossime da fotografare"): puntini invece di taglio netto. */
 .ball-ui .ball-gruppo { min-width: 0; }
 .ball-ui .ball-gruppo > .ball-k-lab { display: block; max-width: 100%; }
+
+/* ═══ Audit tessere 2026-10-11 ═══════════════════════════════════════════════════════════════════
+   1) Nel blocco righe, etichette, pulsanti e gruppi non si schiacciano: se non c'e' posto escono
+      dal fondo e _potaContenutoFuoriTessera li nasconde interi. Prima un'etichetta con overflow
+      nascosto poteva ridursi a 5px e restare tagliata a meta' (Collezione 8x3: "+14 negli ultimi
+      14 giorni" mozzato). */
+.ball-ui .ball-slot-blocco > .ball-k-lab,
+.ball-ui .ball-slot-blocco > .ball-chips,
+.ball-ui .ball-slot-blocco > .ball-azione,
+.ball-ui .ball-slot-blocco > .ball-riga,
+.ball-ui .ball-slot-blocco > .ball-riga-set,
+.ball-ui .ball-slot-blocco > .ball-gruppo,
+.ball-ui .ball-slot-blocco > .ball-th,
+.ball-ui .ball-slot-blocco > .ball-medaglie,
+.ball-ui .ball-slot-blocco > .ball-quota,
+.ball-ui .ball-slot-blocco > .ball-strip:not(.ball-strip-fill) { flex-shrink: 0; }
+
+/* 2) Collezione: le carte si misurano sullo spazio VERO del blocco, in larghezza E in altezza.
+      Prima la misura era solo il 10% della larghezza della tessera: in una tessera larga e bassa
+      (13x2, 13x3, 12x3...) ogni carta era piu' alta del blocco e la potatura le nascondeva TUTTE.
+      56px = chips + etichetta + spazi, che restano sopra e sotto le carte. */
+.ball-ui .ball-slot-blocco:has(> .ball-strip-fill) { container-type: size; }
+@supports (container-type: size) {
+    .ball-ui .ball-slot-blocco:has(> .ball-strip-fill) > .ball-strip-fill .ball-mini {
+        width: clamp(38px, min(13cqw, calc((100cqh - 56px) * 46 / 63)), 140px);
+    }
+}
+
+
+/* 3) Foto carte in tessera stretta (telefono 4x2/5x2/6x2, PC 4x2): i nomi finivano in una lettera
+      ("M", "A") perche' i bollini Fronte/Retro prendevano tutta la riga. Bollini compatti e nome
+      con almeno il 40% della riga. */
+@container (max-width: 420px) {
+    .ball-ui :is(.wf-piccolo, .wf-largo) .ball-gruppo > .ball-riga { gap: 5px; }
+    .ball-ui :is(.wf-piccolo, .wf-largo) .ball-gruppo > .ball-riga .ball-nome { flex: 1 1 0; min-width: 0; }
+    .ball-ui :is(.wf-piccolo, .wf-largo) .ball-gruppo > .ball-riga .ball-dato { flex: 0 0 auto; white-space: nowrap; display: flex; gap: 2px; }
+    .ball-ui :is(.wf-piccolo, .wf-largo) .ball-gruppo > .ball-riga .ball-pill[data-corto] { font-size: 0; padding: 2px 4px; }
+    .ball-ui :is(.wf-piccolo, .wf-largo) .ball-gruppo > .ball-riga .ball-pill[data-corto]::after { content: attr(data-corto); font-size: 10px; font-weight: 700; }
+}
+
+/* 4) Doppioni e Valore collezione: la fila di carte si misura anch'essa sullo spazio vero del
+      blocco. Prima, oltre le 16 colonne (schermi da 1920px), ogni carta era piu' alta del blocco
+      e la potatura le nascondeva tutte insieme all'etichetta. 30px = etichetta sotto le carte. */
+.ball-ui .ball-slot-blocco:has(> .ball-strip:not(.ball-strip-fill)) { container-type: size; }
+@supports (container-type: size) {
+    .ball-ui .ball-slot-blocco:has(> .ball-strip:not(.ball-strip-fill)) > .ball-strip .ball-mini {
+        width: clamp(38px, min(9cqw, calc((100cqh - 30px) * 46 / 63)), 130px);
+    }
+}
+
+/* 5) Titolo del widget accanto alla sfera (quando il corpo non porta il suo .ball-k-tit, es.
+      Prezzi aggiornati, In primo piano) su massimo 2 righe invece di "Prezzi aggio…", come i
+      titoli dei corpi nelle 4x2 e nelle forme larghe. */
+.ball-ui .wf-piccolo:not(.widget-tile-mini) .ball-slot-inline .widget-tile-titolo,
+.ball-ui .wf-largo .ball-slot-inline .widget-tile-titolo {
+    white-space: normal; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
+    overflow: hidden; text-overflow: clip; line-height: 1.15;
+}
+
+/* 6) Spazi piccoli (telefoni stretti, sfere grandi, tessere basse): il contenuto si adatta invece
+      di sparire o accavallarsi.
+      a) Tessere basse e strette (2 righe, larghe al massimo 310px): il corpo ricco accanto alla sfera
+         non ci sta (restava un blocco largo 100px con righe e immagini tagliate). Resta la testata,
+         come nella 3x2. La Vetrina (foto) e' esclusa: li' il blocco E' la carta. */
+@container (max-width: 310px) {
+    .ball-ui .wf-piccolo:not(.widget-tile-mini) > .ball-slot-blocco:not(.ball-slot-foto),
+    .ball-ui .wf-largo > .ball-slot-blocco:not(.ball-slot-foto) { display: none; }
+    .ball-ui .wf-piccolo:not(.widget-tile-mini):has(> .ball-slot-blocco) > .ball-testa,
+    .ball-ui .wf-largo > .ball-testa { max-width: 100%; }
+}
+/*    b) Binders: copertine piu' piccole e senza nome quando lo spazio in altezza e' poco (prima,
+         sotto i ~105px, la potatura le nascondeva tutte). */
+@container (max-height: 105px) {
+    .ball-ui .ball-cov-fill .ball-cov-v { width: 46px; }
+    .ball-ui .ball-cov-fill .ball-cov-v i { width: 40px; height: 54px; }
+    .ball-ui .ball-cov-fill .ball-cov-v i em { font-size: 12px; top: 5px; }
+    .ball-ui .ball-cov-fill .ball-cov-v small { display: none; }
+}
+/*    c) Collezione con poco spazio in altezza: via chips ed etichetta, le carte usano tutta l'altezza. */
+@container (max-height: 150px) {
+    .ball-ui .ball-slot-blocco:has(> .ball-strip-fill) > .ball-chips,
+    .ball-ui .ball-slot-blocco:has(> .ball-strip-fill) > .ball-k-lab { display: none; }
+    .ball-ui .ball-slot-blocco:has(> .ball-strip-fill) > .ball-strip-fill .ball-mini {
+        width: clamp(30px, min(13cqw, calc((100cqh - 4px) * 46 / 63)), 140px);
+    }
+}
+/*    d) Inserimento e Controllo prezzi: i riquadri non si schiacciano sotto il pulsante (prima in una
+         tessera bassa il pulsante finiva SOPRA i numeri). Se non c'e' posto, il pulsante e poi i
+         riquadri escono dal fondo e li nasconde _potaContenutoFuoriTessera. */
+.ball-ui .ball-ins .ball-stat-griglia,
+.ball-ui .ball-prz .ball-stat-griglia { min-height: 52px; }
+
+/* 7) Il dato medio accanto alla sfera (es. il nome della carta in Prezzi aggiornati) va su massimo
+      2 righe: con un nome lungo andava su 6 righe e spingeva fuori dalla tessera il titolo (sopra)
+      e la data del controllo (sotto). */
+.ball-ui .ball-slot-inline .ball-k-mid {
+    display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
+    overflow: hidden; overflow-wrap: anywhere;
+}
+
+
+/* 8) Foto carte: "fatte / totale" con il totale in piccolo (vedi corpo 'foto'). */
+.ball-ui .ball-k-big .ball-k-tot { font-size: 0.55em; font-weight: 600; color: var(--text-muted); letter-spacing: 0; }
+
+/* 9) Tessera piccola (aspetto 3x2) piu' stretta di quanto chiede la sfera scelta (telefono con
+      sfera da 220px = una colonna sola): la sfera restava di 220px e al titolo accanto restavano
+      ~80px ("Contrib…", "Foto ca…", "In primo…"). Qui la sfera non supera il 45% della larghezza
+      della tessera. Dove lo spazio c'e' (PC, telefono con sfera normale) vince la misura scelta:
+      nessun cambiamento. */
+.ball-ui .wf-piccolo:not(.widget-tile-mini) > .pkdx-icon-wrap { --ball: min(var(--ball-misura, 90px), 45cqw); }
+
+/* 10) Tessera piccola (aspetto 3x2) su telefono stretto (320px) o con sfera grande: il titolo
+       su una riga sola finiva coi puntini ("Centro operati…", "Variazione val…"). Va a capo su
+       massimo 2 righe, come il titolo accanto alla sfera nelle tessere col corpo (punto 5).
+       Se il titolo sta su una riga (PC, telefono normale) non cambia nulla. */
+.ball-ui .wf-piccolo:not(.widget-tile-mini) > .widget-tile-testo > .widget-tile-titolo {
+    white-space: normal; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
+    overflow: hidden; text-overflow: clip; line-height: 1.15; overflow-wrap: break-word;
+}

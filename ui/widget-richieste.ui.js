@@ -26,7 +26,10 @@ CATALOGO_WIDGET.richieste = {
         if (!userId) return { righe: ['—'], dati: { totale: 0 } };
         if (!_widgetRichiesteCache || Date.now() - _widgetRichiesteCache.quando > 60000) {
             const { data, error } = await richiesteScambioRicevuteList(userId);
-            if (error) { console.error('[widget-richieste] preview:', error.message); return { righe: ['—'], dati: { totale: 0 } }; }
+            // (Audit tessere 2026-10-11) dati: null e non { totale: 0 }: con la lettura fallita la
+            // tessera grande scriveva "0 da gestire" (falso: le richieste potrebbero esserci).
+            // Con null ricade sul testo "—", come Contributi.
+            if (error) { console.error('[widget-richieste] preview:', error.message); return { righe: ['—'], dati: null }; }
             _widgetRichiesteCache = { quando: Date.now(), righe: data || [] };
         }
         const righe = _widgetRichiesteCache.righe;

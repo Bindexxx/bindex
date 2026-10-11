@@ -289,6 +289,8 @@ async function renderWidgetHome() {
             // niente per nessun altro widget. Resta invariata sulla tessera
             // PICCOLA (ramo else sotto), dove non c'è nessun corpo dedicato.
         } else {
+            // (Audit tessere 2026-10-11) Le righe passano da escapeHtml: contengono nomi di
+            // carte/prodotti (Sealed, Prezzi, Primo piano, Vetrina...), testo semplice.
             // RESTYLE BINDEX FASE 1 (2026-09-30): titolo e righe avvolti in
             // .widget-tile-testo, così sulle tessere piccole con la sfera
             // possono stare ACCANTO alla sfera (sfera sempre a sinistra,
@@ -299,7 +301,7 @@ async function renderWidgetHome() {
                 ${rigaImmagine}
                 <div class="widget-tile-testo">
                     <div class="widget-tile-titolo">${def.titolo}</div>
-                    <div class="widget-tile-righe">${anteprima.righe.map(r => `<span>${r}</span>`).join('')}</div>
+                    <div class="widget-tile-righe">${(anteprima.righe || []).map(r => `<span>${escapeHtml(r)}</span>`).join('')}</div>
                 </div>`;
         }
 
@@ -429,6 +431,10 @@ function _potaContenutoFuoriTessera() {
         if (!tessera) return;
         const stile = getComputedStyle(tessera);
         const fondo = tessera.getBoundingClientRect().bottom - (parseFloat(stile.paddingBottom) || 0);
+        const troncati = new Set(); // contenitori il cui elenco e' gia' finito (vedi sotto)
+        // Un gruppo nascosto al giro prima va riaperto PRIMA di misurare le sue righe,
+        // altrimenti le righe risultano alte 0 e passerebbero tutte.
+        blocco.querySelectorAll(':scope > .ball-gruppo').forEach(g => { g.style.display = ''; });
 
         // I candidati sono i blocchi "atomici": una riga di elenco, una
         // colonna di categoria con le sue carte, un grafico. Mai le
@@ -449,21 +455,55 @@ function _potaContenutoFuoriTessera() {
         blocco.querySelectorAll(':scope > .ball-riga, :scope > .ball-gruppi > .ball-gruppo, :scope > .ball-spark, :scope > .ball-strip:not(.ball-strip-fill), :scope > .ball-strip-fill > .ball-mini, :scope > .ball-quota, ' +
             // (.ball-foto-carta NON si pota piu': la carta della Vetrina resta sempre visibile, 2026-10-10)
             // RESTYLE BINDEX FASE 2 (2026-09-30): i mattoncini nuovi delle tessere.
-            ':scope > .ball-riga-set, :scope > .ball-cov:not(.ball-cov-fill), :scope > .ball-cov-fill > .ball-cov-v, :scope > .ball-ripiano, :scope > .ball-medaglie, :scope > .ball-th, :scope > .ball-chips, :scope > .ball-k-lab, :scope > .ball-azione, :scope > .ball-ul > div, :scope > .ball-co > *').forEach(pezzo => {
+            ':scope > .ball-riga-set, :scope > .ball-cov:not(.ball-cov-fill), :scope > .ball-cov-fill > .ball-cov-v, :scope > .ball-ripiano, :scope > .ball-medaglie, :scope > .ball-th, :scope > .ball-chips, :scope > .ball-k-lab, :scope > .ball-azione, :scope > .ball-ul > div, :scope > .ball-co > *, ' +
+            // (Audit tessere 2026-10-11) Le righe dentro un gruppo con titolo (Foto carte:
+            // "Prossime da fotografare") prima non erano candidate: in una tessera bassa
+            // restavano tagliate a meta' dal bordo.
+            ':scope > .ball-gruppo > .ball-riga, ' +
+            // (Audit tessere 2026-10-11) Inserimento e Controllo prezzi: i pezzi del contenitore
+            // unico (ultimo invio, barra, riquadri, pulsante) si nascondono interi dal fondo.
+            ':scope > .ball-ins > *, :scope > .ball-prz > *').forEach(pezzo => {
             // Sempre ripristinato prima di misurare: la tessera puo' essere
             // stata ingrandita dall'ultimo giro e cio' che prima non ci
             // stava ora ci sta.
             pezzo.style.display = '';
+            // (Audit tessere 2026-10-11) L'elenco FINISCE al primo pezzo che non ci sta:
+            // tutto quello che viene dopo nello stesso contenitore sparisce senza
+            // misurarlo. Prima ogni pezzo era misurato da solo e, nascosto uno, quelli
+            // dopo risalivano nel posto liberato: nel Centro operativo restava il titolo
+            // "Opportunita'" senza nessuna voce sotto, e le voci perdevano l'ordine.
+            if (troncati.has(pezzo.parentElement)) { pezzo.style.display = 'none'; return; }
             const r = pezzo.getBoundingClientRect();
             // Copertine del widget Binders (riga unica nella forma larga): quelle che
             // sporgono a destra spariscono intere invece di restare tagliate.
-            if (r.bottom > fondo + 1 || (pezzo.classList.contains('ball-cov-v') && r.right > blocco.getBoundingClientRect().right + 1)) pezzo.style.display = 'none';
+            if (r.bottom > fondo + 1 || (pezzo.classList.contains('ball-cov-v') && r.right > blocco.getBoundingClientRect().right + 1)) {
+                pezzo.style.display = 'none';
+                troncati.add(pezzo.parentElement);
+            }
+        });
+        // Un titolo di sezione senza nessuna voce visibile sotto non resta da solo
+        // (Centro operativo, "Opportunita'"); un gruppo con titolo che ha perso tutte le
+        // sue righe sparisce intero.
+        blocco.querySelectorAll('.ball-co > .ball-co-sez').forEach(titolo => {
+            if (titolo.style.display === 'none') return;
+            let dopo = titolo.nextElementSibling, haVoci = false;
+            while (dopo && !dopo.classList.contains('ball-co-sez') && !dopo.classList.contains('ball-co-foot')) {
+                if (dopo.style.display !== 'none') { haVoci = true; break; }
+                dopo = dopo.nextElementSibling;
+            }
+            if (!haVoci) titolo.style.display = 'none';
+        });
+        blocco.querySelectorAll(':scope > .ball-gruppo').forEach(gruppo => {
+            const righe = gruppo.querySelectorAll(':scope > .ball-riga');
+            if (righe.length && [...righe].every(r => r.style.display === 'none')) gruppo.style.display = 'none';
         });
         // File di miniature in riga unica (Doppioni, Valore collezione...): la carta
         // che sporge a destra sparisce intera invece di restare tagliata a meta'.
-        blocco.querySelectorAll('.ball-strip:not(.ball-strip-fill)').forEach(fila => {
+        // (Audit tessere 2026-10-11) Stessa regola per la riga di copertine di Condividi
+        // (.ball-cov senza -fill): nella forma larga l'ultima copertina restava tagliata.
+        blocco.querySelectorAll('.ball-strip:not(.ball-strip-fill), .ball-cov:not(.ball-cov-fill), .ball-th').forEach(fila => {
             const destra = fila.getBoundingClientRect().right;
-            fila.querySelectorAll(':scope > .ball-mini').forEach(m => {
+            fila.querySelectorAll(':scope > .ball-mini, :scope > i, :scope > img').forEach(m => {
                 m.style.display = '';
                 if (m.getBoundingClientRect().right > destra + 1) m.style.display = 'none';
             });
