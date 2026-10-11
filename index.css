@@ -8630,3 +8630,10 @@ body.badge-pallino .widget-badge { font-size: 0 !important; min-width: 12px !imp
     white-space: normal; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
     overflow: hidden; text-overflow: clip; line-height: 1.15; overflow-wrap: break-word;
 }
+
+/* 11) Valore a destra delle righe con importi enormi (prova con prezzi da 1 miliardo): il valore
+       prendeva tutta la riga, il nome restava largo 0 e il valore usciva dalla tessera tagliato a
+       meta' (Location, Ultime aggiunte). Ora lascia sempre posto al nome (righe) o alla miniatura
+       (Ultime aggiunte) e, solo se serve, finisce coi puntini. Con importi normali non cambia nulla. */
+.ball-ui .ball-riga > .ball-dato { max-width: calc(100% - 40px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ball-ui .ball-ul > div > b { max-width: calc(100% - 50px); overflow: hidden; text-overflow: ellipsis; }
