@@ -200,12 +200,12 @@ function _locAssicuraStile() {
         .loc-meta b { color:var(--text-dark); font-weight:650; }
         .loc-testa { display:flex; align-items:center; justify-content:space-between; gap:10px; }
         .loc-btn { display:inline-flex; align-items:center; justify-content:center; gap:7px; padding:10px 16px; border-radius:999px; border:1px solid var(--border-color); background:var(--card-bg); color:var(--text-dark); font-family:inherit; font-weight:800; font-size:.85rem; cursor:pointer; }
-        .loc-btn-pieno { background:var(--primary); border-color:var(--primary); color:#fff; }
+        .loc-btn-pieno { background:var(--primary); border-color:var(--primary); color:var(--on-primary, #fff); }
         .loc-riga-sopra { display:flex; align-items:center; justify-content:space-between; gap:10px; margin:2px 0 12px; }
         .loc-riga-sopra .pg-sotto { margin:0; flex:1; min-width:0; }
         .loc-chips { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:14px; }
         .loc-chip { padding:7px 13px; border-radius:999px; border:1px solid var(--border-color); background:var(--card-bg); color:var(--text-muted); font-weight:800; font-size:.8rem; cursor:pointer; }
-        .loc-chip.attivo { background:var(--primary-light); border-color:var(--primary); color:var(--primary); }
+        .loc-chip.attivo { background:var(--primary-light); border-color:var(--primary); color:var(--primary-text, var(--primary)); }
         .loc-barra { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px; }
         .loc-barra button { padding:8px 14px; border-radius:999px; border:1px solid var(--border-color); background:var(--card-bg); color:var(--text-dark); font-family:inherit; font-weight:800; font-size:.8rem; cursor:pointer; }
         .loc-barra-hint { width:100%; font-size:.78rem; color:var(--text-muted); }
@@ -237,7 +237,7 @@ function _locAssicuraStile() {
         .loc-p-invito { display:flex; flex-direction:column; align-items:center; gap:8px; color:var(--text-muted); padding:2rem 0; text-align:center; }
         .loc-p-invito i { font-size:1.5rem; }
         .loc-p-testa { display:flex; gap:14px; align-items:center; }
-        .loc-p-cover { width:72px; height:72px; border-radius:16px; background:var(--primary); color:#fff; display:flex; align-items:center; justify-content:center; font-size:1.8rem; overflow:hidden; flex:0 0 auto; }
+        .loc-p-cover { width:72px; height:72px; border-radius:16px; background:var(--primary); color:var(--on-primary, #fff); display:flex; align-items:center; justify-content:center; font-size:1.8rem; overflow:hidden; flex:0 0 auto; }
         .loc-p-cover img { width:100%; height:100%; object-fit:cover; }
         .loc-p-nome { font-size:1.35rem; font-weight:800; color:var(--text-dark); }
         .loc-p-meta { font-size:.8rem; color:var(--text-muted); margin-top:2px; }

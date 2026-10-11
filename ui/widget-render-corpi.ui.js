@@ -203,7 +203,7 @@ const _ballCORPI = {
         // piano" e subito sotto "In vetrina"). Difetto visto in uno
         // screenshot di Claudio il 2026-09-03.
         const inline = top
-            ? `<div class="ball-k-big ball-k-mono">${eur(top.prezzo)}</div><span class="ball-k-lab">${top.nome}</span>`
+            ? `<div class="ball-k-big ball-k-mono">${eur(top.prezzo)}</div><span class="ball-k-lab">${escapeHtml(top.nome)}</span>`
             : '<div class="ball-k-mid">—</div><span class="ball-k-lab">nessuna carta ancora</span>';
         // Le tre categorie AFFIANCATE quando c'e' larghezza, impilate
         // quando non ce n'e' (Claudio: "dovrebbe estendersi in orizzontale
@@ -250,12 +250,15 @@ const _ballCORPI = {
         if (!d || !d.lista || !d.lista.length) {
             return { inline: '<div class="ball-k-mid">—</div><span class="ball-k-lab">nessun controllo ancora</span>', blocco: '' };
         }
+        // (Audit tessere 2026-10-11) Nome e variante vengono dai dati della carta: si
+        // passano da escapeHtml come negli altri corpi (prima un nome con < o & rompeva
+        // la riga, e un nome con un tag HTML veniva eseguito).
         const inline =
-            `<div class="ball-k-mid">${d.lista[0].nome}</div>` +
-            `<span class="ball-k-lab">controllata il ${d.lista[0].quando}</span>`;
+            `<div class="ball-k-mid">${escapeHtml(d.lista[0].nome)}</div>` +
+            `<span class="ball-k-lab">controllata il ${escapeHtml(d.lista[0].quando)}</span>`;
         const blocco = _ballElencoRighe(d.lista.map(c => ({
             id: c.id,
-            nome: c.nome + (c.variante ? ` <span class="ball-k-lab">${c.variante}</span>` : ''),
+            nome: escapeHtml(c.nome) + (c.variante ? ` <span class="ball-k-lab">${escapeHtml(c.variante)}</span>` : ''),
             dato: c.quando,
             origine: 'prezzi_recenti',
         })));
@@ -310,21 +313,46 @@ const _ballCORPI = {
     // ── SEGNAPOSTO GACHA ─────────────────────────────────────────────────
     // Stessa forma dello "stato vuoto" del mockup: dice cosa arriverà,
     // senza numeri finti e senza pulsanti che non portano da nessuna parte.
-    bustina: (d) => _ballCorpoSegnaposto('Bustina', d),
+    // (Audit tessere 2026-10-11) Prima qui c'era il segnaposto "In arrivo", rimasto da
+    // quando la bustina non esisteva: con la bustina gia' attiva la tessera piccola diceva
+    // "Bustina pronta!" e quella grande "In arrivo". Ora mostra lo stato vero letto da
+    // bustine_stato (giornaliera pronta, bustine guadagnate da aprire, aperte finora).
+    // Senza dati (non loggato, errore) torna vuoto e la tessera ricade sul testo.
+    bustina: (d) => {
+        if (!d || d.placeholder || d.giornaliera_disponibile == null) return { inline: '', blocco: '' };
+        const giornaliera = !!d.giornaliera_disponibile;
+        const guadagnate = Math.max(0, Number(d.saldo_guadagnate) || 0);
+        const daAprire = guadagnate + (giornaliera ? 1 : 0);
+        const aperte = Math.max(0, Number(d.aperte_totali) || 0);
+        const inline = '<p class="ball-k-tit">Bustina</p>' + (daAprire > 0
+            ? `<div class="ball-k-big ball-k-mono su">${daAprire.toLocaleString('it-IT')}</div>` +
+              `<span class="ball-k-lab">${daAprire === 1 ? 'bustina da aprire' : 'bustine da aprire'}</span>`
+            : '<div class="ball-k-mid">Torna domani</div>' +
+              '<span class="ball-k-lab">nessuna bustina da aprire</span>');
+        const blocco = _ballPill(giornaliera ? 'giornaliera pronta' : 'giornaliera già aperta', giornaliera) +
+            `<span class="ball-k-lab">${aperte.toLocaleString('it-IT')} apert${aperte === 1 ? 'a' : 'e'} finora</span>`;
+        return { inline, blocco };
+    },
     // RESTYLE BINDEX FASE 8c (tavola "Foto carte · tessera"): fatte/totale,
     // barra, le prossime 3 da fotografare e "Inizia sessione foto".
     foto: (d) => {
         if (!d) return { inline: '', blocco: '' };
         const perc = d.totale ? Math.round((d.fatte / d.totale) * 100) : 0;
         const inline = '<p class="ball-k-tit">Foto carte</p>' +
-            `<div class="ball-k-big ball-k-mono">${d.fatte} / ${d.totale}</div>` +
+            // (Audit tessere 2026-10-11) Il totale in piccolo, come nella pagina Foto: con 4 cifre
+            // ("1500 / 3000") il numero usciva dalla colonna accanto alla sfera.
+            `<div class="ball-k-big ball-k-mono">${d.fatte}<small class="ball-k-tot"> / ${d.totale}</small></div>` +
             `<span class="ball-k-lab">carte con foto vere${d.daFare ? ` · ${d.daFare} da fare` : ''}</span>` +
             `<div class="ball-barra-out"><div class="ball-barra-in" style="width:${perc}%"></div></div>`;
         if (!d.daFare) return { inline, blocco: '<span class="ball-k-lab">Tutte le carte hanno almeno una foto.</span>' };
+        // (Audit tessere 2026-10-11) data-corto: nelle tessere strette (telefono 4x2-6x2, PC 4x2)
+        // il CSS mostra F / R / S al posto di Fronte / Retro / Scambio, cosi' il nome della carta
+        // resta leggibile (prima finiva in una lettera, oppure il bollino Retro restava tagliato).
+        const pill = (testo, corto, acceso) => `<span class="ball-pill${acceso ? ' acceso' : ''}" data-corto="${corto}" title="${testo}">${testo}</span>`;
         const righe = (d.prossime || []).map(c => `
             <div class="ball-riga ball-clic" onclick="_ballAzioneRiga(event,'tab','foto')">
                 <span class="ball-nome">${escapeHtml(c.name || '')}</span>
-                <span class="ball-dato">${_ballPill('Fronte', c.fronte)}${_ballPill('Retro', c.retro)}${c.scambio ? _ballPill('Scambio', false) : ''}</span>
+                <span class="ball-dato">${pill('Fronte', 'F', c.fronte)}${pill('Retro', 'R', c.retro)}${c.scambio ? pill('Scambio', 'S', false) : ''}</span>
             </div>`).join('');
         return {
             inline,
@@ -427,8 +455,8 @@ const _ballCORPI = {
             // quando il prezzo è sceso fino al bersaglio.
             blocco = d.lista.map(c => {
                 const perc = c.prezzo > 0 ? Math.min(100, (c.obiettivo / c.prezzo) * 100) : 0;
-                return _ballRigaBarra(c.nome, `${formattaEuroTondo(c.prezzo)} / ${formattaEuroTondo(c.obiettivo)}`, perc,
-                    `_ballAzioneRiga(event,'carta','${c.id}')`);
+                return _ballRigaBarra(escapeHtml(c.nome), `${formattaEuroTondo(c.prezzo)} / ${formattaEuroTondo(c.obiettivo)}`, perc,
+                    `_ballAzioneRiga(event,'carta','${escapeJsAttr(String(c.id))}')`);
             }).join('');
         }
         return { inline, blocco };
@@ -584,7 +612,7 @@ const _ballCORPI = {
         let blocco = '';
         if (d.lista && d.lista.length) {
             blocco = '<div class="ball-riga-set">' + d.lista.map(p =>
-                `<div class="ball-riga"><span class="ball-nome">${p.nome}</span><span class="ball-dato">${eur(p.prezzo)}</span></div>`
+                `<div class="ball-riga"><span class="ball-nome">${escapeHtml(p.nome)}</span><span class="ball-dato">${eur(p.prezzo)}</span></div>`
             ).join('') + '</div>';
         }
         return { inline, blocco };
@@ -652,7 +680,7 @@ const _ballCORPI = {
             `<span class="ball-k-lab">v${escapeHtml(d.versione)} · su questo computer</span>` +
             _ballPill(d.aiutaGruppo ? 'aiuta il gruppo' : 'aiuto disattivo', !!d.aiutaGruppo);
         const blocco = d.aggiornamento
-            ? `<span class="ball-k-lab" style="font-weight:700;color:var(--primary)">Aggiornamento disponibile: v${escapeHtml(d.ultima)}</span>` +
+            ? `<span class="ball-k-lab" style="font-weight:700;color:var(--primary-text, var(--primary))">Aggiornamento disponibile: v${escapeHtml(d.ultima)}</span>` +
               _ballPulsante('Aggiorna', `event.stopPropagation(); _widgetEstensioneApriIstruzioni(true)`)
             : '';
         return { inline, blocco };
@@ -839,7 +867,9 @@ const _ballCORPI = {
 // sempre, così nessuno perde niente mentre procediamo quattro alla volta.
 function _ballCorpoGenerico(anteprima) {
     return {
-        inline: `<div class="ball-righe-testo">${(anteprima.righe || []).map(r => `<span>${r}</span>`).join('')}</div>`,
+        // (Audit tessere 2026-10-11) Le righe sono testo semplice (nomi di carte, conteggi):
+        // escapeHtml come nella tessera piccola, cosi' un nome con < o un tag non rompe la tessera.
+        inline: `<div class="ball-righe-testo">${(anteprima.righe || []).map(r => `<span>${escapeHtml(r)}</span>`).join('')}</div>`,
         blocco: ''
     };
 }

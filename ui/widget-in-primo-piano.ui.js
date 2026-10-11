@@ -309,7 +309,10 @@ CATALOGO_WIDGET.primo_piano = {
         // Stesso gesto della home fissa: la carta si apre nel flip-modal,
         // non cambia tab.
         azione: (dati) => {
-            const primo = dati && dati.perValore && dati.perValore[0];
+            // preview() restituisce { righe, dati: categorie }: le categorie stanno
+            // in dati.dati. Leggendo dati.perValore il tap sulla tessera non apriva nulla.
+            const cat = dati && (dati.dati || dati);
+            const primo = cat && cat.perValore && cat.perValore[0];
             if (primo && typeof apriFlipCardHome === 'function') apriFlipCardHome(primo.id);
         },
 };

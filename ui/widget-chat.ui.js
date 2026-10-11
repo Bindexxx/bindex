@@ -351,7 +351,7 @@ async function renderPaginaChat() {
             <div style="flex:1; min-width:0;">
                 <div style="font-weight:700; font-size:0.85rem; display:flex; align-items:center; gap:0.4rem;">
                     ${escapeHtml(r.label)}
-                    ${r.bloccato ? '<span class="badge">Bloccato</span>' : (r.nonLetti > 0 ? `<span class="badge" style="background:var(--primary); color:#fff; border:none;">${r.nonLetti}</span>` : '')}
+                    ${r.bloccato ? '<span class="badge">Bloccato</span>' : (r.nonLetti > 0 ? `<span class="badge" style="background:var(--primary); color:var(--on-primary, #fff); border:none;">${r.nonLetti}</span>` : '')}
                 </div>
                 <div style="font-size:0.76rem; color:var(--text-muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${anteprima}</div>
             </div>

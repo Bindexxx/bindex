@@ -385,7 +385,8 @@ function _mostraPeek(instanceId, tileEl) {
 
     Promise.resolve(def.preview(w)).then(anteprima => {
         const el = document.getElementById('widgetPeekRighe');
-        if (el) el.innerHTML = (anteprima.righe || []).map(r => `<span>${r}</span>`).join('<br>');
+        // (Audit tessere 2026-10-11) Righe = testo semplice (nomi di carte): escapeHtml come nella tessera.
+        if (el) el.innerHTML = (anteprima.righe || []).map(r => `<span>${escapeHtml(r)}</span>`).join('<br>');
     }).catch(() => {});
 }
 
