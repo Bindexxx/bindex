@@ -76,7 +76,19 @@ async function renderWidgetHome() {
         if (!def) return '';
         let anteprima = { righe: ['—'] };
         if (!def.bloccato) {
-            try { anteprima = await def.preview(w); } catch (e) { console.error('Errore preview widget ' + w.id + ':', e); }
+            // (Audit tessere 2026-10-11) Tetto di 5 s per anteprima. Le tessere si aspettano
+            // tutte insieme (Promise.all qui sopra), quindi UNA sola chiamata lenta o appesa
+            // (rete ballerina, RPC che non risponde) teneva ferma TUTTA la home: al primo
+            // avvio restava vuota finche' quella chiamata non tornava (prova con una RPC da
+            // 8 s: home disegnata dopo 8 s). Oltre il tetto la tessera si disegna col ripiego
+            // "—" e la risposta, se arriva, entra al giro successivo (rinfresco automatico).
+            // Stesso ripiego se un'anteprima torna vuota (prima: errore e home non disegnata).
+            let timerTetto = null;
+            try {
+                const tetto = new Promise(ris => { timerTetto = setTimeout(() => ris(null), 5000); });
+                anteprima = (await Promise.race([Promise.resolve(def.preview(w)), tetto])) || { righe: ['—'] };
+            } catch (e) { console.error('Errore preview widget ' + w.id + ':', e); }
+            finally { clearTimeout(timerTetto); }
         } else {
             anteprima = def.preview(w);
         }
