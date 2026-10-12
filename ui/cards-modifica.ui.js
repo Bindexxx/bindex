@@ -130,7 +130,8 @@
 
             const datalist = document.getElementById('datalistEditLocation');
             datalist.innerHTML = [...new Set(carteReali.map(c => c.location).filter(Boolean))]
-                .map(loc => `<option value="${loc}"></option>`).join('');
+                // (Audit sicurezza 2026-10-12) nome location escapato: prima finiva grezzo nell'attributo value.
+                .map(loc => `<option value="${escapeHtml(loc)}"></option>`).join('');
 
             document.getElementById('editCardModal').style.display = 'flex';
         }
