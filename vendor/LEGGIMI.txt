@@ -1,0 +1,41 @@
+LIBRERIE ESTERNE COPIATE NEL REPO (S4, 2026-10-12)
+==================================================
+Prima venivano caricate da CDN esterni (cdn.jsdelivr.net, cdnjs.cloudflare.com)
+senza controllo d'integrita': se un CDN fosse stato compromesso, codice estraneo
+avrebbe girato nel sito con la sessione dell'utente. Ora sono servite dal sito
+stesso. NON modificarle a mano: per aggiornarle si sostituisce il file con la
+nuova versione ufficiale (e si aggiorna questo elenco e i <script>/<link>).
+
+1) supabase-js 2.117.1 (stessa versione esatta usata prima in tutte le pagine)
+   file:   vendor/supabase-js-2.117.1.js
+   fonte:  pacchetto npm @supabase/supabase-js@2.117.1, file dist/umd/supabase.js
+           (e' il file che cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.1
+           serviva: campo "jsdelivr" del package.json)
+   sha256: dff1e545f4f35bd42895cd6f46431e56137dd13031e46a9759c446447c11a567
+   licenza: MIT (vendor/LICENSE-supabase-js.txt)
+
+2) qrcodejs 1.0.0 (davidshimjs)
+   file:   vendor/qrcode-1.0.0.min.js
+   fonte:  github.com/davidshimjs/qrcodejs, commit 04f46c6 (2015, ultimo), file
+           qrcode.min.js — identico byte per byte al pacchetto npm qrcodejs@1.0.0
+   sha256: c541ef06327885a8415bca8df6071e14189b4855336def4f36db54bde8484f36
+   licenza: MIT (vendor/LICENSE-qrcodejs.txt)
+
+3) Font Awesome Free 6.4.0
+   file:   vendor/fontawesome-free-6.4.0/css/all.min.css + webfonts/*.woff2
+   fonte:  pacchetto npm @fortawesome/fontawesome-free@6.4.0 (solo i .woff2: i .ttf
+           servono solo a browser senza woff2, che non reggono comunque il sito)
+   sha256 all.min.css: 1edb1725a9ea8ca4dcf2f5508cee183218aa1685e47c1b23056717f754f58ebf
+   licenza: icone CC BY 4.0, font SIL OFL 1.1, codice MIT
+            (vendor/fontawesome-free-6.4.0/LICENSE.txt)
+
+4) Chart.js 4.5.1 (grafico "Andamento prezzo", caricato solo quando serve
+   da ui/prices.ui.js)
+   file:   vendor/chart-js-4.5.1.umd.min.js
+   fonte:  pacchetto npm chart.js@4.5.1, file dist/chart.umd.min.js (lo stesso
+           che serviva cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js)
+   sha256: 48444a82d4edcb5bec0f1965faacdde18d9c17db3063d042abada2f705c9f54a
+   licenza: MIT (vendor/LICENSE-chart-js.md)
+
+Restano esterni (solo CSS e font, consentiti dalla CSP): Google Fonts
+(fonts.googleapis.com / fonts.gstatic.com).

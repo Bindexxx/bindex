@@ -2,12 +2,16 @@
 <html lang="it">
 <head>
     <meta charset="UTF-8">
+    <!-- (S5 sicurezza, 2026-10-12) Da dove la pagina puo' caricare script, stili,
+         font e immagini e verso dove puo' inviare dati: il browser blocca tutto il
+         resto. 'unsafe-inline' serve agli onclick nell'HTML. Domini: vendor/LEGGIMI.txt. -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https://*.supabase.co https://images.weserv.nl https://raw.githubusercontent.com; media-src 'self' data: blob: https://*.supabase.co; connect-src 'self' https://xpfibrzsffurdlypxnrw.supabase.co wss://xpfibrzsffurdlypxnrw.supabase.co; worker-src 'self'; manifest-src 'self'; frame-src 'none'; object-src 'none'; base-uri 'self'; form-action 'self'">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Bindex — Pagina spostata</title>
 
     <link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="vendor/fontawesome-free-6.4.0/css/all.min.css">
 
     <style>
         :root {
@@ -456,7 +460,7 @@
         <a id="spostataLink" class="btn" href="#" hidden><i class="fa-solid fa-arrow-right"></i> Apri lo Scaffale Scambio</a>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.1"></script>
+    <script src="vendor/supabase-js-2.117.1.js"></script><!-- copiata nel repo il 2026-10-12 (S4, vedi vendor/LEGGIMI.txt) -->
     <script src="config/supabase.js" data-client="pubblico"></script>
     <script src="data/pubblico.repository.js"></script>
     <script>

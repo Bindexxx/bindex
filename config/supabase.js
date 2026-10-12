@@ -4,7 +4,8 @@
 // wishlist).
 //
 // Va caricato con <script src="config/supabase.js"></script> DOPO lo script
-// del CDN @supabase/supabase-js e PRIMA dello script inline di ciascuna
+// di @supabase/supabase-js (vendor/supabase-js-2.117.1.js, dal 2026-10-12;
+// prima dal CDN) e PRIMA dello script inline di ciascuna
 // pagina, che continua a usare SUPABASE_URL / SUPABASE_ANON_KEY esattamente
 // come prima (nessun cambio di comportamento).
 //
@@ -46,7 +47,7 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 //                  pubblico, wishlist, sealed): client "leggero", nessuna
 //                  sessione salvata (il login per "Richiedi" vale solo per
 //                  la pagina aperta).
-// Serve che il CDN di @supabase/supabase-js sia caricato PRIMA di questo
+// Serve che @supabase/supabase-js (vendor/) sia caricato PRIMA di questo
 // file (lo è in tutte le pagine).
 
 // ── DOVE VIVE LA SESSIONE ("Mantieni accesso", audit 2026-09-25 A1) ─────
