@@ -43,6 +43,7 @@ async function _cestinoCarica() {
         return;
     }
     card.style.display = '';
+    _cestinoMessaggio('', false);
     // Oltre i 30 giorni la riga sparisce alla prossima eliminazione: qui
     // non si mostra già più.
     const limite = Date.now() - CESTINO_GIORNI * 86400000;
