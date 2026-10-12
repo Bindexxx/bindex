@@ -22,6 +22,25 @@ async function adminAuthGetSession() {
     return data.session || null;
 }
 
+// ── Codice da app / secondo fattore TOTP (S6, 2026-10-12) ─────────────
+// Con sql/99 i poteri admin (is_admin()) valgono solo se la sessione è stata
+// verificata col codice: livello "aal2". Funzioni Auth di supabase-js.
+async function adminMfaLivello() {
+    return supabaseClient.auth.mfa.getAuthenticatorAssuranceLevel();
+}
+async function adminMfaFattori() {
+    return supabaseClient.auth.mfa.listFactors();
+}
+async function adminMfaIscrivi(nome) {
+    return supabaseClient.auth.mfa.enroll({ factorType: 'totp', friendlyName: nome });
+}
+async function adminMfaVerifica(factorId, codice) {
+    return supabaseClient.auth.mfa.challengeAndVerify({ factorId, code: codice });
+}
+async function adminMfaTogli(factorId) {
+    return supabaseClient.auth.mfa.unenroll({ factorId });
+}
+
 // ── Profilo/ruolo ─────────────────────────────────────────────────────
 async function adminProfiloRuolo(userId) {
     return supabaseClient.from('profiles').select('role, username, banned_until, deleted_at').eq('id', userId).single();
