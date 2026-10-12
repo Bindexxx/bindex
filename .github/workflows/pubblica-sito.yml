@@ -1,0 +1,48 @@
+# Pubblica il sito su GitHub Pages a ogni push su main (V6, 2026-10-12).
+# Prima della pubblicazione tools/versiona_file.py aggiunge ?v=<impronta> ai
+# file di ogni pagina e la versione in sw.js (vedi il file per i dettagli).
+#
+# ATTIVAZIONE (una volta sola, la fa Claudio): Settings → Pages → Build and
+# deployment → Source: "GitHub Actions". Finché resta "Deploy from a branch"
+# il sito continua a essere pubblicato come prima e questo workflow fallisce
+# solo all'ultimo passo (senza effetti sul sito).
+name: Pubblica sito
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  pubblica:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.pubblicazione.outputs.page_url }}
+    steps:
+      - name: Scarica il repository
+        uses: actions/checkout@v6
+
+      - name: Prepara il sito con le versioni dei file
+        run: python3 tools/versiona_file.py _site
+
+      - name: Configura Pages
+        uses: actions/configure-pages@v6
+
+      - name: Carica il sito
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: _site
+
+      - name: Pubblica
+        id: pubblicazione
+        uses: actions/deploy-pages@v5

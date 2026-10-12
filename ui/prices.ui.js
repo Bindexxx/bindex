@@ -336,7 +336,8 @@
         // più cambiare il sito da solo. Una sola richiesta anche con più
         // click ravvicinati (promise condivisa); se il download fallisce la
         // promise si azzera e il click successivo ritenta.
-        const CHART_JS_URL = 'https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js';
+        // (S4, 2026-10-12) stessa versione, copiata nel repo: vendor/LEGGIMI.txt
+        const CHART_JS_URL = 'vendor/chart-js-4.5.1.umd.min.js';
         let _chartJsPromise = null;
         function _caricaChartJs() {
             if (typeof Chart !== 'undefined') return Promise.resolve();
