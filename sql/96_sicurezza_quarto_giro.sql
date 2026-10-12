@@ -1,8 +1,18 @@
 -- ============================================================================
 -- 96 — SICUREZZA, QUARTO GIRO (audit 2026-10-12)
 -- Scritto partendo dalle definizioni LIVE lette il 2026-10-12 (progetto
--- xpfibrzsffurdlypxnrw, connettore in sola lettura). NON ancora eseguito:
--- va lanciato da Claudio (SQL editor) oppure da Claude con OK esplicito.
+-- xpfibrzsffurdlypxnrw, connettore in sola lettura).
+--
+-- GIA' ESEGUITO il 2026-10-12 sul DB reale (OK di Claudio), con lo stesso
+-- risultato finale di questo file ma diviso in tre migrazioni del connettore:
+--   96a_sicurezza_link_admin_reset   (sezioni A-E)
+--   96b_sicurezza_bucket_limiti      (sezione F)
+--   96c_sicurezza_foto_carte_policy  (sezione G, solo la create policy)
+-- + la drop policy della sezione G, lanciata da Claudio dall'SQL editor
+--   (il connettore annullava le istruzioni distruttive).
+-- NON RIESEGUIRE questo file: i vincoli esistono gia', la transazione si
+-- fermerebbe alla prima riga senza cambiare nulla. Serve come riferimento;
+-- per annullare c'e' il file _ROLLBACK (valido anche cosi').
 --
 -- Contesto: la coda carte e il controllo prezzi restano CONDIVISI (decisione
 -- 2026-10-01): qui non si toglie nessuna funzione di gruppo, si chiude solo
