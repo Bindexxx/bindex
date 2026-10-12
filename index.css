@@ -7099,6 +7099,10 @@
 
         /* telefono: lista */
         .coll-riga { border-bottom: 1px solid var(--border-color); padding: 0.7rem 0.15rem; cursor: pointer; }
+        /* (V3 velocità, 2026-10-12) Righe fuori schermo: il browser ne salta layout e
+           disegno finché non ci si avvicina scorrendo (lista da 1000+ carte sul telefono).
+           79px = miniatura 56px + padding + bordo; 'auto' ricorda la misura vera. */
+        .coll-riga { content-visibility: auto; contain-intrinsic-size: auto 79px; }
         .coll-riga-top { display: flex; align-items: center; gap: 0.75rem; }
         .coll-riga-testo { flex: 1; min-width: 0; }
         .coll-riga .coll-nome { font-size: 0.98rem; }
@@ -7116,6 +7120,7 @@
         /* griglia */
         .coll-griglia { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.9rem 0.6rem; }
         .coll-tessera { display: flex; flex-direction: column; gap: 0.2rem; background: none; border: 0; padding: 0; text-align: left; cursor: pointer; min-width: 0; color: var(--text-dark); }
+        .coll-tessera { content-visibility: auto; contain-intrinsic-size: auto 210px; } /* (V3) come .coll-riga */
         .coll-tessera-img { width: 100%; aspect-ratio: 63 / 88; border-radius: 10px; }
         .coll-tessera-img .coll-segnaposto { font-size: 1.6rem; }
         .coll-tessera.e-wish .coll-tessera-img { opacity: .6; }

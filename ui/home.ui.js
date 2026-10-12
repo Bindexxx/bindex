@@ -90,7 +90,21 @@
         // lavoro resta così sempre "pulita" (solo righe vive). Il conteggio
         // qui passa quindi alla nuova tabella; owner_id la scopa comunque
         // solo al vero proprietario, stesso identico filtro di prima.
-        async function _contaCodaErrori() {
+        // (V5 velocità, 2026-10-12) All'avvio la stessa domanda arrivava da
+        // 5 posti quasi insieme (avvisi home, barra di stato, tessere Da fare
+        // e Inserimento...): 10 richieste identiche. Ora una risposta vale per
+        // 3 secondi ed è condivisa anche mentre è ancora in arrivo — poi si
+        // richiede di nuovo, quindi il conteggio resta fresco.
+        let _contaCodaErroriRecente = null; // { quando, promessa }
+        function _contaCodaErrori() {
+            const adesso = Date.now();
+            if (_contaCodaErroriRecente && adesso - _contaCodaErroriRecente.quando < 3000) return _contaCodaErroriRecente.promessa;
+            const promessa = _contaCodaErroriDalDb();
+            _contaCodaErroriRecente = { quando: adesso, promessa };
+            return promessa;
+        }
+
+        async function _contaCodaErroriDalDb() {
             const userId = await authGetUserId();
             if (!userId) return 0;
 
@@ -144,7 +158,35 @@
 
 
 
-        async function caricaAvvisiHome() {
+        // (V2 velocità, 2026-10-12) Un solo formattatore di date, riusato per
+        // tutte le carte: toLocaleDateString con le opzioni ne creava uno a
+        // ogni carta (~0,8 s di CPU sul telefono con 1000+ carte). Stesso
+        // risultato ("31/12/2026").
+        let _formatoDataAvvisiHomeCache = null;
+        function _formatoDataAvvisiHome() {
+            if (!_formatoDataAvvisiHomeCache) _formatoDataAvvisiHomeCache = new Intl.DateTimeFormat('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' });
+            return _formatoDataAvvisiHomeCache;
+        }
+
+        // (V5 velocità, 2026-10-12) Chiamate sovrapposte unite: all'avvio
+        // arrivavano 3-4 richieste quasi insieme (switchTab, caricamento carte,
+        // giro automatico), ognuna con 3 letture dello storico prezzi. Se una
+        // è già in corso, se ne fa al massimo UNA dopo, coi dati più recenti.
+        let _avvisiHomeInCorso = null;
+        let _avvisiHomeDaRifare = false;
+        function caricaAvvisiHome() {
+            if (_avvisiHomeInCorso) { _avvisiHomeDaRifare = true; return _avvisiHomeInCorso; }
+            _avvisiHomeInCorso = (async () => {
+                try {
+                    do { _avvisiHomeDaRifare = false; await _caricaAvvisiHomeOra(); } while (_avvisiHomeDaRifare);
+                } finally {
+                    _avvisiHomeInCorso = null;
+                }
+            })();
+            return _avvisiHomeInCorso;
+        }
+
+        async function _caricaAvvisiHomeOra() {
             const collezione = carteReali.filter(c => c.stato === 'collezione');
             const idsCollezione = collezione.map(c => c.id);
 
@@ -169,7 +211,7 @@
                 code: c.code,
                 immagine: c.immagine, // RESTYLE FASE 3a: miniature nel Centro operativo
                 ultimoTesto: ultimoPerCarta[c.id]
-                    ? new Date(ultimoPerCarta[c.id]).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' })
+                    ? _formatoDataAvvisiHome().format(new Date(ultimoPerCarta[c.id]))
                     : 'mai controllata',
             }));
 
@@ -272,7 +314,23 @@
         }
 
 
-        async function caricaAttivitaRecentiHome() {
+        // (V5 velocità, 2026-10-12) Stesso schema di caricaAvvisiHome: chiamate
+        // sovrapposte unite (ognuna legge lo storico prezzi a blocchi).
+        let _attivitaHomeInCorso = null;
+        let _attivitaHomeDaRifare = false;
+        function caricaAttivitaRecentiHome() {
+            if (_attivitaHomeInCorso) { _attivitaHomeDaRifare = true; return _attivitaHomeInCorso; }
+            _attivitaHomeInCorso = (async () => {
+                try {
+                    do { _attivitaHomeDaRifare = false; await _caricaAttivitaRecentiHomeOra(); } while (_attivitaHomeDaRifare);
+                } finally {
+                    _attivitaHomeInCorso = null;
+                }
+            })();
+            return _attivitaHomeInCorso;
+        }
+
+        async function _caricaAttivitaRecentiHomeOra() {
             const elAggiunte = document.getElementById('attivitaCarteAggiunteHome');
             const elPrezzi = document.getElementById('attivitaPrezziAggiornatiHome');
             if (!elAggiunte || !elPrezzi) return;
