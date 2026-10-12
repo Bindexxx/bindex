@@ -198,9 +198,13 @@
     return (n < 10 ? "0" : "") + n;
   }
 
+  /* (V2 velocità, 2026-10-12) un solo formattatore riusato: toLocaleTimeString
+     con le opzioni ne creava uno a ogni chiamata (centinaia all'avvio). */
+  var _formatoOraHHMM = null;
   function formatTime(date) {
     try {
-      return date.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" });
+      if (!_formatoOraHHMM) _formatoOraHHMM = new Intl.DateTimeFormat("it-IT", { hour: "2-digit", minute: "2-digit" });
+      return _formatoOraHHMM.format(date);
     } catch (e) {
       return pad2(date.getHours()) + ":" + pad2(date.getMinutes());
     }

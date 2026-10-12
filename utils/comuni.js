@@ -32,8 +32,14 @@
 // Browser vecchi che non conoscono 'always' ricadono sul comportamento
 // standard (nessun errore). Tollera null/undefined/stringhe (→ 0,00 €).
 // (Dal 2026-09-25 esiste in una sola copia, qui in utils/comuni.js.)
+// (V2 velocità, 2026-10-12) Formattatore creato UNA volta e riusato: con le
+// opzioni, toLocaleString ne ricreava uno a ogni chiamata — migliaia di volte
+// per pagina, ~1 s di CPU sul telefono con 1000+ carte. Stesso risultato
+// (toLocaleString usa proprio Intl.NumberFormat con queste opzioni).
+let _formatoEuroDueDecimali = null;
 function formattaEuro(v) {
-    return (Number(v) || 0).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2, useGrouping: 'always' }) + ' €';
+    if (!_formatoEuroDueDecimali) _formatoEuroDueDecimali = new Intl.NumberFormat('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2, useGrouping: 'always' });
+    return _formatoEuroDueDecimali.format(Number(v) || 0) + ' €';
 }
 
 // RESTYLE BINDEX FASE 1 (2026-09-30) — regola comune "Euro" (file 01 § B):
@@ -42,8 +48,10 @@ function formattaEuro(v) {
 //   "+14,00 €" / "−14,00 €" per le variazioni, segno attaccato, mai
 //   "€ 14" né "+€3,20"                     → formattaEuroVariazione
 // Usate dalle fasi successive (tessere e pagine): nessun chiamante ancora.
+let _formatoEuroIntero = null; // (V2 velocità) riusato, come _formatoEuroDueDecimali
 function formattaEuroTondo(v) {
-    return Math.round(Number(v) || 0).toLocaleString('it-IT', { maximumFractionDigits: 0, useGrouping: 'always' }) + ' €';
+    if (!_formatoEuroIntero) _formatoEuroIntero = new Intl.NumberFormat('it-IT', { maximumFractionDigits: 0, useGrouping: 'always' });
+    return _formatoEuroIntero.format(Math.round(Number(v) || 0)) + ' €';
 }
 function formattaEuroVariazione(v) {
     const n = Number(v) || 0;
