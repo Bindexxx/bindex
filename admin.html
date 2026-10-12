@@ -55,6 +55,21 @@
   #denied-screen h1 { font-size: 20px; margin: 0; }
   #denied-screen p { color: var(--text-muted); max-width: 360px; margin: 0; }
 
+  /* ── CODICE DA APP (S6, 2026-10-12) ───────────────────────── */
+  #mfa-screen { display: none; min-height: 100vh; align-items: center; justify-content: center; padding: 20px; }
+  #mfa-card { background: var(--card-bg); border-radius: 18px; box-shadow: var(--shadow-soft); padding: 28px 26px; width: min(380px, 92vw); }
+  #mfa-card h1 { font-size: 19px; margin: 0 0 6px; }
+  #mfa-card p { font-size: 12.5px; color: var(--text-muted); margin: 0 0 12px; line-height: 1.5; }
+  #mfa-qr-box { display: none; text-align: center; margin: 4px 0 6px; }
+  #mfa-qr { width: 184px; height: 184px; background: #fff; border-radius: 10px; border: 1.5px solid var(--border-color); padding: 6px; }
+  #mfa-card p.mfa-piccolo { font-size: 11.5px; margin: 8px 0 6px; text-align: left; }
+  #mfa-segreto { display: block; font-size: 12px; word-break: break-all; user-select: all; background: var(--primary-light); color: var(--primary-dark); padding: 7px 9px; border-radius: 8px; text-align: left; }
+  #mfa-codice { text-align: center; font-size: 22px; letter-spacing: 6px; font-family: 'JetBrains Mono', monospace; }
+  #mfa-errore { display: none; margin-top: 12px; padding: 9px 11px; background: var(--danger-bg); color: var(--danger); border-radius: 8px; font-size: 12.5px; line-height: 1.4; }
+  #mfa-conferma { width: 100%; margin-top: 16px; padding: 11px; background: var(--primary); color: #fff; font-size: 14px; font-weight: 700; }
+  #mfa-conferma:disabled { opacity: .6; cursor: default; }
+  #mfa-esci { width: 100%; margin-top: 8px; padding: 9px; background: var(--primary-light); color: var(--primary-dark); font-size: 13px; font-weight: 600; }
+
   /* ── DASHBOARD ────────────────────────────────────────────── */
   #dash { display: none; max-width: 960px; margin: 0 auto; padding: 28px 20px 60px; }
   header.dash-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 22px; }
@@ -256,6 +271,27 @@
   <h1>⛔ Accesso riservato</h1>
   <p>Il tuo account non ha i permessi di amministratore, oppure è sospeso/disattivato. Se pensi sia un errore, contatta chi gestisce CardSync Pro.</p>
   <button id="denied-logout" style="background:var(--primary-light);color:var(--primary-dark);padding:9px 16px;font-size:13px;font-weight:600;">Esci</button>
+</div>
+
+<!-- ── CODICE DA APP (S6, 2026-10-12) ──────────────────────────────
+     Dopo la password: QR + chiave la prima volta, poi solo il codice a 6
+     cifre. Testi e stati in ui/admin-shell.ui.js (_mfaMostra). -->
+<div id="mfa-screen">
+  <div id="mfa-card">
+    <h1 id="mfa-titolo">🔐 Codice di sicurezza</h1>
+    <p id="mfa-testo">Controllo in corso…</p>
+    <div id="mfa-qr-box">
+      <img id="mfa-qr" alt="QR da inquadrare con l'app di autenticazione">
+      <p class="mfa-piccolo">Non puoi inquadrare? Inserisci a mano questa chiave nell'app:</p>
+      <code id="mfa-segreto"></code>
+      <p class="mfa-piccolo">Conservala anche in un posto sicuro (es. il gestore delle password): serve se perdi il telefono.</p>
+    </div>
+    <label for="mfa-codice" id="mfa-codice-label">Codice a 6 cifre</label>
+    <input type="text" id="mfa-codice" inputmode="numeric" autocomplete="one-time-code" placeholder="000000">
+    <div id="mfa-errore"></div>
+    <button id="mfa-conferma">Conferma</button>
+    <button id="mfa-esci">Esci</button>
+  </div>
 </div>
 
 <!-- ── DASHBOARD ───────────────────────────────────────────────── -->

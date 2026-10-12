@@ -4,6 +4,8 @@
 
 const loginScreen  = document.getElementById('login-screen');
 const deniedScreen = document.getElementById('denied-screen');
+const mfaScreen    = document.getElementById('mfa-screen'); // (S6) codice da app
+let _mfaFattoreInCorso = null; // id del fattore TOTP da verificare (iscrizione o accesso)
 const dash         = document.getElementById('dash');
 const elUser  = document.getElementById('login-user');
 const elPass  = document.getElementById('login-pass');

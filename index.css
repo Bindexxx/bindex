@@ -8637,3 +8637,22 @@ body.badge-pallino .widget-badge { font-size: 0 !important; min-width: 12px !imp
        (Ultime aggiunte) e, solo se serve, finisce coi puntini. Con importi normali non cambia nulla. */
 .ball-ui .ball-riga > .ball-dato { max-width: calc(100% - 40px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ball-ui .ball-ul > div > b { max-width: calc(100% - 50px); overflow: hidden; text-overflow: ellipsis; }
+
+/* ── CESTINO (S8, 2026-10-12) — Impostazioni → Account e dati ─────────────
+   Righe: miniatura, nome + dettagli, Ripristina / Elimina per sempre.
+   ui/cestino.ui.js; il secondo tocco su un bottone rosso conferma. */
+#impostazioni .imp-cestino-lista { display: flex; flex-direction: column; gap: 8px; }
+#impostazioni .imp-cestino-riga { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid var(--border-color); border-radius: 12px; background: var(--card-bg); }
+#impostazioni .imp-cestino-mini { width: 36px; height: 50px; flex: 0 0 auto; border-radius: 6px; overflow: hidden; display: flex; align-items: center; justify-content: center; background: var(--primary-light); color: var(--primary-text, var(--primary)); font-size: 0.95rem; }
+#impostazioni .imp-cestino-mini img { width: 100%; height: 100%; object-fit: cover; display: block; }
+#impostazioni .imp-cestino-testo { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+#impostazioni .imp-cestino-testo b { font-size: 0.86rem; color: var(--text-dark); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#impostazioni .imp-cestino-testo small { font-size: 0.72rem; color: var(--text-muted); line-height: 1.35; overflow-wrap: anywhere; }
+#impostazioni .imp-cestino-azioni { display: flex; gap: 6px; flex: 0 0 auto; align-items: center; }
+#impostazioni .imp-cestino-elimina { min-width: 34px; }
+#impostazioni .imp-cestino-conferma { background: var(--danger, #d32f2f) !important; border-color: var(--danger, #d32f2f) !important; color: #fff !important; }
+#impostazioni .imp-cestino-msg-errore { color: var(--danger, #d32f2f); }
+@media (max-width: 420px) {
+    #impostazioni .imp-cestino-riga { flex-wrap: wrap; }
+    #impostazioni .imp-cestino-azioni { width: 100%; justify-content: flex-end; }
+}
