@@ -370,6 +370,10 @@
                 const nomeAttr = escapeJsAttr(card.name);
                 const codeAttr = escapeJsAttr(card.code || '');
                 const notesAttr = escapeJsAttr(card.notes || '');
+                // (Audit sicurezza 2026-10-12) Link della carta: solo http/https e
+                // escapato. Prima finiva grezzo nell'href: il link puo' essere
+                // scritto anche dal controllo prezzi di gruppo (altri utenti).
+                const linkSicuro = urlEsternoSicuro(card.link);
 
                 if (modalitaCompatta) {
                     htmlCompatto += _rigaCompattaHtml(card, idAttr, locAttr, nomeAttr, langClass, condClass, varClass, immagineSrc, obiettivoRaggiunto);
@@ -382,14 +386,14 @@
                     <td data-label="Nome" class="cella-editabile" title="${card.name.replace(/"/g, '&quot;')} — clicca per modificare" onclick="event.stopPropagation(); modificaCampoInline('${idAttr}', '${card.tabella}', 'nome', '${nomeAttr}', 'Nome')" style="max-width:170px; overflow:hidden; text-overflow:ellipsis;">${thumb}<strong>${escapeHtml(card.name)}</strong>${obiettivoRaggiunto ? ` <span class="badge" style="background-color:var(--success-bg); color:var(--success);" title="Prezzo sceso al di sotto del tuo obiettivo (${card.prezzoObiettivo.toFixed(2)} €)">🎯 obiettivo!</span>` : ''}${card.sigillataOriginale ? ` <span class="badge" style="background-color:var(--primary-light); color:var(--primary);" title="Ancora sigillata nella bustina originale">📦 sigillata</span>` : ''}</td>
                     <td data-label="Codice" class="cella-editabile" title="Clicca per modificare" onclick="event.stopPropagation(); modificaCampoInline('${idAttr}', '${card.tabella}', 'codice', '${codeAttr}', 'Codice')"><code>${escapeHtml(card.code)}</code></td>
                     <td data-label="Location"><span class="badge badge-location" title="${(card.location || '').replace(/"/g, '&quot;')} — clicca per modificare" onclick="event.stopPropagation(); modificaLocationInline(event, '${idAttr}', '${card.tabella}', '${locAttr}')">${escapeHtml(card.location || '—')}</span></td>
-                    <td data-label="Lingua"><span class="badge ${langClass} cella-editabile" title="Clicca per modificare" onclick="event.stopPropagation(); modificaLinguaInline(event, '${idAttr}', '${card.tabella}', '${card.lang}')">${card.lang ? escapeHtml(card.lang) : 'Qualsiasi'}</span></td>
-                    <td data-label="Cond."><span class="badge ${condClass} cella-editabile" title="Clicca per modificare" onclick="event.stopPropagation(); modificaCondizioneInline(event, '${idAttr}', '${card.tabella}', '${card.cond}')">${escapeHtml(card.cond)}</span></td>
+                    <td data-label="Lingua"><span class="badge ${langClass} cella-editabile" title="Clicca per modificare" onclick="event.stopPropagation(); modificaLinguaInline(event, '${idAttr}', '${card.tabella}', '${escapeJsAttr(card.lang || '')}')">${card.lang ? escapeHtml(card.lang) : 'Qualsiasi'}</span></td>
+                    <td data-label="Cond."><span class="badge ${condClass} cella-editabile" title="Clicca per modificare" onclick="event.stopPropagation(); modificaCondizioneInline(event, '${idAttr}', '${card.tabella}', '${escapeJsAttr(card.cond || '')}')">${escapeHtml(card.cond)}</span></td>
                     <td data-label="Prezzo" id="prezzoCella-${idAttr}" class="price cella-editabile" title="Clicca per modificare" onclick="event.stopPropagation(); modificaCampoInline('${idAttr}', '${card.tabella}', 'prezzo', ${card.price}, 'Prezzo (€)', 'numero')">${formattaEuro(card.price)}</td>
                     <td data-label="Var." class="${varClass}">${escapeHtml(card.variation)}</td>
                     <td data-label="Link">
-                        <a href="${card.link}" target="_blank" class="link-icon">
+                        ${linkSicuro ? `<a href="${linkSicuro}" target="_blank" rel="noopener noreferrer" class="link-icon">
                             <i class="fa-solid fa-arrow-up-right-from-square"></i>
-                        </a>
+                        </a>` : ''}
                     </td>
                     <td data-label="Note" class="cella-editabile" title="${card.notes ? card.notes.replace(/"/g, '&quot;') + ' — ' : ''}clicca per modificare" onclick="event.stopPropagation(); modificaCampoInline('${idAttr}', '${card.tabella}', 'note', '${notesAttr}', 'Note', 'facoltativo')" style="max-width:90px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--text-muted); font-size:0.75rem;">${card.notes ? escapeHtml(card.notes) : '—'}</td>
                     <td style="text-align:center;">
@@ -437,8 +441,10 @@
             const iconaVariazione = varClass === 'variation-up'
                 ? '<i class="fa-solid fa-arrow-up" style="color:var(--success); font-size:0.7rem;"></i>'
                 : (varClass === 'variation-down' ? '<i class="fa-solid fa-arrow-down" style="color:var(--danger); font-size:0.7rem;"></i>' : '');
-            const linkIcona = (card.link && card.link !== '#')
-                ? `<a href="${card.link}" target="_blank" onclick="event.stopPropagation()" style="color:var(--primary); flex-shrink:0;"><i class="fa-solid fa-arrow-up-right-from-square" style="font-size:0.68rem;"></i></a>`
+            // (Audit sicurezza 2026-10-12) solo http/https, escapato (vedi urlEsternoSicuro).
+            const linkSicuro = urlEsternoSicuro(card.link);
+            const linkIcona = linkSicuro
+                ? `<a href="${linkSicuro}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()" style="color:var(--primary); flex-shrink:0;"><i class="fa-solid fa-arrow-up-right-from-square" style="font-size:0.68rem;"></i></a>`
                 : '';
             const metaTesto = [
                 `x${card.qty}`,

@@ -35,8 +35,11 @@ function escAttr(s) {
 // Costruisce e scarica un CSV (separatore ; e BOM UTF-8, per aprirlo
 // correttamente in Excel con le impostazioni regionali italiane).
 function _scaricaCSV(nomeFile, intestazioni, righe) {
+  // (Audit sicurezza 2026-10-12) testo che inizia con = + - @ (o tab/a capo) = formula per
+  // Excel: username, note e motivi li scrivono gli utenti. Apostrofo davanti, numeri invariati.
   const escapeCSV = (v) => {
-    const s = String(v ?? '');
+    let s = String(v ?? '');
+    if (typeof v === 'string' && /^[=+\-@\t\r]/.test(s)) s = "'" + s;
     return /[",;\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
   };
   const contenuto = [intestazioni, ...righe].map(riga => riga.map(escapeCSV).join(';')).join('\r\n');

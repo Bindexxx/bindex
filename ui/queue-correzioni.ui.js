@@ -50,7 +50,7 @@
                             ${opzioni.map(o => `
                                 <div data-filtro-testo="${escapeHtml((o.label || '').toLowerCase())}" style="display:flex; align-items:stretch; gap:0.3rem;">
                                     <button class="btn-secondary" style="flex:1; text-align:left; font-size:0.75rem; padding:0.4rem 0.6rem;" onclick="sceglieOpzioneDisambiguazione('${r.id}', '${escapeJsAttr(o.label || '')}', '${escapeJsAttr(o.urlSingles || '')}')">▸ ${escapeHtml(o.label || o.urlSingles || 'opzione senza nome')}</button>
-                                    ${o.urlSingles ? `<a href="${o.urlSingles}" target="_blank" onclick="event.stopPropagation()" class="btn-secondary" style="flex-shrink:0; padding:0.4rem 0.6rem;" title="Apri su Cardmarket per vederla prima di scegliere"><i class="fa-solid fa-arrow-up-right-from-square"></i></a>` : ''}
+                                    ${urlEsternoSicuro(o.urlSingles) ? `<a href="${urlEsternoSicuro(o.urlSingles)}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()" class="btn-secondary" style="flex-shrink:0; padding:0.4rem 0.6rem;" title="Apri su Cardmarket per vederla prima di scegliere"><i class="fa-solid fa-arrow-up-right-from-square"></i></a>` : ''}
                                 </div>
                             `).join('')}
                         </div>

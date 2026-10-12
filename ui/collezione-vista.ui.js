@@ -167,7 +167,7 @@ function _collAzioniHtml(card) {
     if (_collEdSealed(card)) {
         return `
         <button type="button" onclick="event.stopPropagation(); apriModificaSealed('${id}')"><i class="fa-solid fa-pen"></i> Modifica</button>
-        ${card.link && card.link !== '#' ? `<a href="${escapeHtml(card.link)}" target="_blank" rel="noopener" onclick="event.stopPropagation()"><i class="fa-solid fa-arrow-up-right-from-square"></i> Cardmarket</a>` : ''}
+        ${urlEsternoSicuro(card.link) ? `<a href="${urlEsternoSicuro(card.link)}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()"><i class="fa-solid fa-arrow-up-right-from-square"></i> Cardmarket</a>` : ''}
         <button type="button" class="coll-elimina" onclick="event.stopPropagation(); collEliminaSealed('${id}')"><i class="fa-solid fa-trash"></i> Elimina</button>`;
     }
     const inCollezione = card.tabella === 'carte' && card.stato === 'collezione';
@@ -179,7 +179,7 @@ function _collAzioniHtml(card) {
         ${inCollezione ? `<button type="button" class="btn-scambio-toggle" data-id="${id}" onclick="event.stopPropagation(); apriModaleQuantitaScambio('${id}')"><i class="fa-solid fa-right-left"></i> ${_idsInScambio.has(String(card.id)) ? `In Scambio: ${_quantitaOfferteScambio[String(card.id)] ?? 0}` : 'Offri in Scambio'}</button>` : ''}
         <button type="button" onclick="event.stopPropagation(); apriGraficoPrezzo('${id}', '${card.tabella}', '${nome}')"><i class="fa-solid fa-chart-line"></i> Andamento</button>
         ${inCollezione ? `<button type="button" onclick="event.stopPropagation(); fotoApriCarta('${id}')"><i class="fa-solid fa-camera"></i> Foto reali</button>` : ''}
-        ${card.link && card.link !== '#' ? `<a href="${escapeHtml(card.link)}" target="_blank" rel="noopener" onclick="event.stopPropagation()"><i class="fa-solid fa-arrow-up-right-from-square"></i> Cardmarket</a>` : ''}
+        ${urlEsternoSicuro(card.link) ? `<a href="${urlEsternoSicuro(card.link)}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()"><i class="fa-solid fa-arrow-up-right-from-square"></i> Cardmarket</a>` : ''}
         <button type="button" class="coll-elimina" onclick="event.stopPropagation(); eliminaCarta('${id}')"><i class="fa-solid fa-trash"></i> Elimina</button>`;
 }
 

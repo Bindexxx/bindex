@@ -93,6 +93,30 @@ function escapeJsAttr(str) {
 }
 
 
+// Link esterno da mettere in un href (audit sicurezza 2026-10-12).
+// Accetta SOLO indirizzi http/https: un link salvato nei dati con un altro
+// schema (javascript:, data:, vbscript:...) eseguirebbe codice nella pagina
+// di chi lo clicca, e il link di una carta puo' essere scritto anche da altri
+// utenti del gruppo (controllo prezzi di gruppo, vista coda condivisa).
+// new URL() normalizza spazi e caratteri di controllo come fa il browser,
+// quindi varianti con maiuscole o spazi davanti vengono riconosciute.
+// Ritorna il valore gia' escapato per un attributo a virgolette doppie,
+// oppure null se il link non e' utilizzabile (i chiamanti non mostrano il link).
+function urlEsternoSicuro(url) {
+    if (url == null) return null;
+    const valore = String(url).trim();
+    if (!valore || valore === '#') return null;
+    let indirizzo;
+    try {
+        indirizzo = new URL(valore);
+    } catch (_) {
+        return null;
+    }
+    if (indirizzo.protocol !== 'http:' && indirizzo.protocol !== 'https:') return null;
+    return escapeHtml(indirizzo.href);
+}
+
+
 // Il campo 'immagine' può contenere tre formati diversi, a seconda
 // di quando la carta è stata processata:
 // 1. Link a Supabase Storage (nuovo, leggero — riconoscibile dal

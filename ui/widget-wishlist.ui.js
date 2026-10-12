@@ -339,7 +339,7 @@ async function _wishlistDettaglio() {
             ${gruppo}
             <div class="wl-det-azioni">
                 <button type="button" class="wl-azione piena" onclick="apriModificaCarta('${idA}')">Modifica obiettivo</button>
-                ${r.link && r.link !== '#' ? `<a class="wl-azione" href="${escapeHtml(r.link)}" target="_blank" rel="noopener">Apri su Cardmarket</a>` : '<span></span>'}
+                ${urlEsternoSicuro(r.link) ? `<a class="wl-azione" href="${urlEsternoSicuro(r.link)}" target="_blank" rel="noopener noreferrer">Apri su Cardmarket</a>` : '<span></span>'}
                 <button type="button" class="wl-azione" onclick="segnaOttenuta('${idA}')">Segna come ottenuta</button>
                 <button type="button" class="wl-azione" onclick="eliminaCarta('${idA}')">Rimuovi</button>
             </div>

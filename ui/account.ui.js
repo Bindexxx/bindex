@@ -94,9 +94,15 @@
                 estensione = 'json';
             } else {
                 const colonne = [...new Set(tutto.flatMap(r => Object.keys(r)))];
+                // (Audit sicurezza 2026-10-12) Un testo che inizia con = + - @ (o tab/a capo)
+                // verrebbe letto come FORMULA da Excel/Fogli all'apertura del file: note e link
+                // possono essere scritti anche da altri (controllo prezzi di gruppo). Gli si
+                // antepone un apostrofo, che i fogli di calcolo non mostrano. I numeri restano numeri.
                 const escapeCsv = (v) => {
                     if (v === null || v === undefined) return '';
-                    const s = String(v).replace(/"/g, '""');
+                    let testo = String(v);
+                    if (typeof v === 'string' && /^[=+\-@\t\r]/.test(testo)) testo = "'" + testo;
+                    const s = testo.replace(/"/g, '""');
                     return /[",\n]/.test(s) ? `"${s}"` : s;
                 };
                 contenuto = [colonne.join(',')].concat(
