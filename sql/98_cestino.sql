@@ -12,7 +12,8 @@
 --  - ripristina_dal_cestino(id): rimette la riga com'era (stesso id) e le
 --    appartenenze ai binder/scaffali che esistono ancora. Il punto che il
 --    trigger dello storico prezzi aggiunge al reinserimento viene tolto (il
---    ripristino non è un nuovo prezzo).
+--    ripristino non è un nuovo prezzo); nel registro movimenti entra una
+--    "aggiunta" (fonte 'rpc', nota "ripristino dal cestino").
 --  - Ognuno vede e svuota SOLO il proprio cestino (RLS). Nessuna scrittura
 --    diretta dal sito: entra solo dal trigger, esce col ripristino, con
 --    l'eliminazione definitiva o dopo 30 giorni (pulizia a ogni nuova
@@ -124,6 +125,19 @@ begin
     -- è un prezzo nuovo, si toglie (stessa transazione = stesso now()).
     delete from public.storico_prezzi
     where carta_id = v.oggetto_id and tabella = v.tabella and registrato_il = now();
+
+    -- Registro movimenti (come fa il sito per aggiunte e rimozioni): il
+    -- ripristino è un'aggiunta, così lo storico non resta fermo a "Rimossa".
+    insert into public.movimenti_collezione
+        (owner_id, tipo_evento, oggetto_tipo, oggetto_id, nome_snapshot,
+         quantita_delta, prezzo_unitario, valore_delta, fonte, note)
+    values (
+        v.owner_id, 'aggiunta', case when v.tabella = 'carte' then 'carta' else 'sealed' end, v.oggetto_id,
+        coalesce(v.riga->>'nome', ''),
+        nullif(v.riga->>'qty', '')::integer,
+        nullif(v.riga->>'prezzo', '')::numeric,
+        nullif(v.riga->>'prezzo', '')::numeric * coalesce(nullif(v.riga->>'qty', '')::integer, 1),
+        'rpc', 'ripristino dal cestino');
 
     delete from public.cestino where id = p_id;
     return jsonb_build_object('tabella', v.tabella, 'id', v.oggetto_id);
