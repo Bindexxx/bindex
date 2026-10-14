@@ -305,6 +305,7 @@ async function _shopCaricaMovimenti() {
 function _shopFonteMovimento(r) {
     const rif = String(r.riferimento_id || '');
     if (rif === 'doppione') return { fonte: 'doppioni', titolo: 'Doppioni nella bustina', sotto: 'Bustina', icona: 'fa-box-open' };
+    if (rif.startsWith('codice:')) return { fonte: 'codici', titolo: `Codice “${rif.slice(7)}”`, sotto: 'Codici', icona: 'fa-gift' }; // sql/102
     if (rif.startsWith('shop:') || rif.startsWith('rimborso:')) {
         const acq = _shop.acquisti.find(x => String(x.id) === rif.split(':')[1]);
         const art = acq ? _shop.articoli.find(a => String(a.id) === String(acq.articolo_id)) : null;

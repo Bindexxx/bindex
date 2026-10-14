@@ -16,7 +16,7 @@ function _impostazioniEPC() {
 }
 
 // RESTYLE TAVOLA (2026-10-01): 7 gruppi (profilo, aspetto, home,
-// animazioni, notifiche, account, info; 'Gruppo e connessioni' rimosso
+// animazioni, notifiche, account, info; + codici dal 2026-10-14; 'Gruppo e connessioni' rimosso
 // 2026-10-05, le sue voci utili sono in 'account'). Sul telefono si vedono
 // tutti uno sotto l'altro: _impostazioniApri porta al gruppo e ne apre le
 // voci; su PC mostra solo quel gruppo a destra e segna la voce del menu.
@@ -61,6 +61,7 @@ function _impostazioniAlMostrare(gruppo) {
         _impostazioniAggiornaDiagnostica(); // card Diagnostica: solo admin
         if (typeof cestinoAggiorna === 'function') cestinoAggiorna(); // (S8) ui/cestino.ui.js
     }
+    if (gruppo === 'codici' && typeof codiciAggiorna === 'function') codiciAggiorna(); // ui/codici.ui.js (sql/102)
 }
 
 // Telefono: tocco su una voce con più campi = apri/chiudi il suo corpo.

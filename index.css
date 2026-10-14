@@ -8651,6 +8651,21 @@ body.badge-pallino .widget-badge { font-size: 0 !important; min-width: 12px !imp
 /* ── CESTINO (S8, 2026-10-12) — Impostazioni → Account e dati ─────────────
    Righe: miniatura, nome + dettagli, Ripristina / Elimina per sempre.
    ui/cestino.ui.js; il secondo tocco su un bottone rosso conferma. */
+/* Impostazioni → Codici (2026-10-14, ui/codici.ui.js, sql/102) */
+#impostazioni .imp-codici-campo { display: flex; gap: 0.5rem; align-items: stretch; }
+#impostazioni .imp-codici-campo input { flex: 1; min-width: 0; text-transform: uppercase; letter-spacing: 0.5px; font-family: 'JetBrains Mono', monospace; }
+#impostazioni .imp-codici-campo input::placeholder { text-transform: none; letter-spacing: normal; font-family: 'Space Grotesk', sans-serif; }
+#impostazioni .imp-codici-campo .imp-btn { padding: 0 14px; font-size: 0.85rem; }
+#impostazioni .imp-codici-msg { margin-top: 0.6rem; font-size: 0.8rem; font-weight: 600; }
+#impostazioni .imp-codici-msg.ok { color: var(--success, #2e7d32); }
+#impostazioni .imp-codici-msg.errore { color: var(--danger, #c62828); }
+#impostazioni .imp-codici-usati { display: flex; flex-direction: column; gap: 8px; margin-top: 0.9rem; }
+#impostazioni .imp-codici-usati:empty { display: none; }
+#impostazioni .imp-codici-riga-usato { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid var(--border-color); border-radius: 12px; background: var(--card-bg); }
+#impostazioni .imp-codici-testo { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+#impostazioni .imp-codici-testo b { font-family: 'JetBrains Mono', monospace; font-size: 0.85rem; color: var(--text-dark); }
+#impostazioni .imp-codici-testo span { font-size: 0.76rem; color: var(--text-muted); }
+#impostazioni .imp-codici-data { font-size: 0.72rem; color: var(--text-muted); white-space: nowrap; }
 #impostazioni .imp-cestino-lista { display: flex; flex-direction: column; gap: 8px; }
 #impostazioni .imp-cestino-riga { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid var(--border-color); border-radius: 12px; background: var(--card-bg); }
 #impostazioni .imp-cestino-mini { width: 36px; height: 50px; flex: 0 0 auto; border-radius: 6px; overflow: hidden; display: flex; align-items: center; justify-content: center; background: var(--primary-light); color: var(--primary-text, var(--primary)); font-size: 0.95rem; }
