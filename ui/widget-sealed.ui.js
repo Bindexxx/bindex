@@ -357,8 +357,10 @@ async function _sealedOffriInScambio() {
 }
 
 function _sealedVaiAScaffale(scaffaleId) {
+    // (2026-10-14) Niente attesa fissa di 600 ms: la pagina Scaffali apre lo
+    // scaffale indicato appena ha finito di caricare (stesso meccanismo della ricerca).
+    if (typeof _scaffaleDaAprire !== 'undefined') _scaffaleDaAprire = scaffaleId;
     apriDettaglioWidget('scaffali', null);
-    setTimeout(() => { if (typeof apriScaffaleDettaglio === 'function') apriScaffaleDettaglio(scaffaleId); }, 600);
 }
 
 // Dopo una modifica (scheda sealed o quantità offerta): ricalcola e, se il

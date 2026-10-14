@@ -103,7 +103,7 @@ CATALOGO_WIDGET.match = {
             const wishlist = typeof _numNuoviMatchWishlist !== 'undefined' ? _numNuoviMatchWishlist : 0;
             const totale = scambio + wishlist;
             const dati = { scambio, wishlist };
-            if (totale === 0) return { righe: ['Nessuna novità'], dati };
+            if (totale === 0) return { righe: [(typeof _matchLetturaFallita !== 'undefined' && _matchLetturaFallita) ? '—' : 'Nessuna novità'], dati };
             // _ballChiedeAttenzione('match', ...) in
             // ui/widget-render-condiviso.ui.js legge righe[0] per decidere
             // se far "scuotere" la tessera: deve contenere una cifra.
