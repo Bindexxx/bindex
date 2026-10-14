@@ -1,0 +1,106 @@
+BACKUP SETTIMANALE DI BINDEX (S2, piano del 2026-10-12)
+==========================================================
+
+PERCHÉ
+Il progetto Supabase è sul piano Free: nessun backup scaricabile dalla
+dashboard. I docs Supabase per questo caso consigliano un dump periodico con
+la CLI, conservato altrove. I backup del database NON contengono i file dello
+Storage: questi si copiano a parte.
+
+COSA FA (ogni lunedì alle 03:17 UTC, oppure a mano)
+ - Database: ruoli, struttura (tabelle, funzioni, trigger, policy RLS) e dati,
+   compresi gli account (auth.users) — "supabase db dump", tre file .sql.
+ - Policy di accesso dello Storage (storage_policies.sql): il dump della
+   struttura non le contiene.
+ - File dei bucket: user-media, foto-carte, shop-articoli, bustina-assets,
+   bustina-immagini, bustina-testi, bustina-quotes + manifest.json (elenco e
+   configurazione dei bucket). Esclusi: immagini-carte (le rigenera
+   l'estensione) e immaginivisibili (copie pubbliche di user-media).
+ - Tutto in un archivio cifrato AES-256 con la tua passphrase (provato subito
+   con una decifratura di controllo), pubblicato come release del repository
+   PRIVATO. Restano le ultime 8 settimane, le più vecchie si cancellano.
+ - Nei log delle Actions solo conteggi: niente dati, niente nomi di file,
+   niente segreti (GitHub li maschera comunque).
+
+COSA SERVE (una volta sola, ~15 minuti)
+ 1. Su GitHub crea un repository PRIVATO, es. "bindex-backup" (non il
+    repository del sito, che è pubblico). Solo tu come collaboratore, 2FA
+    attiva sull'account (vedi sotto).
+ 2. Copia nel repository privato:
+      tools/backup/backup-settimanale.yml → .github/workflows/backup-settimanale.yml
+      tools/backup/scarica_storage.py     → scarica_storage.py (nella radice)
+    (ripristina_storage.py e questo file servono solo per ripristinare:
+    puoi copiarli anche lì, così è tutto nello stesso posto.)
+ 3. Nel repository privato: Settings → Secrets and variables → Actions →
+    New repository secret, tre secret:
+      SUPABASE_DB_URL
+        Dashboard Supabase → pulsante "Connect" → "Session pooler" → copia la
+        stringa (postgresql://postgres.xpfibrzsffurdlypxnrw:[PASSWORD]@aws-…
+        pooler.supabase.com:5432/postgres) e metti al posto di [PASSWORD] la
+        password del database (se non la ricordi: Database → Settings →
+        Reset database password; il sito non la usa, nulla si rompe).
+        Il "Session pooler" serve perché i runner di GitHub non hanno IPv6.
+      SUPABASE_SERVICE_ROLE_KEY
+        Dashboard → Project Settings → API Keys → chiave "service_role"
+        (o una "secret key" nuova). Qui serve solo per LEGGERE i file dei
+        bucket privati. Non va mai nel sito né nell'estensione.
+      BACKUP_PASSPHRASE
+        Una frase lunga e casuale (almeno 20 caratteri; meglio 5-6 parole a
+        caso). Salvala nel gestore delle password e in un secondo posto
+        sicuro FUORI da GitHub: senza passphrase i backup sono illeggibili,
+        e nessuno può recuperarla.
+ 4. Actions → "Backup settimanale" → Run workflow. Dopo 3-5 minuti trovi la
+    prima release "bindex-AAAA-MM-GG-HHMM" con due file: .tar.gz.gpg e .sha256.
+    Se fallisce, GitHub ti manda un'email: il log dice quale passo.
+ 5. Prova a riaprirla una volta sul tuo PC (sotto, "Aprire un backup"): un
+    backup mai provato non è un backup.
+
+APRIRE UN BACKUP (sul PC: serve gpg — Windows: Gpg4win; Mac: brew install gnupg)
+   gpg --decrypt --output backup.tar.gz bindex-AAAA-MM-GG-HHMM.tar.gz.gpg
+   (chiede la passphrase)
+   tar -xzf backup.tar.gz
+ Dentro:
+   database/roles.sql, schema.sql, data.sql   → il database
+   database/storage_policies.sql              → policy dello Storage
+   storage/<bucket>/...                       → i file
+   storage/manifest.json                      → elenco file e configurazione bucket
+
+RIPRISTINARE (su un progetto Supabase nuovo o su quello attuale svuotato)
+ Passi dai docs Supabase "Backup and Restore using the CLI":
+ 1. Database (serve psql):
+      psql --single-transaction --variable ON_ERROR_STOP=1 \
+        --file database/roles.sql --file database/schema.sql \
+        --command 'SET session_replication_role = replica' \
+        --file database/data.sql --dbname "<stringa Session pooler del progetto>"
+    Se psql si ferma su righe "ALTER ... OWNER TO supabase_admin" o su
+    "cli_login_postgres", i docs dicono di commentarle e rilanciare.
+ 2. Policy dello Storage: apri database/storage_policies.sql nell'SQL editor
+    del progetto e lancialo (crea le policy dei bucket).
+ 3. File dei bucket:
+      SUPABASE_URL=https://<progetto>.supabase.co SUPABASE_SERVICE_ROLE_KEY=<chiave> \
+        python3 ripristina_storage.py storage
+    Ricrea i bucket mancanti con la stessa configurazione e ricarica i file.
+ 4. Se il progetto è NUOVO: aggiorna URL e chiave anon in config/supabase.js
+    del sito e nell'estensione; reimposta in dashboard le impostazioni Auth
+    (iscrizioni, password, MFA) — NON sono nel database.
+
+COSA NON C'È NEL BACKUP
+ - Impostazioni della dashboard (Auth, chiavi API, domini), i segreti, le
+   Edge Functions (oggi nessuna).
+ - immagini-carte e immaginivisibili (vedi sopra: si rigenerano).
+
+MANUTENZIONE
+ - Cambi la password del database o ruoti la chiave service_role? Aggiorna i
+   secret, altrimenti il backup del lunedì dopo fallisce (e arriva l'email).
+ - Spazio: ogni backup oggi pesa ~40-60 MB; 8 release ≈ 0,5 GB, gratis.
+ - Il repository privato deve restare privato: chi può modificarne le
+   Actions può leggere i secret.
+
+SICUREZZA DEGLI ACCOUNT (S1 + S3 del piano, da fare in dashboard)
+ - Supabase → Authentication → Sign In / Providers: iscrizione libera
+   ("Allow new users to sign up") DISATTIVATA; "Leaked password protection"
+   attiva (se disponibile sul piano); lunghezza minima password ≥ 8.
+ - Autenticazione a due fattori (2FA) sugli account GitHub e Supabase: chi
+   entra nell'account GitHub pubblica il sito e lo zip che
+   aggiorna_cardsync.bat installa su tutti i PC; chi entra in Supabase ha il
+   database. Controlla anche collaboratori e token di accesso attivi.
