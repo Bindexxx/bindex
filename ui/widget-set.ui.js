@@ -396,7 +396,7 @@ async function _setUiRenderDettaglio(container, inline) {
             ${azione || ''}
         </div>` : `
         <div class="page-header">
-            <span class="page-azione attiva" onclick="_setUiChiudiDettaglio()"><i class="fa-solid fa-chevron-left"></i> Set</span>
+            <button type="button" class="pg-indietro" onclick="_setUiChiudiDettaglio()" aria-label="Torna ai set"><i class="fa-solid fa-chevron-left"></i></button>
             <span class="page-title">${_setUiAttr(nome)}</span>
             ${azione || ''}
         </div>`;
@@ -549,7 +549,7 @@ function _setUiRenderClassifica(container) {
 
     container.innerHTML = `
         <div class="page-header">
-            <span class="page-azione attiva" onclick="_setUiChiudiClassifica()"><i class="fa-solid fa-chevron-left"></i> Set</span>
+            <button type="button" class="pg-indietro" onclick="_setUiChiudiClassifica()" aria-label="Torna ai set"><i class="fa-solid fa-chevron-left"></i></button>
             <span class="page-title">Da classificare</span>
         </div>
         <div class="pg-pagina">

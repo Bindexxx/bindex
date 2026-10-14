@@ -345,8 +345,8 @@ function _richiesteDettaglioHtml(g, eRicevute) {
 
     return `
         <div class="ric-card">
-            <button type="button" class="ric-indietro" onclick="_richiesteIndietro()"><i class="fa-solid fa-chevron-left"></i> Tutte le richieste</button>
             <div class="match-persona-head ric-testata">
+                <button type="button" class="pg-indietro ric-indietro" onclick="_richiesteIndietro()" aria-label="Tutte le richieste" title="Tutte le richieste"><i class="fa-solid fa-chevron-left"></i></button>
                 ${_richiesteAvatarHtml(g, nome)}
                 <div style="flex:1; min-width:0;">
                     <div class="match-persona-nome ric-titolo">${titolo}</div>

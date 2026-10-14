@@ -8765,3 +8765,31 @@ textarea.avviso-campo { resize: vertical; font-size: 0.8rem; line-height: 1.4; f
 #valore .val-chip { flex: 0 1 auto; min-width: 0; max-width: 34%; overflow: hidden; text-overflow: ellipsis; }
 #valore .val-top-destra { flex: 0 0 auto; }
 #valore .val-top-destra b { white-space: nowrap; }
+
+/* ── Tasto "indietro" uguale in tutte le sottopagine (2026-10-14) ──────────
+   Stesso aspetto di .sc-indietro / .sl-indietro: chevron grigio, senza
+   riquadro, accanto al titolo. Usato da binder aperto, set, richieste e
+   scheda della location. */
+.pg-indietro {
+    width: 34px; height: 34px; flex: 0 0 auto; padding: 0; border: none; border-radius: 10px;
+    background: transparent; color: var(--text-muted); font-size: 1rem; cursor: pointer;
+    display: inline-flex; align-items: center; justify-content: center;
+}
+.pg-indietro:active { opacity: .6; }
+/* Binder aperto: titolo e riepilogo come le altre pagine. */
+#binder.binder-dettaglio-attivo #binderDettaglioTitolo { font-size: 1.5rem !important; letter-spacing: -0.3px; }
+#binder .bn-det-titoli p { font-size: 0.82rem; }
+/* Set: "Ignora carte"/"Fine" in testata come pillola bianca (come nel pannello PC). */
+#set .page-header .page-azione {
+    background: var(--card-bg); color: var(--text-dark); border: 1px solid var(--border-color);
+    border-radius: 999px; padding: 8px 14px; font-weight: 700; font-size: 0.85rem; white-space: nowrap;
+}
+#set .page-header .page-azione.attiva { background: var(--primary); border-color: var(--primary); color: var(--on-primary, #fff); }
+/* Richieste: l'indietro ora sta nella testata della scheda (prima era una riga
+   intera "‹ Tutte le richieste"). Su PC resta nascosto come prima. */
+#richieste .ric-indietro { width: 34px; padding: 0; border-bottom: none; justify-content: center; color: var(--text-muted); margin-left: -6px; }
+/* Set aperto: il nome si accorcia con i puntini invece di spingere fuori "Ignora carte". */
+#set .page-header .page-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Scheda location: testata in cima, senza la X, allineata a sinistra come le altre. */
+#locGestisciModal .loc-mtesta { margin: 0 0 0.8rem; text-align: left; align-items: flex-start; }
+#locGestisciModal .loc-mtesta .page-title { font-size: 1.25rem; line-height: 1.25; padding-top: 4px; }
