@@ -95,6 +95,23 @@ async function setCatalogoRigheLeggi(sigle) {
     return { data: tutte, error: null };
 }
 
+// Solo sigla/numero/variante/rarità per le sigle indicate (per il bordo colorato
+// delle miniature): molto più leggero di setCatalogoRigheLeggi.
+async function setRaritaLeggi(sigle) {
+    const tutte = [];
+    for (let i = 0; i < sigle.length; i += 40) {
+        const blocco = sigle.slice(i, i + 40);
+        const { data, error } = await _setLeggiPaginato(() =>
+            supabaseClient.from('set_carte')
+                .select('sigla, numero, variante, rarita')
+                .in('sigla', blocco)
+                .order('sigla').order('numero').order('variante'));
+        if (error) return { data: null, error };
+        tutte.push(...data);
+    }
+    return { data: tutte, error: null };
+}
+
 // ── Set nascosti ─────────────────────────────────────────────────────────
 async function setNascostiLeggi(userId) {
     return _setLeggiPaginato(() =>

@@ -222,7 +222,7 @@ CATALOGO_WIDGET.chat = {
         const totale = _numChatNonLetti || 0;
         const conversazioni = _chatUltimeConversazioni || [];
         const dati = { totale, conversazioni };
-        if (totale === 0) return { righe: ['Nessun messaggio'], dati };
+        if (totale === 0) return { righe: [_chatLetturaFallita ? '—' : 'Nessun messaggio'], dati };
         // _ballChiedeAttenzione('chat', ...) in
         // ui/widget-render-condiviso.ui.js legge righe[0] per decidere se
         // far "scuotere" la tessera: deve contenere una cifra.
@@ -825,6 +825,7 @@ let _numChatNonLetti = 0;
 // tessera (Opzione B del mockup, _ballCORPI.chat in
 // ui/widget-render-corpi.ui.js).
 let _chatUltimeConversazioni = [];
+let _chatLetturaFallita = false; // (2026-10-14) ultima lettura andata in errore: la tessera mostra "—", non "Nessun messaggio"
 const _chatGiaNotificati = new Set();
 
 async function _aggiornaBadgeChat() {
@@ -839,13 +840,14 @@ async function _aggiornaBadgeChat() {
     if (await _chatVerificaAccessoConsentito()) { _numChatNonLetti = 0; _chatUltimeConversazioni = []; return; }
 
     const { data: conversazioni, error: errC } = await chatConversazioniList(userId);
-    if (errC) { console.error('_aggiornaBadgeChat: errore conversazioni:', errC.message); return; }
-    if (!conversazioni || conversazioni.length === 0) { _numChatNonLetti = 0; _chatUltimeConversazioni = []; return; }
+    if (errC) { _chatLetturaFallita = true; console.error('_aggiornaBadgeChat: errore conversazioni:', errC.message); return; }
+    if (!conversazioni || conversazioni.length === 0) { _chatLetturaFallita = false; _numChatNonLetti = 0; _chatUltimeConversazioni = []; return; }
 
     const ids = conversazioni.map(c => c.id);
     const { data: nonLetti, error: errM } = await chatMessaggiNonLettiList(ids, userId);
-    if (errM) { console.error('_aggiornaBadgeChat: errore messaggi:', errM.message); return; }
+    if (errM) { _chatLetturaFallita = true; console.error('_aggiornaBadgeChat: errore messaggi:', errM.message); return; }
 
+    _chatLetturaFallita = false;
     _numChatNonLetti = (nonLetti || []).length;
 
     // Raggruppa i non letti per conversazione (conteggio + data del più
