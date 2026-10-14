@@ -197,3 +197,19 @@ function prefFiltroPaginaScegli(pagina, chiave, ammessi, predefinito) {
     const v = prefFiltroPaginaGet(pagina, chiave);
     return ammessi.includes(v) ? v : predefinito;
 }
+
+// ── Rarità delle carte (2026-10-14) ──────────────────────────────────────
+// Cache su QUESTO dispositivo della rarità del catalogo, per sigla:
+// { SIGLA: { t: epoch ms, r: { numero: livello } } }. È un dato pubblico del
+// catalogo, non legato all'utente: resta anche dopo il logout.
+const CHIAVE_RARITA_CARTE = 'bindexRaritaCarte';
+function prefRaritaCacheGet() {
+    try {
+        const v = JSON.parse(localStorage.getItem(CHIAVE_RARITA_CARTE) || '{}');
+        return v && typeof v === 'object' ? v : {};
+    } catch (_) { return {}; }
+}
+function prefRaritaCacheSet(obj) {
+    try { localStorage.setItem(CHIAVE_RARITA_CARTE, JSON.stringify(obj)); }
+    catch (_) { /* storage pieno o bloccato: al prossimo avvio si rilegge */ }
+}

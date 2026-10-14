@@ -2014,6 +2014,11 @@
             box-shadow: 0 1px 3px rgba(0,0,0,.18);
             cursor: pointer; display: block;
         }
+        /* Anello di rarità (2026-10-14), stessi colori di .widget-tile-thumb-r-*:
+           solo box-shadow, nessun cambio di misure. */
+        .ball-ui .ball-mini.r-rara { box-shadow: 0 0 0 1.5px #2196f3, 0 1px 3px rgba(0,0,0,.18); }
+        .ball-ui .ball-mini.r-ultra_rara { box-shadow: 0 0 0 1.5px #9c27b0, 0 1px 3px rgba(0,0,0,.18); }
+        .ball-ui .ball-mini.r-secret { box-shadow: 0 0 0 1.5px #ffb300, 0 1px 3px rgba(0,0,0,.18); }
         .ball-ui .ball-mini i {
             position: absolute; left: 4px; right: 4px; top: 5px; height: 22px;
             border-radius: 3px; background: rgba(255,255,255,.35);
