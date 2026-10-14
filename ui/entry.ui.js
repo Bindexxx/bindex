@@ -48,7 +48,7 @@
             const { data: esistenti } = await locationExists(userId, nome, tipoLocation);
             if (!esistenti || esistenti.length === 0) {
                 const { error } = await locationInsert(userId, nome, tipoLocation);
-                if (error) { alert('❌ Errore nell\'aggiungere la location: ' + error.message); return; }
+                if (error) { mostraAvviso('❌ Errore nell\'aggiungere la location: ' + error.message); return; }
             }
 
             input.value = '';
@@ -197,7 +197,7 @@
             });
 
             if (righeValide.length === 0) {
-                alert('Non ci sono carte da salvare — scrivi almeno un nome o un codice.');
+                mostraAvviso('Non ci sono carte da salvare — scrivi almeno un nome o un codice.');
                 return;
             }
 
@@ -227,13 +227,13 @@
             btn.innerHTML = originalHtml;
 
             if (error) {
-                alert('❌ Errore nell\'invio delle carte: ' + error.message);
+                mostraAvviso('❌ Errore nell\'invio delle carte: ' + error.message);
                 return;
             }
 
             clearEntryDraft();
             insAggiornaPagina();
-            alert(`✅ ${righeDb.length} cart${righeDb.length === 1 ? 'a inviata' : 'e inviate'} nella coda persistente!\n\nApri l'estensione sulla sezione "Aggiungi Carte" per farle processare — non si perdono, restano lì in attesa finché qualcuno non le lavora.`);
+            mostraAvviso(`✅ ${righeDb.length} cart${righeDb.length === 1 ? 'a inviata' : 'e inviate'} nella coda persistente!\n\nApri l'estensione sulla sezione "Aggiungi Carte" per farle processare — non si perdono, restano lì in attesa finché qualcuno non le lavora.`);
         }
 
 
@@ -248,7 +248,8 @@
         // copiato negli appunti (audit 2026-09-25: prima un mailto verso un
         // indirizzo finto), per non perdere comunque la segnalazione.
         async function segnalaCaterpie(descrizioneDaPannello) {
-            const descrizione = (typeof descrizioneDaPannello === 'string') ? descrizioneDaPannello : prompt('🐛 Un Caterpie selvatico appare! Descrivi cosa hai visto (cosa NON funzionava come dovrebbe):');
+            const descrizione = (typeof descrizioneDaPannello === 'string') ? descrizioneDaPannello
+                : await chiediTesto({ titolo: '🐛 Un Caterpie selvatico appare!', testo: 'Descrivi cosa hai visto (cosa NON funzionava come dovrebbe):', conferma: 'Segnala', maxLength: 1500 });
             if (!descrizione || !descrizione.trim()) return;
 
             const userId = await authGetUserId();
@@ -265,7 +266,7 @@
                     schermo: `${window.innerWidth}x${window.innerHeight}`,
                 });
                 if (!error) {
-                    alert('🐛 Caterpie catturato! Grazie della segnalazione, l\'admin la vedrà a breve.');
+                    mostraAvviso('🐛 Caterpie catturato! Grazie della segnalazione, l\'admin la vedrà a breve.');
                     return;
                 }
                 console.error('Errore invio segnalazione bug, uso il fallback appunti:', error.message);
@@ -281,9 +282,9 @@
             const testo = `Ho catturato un Caterpie!\n\nDescrizione: ${descrizione.trim()}\n\nPagina: ${window.location.href}\nData: ${new Date().toLocaleString('it-IT')}\n\n--- Log diagnostico ---\n${logTesto || '(non disponibile)'}`;
             try {
                 await navigator.clipboard.writeText(testo);
-                alert('🐛 Non sono riuscito a salvare la segnalazione (sei offline o non hai fatto l\'accesso).\n\nIl testo completo, con il log diagnostico, è stato COPIATO negli appunti: incollalo in un messaggio all\'admin.');
+                mostraAvviso('🐛 Non sono riuscito a salvare la segnalazione (sei offline o non hai fatto l\'accesso).\n\nIl testo completo, con il log diagnostico, è stato COPIATO negli appunti: incollalo in un messaggio all\'admin.');
             } catch (_) {
-                prompt('🐛 Non sono riuscito a salvare la segnalazione. Copia questo testo e mandalo all\'admin:', testo);
+                await chiediTesto({ titolo: '🐛 Segnalazione non salvata', testo: 'Copia questo testo e mandalo all\'admin:', valore: testo, multiriga: true, conferma: 'Fatto', annulla: 'Chiudi' });
             }
         }
 
@@ -759,7 +760,7 @@
             });
 
             if (righeDb.length === 0) {
-                alert('Non ci sono prodotti sealed da salvare — scrivi almeno un nome.');
+                mostraAvviso('Non ci sono prodotti sealed da salvare — scrivi almeno un nome.');
                 return;
             }
 
@@ -774,11 +775,11 @@
             btn.innerHTML = originalHtml;
 
             if (error) {
-                alert('❌ Errore nell\'invio dei prodotti sealed: ' + error.message);
+                mostraAvviso('❌ Errore nell\'invio dei prodotti sealed: ' + error.message);
                 return;
             }
 
             initEntryTableSealed();
             insAggiornaPagina();
-            alert(`✅ ${righeDb.length} prodott${righeDb.length === 1 ? 'o sealed inviato' : 'i sealed inviati'} nella coda!\n\nApri l'estensione sulla sezione "Aggiungi Carte": cerca ogni prodotto su Cardmarket e, se lo trova, lo aggiunge a ${wish ? 'la Wishlist' : 'Sealed'}. Se non lo trova lo vedrai tra le carte da correggere.`);
+            mostraAvviso(`✅ ${righeDb.length} prodott${righeDb.length === 1 ? 'o sealed inviato' : 'i sealed inviati'} nella coda!\n\nApri l'estensione sulla sezione "Aggiungi Carte": cerca ogni prodotto su Cardmarket e, se lo trova, lo aggiunge a ${wish ? 'la Wishlist' : 'Sealed'}. Se non lo trova lo vedrai tra le carte da correggere.`);
         }

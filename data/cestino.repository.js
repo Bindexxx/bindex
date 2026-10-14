@@ -29,3 +29,19 @@ async function cestinoEliminaDefinitivo(id) {
 async function cestinoSvuota(userId) {
     return supabaseClient.from('cestino').delete().eq('owner_id', userId);
 }
+
+// (Q3) "Annulla" subito dopo un'eliminazione: le voci degli oggetti appena
+// eliminati, la più recente per prima.
+async function cestinoVociPerOggetti(tabella, oggettoIds) {
+    return supabaseClient
+        .from('cestino')
+        .select('id, oggetto_id, eliminato_il')
+        .eq('tabella', tabella)
+        .in('oggetto_id', oggettoIds)
+        .order('eliminato_il', { ascending: false });
+}
+
+// Il cestino c'è (sql/98 eseguito)? Lettura minima, una volta per sessione.
+async function cestinoPresente() {
+    return supabaseClient.from('cestino').select('id').limit(1);
+}

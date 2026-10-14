@@ -621,8 +621,17 @@ async function _missioniNotificaCompletamenti(nuoveMissioni, nuoviTraguardi) {
     if (!(nuoveMissioni && nuoveMissioni.length) && !(nuoviTraguardi && nuoviTraguardi.length)) return;
 
     if (typeof CSBar !== 'undefined') {
-        (nuoveMissioni || []).forEach(m => CSBar.avvisa('missione-completata', { text: m.titolo }));
-        (nuoviTraguardi || []).forEach(t => CSBar.avvisa('traguardo-sbloccato', { text: t.titolo }));
+        // (Q6, 2026-10-12) Da 3 in su (es. al primo avvio dopo qualche giorno)
+        // un solo avviso riassuntivo per tipo invece di uno per elemento.
+        const elenco = (voci) => {
+            const t = voci.map(v => v.titolo).filter(Boolean);
+            return t.length <= 2 ? t.join(' e ') : t.slice(0, 2).join(', ') + ` e ${t.length - 2 === 1 ? 'un\'altra' : 'altre ' + (t.length - 2)}`;
+        };
+        const missioni = nuoveMissioni || [], traguardi = nuoviTraguardi || [];
+        if (missioni.length >= 3) CSBar.avvisa('missione-completata', { text: `${missioni.length} missioni completate: ${elenco(missioni)}` });
+        else missioni.forEach(m => CSBar.avvisa('missione-completata', { text: m.titolo }));
+        if (traguardi.length >= 3) CSBar.avvisa('traguardo-sbloccato', { text: `${traguardi.length} traguardi sbloccati: ${elenco(traguardi)}` });
+        else traguardi.forEach(t => CSBar.avvisa('traguardo-sbloccato', { text: t.titolo }));
     }
 
     // Beep "vinto" — 1200Hz, stesso in entrambi i chiamanti originali.

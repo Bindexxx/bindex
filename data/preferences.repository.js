@@ -171,3 +171,29 @@ function prefBannerSet(modo) { localStorage.setItem('cardsyncBanner', modo); }
 // 'basso' (in basso a destra).
 function prefBannerPosGet() { return localStorage.getItem('cardsyncBannerPos') === 'basso' ? 'basso' : 'alto'; }
 function prefBannerPosSet(pos) { localStorage.setItem('cardsyncBannerPos', pos === 'basso' ? 'basso' : 'alto'); }
+
+// (Q5 quality of life, 2026-10-12) Ordinamento e filtri scelti in ogni
+// pagina (Collezione, Wishlist, Sealed, Location, Doppioni, Scaffali, Foto),
+// ricordati su QUESTO dispositivo. Un solo oggetto { pagina: { chiave: valore } }.
+// Chi legge controlla che il valore sia ancora valido (elenchi propri).
+const CHIAVE_FILTRI_PAGINE = 'bindexFiltriPagine';
+function prefFiltroPaginaGet(pagina, chiave) {
+    try {
+        const tutti = JSON.parse(localStorage.getItem(CHIAVE_FILTRI_PAGINE) || '{}');
+        const v = tutti && tutti[pagina] ? tutti[pagina][chiave] : undefined;
+        return v === undefined ? null : v;
+    } catch (_) { return null; }
+}
+function prefFiltroPaginaSet(pagina, chiave, valore) {
+    try {
+        const tutti = JSON.parse(localStorage.getItem(CHIAVE_FILTRI_PAGINE) || '{}') || {};
+        if (!tutti[pagina] || typeof tutti[pagina] !== 'object') tutti[pagina] = {};
+        tutti[pagina][chiave] = valore;
+        localStorage.setItem(CHIAVE_FILTRI_PAGINE, JSON.stringify(tutti));
+    } catch (_) { /* storage pieno o bloccato: si ricomincia dai valori di sempre */ }
+}
+// Valore salvato se è tra quelli ammessi, altrimenti il predefinito.
+function prefFiltroPaginaScegli(pagina, chiave, ammessi, predefinito) {
+    const v = prefFiltroPaginaGet(pagina, chiave);
+    return ammessi.includes(v) ? v : predefinito;
+}

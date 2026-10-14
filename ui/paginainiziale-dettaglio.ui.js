@@ -159,6 +159,8 @@ async function apriDettaglioWidget(tabId, evt) {
         if (tabId === 'shop') renderPaginaShop(); // RESTYLE FASE 9, ui/shop.ui.js
     } else {
         switchTab(tabId, null);
+        // (Q5) Collezione: la Location scelta l'ultima volta (switchTab la azzera).
+        if (tabId === 'visualizzazione' && typeof collRipristinaLocation === 'function' && collRipristinaLocation()) filterTable();
         // Fase 10 (2026-09-13): riparti sempre dall'hub Impostazioni, mai
         // da una sotto-pagina rimasta aperta dall'ultima visita — wrapper
         // qui, MAI dentro switchTab() stessa (vedi commento sopra).

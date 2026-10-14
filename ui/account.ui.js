@@ -31,7 +31,7 @@
                 nascondiScambio: document.getElementById('nascondiScambioCheck').checked,
                 nascondiWishlist: document.getElementById('nascondiWishlistCheck').checked,
             });
-            if (error) { alert('❌ Errore nel salvare la preferenza: ' + error.message); return; }
+            if (error) { mostraAvviso('❌ Errore nel salvare la preferenza: ' + error.message); return; }
         }
 
 
@@ -47,8 +47,8 @@
                 sogliaPrezzi: parseFloat(document.getElementById('notificaPrezziSoglia').value) || 5,
                 notificaWishlist: document.getElementById('notificaWishlistCheck').checked,
             });
-            if (error) { alert('❌ Errore nel salvare le preferenze: ' + error.message); return; }
-            alert('✅ Preferenze salvate! (le notifiche vere e proprie non sono ancora attive — questa è la lista d\'attesa)');
+            if (error) { mostraAvviso('❌ Errore nel salvare le preferenze: ' + error.message); return; }
+            mostraAvviso('✅ Preferenze salvate! (le notifiche vere e proprie non sono ancora attive — questa è la lista d\'attesa)');
         }
 
 
@@ -58,14 +58,14 @@
         // _caricaLayoutWidget() lo salva da sé con daAzioneUtente=false, quindi
         // il ripristino NON conta come "personalizzazione" per le missioni.
         async function ripristinaDisposizioneHome() {
-            if (!confirm('Ripristinare la disposizione della home? Le tessere tornano come al primo accesso, su questo dispositivo.')) return;
+            if (!(await chiediConferma({ titolo: 'Ripristinare la home?', testo: 'Le tessere tornano come al primo accesso, su questo dispositivo.', conferma: 'Ripristina' }))) return;
             const userId = await authGetUserId();
             if (!userId) return;
             prefWidgetLayoutRemove(userId);
             if (typeof _paginaWidgetCorrente !== 'undefined') _paginaWidgetCorrente = 0;
             await _caricaLayoutWidget();
             if (typeof renderWidgetHome === 'function') await renderWidgetHome();
-            alert('✅ Home ripristinata.');
+            mostraAvviso('✅ Home ripristinata.');
         }
 
 
@@ -125,11 +125,11 @@
         // ── ACCOUNT ────────────────────────────────────────────────────────────────
         async function cambiaPassword() {
             const nuova = document.getElementById('nuovaPasswordInput').value;
-            if (!nuova || nuova.length < 6) { alert('La password deve avere almeno 6 caratteri.'); return; }
-            if (!confirm('Confermi il cambio password?')) return;
+            if (!nuova || nuova.length < 6) { mostraAvviso('La password deve avere almeno 6 caratteri.'); return; }
+            if (!(await chiediConferma({ titolo: 'Cambiare la password?', conferma: 'Cambia password' }))) return;
 
             const { error } = await authUpdatePassword(nuova);
-            if (error) { alert('❌ Errore nel cambiare la password: ' + error.message); return; }
+            if (error) { mostraAvviso('❌ Errore nel cambiare la password: ' + error.message); return; }
             document.getElementById('nuovaPasswordInput').value = '';
-            alert('✅ Password cambiata con successo!');
+            mostraAvviso('✅ Password cambiata con successo!');
         }

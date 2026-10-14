@@ -36,12 +36,13 @@ async function _cestinoCarica() {
     }
     const { data, error } = risposta || {};
     if (error) {
-        if (_cestinoTabellaAssente(error)) { card.style.display = 'none'; return; }
+        if (_cestinoTabellaAssente(error)) { _cestinoAttivo = false; card.style.display = 'none'; return; }
         console.error('[cestino] lettura:', error.message || error);
         card.style.display = '';
         _cestinoMessaggio('Non riesco a leggere il cestino: riprova tra poco.', true);
         return;
     }
+    _cestinoAttivo = true;
     card.style.display = '';
     _cestinoMessaggio('', false);
     // Oltre i 30 giorni la riga sparisce alla prossima eliminazione: qui
@@ -275,4 +276,80 @@ async function cestinoSvuotaChiedi() {
     _cestinoVoci = [];
     _cestinoRender();
     _cestinoMessaggio('Cestino svuotato.', false);
+}
+
+
+// ── (Q3 quality of life, 2026-10-12) "ANNULLA" DOPO UN'ELIMINAZIONE ──────
+// Dopo aver eliminato carte o sealed compare un messaggio con "Annulla" per
+// 6 secondi: rimette gli oggetti dal cestino (stessa RPC del ripristino qui
+// sopra). Senza sql/98 il cestino non c'è: messaggio semplice, senza Annulla,
+// e la conferma dell'eliminazione dice che non si torna indietro.
+let _cestinoAttivo = null; // null = non ancora verificato in questa sessione
+
+async function cestinoAttivo() {
+    if (_cestinoAttivo !== null) return _cestinoAttivo;
+    try {
+        const { error } = await cestinoPresente();
+        if (!error) _cestinoAttivo = true;
+        else if (_cestinoTabellaAssente(error)) _cestinoAttivo = false;
+    } catch (_) { /* rete assente: si riproverà la prossima volta */ }
+    return _cestinoAttivo === true;
+}
+
+// Riga per la finestra di conferma dell'eliminazione.
+function cestinoTestoConferma(attivo) {
+    return attivo
+        ? 'Resta nel cestino per ' + CESTINO_GIORNI + ' giorni (Impostazioni → Account e dati).'
+        : 'Questa azione non si può annullare.';
+}
+
+// Messaggio "eliminata" con Annulla. oggetti: [{ id, nome }]; dopo: funzione
+// che ridisegna la pagina dopo il ripristino (facoltativa).
+function cestinoOffriAnnulla(tabella, oggetti, testo, dopo) {
+    const lista = (oggetti || []).filter(o => o && o.id != null);
+    if (!lista.length || _cestinoAttivo === false) { avvisoBreve(testo, { tipo: 'ok' }); return; }
+    avvisoBreve(testo, {
+        tipo: 'ok', durata: 6000,
+        azione: { etichetta: 'Annulla', fn: () => cestinoAnnullaEliminazione(tabella, lista, dopo) },
+    });
+}
+
+async function cestinoAnnullaEliminazione(tabella, oggetti, dopo) {
+    const ids = [...new Set(oggetti.map(o => String(o.id)))];
+    let voci = null;
+    try {
+        const { data, error } = await cestinoVociPerOggetti(tabella, ids);
+        if (!error) voci = data || [];
+        else console.error('[cestino] annulla:', error.message || error);
+    } catch (e) {
+        console.error('[cestino] annulla:', e);
+    }
+    if (!voci || !voci.length) {
+        mostraAvviso('❌ Non riesco ad annullare: se il cestino è attivo trovi tutto in Impostazioni → Account e dati.');
+        return;
+    }
+    // Una voce per oggetto: la più recente (arrivano già in quest'ordine).
+    const daRipristinare = new Map();
+    voci.forEach(v => { if (!daRipristinare.has(String(v.oggetto_id))) daRipristinare.set(String(v.oggetto_id), v.id); });
+    let riusciti = 0;
+    for (const idVoce of daRipristinare.values()) {
+        try {
+            const { error } = await cestinoRipristina(idVoce);
+            if (error) console.error('[cestino] annulla, ripristino:', error.message || error);
+            else riusciti++;
+        } catch (e) {
+            console.error('[cestino] annulla, ripristino:', e);
+        }
+    }
+    try {
+        if (typeof dopo === 'function') await dopo();
+        else if (tabella === 'carte' && typeof caricaCarteReali === 'function') await caricaCarteReali();
+        else if (tabella === 'prodotti_sealed' && typeof caricaProdottiSealedReali === 'function') await caricaProdottiSealedReali();
+    } catch (e) {
+        console.error('[cestino] ricarica dopo Annulla:', e);
+    }
+    const mancanti = ids.length - riusciti;
+    if (!riusciti) mostraAvviso('❌ Annullamento non riuscito: trovi tutto nel cestino (Impostazioni → Account e dati).');
+    else if (mancanti > 0) avvisoBreve(`Rimesse ${riusciti} su ${ids.length}: le altre sono nel cestino.`, { tipo: 'errore' });
+    else avvisoBreve(ids.length === 1 ? 'Eliminazione annullata.' : `Eliminazione annullata: ${riusciti} rimesse a posto.`, { tipo: 'ok' });
 }

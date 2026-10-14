@@ -528,7 +528,7 @@ async function _matchAggiornaNascosti(chiave, nascondi) {
 // segnaposto invece di costruire un link rotto.
 function _apriBinderAltruiMatch(ownerAltro, binderAltro) {
     if (!ownerAltro || !binderAltro) {
-        alert('Collegamento diretto al binder non ancora disponibile.');
+        mostraAvviso('Collegamento diretto al binder non ancora disponibile.');
         return;
     }
     // Missione #70 "Binder pubblico" (2026-08-30): visita del binder

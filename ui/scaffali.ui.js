@@ -44,6 +44,8 @@ let _quantitaOfferteScambioSealed = {}; // prodottoId -> quantita_offerta
 
 
 // ── Ingresso dal widget "Scaffali" ───────────────────────────────────────
+let _scaffaleDaAprire = null; // (Q4) id scelto nella ricerca globale, letto a fine caricamento
+
 async function apriPaginaScaffali() {
     const userId = await authGetUserId();
     if (!userId) return;
@@ -87,7 +89,11 @@ async function apriPaginaScaffali() {
     }
 
     await renderGrigliaScaffali();
-    if (_scaEPC() && _scaffaliElenco.length) apriScaffaleDettaglio(_scaffaliElenco[0].id);
+    // (Q4) Aperta dalla ricerca globale: direttamente sullo scaffale cercato.
+    const daAprire = _scaffaleDaAprire;
+    _scaffaleDaAprire = null;
+    if (daAprire && _scaffaliElenco.some(sc => String(sc.id) === String(daAprire))) apriScaffaleDettaglio(daAprire);
+    else if (_scaEPC() && _scaffaliElenco.length) apriScaffaleDettaglio(_scaffaliElenco[0].id);
 }
 
 function _scaEPC() { const s = document.getElementById('scaffali'); return !!s && s.clientWidth >= 780; }
@@ -172,11 +178,11 @@ async function creaNuovoScaffale() {
     const userId = await authGetUserId();
     if (!userId) return;
 
-    const nome = (prompt('Nome del nuovo scaffale:') || '').trim();
+    const nome = ((await chiediTesto({ titolo: 'Nuovo scaffale', testo: 'Nome del nuovo scaffale:', conferma: 'Crea', maxLength: 60 })) || '').trim();
     if (!nome) return;
 
     const { error } = await scaffaleInsert(userId, nome);
-    if (error) { alert('Errore nella creazione: ' + error.message); return; }
+    if (error) { mostraAvviso('Errore nella creazione: ' + error.message); return; }
 
     const { data: scaffali, error: errList } = await scaffaliList(userId);
     if (!errList) _scaffaliElenco = scaffali || [];
@@ -196,7 +202,7 @@ let _scaRighe = []; // [{ prodotto_id, ordine, aggiunta_il }] dello scaffale ape
 async function apriScaffaleDettaglio(scaffaleId) {
     _scaffaleAttivo = scaffaleId;
     _scaEdit = false;
-    _scaOrd = 'mio';
+    _scaOrd = prefFiltroPaginaScegli('scaffali', 'ordine', ['mio', 'nome', 'tipo', 'valore'], 'mio'); // (Q5)
 
     const elenco = document.getElementById('scaffaliElencoVista');
     if (elenco) elenco.style.display = _scaEPC() ? '' : 'none'; // RESTYLE: su PC elenco e scaffale affiancati
@@ -282,6 +288,7 @@ function scaffaleToggleModifica() {
 
 function scaffaleImpostaOrdinamento(o) {
     _scaOrd = o;
+    prefFiltroPaginaSet('scaffali', 'ordine', o); // (Q5)
     _scaAggiornaTesta();
     renderScaffaleContenuto();
 }
@@ -409,7 +416,7 @@ async function scaffaleSposta(prodottoId, delta) {
     renderScaffaleContenuto();
     const userId = await authGetUserId();
     const { error } = await scaffaleProdottiImpostaOrdine(userId, _scaffaleAttivo, ids);
-    if (error) { alert('Errore nel salvare l\'ordine: ' + error.message); await _caricaProdottiScaffaleAttivo(_scaffaliElenco.find(s => String(s.id) === String(_scaffaleAttivo))); renderScaffaleContenuto(); }
+    if (error) { mostraAvviso('Errore nel salvare l\'ordine: ' + error.message); await _caricaProdottiScaffaleAttivo(_scaffaliElenco.find(s => String(s.id) === String(_scaffaleAttivo))); renderScaffaleContenuto(); }
 }
 
 
@@ -417,7 +424,7 @@ async function rimuoviProdottoDaScaffaleAttivo(prodottoId) {
     if (!_scaffaleAttivo) return;
     const userId = await authGetUserId();
     const { error } = await scaffaleProdottoRimuovi(userId, _scaffaleAttivo, prodottoId);
-    if (error) { alert('Errore: ' + error.message); return; }
+    if (error) { mostraAvviso('Errore: ' + error.message); return; }
 
     _scaffaleAttivoProdottiIds = _scaffaleAttivoProdottiIds.filter(id => String(id) !== String(prodottoId));
     _scaRighe = _scaRighe.filter(r => String(r.prodotto_id) !== String(prodottoId));
@@ -471,11 +478,11 @@ async function _toggleAssegnazioneProdottoModale(prodottoId, spuntato) {
 
     if (spuntato) {
         const { error } = await scaffaleProdottoAggiungi(userId, _scaffaleAttivo, prodottoId);
-        if (error) { alert('Errore: ' + error.message); return; }
+        if (error) { mostraAvviso('Errore: ' + error.message); return; }
         if (!_scaffaleAttivoProdottiIds.includes(prodottoId)) _scaffaleAttivoProdottiIds.push(prodottoId);
     } else {
         const { error } = await scaffaleProdottoRimuovi(userId, _scaffaleAttivo, prodottoId);
-        if (error) { alert('Errore: ' + error.message); return; }
+        if (error) { mostraAvviso('Errore: ' + error.message); return; }
         _scaffaleAttivoProdottiIds = _scaffaleAttivoProdottiIds.filter(id => String(id) !== String(prodottoId));
     }
 }
@@ -490,14 +497,14 @@ async function proponiRinominaScaffaleAttivo() {
     const scaffale = _scaffaliElenco.find(s => String(s.id) === String(_scaffaleAttivo));
     if (!scaffale) return;
 
-    const nuovoNome = (prompt('Nuovo nome (in attesa di approvazione admin):', scaffale.nome || '') || '').trim();
+    const nuovoNome = ((await chiediTesto({ titolo: 'Rinomina scaffale', testo: 'Nuovo nome (in attesa di approvazione admin):', valore: scaffale.nome || '', conferma: 'Proponi', maxLength: 60 })) || '').trim();
     if (!nuovoNome || nuovoNome === scaffale.nome) return;
 
     const userId = await authGetUserId();
     const { error } = await creaRichiestaPendente(userId, 'scaffale_nome', { scaffale_id: scaffale.id, nome_proposto: nuovoNome });
-    if (error) { alert('Errore nella richiesta: ' + error.message); return; }
+    if (error) { mostraAvviso('Errore nella richiesta: ' + error.message); return; }
 
-    alert('Richiesta inviata — il nuovo nome sarà visibile dopo l\'approvazione di un admin.');
+    mostraAvviso('Richiesta inviata — il nuovo nome sarà visibile dopo l\'approvazione di un admin.');
 }
 
 
@@ -526,11 +533,11 @@ async function eliminaScaffaleAttivo() {
     const scaffale = _scaffaliElenco.find(s => String(s.id) === String(_scaffaleAttivo));
     if (!scaffale || scaffale.tipo === 'vetrina' || scaffale.tipo === 'scambio') return; // rete di sicurezza, il bottone è già nascosto per vetrina/scambio
 
-    if (!confirm(`Eliminare lo scaffale "${scaffale.nome || ''}"? I prodotti al suo interno NON vengono eliminati, solo l'associazione.`)) return;
+    if (!(await chiediConferma({ titolo: 'Eliminare lo scaffale?', testo: `"${scaffale.nome || ''}": i prodotti al suo interno NON vengono eliminati, solo l'associazione.`, conferma: 'Elimina', pericolo: true }))) return;
 
     const userId = await authGetUserId();
     const { error } = await scaffaleDelete(userId, scaffale.id);
-    if (error) { alert('Errore: ' + error.message); return; }
+    if (error) { mostraAvviso('Errore: ' + error.message); return; }
 
     _scaffaliElenco = _scaffaliElenco.filter(s => String(s.id) !== String(scaffale.id));
     tornaAllaGrigliaScaffali();
@@ -601,11 +608,11 @@ async function _applicaQuantitaScambioSealed(prodottoId, quantita) {
 
     if (quantita <= 0) {
         const { error } = await scaffaleProdottoRimuovi(userId, _scaffaleScambioId, prodottoId);
-        if (error) { alert('❌ Errore nel rimuovere il prodotto dallo Scambio: ' + error.message); return; }
+        if (error) { mostraAvviso('❌ Errore nel rimuovere il prodotto dallo Scambio: ' + error.message); return; }
         delete _quantitaOfferteScambioSealed[String(prodottoId)];
     } else {
         const { error } = await scaffaleProdottoImpostaQuantitaScambio(userId, _scaffaleScambioId, prodottoId, quantita);
-        if (error) { alert('❌ Errore nell\'aggiornare la quantità offerta: ' + error.message); return; }
+        if (error) { mostraAvviso('❌ Errore nell\'aggiornare la quantità offerta: ' + error.message); return; }
         _quantitaOfferteScambioSealed[String(prodottoId)] = quantita;
     }
 

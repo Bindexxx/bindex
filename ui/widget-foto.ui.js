@@ -23,7 +23,7 @@
 // _urlImmagineVisualizzabile (utils), apriDettaglioWidget, QRCode (CDN).
 
 let _fotoCache = { quando: 0, userId: null, perCarta: null }; // Map carta_id → {fronte, retro, difetti[]}
-let _fotoFiltro = 'dafare';
+let _fotoFiltro = 'dafare'; // (Q5) il valore ricordato si legge dopo _FOTO_FILTRI, qui sotto
 let _fotoSelId = null;           // PC: carta nel pannello
 let _fotoEtichettaPC = null;     // PC: etichetta scelta per il prossimo difetto
 let _fotoSessione = null;        // stato della fotocamera
@@ -32,6 +32,7 @@ const _FOTO_FILTRI = [
     ['dafare', 'Da fare'], ['scambio', 'In Scambio'], ['preziose', 'Più preziose'],
     ['senzaretro', 'Senza retro'], ['fatte', 'Fatte'],
 ];
+_fotoFiltro = prefFiltroPaginaScegli('foto', 'filtro', _FOTO_FILTRI.map(f => f[0]).concat('tutte'), _fotoFiltro); // (Q5)
 
 // ── DATI ─────────────────────────────────────────────────────────────────
 function _fotoCarteMie() {
@@ -205,7 +206,7 @@ function _fotoDisegnaPagina() {
     if (pc) _fotoDisegnaQr();
 }
 
-function _fotoImpostaFiltro(k) { _fotoFiltro = k; _fotoSelId = null; _fotoDisegnaPagina(); }
+function _fotoImpostaFiltro(k) { _fotoFiltro = k; prefFiltroPaginaSet('foto', 'filtro', k); _fotoSelId = null; _fotoDisegnaPagina(); } // (Q5) ricordato
 
 function _fotoApriRiga(id) {
     if (_fotoEPC()) { _fotoSelId = id; _fotoEtichettaPC = null; _fotoDisegnaPagina(); return; }
@@ -299,8 +300,8 @@ function _fotoScegliFile(input, tipo) {
     if (file) _fotoCaricaDaPannello(file, tipo);
 }
 async function _fotoCaricaDaPannello(file, tipo) {
-    if (!/^image\//.test(file.type || '')) { alert('Scegli un’immagine.'); return; }
-    if (tipo === 'difetto' && !_fotoEtichettaPC) { alert('Scegli prima cosa mostra il dettaglio (Angolo, Bordo, …).'); return; }
+    if (!/^image\//.test(file.type || '')) { mostraAvviso('Scegli un’immagine.'); return; }
+    if (tipo === 'difetto' && !_fotoEtichettaPC) { mostraAvviso('Scegli prima cosa mostra il dettaglio (Angolo, Bordo, …).'); return; }
     const p = document.getElementById('ftPannello');
     if (p) p.classList.add('in-corso');
     try {
@@ -308,7 +309,7 @@ async function _fotoCaricaDaPannello(file, tipo) {
         await _fotoSalva(_fotoSelId, tipo, tipo === 'difetto' ? _fotoEtichettaPC : null, blob);
         if (tipo === 'difetto') _fotoEtichettaPC = null;
     } catch (e) {
-        alert('❌ ' + (e && e.message ? e.message : 'Caricamento non riuscito'));
+        mostraAvviso('❌ ' + (e && e.message ? e.message : 'Caricamento non riuscito'));
     }
     await _fotoCarica(true);
     _fotoDisegnaPagina();
@@ -339,9 +340,9 @@ async function _fotoElimina(fotoId) {
     (_fotoCache.perCarta || new Map()).forEach(v => {
         [v.fronte, v.retro, ...v.difetti].forEach(f => { if (f && String(f.id) === String(fotoId)) foto = f; });
     });
-    if (!foto || !confirm('Eliminare questa foto?')) return;
+    if (!foto || !(await chiediConferma({ titolo: 'Eliminare questa foto?', conferma: 'Elimina', pericolo: true }))) return;
     const { error } = await fotoCarteDelete(foto.id);
-    if (error) { alert('❌ ' + error.message); return; }
+    if (error) { mostraAvviso('❌ ' + error.message); return; }
     storageFotoCarteRemove(foto.storage_path).catch(() => {});
     await _fotoCarica(true);
     _fotoDisegnaPagina();
@@ -352,7 +353,7 @@ async function _fotoElimina(fotoId) {
 async function fotoAvviaSessione(coda) {
     await _fotoCarica(false);
     const ids = (coda && coda.length) ? coda : _fotoDaFare().map(c => c.id);
-    if (!ids.length) { alert('Non ci sono carte da fotografare.'); return; }
+    if (!ids.length) { mostraAvviso('Non ci sono carte da fotografare.'); return; }
     _fotoSessione = { coda: ids.map(String), idx: 0, passo: 'fronte', etichetta: null, stream: null, blob: null, torcia: false, origine: null };
     _fotoSessioneMonta();
     _fotoSessionePasso(_fotoPassoIniziale(ids[0]));
@@ -470,7 +471,7 @@ async function _fotoScatta() {
     const c = document.createElement('canvas');
     c.width = Math.round(sw); c.height = Math.round(sh);
     c.getContext('2d').drawImage(video, sx, sy, sw, sh, 0, 0, c.width, c.height);
-    try { _fotoSessione.blob = await fotoComprimi(c); } catch (e) { alert('❌ ' + e.message); return; }
+    try { _fotoSessione.blob = await fotoComprimi(c); } catch (e) { mostraAvviso('❌ ' + e.message); return; }
     _fotoSessioneRevisione(true);
 }
 
@@ -478,7 +479,7 @@ async function _fotoSessioneGalleria(input) {
     const file = input.files && input.files[0];
     input.value = '';
     if (!file || !_fotoSessione) return;
-    try { _fotoSessione.blob = await fotoComprimi(file); } catch (e) { alert('❌ ' + e.message); return; }
+    try { _fotoSessione.blob = await fotoComprimi(file); } catch (e) { mostraAvviso('❌ ' + e.message); return; }
     _fotoSessioneRevisione(false);
 }
 
@@ -524,7 +525,7 @@ async function _fotoSessioneVaBene() {
         await _fotoSalva(cartaId, tipo, tipo === 'difetto' ? s.etichetta : null, s.blob);
         await _fotoCarica(true);
     } catch (e) {
-        alert('❌ ' + (e && e.message ? e.message : 'Salvataggio non riuscito'));
+        mostraAvviso('❌ ' + (e && e.message ? e.message : 'Salvataggio non riuscito'));
         if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-check"></i> Va bene'; }
         return;
     }

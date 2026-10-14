@@ -254,7 +254,7 @@ async function _achievementToggleVetrina(id) {
         _achievementVetrinaIds = _achievementVetrinaIds.filter(x => x !== id);
     } else {
         if (_achievementVetrinaIds.length >= ACHIEVEMENT_VETRINA_MAX) {
-            alert(`La Vetrina può contenere al massimo ${ACHIEVEMENT_VETRINA_MAX} achievement — togline uno prima di aggiungerne un altro.`);
+            mostraAvviso(`La Vetrina può contenere al massimo ${ACHIEVEMENT_VETRINA_MAX} achievement — togline uno prima di aggiungerne un altro.`);
             return;
         }
         _achievementVetrinaIds.push(id);

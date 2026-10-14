@@ -695,7 +695,7 @@ async function toggleBinderMembership(id) {
 
     const giaNelBinder = _idsNelBinder.has(String(id));
     if (giaNelBinder) {
-        if (!confirm(`Rimuovere "${card.name}" dal tuo binder personale?`)) return;
+        if (!(await chiediConferma({ titolo: 'Togliere dal binder?', testo: `"${card.name}" esce dal tuo binder personale (resta in collezione).`, conferma: 'Togli' }))) return;
     }
 
     const userId = await authGetUserId();
@@ -703,11 +703,11 @@ async function toggleBinderMembership(id) {
 
     if (giaNelBinder) {
         const { error } = await binderCarteDeleteOne(userId, _binderExtraId, id);
-        if (error) { alert('❌ Errore nel rimuovere la carta dal Binder: ' + error.message); return; }
+        if (error) { mostraAvviso('❌ Errore nel rimuovere la carta dal Binder: ' + error.message); return; }
         _idsNelBinder.delete(String(id));
     } else {
         const { error } = await binderCarteInsert({ owner_id: userId, binder_id: _binderExtraId, carta_id: id });
-        if (error) { alert('❌ Errore nell\'aggiungere la carta al Binder: ' + error.message); return; }
+        if (error) { mostraAvviso('❌ Errore nell\'aggiungere la carta al Binder: ' + error.message); return; }
         _idsNelBinder.add(String(id));
     }
 
@@ -820,18 +820,18 @@ async function _applicaQuantitaScambio(cartaId, quantita) {
 
     if (quantita <= 0) {
         const { error } = await binderCarteDeleteOne(userId, _binderScambioId, cartaId);
-        if (error) { alert('❌ Errore nel rimuovere la carta dallo Scambio: ' + error.message); return; }
+        if (error) { mostraAvviso('❌ Errore nel rimuovere la carta dallo Scambio: ' + error.message); return; }
         _idsInScambio.delete(String(cartaId));
         delete _quantitaOfferteScambio[String(cartaId)];
         _aggiornaBottoniScambioToggle(cartaId);
     } else {
         const cartaEsistente = carteReali.find(c => String(c.id) === String(cartaId) && c.tabella === 'carte');
-        if (!cartaEsistente) { alert('Carta non trovata.'); return; }
+        if (!cartaEsistente) { mostraAvviso('Carta non trovata.'); return; }
         const qtyOriginale = Number(cartaEsistente.qty) || 1;
         const N = Math.max(1, Math.min(quantita, qtyOriginale));
 
         const { error } = await _scambioSplitCartaVerso(cartaId, qtyOriginale, N, userId);
-        if (error) { alert('❌ Errore nell\'aggiornare la quantità offerta: ' + error.message); return; }
+        if (error) { mostraAvviso('❌ Errore nell\'aggiornare la quantità offerta: ' + error.message); return; }
 
         // Split reale può aver creato una riga NUOVA (id diverso da
         // cartaId) — ricarico tutto invece di aggiornare a mano Set/

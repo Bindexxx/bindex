@@ -353,7 +353,7 @@ async function _condividiRenderDettaglio(el, dest, foglio, conta) {
     }
 
     const link = await _linkCondivisioneWidget(el.pagina, el.param, el.id, el.tipo);
-    if (!link) { alert('Devi essere loggato per condividere.'); return; }
+    if (!link) { mostraAvviso('Devi essere loggato per condividere.'); return; }
     _condividiLinkCorrente = link;
 
     const chi = _condividiNick
@@ -419,7 +419,7 @@ async function _condividiRendiPubblico(key) {
     const { error } = el.kind === 'binder'
         ? await binderImpostaPubblicazione(userId, el.id, true)
         : await scaffaleImpostaPubblicazione(userId, el.id, true);
-    if (error) { alert('Errore: ' + error.message); return; }
+    if (error) { mostraAvviso('Errore: ' + error.message); return; }
     const origine = el.kind === 'binder'
         ? (_bindersElenco || []).find(b => String(b.id) === String(el.id))
         : (_scaffaliElenco || []).find(sc => String(sc.id) === String(el.id));
@@ -447,9 +447,9 @@ async function _copiaLinkCondividiWidget() {
     if (!_condividiLinkCorrente) return;
     try {
         await navigator.clipboard.writeText(_condividiLinkCorrente);
-        alert('Link copiato negli appunti!');
+        mostraAvviso('Link copiato negli appunti!');
     } catch (e) {
-        prompt('Copia questo link:', _condividiLinkCorrente);
+        await chiediTesto({ titolo: 'Copia il link', testo: 'Selezionalo e copialo:', valore: _condividiLinkCorrente, conferma: 'Fatto', annulla: 'Chiudi' });
     }
 }
 

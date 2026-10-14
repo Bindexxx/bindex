@@ -72,6 +72,8 @@ CATALOGO_WIDGET.inserimento = {
         preview: async () => {
             const n = await _contaCodaErrori();
             const coda = await _widgetInserimentoCoda();
+            // (Q1, 2026-10-12) coda non letta: "—", non "tutto inviato".
+            if (!coda && !n) return { righe: ['—'] };
             const inCoda = coda ? coda.inCoda : 0;
             let stato = n > 0 ? `${n} da correggere` : (inCoda > 0 ? `${inCoda} in coda` : 'tutto inviato');
             return {

@@ -61,9 +61,9 @@ function _doppioniChiaveBox(p) {
 
 // ── STATO (indipendente tra Carte e Box, come richiesto) ────────────────
 let _doppioniModalita = 'carte'; // 'carte' | 'box'
-let _doppioniOrdinamentoCarte = 'quantita';
+let _doppioniOrdinamentoCarte = prefFiltroPaginaScegli('doppioni', 'ordine_carte', ['quantita', 'valore', 'alfabetico'], 'quantita'); // (Q5) ricordato
 let _doppioniRicercaCarte = '';
-let _doppioniOrdinamentoBox = 'quantita';
+let _doppioniOrdinamentoBox = prefFiltroPaginaScegli('doppioni', 'ordine_box', ['quantita', 'valore', 'alfabetico'], 'quantita'); // (Q5) ricordato
 let _doppioniRicercaBox = '';
 let _doppioniGruppiCarte = [];
 let _doppioniGruppiBox = [];
@@ -243,6 +243,7 @@ function _doppioniPcAutoApri() {
 function _doppioniImpostaOrdinamento(ordine) {
     if (_doppioniModalita === 'carte') _doppioniOrdinamentoCarte = ordine;
     else _doppioniOrdinamentoBox = ordine;
+    prefFiltroPaginaSet('doppioni', _doppioniModalita === 'carte' ? 'ordine_carte' : 'ordine_box', ordine); // (Q5)
     document.querySelectorAll('#doppioniChips .dp-chip').forEach(el => {
         el.classList.toggle('attivo', el.dataset.ord === ordine);
     });
@@ -713,7 +714,7 @@ async function _doppioniConfermaSposta(indiceOpzione, quantitaRichiesta) {
 
         if (risultato.error) {
             const notaParziale = spostateFinQui > 0 ? `\n\n${spostateFinQui} copie erano già state spostate correttamente prima di questo errore.` : '';
-            alert('❌ Errore nello spostamento: ' + risultato.error.message + notaParziale);
+            mostraAvviso('❌ Errore nello spostamento: ' + risultato.error.message + notaParziale);
             flusso.innerHTML = '';
             // Ricarico comunque, per riflettere quanto è effettivamente
             // riuscito prima dell'errore (vedi nota sopra: niente rollback).
