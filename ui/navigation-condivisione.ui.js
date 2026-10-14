@@ -180,7 +180,7 @@
             const link = await _linkPubblicoCondivisione();
             if (!link) { mostraAvviso('Devi essere loggato per condividere il link.'); return; }
             try {
-                await navigator.share({ title: 'CardSync Pro', url: link });
+                await navigator.share({ title: 'Bindex', url: link });
             } catch (e) {
                 // L'utente ha annullato la condivisione, o il browser l'ha
                 // bloccata — nessun errore da mostrare, è un'azione normale.

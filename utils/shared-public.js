@@ -188,7 +188,7 @@ async function _richiediScambioDopoLogin() {
 
     if (error) { alert('❌ ' + error.message); return; }
 
-    alert('✅ Richiesta inviata! Il proprietario la vedrà nella sua pagina Richieste su CardSync Pro.');
+    alert('✅ Richiesta inviata! Il proprietario la vedrà nella sua pagina Richieste su Bindex.');
     // Svuotata SUL POSTO invece di "selezioni = {}" (audit 2026-09-25, B3):
     // in sealed.html/wishlist.html/scambio.html selezioni è una const
     // (state/*.state.js), e riassegnarla lanciava un TypeError dopo
