@@ -10,6 +10,11 @@
 -- (non c'e' TO) ne' il tipo (permissive/restrictive).
 -- Salta le policy gia' corrette (quelle con "( SELECT auth.uid() AS uid)").
 --
+-- GIA' ESEGUITO il 2026-10-14 sul DB reale (OK di Claudio) col connettore: migrazione
+-- 100_policy_prestazioni (stesso testo, senza begin/commit). Verificato dopo: 0 policy
+-- con auth.uid()/auth.role() nude, 105 policy come prima, ruoli invariati, avvisi di
+-- sicurezza invariati (114). Rieseguirlo non fa danni (salta quelle gia' corrette).
+--
 -- PER ANNULLARE: sql/100_policy_prestazioni_ROLLBACK.sql
 -- ============================================================================
 

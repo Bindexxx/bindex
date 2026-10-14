@@ -6,6 +6,9 @@
 -- Solo CREATE INDEX IF NOT EXISTS: nessun dato, nessuna policy, nessun
 -- comportamento cambia. Le altre 27 sono su tabelle piccole o poco usate.
 --
+-- GIA' ESEGUITO il 2026-10-14 sul DB reale (OK di Claudio) col connettore: migrazione
+-- 101_indici_chiavi_esterne. Verificati i 5 indici. Rieseguibile (if not exists).
+--
 -- PER ANNULLARE: sql/101_indici_chiavi_esterne_ROLLBACK.sql
 -- ============================================================================
 create index if not exists binder_carte_carta_id_idx on public.binder_carte (carta_id);
