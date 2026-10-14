@@ -52,7 +52,7 @@
                 // storage.objects lo richiedono per verificare il proprietario.
                 const path = `${userId}/${_fotoDettaglioCartaId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.jpg`;
                 const { error: errUpload } = await storageFotoCarteUpload(path, file);
-                if (errUpload) { alert('❌ Errore nel caricare la foto: ' + errUpload.message); continue; }
+                if (errUpload) { mostraAvviso('❌ Errore nel caricare la foto: ' + errUpload.message); continue; }
 
                 const { error: errInsert } = await fotoCarteInsert({
                     carta_id: _fotoDettaglioCartaId, tabella: _fotoDettaglioTabella, owner_id: userId, storage_path: path,
@@ -65,9 +65,9 @@
 
 
         async function eliminaFotoDettaglio(id, storagePath) {
-            if (!confirm('Eliminare questa foto?')) return;
+            if (!(await chiediConferma({ titolo: 'Eliminare questa foto?', conferma: 'Elimina', pericolo: true }))) return;
             await storageFotoCarteRemove(storagePath);
             const { error } = await fotoCarteDelete(id);
-            if (error) { alert('❌ Errore nell\'eliminazione: ' + error.message); return; }
+            if (error) { mostraAvviso('❌ Errore nell\'eliminazione: ' + error.message); return; }
             await _ricaricaGalleriaFoto();
         }

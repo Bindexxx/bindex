@@ -397,9 +397,9 @@ async function _chatRendiSezioneBloccati(bloccati) {
 // invece di aspettare il prossimo giro di polling).
 async function _chatSbloccaClick(bloccatoId) {
     if (!bloccatoId) return;
-    if (!confirm('Sbloccare questo utente? Potrete tornare a scrivervi in chat.')) return;
+    if (!(await chiediConferma({ titolo: 'Sbloccare questo utente?', testo: 'Potrete tornare a scrivervi in chat.', conferma: 'Sblocca' }))) return;
     const { error } = await chatSbloccaUtente(bloccatoId);
-    if (error) { alert('Errore: ' + error.message); return; }
+    if (error) { mostraAvviso('Errore: ' + error.message); return; }
     await renderPaginaChat();
 }
 
@@ -436,7 +436,7 @@ async function apriChat(ownerAltro, personaLabel) {
     // AGGIUNTO (2026-09-24): blocco prima ancora di aprire il modale —
     // vedi nota in cima al file (ora anche server-side, sql/72).
     if (await _chatVerificaAccessoConsentito()) {
-        alert('La chat non è disponibile per questo account.');
+        mostraAvviso('La chat non è disponibile per questo account.');
         return;
     }
 
@@ -710,7 +710,7 @@ async function _chatInviaMessaggioClick() {
     _chatSuInputCambiato(); // ridisabilita il bottone/svuota il contatore subito, non aspetta il prossimo input dell'utente
     const allegata = (_chatRichiestaAllegata && _chatRichiestaAllegata.altro === _chatAltroId) ? _chatRichiestaAllegata.id : null;
     const { error } = await chatInviaMessaggio(_chatConversazioneId, testo, allegata);
-    if (error) { alert('Errore invio: ' + error.message); return; }
+    if (error) { mostraAvviso('Errore invio: ' + error.message); return; }
     if (allegata) _chatRichiestaAllegata = null;
     await _chatRenderMessaggi();
 }
@@ -756,9 +756,9 @@ function _chatSuInputCambiato() {
 async function _chatBloccaUtenteClick() {
     _chatChiudiMenuFuori();
     if (!_chatAltroId) return;
-    if (!confirm('Bloccare questo utente? Non potrete più scrivervi in chat.')) return;
+    if (!(await chiediConferma({ titolo: 'Bloccare questo utente?', testo: 'Non potrete più scrivervi in chat.', conferma: 'Blocca', pericolo: true }))) return;
     const { error } = await chatBloccaUtente(_chatAltroId);
-    if (error) { alert('Errore: ' + error.message); return; }
+    if (error) { mostraAvviso('Errore: ' + error.message); return; }
     chiudiChat();
 }
 
@@ -768,10 +768,12 @@ async function _chatBloccaUtenteClick() {
 async function _chatSegnalaClick() {
     _chatChiudiMenuFuori();
     if (!_chatConversazioneId) return;
-    const motivo = prompt('Motivo della segnalazione (facoltativo):') || null;
+    const scritto = await chiediTesto({ titolo: 'Segnala la conversazione', testo: 'Motivo della segnalazione (facoltativo):', conferma: 'Segnala', maxLength: 500 });
+    if (scritto === null) return; // annullato (prima: Annulla inviava comunque la segnalazione senza motivo)
+    const motivo = scritto.trim() || null;
     const { error } = await chatSegnalaConversazione(_chatConversazioneId, motivo);
-    if (error) { alert('Errore: ' + error.message); return; }
-    alert('Segnalazione inviata.');
+    if (error) { mostraAvviso('Errore: ' + error.message); return; }
+    mostraAvviso('Segnalazione inviata.');
 }
 
 // ── Nickname (impostazioni, sql/71) ───────────────────────────────────
@@ -801,8 +803,8 @@ async function salvaNickname() {
     const input = document.getElementById('nicknameInput');
     if (!input) return;
     const { error } = await chatImpostaNickname(input.value.trim() || null);
-    if (error) { alert('Errore salvataggio: ' + error.message); return; }
-    alert('Nome salvato.');
+    if (error) { mostraAvviso('Errore salvataggio: ' + error.message); return; }
+    mostraAvviso('Nome salvato.');
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -924,6 +926,15 @@ async function _aggiornaBadgeChat() {
         }
     }
 
+    // (Q6, 2026-10-12) Messaggi nuovi in 3 o più conversazioni insieme (tipico
+    // all'avvio): un solo avviso che apre l'elenco delle chat.
+    if (convIdsNuovi.length >= 3) {
+        const nomi = [...new Set(convIdsNuovi.map(id => nicknameMapNuovi[proprietarioPerConvNuovi[id]] || 'Utente'))];
+        const chi = nomi.length <= 2 ? nomi.join(' e ') : nomi.slice(0, 2).join(', ') + ` e ${nomi.length - 2 === 1 ? 'un altro' : 'altri ' + (nomi.length - 2)}`;
+        const totale = convIdsNuovi.reduce((somma, id) => somma + perConvNuovi[id].length, 0);
+        CSBar.avvisa('chat-messaggio', { text: `${totale} nuovi messaggi da ${chi}`, group: 'chat-msg-riepilogo' });
+        return;
+    }
     convIdsNuovi.forEach(convId => {
         const ownerAltro = proprietarioPerConvNuovi[convId];
         const label = nicknameMapNuovi[ownerAltro] || 'Utente';

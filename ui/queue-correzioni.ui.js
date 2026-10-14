@@ -100,7 +100,7 @@
         // tabelle, la RLS owner_id=auth.uid() lo consente direttamente.
         async function _rimettiInCodaDaCorrezioneManuale(id, overrides = {}) {
             const { data: riga, error: errLettura } = await correzioniManualiLeggiRiga(id);
-            if (errLettura || !riga) { alert('❌ Errore: ' + (errLettura?.message || 'riga non trovata')); return false; }
+            if (errLettura || !riga) { mostraAvviso('❌ Errore: ' + (errLettura?.message || 'riga non trovata')); return false; }
 
             const nuovaRiga = {
                 owner_id: riga.owner_id, nome: overrides.nome ?? riga.nome, lingua: riga.lingua,
@@ -112,7 +112,7 @@
                 claimed_by: null, claimed_at: null, completato_il: null, errore_msg: null,
             };
             const { error: errInsert } = await queueInsertRighe(nuovaRiga);
-            if (errInsert) { alert('❌ Errore: ' + errInsert.message); return false; }
+            if (errInsert) { mostraAvviso('❌ Errore: ' + errInsert.message); return false; }
 
             const { error: errDelete } = await correzioniManualiElimina(id);
             if (errDelete) console.error('[correzioni manuali] riga reinserita ma non rimossa dalla lista errori:', errDelete.message);
@@ -133,7 +133,7 @@
 
 
         async function modificaERiprovaCartaFallita(id, nomeAttuale) {
-            const nuovo = prompt('Correggi il nome della carta:', nomeAttuale);
+            const nuovo = await chiediTesto({ titolo: 'Correggi la carta', testo: 'Nome della carta:', valore: nomeAttuale, conferma: 'Riprova con questo nome' });
             if (nuovo === null || !nuovo.trim()) return;
             const ok = await _rimettiInCodaDaCorrezioneManuale(id, { nome: nuovo.trim() });
             if (ok) await caricaCarteConProblemi();
@@ -141,9 +141,9 @@
 
 
         async function eliminaCartaFallita(id) {
-            if (!confirm('Eliminare definitivamente questa richiesta?')) return;
+            if (!(await chiediConferma({ titolo: 'Eliminare la richiesta?', testo: 'Questa azione non si può annullare.', conferma: 'Elimina', pericolo: true }))) return;
             const { error } = await correzioniManualiElimina(id);
-            if (error) { alert('❌ Errore: ' + error.message); return; }
+            if (error) { mostraAvviso('❌ Errore: ' + error.message); return; }
             await caricaCarteConProblemi();
         }
 

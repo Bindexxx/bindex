@@ -2130,7 +2130,7 @@
         <div class="modal-content" style="max-width: 440px; text-align:left;" onclick="event.stopPropagation()">
             <button class="close-modal-btn" onclick="chiudiRicercaGlobale()"><i class="fa-solid fa-xmark"></i></button>
             <h3 style="font-weight: 800; margin-bottom: 0.8rem;"><i class="fa-solid fa-magnifying-glass" style="color: var(--primary);"></i> Cerca ovunque</h3>
-            <input type="text" id="ricercaGlobaleInput" placeholder="Nome o codice carta..." oninput="eseguiRicercaGlobale(this.value)" style="margin-bottom: 0.8rem;">
+            <input type="search" id="ricercaGlobaleInput" placeholder="Carte, sealed, binder, scaffali…" oninput="eseguiRicercaGlobale(this.value)" autocomplete="off" style="margin-bottom: 0.8rem;">
             <div id="ricercaGlobaleRisultati" style="max-height: 50vh; overflow-y: auto;"></div>
         </div>
     </div>
@@ -2783,6 +2783,8 @@
          la consumano — nessuna dipendenza propria, va bene qui con gli
          altri utils/*.js. -->
     <script src="utils/theme-colori.js"></script>
+    <!-- (Q2) avvisi e finestre del sito al posto di alert/confirm/prompt: prima di ogni ui/*.js -->
+    <script src="ui/avvisi.ui.js"></script>
     <script src="ui/auth.ui.js"></script>
     <script src="ui/prices.ui.js"></script>
     <script src="ui/entry.ui.js"></script>

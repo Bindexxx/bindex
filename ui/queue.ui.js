@@ -86,14 +86,37 @@
         // un giro di polling e l'altro (per i match è la stessa
         // _chiaveMatch del badge), avvisoDi() la coppia [tipo, extra] da
         // passare a CSBar.avvisa().
-        function _notificaUnaVolta(elementi, chiaveDi, avvisoDi) {
+        // (Q6 quality of life, 2026-10-12) riepilogoDi(nuovi): con 3 o più
+        // elementi nuovi nello stesso giro (tipico all'avvio, dopo giorni senza
+        // aprire il sito) parte UN solo avviso riassuntivo invece di uno per
+        // elemento: prima ognuno ridisegnava l'elenco della tendina, salvava,
+        // mostrava il suo banner e, se attive, la sua notifica di sistema.
+        const _SOGLIA_RIEPILOGO_AVVISI = 3;
+        function _notificaUnaVolta(elementi, chiaveDi, avvisoDi, riepilogoDi) {
+            const nuovi = [];
             (elementi || []).forEach(el => {
                 const chiave = chiaveDi(el);
                 if (!chiave || _giaNotificati.has(chiave)) return;
                 _giaNotificati.add(chiave);
+                nuovi.push(el);
+            });
+            if (!nuovi.length) return;
+            if (typeof riepilogoDi === 'function' && nuovi.length >= _SOGLIA_RIEPILOGO_AVVISI) {
+                const [tipo, extra] = riepilogoDi(nuovi);
+                CSBar.avvisa(tipo, extra);
+                return;
+            }
+            nuovi.forEach(el => {
                 const [tipo, extra] = avvisoDi(el);
                 CSBar.avvisa(tipo, extra);
             });
+        }
+
+        // "Marco, Luca e altri 3" (nomi senza doppioni, al massimo due per esteso).
+        function _elencoNomiAvviso(nomi) {
+            const unici = [...new Set((nomi || []).filter(Boolean))];
+            if (unici.length <= 2) return unici.join(' e ');
+            return unici.slice(0, 2).join(', ') + ` e ${unici.length - 2 === 1 ? 'un altro' : 'altri ' + (unici.length - 2)}`;
         }
 
         // [SEZIONI SPOSTATE in ui/widget-prezzi.ui.js — STEP 16 ristrutturazione file widget, 2026-09-11. Vedi Roadmap_Ristrutturazione_Widget_Home_2026-09-11.md]
@@ -178,12 +201,15 @@
             // fa tutto il resto del sito (renderPaginaMatch, caricaMatch).
             if (typeof CSBar !== 'undefined') {
                 const _nomeUtenteMatch = (nick) => (nick || '').trim() || 'qualcuno del gruppo'; // sql/84: nickname, mai l'email
-                _notificaUnaVolta(nuoviScambio, m => _chiaveMatch(m, 'scambio'), m =>
-                    ['match-trovato', { text: `Hai una carta che interessa a ${_nomeUtenteMatch(m.altro_nickname)}.` }]);
-                _notificaUnaVolta(nuoviWishlist, m => _chiaveMatch(m, 'wishlist'), m =>
-                    ['match-trovato', { text: `${_nomeUtenteMatch(m.altro_nickname)} ha una carta della tua Wishlist.` }]);
-                _notificaUnaVolta(carteAlertPrezzo, c => 'prezzo-' + c.id, c =>
-                    ['prezzo-obiettivo', { text: `${c.name || 'Una carta della tua Wishlist'} ha raggiunto il tuo prezzo obiettivo.` }]);
+                _notificaUnaVolta(nuoviScambio, m => _chiaveMatch(m, 'scambio'),
+                    m => ['match-trovato', { text: `Hai una carta che interessa a ${_nomeUtenteMatch(m.altro_nickname)}.` }],
+                    nuovi => ['match-trovato', { text: `${nuovi.length} tue carte interessano a ${_elencoNomiAvviso(nuovi.map(m => _nomeUtenteMatch(m.altro_nickname)))}.` }]);
+                _notificaUnaVolta(nuoviWishlist, m => _chiaveMatch(m, 'wishlist'),
+                    m => ['match-trovato', { text: `${_nomeUtenteMatch(m.altro_nickname)} ha una carta della tua Wishlist.` }],
+                    nuovi => ['match-trovato', { text: `${nuovi.length} carte della tua Wishlist sono nel gruppo (${_elencoNomiAvviso(nuovi.map(m => _nomeUtenteMatch(m.altro_nickname)))}).` }]);
+                _notificaUnaVolta(carteAlertPrezzo, c => 'prezzo-' + c.id,
+                    c => ['prezzo-obiettivo', { text: `${c.name || 'Una carta della tua Wishlist'} ha raggiunto il tuo prezzo obiettivo.` }],
+                    nuove => ['prezzo-obiettivo', { text: `${nuove.length} carte della tua Wishlist hanno raggiunto il prezzo obiettivo: ${_elencoNomiAvviso(nuove.map(c => c.name))}.` }]);
             }
 
             _numNuoviMatchScambio = nuoviScambio.length;
@@ -398,11 +424,11 @@
             const { error } = await inviaRichiestaScambio(ownerId, righe);
 
             btn.disabled = false;
-            if (error) { _renderRichiediMatch(); alert('❌ ' + error.message); return; }
+            if (error) { _renderRichiediMatch(); mostraAvviso('❌ ' + error.message); return; }
 
             const chiavi = voci.map(v => v.chiave);
             chiudiRichiediMatch();
             if (typeof _widgetRichiesteSvuotaCache === 'function') _widgetRichiesteSvuotaCache();
             if (typeof _matchRichiestaInviata === 'function') _matchRichiestaInviata(chiavi);
-            alert('✅ Richiesta inviata! La trovi nella pagina Richieste, tab Inviate.');
+            mostraAvviso('✅ Richiesta inviata! La trovi nella pagina Richieste, tab Inviate.');
         }

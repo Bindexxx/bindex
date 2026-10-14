@@ -44,6 +44,17 @@
 // phone.ui.js è comunque caricato prima che l'utente possa cliccare.
 // ───────────────────────────────────────────────────────────────────────
 
+// (Q1 quality of life, 2026-10-12) Tessere che si calcolano dalla collezione
+// in memoria (carteReali). Se il caricamento è fallito e non c'è nessun dato
+// da mostrare (_carteNonCaricate, ui/cards.ui.js) scrivono "—" — lo stesso
+// ripiego delle anteprime lente — invece di "0 carte", "tutti aggiornati",
+// "tutto in ordine" che sembrerebbero veri.
+const _WIDGET_SU_CARTE = new Set([
+    'visualizzazione', 'carte_recenti', 'valore_collezione', 'variazione_valore', 'doppioni', 'location',
+    'prezzi', 'prezzi_recenti', 'primo_piano', 'ultima_carta', 'wishlist_obiettivi', 'suggerimento',
+    'foto', 'set_completamento',
+]);
+
 // ── RENDER GRIGLIA HOME ──────────────────────────────────────────────────
 async function renderWidgetHome() {
     if (!_layoutWidget) await _caricaLayoutWidget();
@@ -70,12 +81,15 @@ async function renderWidgetHome() {
     // tessere si costruiscono in parallelo con Promise.all, scrivere
     // direttamente sulla globale lascerebbe residui dei widget rimossi.
     const attenzioni = {};
+    const carteMancanti = typeof _carteNonCaricate === 'function' && _carteNonCaricate(); // (Q1)
 
     const tessere = await Promise.all(visibili.map(async (w, indice) => {
         const def = CATALOGO_WIDGET[w.id];
         if (!def) return '';
         let anteprima = { righe: ['—'] };
-        if (!def.bloccato) {
+        if (carteMancanti && !def.bloccato && _WIDGET_SU_CARTE.has(w.id)) {
+            // (Q1) collezione non caricata: resta il ripiego "—"
+        } else if (!def.bloccato) {
             // (Audit tessere 2026-10-11) Tetto di 5 s per anteprima. Le tessere si aspettano
             // tutte insieme (Promise.all qui sopra), quindi UNA sola chiamata lenta o appesa
             // (rete ballerina, RPC che non risponde) teneva ferma TUTTA la home: al primo
@@ -629,7 +643,7 @@ function _chiudiPickerAggiungiWidget() {
 
 function _mostraWidget(id) {
     const visibiliCount = _layoutWidget.filter(w => w.visibile).length;
-    if (visibiliCount >= MAX_WIDGET_VISIBILI) { alert(`Massimo ${MAX_WIDGET_VISIBILI} widget in home.`); return; }
+    if (visibiliCount >= MAX_WIDGET_VISIBILI) { mostraAvviso(`Massimo ${MAX_WIDGET_VISIBILI} widget in home.`); return; }
     const w = _layoutWidget.find(x => x.id === id);
     if (w) {
         w.visibile = true;
@@ -648,7 +662,7 @@ function _mostraWidget(id) {
 // copia vuota abbandonata in giro senza che l'utente sappia cosa farci.
 function _aggiungiIstanzaWidget(id) {
     const visibiliCount = _layoutWidget.filter(w => w.visibile).length;
-    if (visibiliCount >= MAX_WIDGET_VISIBILI) { alert(`Massimo ${MAX_WIDGET_VISIBILI} widget in home.`); return; }
+    if (visibiliCount >= MAX_WIDGET_VISIBILI) { mostraAvviso(`Massimo ${MAX_WIDGET_VISIBILI} widget in home.`); return; }
     // Nasce sulla pagina che stai guardando, non sempre sulla prima.
     const nuovo = { id, instanceId: _nuovoInstanceId(), visibile: true, size: _tagliaDiNascita(id), mini: false, cartaId: null, pagina: _paginaWidgetCorrente, v: VERSIONE_LAYOUT_WIDGET };
     _layoutWidget.push(nuovo);

@@ -127,19 +127,19 @@
 
         async function copyShareLink() {
             const link = await _linkPubblicoCondivisione();
-            if (!link) { alert('Devi essere loggato per generare il link.'); return; }
+            if (!link) { mostraAvviso('Devi essere loggato per generare il link.'); return; }
             try {
                 await navigator.clipboard.writeText(link);
-                alert('Link copiato negli appunti!');
+                mostraAvviso('Link copiato negli appunti!');
             } catch (e) {
-                prompt('Copia questo link:', link);
+                await chiediTesto({ titolo: 'Copia il link', testo: 'Selezionalo e copialo:', valore: link, conferma: 'Fatto', annulla: 'Chiudi' });
             }
         }
 
 
         async function openQrModal() {
             const link = await _linkPubblicoCondivisione();
-            if (!link) { alert('Devi essere loggato per generare il QR.'); return; }
+            if (!link) { mostraAvviso('Devi essere loggato per generare il QR.'); return; }
             const modal = document.getElementById('qrModal');
             const container = document.getElementById('qrcodeContainer');
             container.innerHTML = '';
@@ -168,7 +168,7 @@
         // una mini-anteprima dentro il modale, più semplice e affidabile.
         async function apriAnteprimaLinkCondiviso() {
             const link = await _linkPubblicoCondivisione();
-            if (!link) { alert('Devi essere loggato per generare l\'anteprima.'); return; }
+            if (!link) { mostraAvviso('Devi essere loggato per generare l\'anteprima.'); return; }
             window.open(link, '_blank');
         }
 
@@ -178,7 +178,7 @@
         // posto. Bottone visibile solo dove il browser lo supporta.
         async function condividiLinkNativo() {
             const link = await _linkPubblicoCondivisione();
-            if (!link) { alert('Devi essere loggato per condividere il link.'); return; }
+            if (!link) { mostraAvviso('Devi essere loggato per condividere il link.'); return; }
             try {
                 await navigator.share({ title: 'CardSync Pro', url: link });
             } catch (e) {

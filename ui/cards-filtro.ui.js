@@ -25,6 +25,7 @@
 
         function toggleFiltroTipo(tipo) {
             _filtriTipo[tipo] = !_filtriTipo[tipo];
+            if (typeof prefFiltroPaginaSet === 'function') prefFiltroPaginaSet('collezione', 'tipo_' + tipo, _filtriTipo[tipo]); // (Q5)
             document.getElementById('toggleTipo' + tipo.charAt(0).toUpperCase() + tipo.slice(1))
                 .classList.toggle('active', _filtriTipo[tipo]);
             filterTable();

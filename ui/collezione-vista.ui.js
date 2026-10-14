@@ -33,6 +33,33 @@ const _COLL_ORDINI = {
     qty: { etichetta: 'quantità ↓', chiave: c => Number(c.qty) || 0, giu: true },
 };
 const _COLL_CICLO = ['prezzo_giu', 'prezzo_su', 'nome', 'recenti'];
+// (Q5) Ordine, Location, lingua e tipi di riga ricordati su questo dispositivo.
+_collOrdine = prefFiltroPaginaScegli('collezione', 'ordine', Object.keys(_COLL_ORDINI), _collOrdine);
+(function _collRipristinaFiltri() {
+    const lang = document.getElementById('filterLang');
+    const l = prefFiltroPaginaGet('collezione', 'lingua');
+    if (lang && l && [...lang.options].some(o => o.value === l)) lang.value = l;
+    ['carte', 'sealed', 'wishlist'].forEach(tipo => {
+        const v = prefFiltroPaginaGet('collezione', 'tipo_' + tipo);
+        if (typeof v !== 'boolean' || typeof _filtriTipo === 'undefined') return;
+        _filtriTipo[tipo] = v;
+        document.getElementById('toggleTipo' + tipo.charAt(0).toUpperCase() + tipo.slice(1))?.classList.toggle('active', v);
+    });
+})();
+// switchTab azzera la Location a ogni apertura (tendina condivisa con le altre
+// tab): apriDettaglioWidget rimette qui quella scelta l'ultima volta, se c'è ancora.
+function collRipristinaLocation() {
+    const s = document.getElementById('filterLocation');
+    const salvata = prefFiltroPaginaGet('collezione', 'location');
+    if (!s || !salvata || s.value || ![...s.options].some(o => o.value === salvata)) return false;
+    s.value = salvata;
+    return true;
+}
+function _collSalvaFiltri() {
+    const loc = document.getElementById('filterLocation'), lang = document.getElementById('filterLang');
+    prefFiltroPaginaSet('collezione', 'location', loc ? loc.value : '');
+    prefFiltroPaginaSet('collezione', 'lingua', lang ? lang.value : '');
+}
 
 function _collEPC() {
     const s = document.getElementById('visualizzazione');
@@ -52,6 +79,7 @@ function _collOrdina(data) {
 function collCambiaOrdine() {
     const i = _COLL_CICLO.indexOf(_collOrdine);
     _collOrdine = _COLL_CICLO[(i + 1) % _COLL_CICLO.length];
+    prefFiltroPaginaSet('collezione', 'ordine', _collOrdine); // (Q5)
     filterTable();
 }
 
@@ -60,6 +88,7 @@ function collCambiaOrdine() {
 function collOrdinaColonna(chiave) {
     if (chiave === 'prezzo') _collOrdine = _collOrdine === 'prezzo_giu' ? 'prezzo_su' : 'prezzo_giu';
     else _collOrdine = chiave;
+    prefFiltroPaginaSet('collezione', 'ordine', _collOrdine); // (Q5)
     filterTable();
 }
 
@@ -98,6 +127,7 @@ function collApriFiltri() {
 function collCambiaFiltro(idVecchio, valore) {
     const s = document.getElementById(idVecchio);
     if (s) s.value = valore;
+    _collSalvaFiltri(); // (Q5)
     filterTable();
 }
 
@@ -105,6 +135,7 @@ function collAzzeraFiltri() {
     ['filterLocation', 'filterLang', 'collFiltroLoc', 'collFiltroLang'].forEach(id => {
         const s = document.getElementById(id); if (s) s.value = '';
     });
+    _collSalvaFiltri(); // (Q5)
     filterTable();
 }
 
@@ -270,6 +301,18 @@ function collToccaRiga(id) {
         if (parziale && _collUltimoPC === false && _collAggiornaRigheTelefono(corpo, prima)) return;
     }
     collezioneRender(_collUltimiDati);
+}
+
+// (Q4, 2026-10-12) Dalla ricerca globale: apre la riga della carta (azioni
+// sul telefono, pannello dettagli su PC) e la porta in vista. La pagina è
+// già aperta e filtrata sul nome dal chiamante (ui/navigation-ricerca.ui.js).
+// In griglia non ci sono righe da aprire: resta la griglia filtrata sul nome.
+function collVaiACarta(id) {
+    if (_collEPC()) _collSelId = id; else _collAzioniId = id;
+    _collUltimaFirma = null;
+    collezioneRender(_collUltimiDati);
+    const riga = document.querySelector('#collCorpo [data-coll-id="' + String(id).replace(/["\\]/g, '') + '"]');
+    if (riga) riga.scrollIntoView({ block: 'center', behavior: 'smooth' });
 }
 
 // ── GRIGLIA (telefono e PC) ─────────────────────────────────────────────

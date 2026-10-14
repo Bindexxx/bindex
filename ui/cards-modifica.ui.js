@@ -185,7 +185,7 @@
             btn.innerHTML = '<i class="fa-solid fa-check"></i> Salva Modifiche';
 
             if (error) {
-                alert('❌ Errore nel salvare le modifiche: ' + error.message);
+                mostraAvviso('❌ Errore nel salvare le modifiche: ' + error.message);
                 return;
             }
 
@@ -247,7 +247,14 @@
             const userId = await authGetUserId();
             if (!userId) return;
 
-            const location = prompt(`In che Location metti "${card.name}"? (lascia vuoto per "?")`, '');
+            // (Q2) finestra del sito con le Location esistenti come suggerimenti
+            const location = await chiediTesto({
+                titolo: 'Carta ottenuta',
+                testo: `In che Location metti "${card.name}"? Lascia vuoto per "?".`,
+                segnaposto: '?',
+                opzioni: await _locationDisponibili(),
+                conferma: 'Sposta in collezione',
+            });
             if (location === null) return; // annullato
 
             const { error: errInsert, data: righeInserite } = await cardsInsertNellaCollezione({
@@ -264,7 +271,7 @@
                 stato: 'collezione',
             });
             if (errInsert) {
-                alert('❌ Errore nello spostare la carta in collezione: ' + errInsert.message);
+                mostraAvviso('❌ Errore nello spostare la carta in collezione: ' + errInsert.message);
                 return;
             }
 
@@ -288,7 +295,7 @@
 
             const { error: errDelete } = await wishlistDelete(card.id);
             if (errDelete) {
-                alert('⚠️ Carta aggiunta alla collezione, ma non rimossa dalla wishlist: ' + errDelete.message + '\n\nRimuovila a mano dalla wishlist per evitare doppioni.');
+                mostraAvviso('⚠️ Carta aggiunta alla collezione, ma non rimossa dalla wishlist: ' + errDelete.message + '\n\nRimuovila a mano dalla wishlist per evitare doppioni.');
             }
 
             await caricaCarteReali();
@@ -299,11 +306,20 @@
             const card = carteReali.find(c => String(c.id) === String(id));
             if (!card) return;
             const isWishlist = card.tabella === 'wishlist';
-            if (!confirm(`Eliminare definitivamente "${card.name}" dalla${isWishlist ? ' wishlist' : ' collezione'}?\n\nQuesta azione non si può annullare.`)) return;
+            // (Q2/Q3) finestra del sito; dalla collezione la carta va nel cestino
+            // (sql/98) e dopo l'eliminazione c'è "Annulla". La wishlist non ha cestino.
+            const nelCestino = !isWishlist && typeof cestinoAttivo === 'function' && await cestinoAttivo();
+            const sicuro = await chiediConferma({
+                titolo: isWishlist ? 'Togliere dalla wishlist?' : 'Eliminare la carta?',
+                testo: `"${card.name}" esce dalla${isWishlist ? ' wishlist' : ' collezione'}.\n\n` + (isWishlist ? 'Questa azione non si può annullare.' : cestinoTestoConferma(nelCestino)),
+                conferma: 'Elimina',
+                pericolo: true,
+            });
+            if (!sicuro) return;
 
             const { error } = await cardsDeleteById(isWishlist, id);
             if (error) {
-                alert('❌ Errore nell\'eliminazione: ' + error.message);
+                mostraAvviso('❌ Errore nell\'eliminazione: ' + error.message);
                 return;
             }
 
@@ -327,11 +343,13 @@
             }
 
             await caricaCarteReali();
+            if (isWishlist) avvisoBreve(`"${card.name}" tolta dalla wishlist.`, { tipo: 'ok' });
+            else cestinoOffriAnnulla('carte', [{ id, nome: card.name }], `"${card.name}" eliminata.`);
         }
 
 
         // ── LOCATION / LINGUA / CONDIZIONE — tendine in linea ────────────────────
-        // A differenza di Nome/Codice/Q.tà/Prezzo (testo libero via prompt),
+        // A differenza di Nome/Codice/Q.tà/Prezzo (testo libero, finestra chiediTesto),
         // questi tre campi hanno un set di valori noti — si sostituisce il
         // badge con una vera <select> al click, niente testo libero digitato
         // a mano che potrebbe non corrispondere a un valore valido.
@@ -399,9 +417,9 @@
             select.onchange = async () => {
                 const nuovo = select.value;
                 if (nuovo === valoreAttuale) { filterTable(); return; }
-                if (!confirm(`Salvare "${campo}" = "${nuovo}"?`)) { filterTable(); return; }
+                if (!(await chiediConferma({ titolo: 'Salvare la modifica?', testo: `"${campo}" = "${nuovo || 'Qualsiasi'}"`, conferma: 'Salva' }))) { filterTable(); return; }
                 const { error } = await cardsUpdateCampo(tabella, id, campo, nuovo);
-                if (error) { alert(`❌ Errore nel salvare: ` + error.message); filterTable(); return; }
+                if (error) { mostraAvviso(`❌ Errore nel salvare: ` + error.message); filterTable(); return; }
                 await caricaCarteReali();
             };
             elemento.replaceWith(select);
@@ -415,22 +433,28 @@
         // l'input: 'intero' per la quantità, 'numero' per il prezzo,
         // altrimenti testo libero.
         async function modificaCampoInline(id, tabella, campo, valoreAttuale, etichetta, tipo) {
-            const nuovo = prompt(`Nuovo valore per "${etichetta}":`, valoreAttuale ?? '');
+            const nuovo = await chiediTesto({
+                titolo: etichetta,
+                testo: 'Nuovo valore:',
+                valore: valoreAttuale ?? '',
+                numerico: tipo === 'intero' || tipo === 'numero',
+                conferma: 'Avanti',
+            });
             if (nuovo === null) return; // annullato
             let valore = nuovo.trim();
 
             if (tipo === 'intero') {
                 valore = parseInt(valore, 10);
-                if (isNaN(valore) || valore < 1) { alert('Inserisci un numero intero maggiore di zero.'); return; }
+                if (isNaN(valore) || valore < 1) { mostraAvviso('⚠️ Inserisci un numero intero maggiore di zero.'); return; }
             } else if (tipo === 'numero') {
                 valore = parseFloat(valore.replace(',', '.'));
-                if (isNaN(valore) || valore < 0) { alert('Inserisci un prezzo valido (es. 12.50).'); return; }
+                if (isNaN(valore) || valore < 0) { mostraAvviso('⚠️ Inserisci un prezzo valido (es. 12.50).'); return; }
             } else if (tipo === 'facoltativo') {
                 // Campi come le Note possono essere lasciati vuoti
                 // (per cancellarli) — salvati come null, non stringa vuota.
                 if (valore === '') valore = null;
             } else if (valore === '') {
-                alert(`"${etichetta}" non può essere vuoto.`); return;
+                mostraAvviso(`⚠️ "${etichetta}" non può essere vuoto.`); return;
             }
 
             // FIX (2026-09-01): il confronto era String(valore) contro
@@ -444,7 +468,7 @@
             // identico a prima (12 e "12" continuano a coincidere).
             const _normalizza = (v) => (v === null || v === undefined) ? '' : String(v);
             if (_normalizza(valore) === _normalizza(valoreAttuale)) return; // nessuna modifica reale
-            if (!confirm(`Salvare "${etichetta}" = "${valore === null ? '(vuoto)' : valore}"?`)) return;
+            if (!(await chiediConferma({ titolo: 'Salvare la modifica?', testo: `"${etichetta}" = "${valore === null ? '(vuoto)' : valore}"`, conferma: 'Salva' }))) return;
 
             // Fase 8, Step 2 (2026-09-13): cattura la carta PRIMA
             // dell'update/ricarica — serve prezzo/qty "dell'altro campo"
@@ -452,7 +476,7 @@
             const cardPrima = carteReali.find(c => String(c.id) === String(id));
 
             const { error } = await cardsUpdateCampo(tabella, id, campo, valore);
-            if (error) { alert(`❌ Errore nel salvare "${etichetta}": ` + error.message); return; }
+            if (error) { mostraAvviso(`❌ Errore nel salvare "${etichetta}": ` + error.message); return; }
 
             // Log SOLO su 'carte' (mai wishlist, non è collezione — stessa
             // regola già applicata all'"aggiunta") e solo per i due campi

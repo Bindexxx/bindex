@@ -8661,3 +8661,59 @@ body.badge-pallino .widget-badge { font-size: 0 !important; min-width: 12px !imp
     #impostazioni .imp-cestino-riga { flex-wrap: wrap; }
     #impostazioni .imp-cestino-azioni { width: 100%; justify-content: flex-end; }
 }
+
+/* ── AVVISI E FINESTRE DEL SITO (Q2, 2026-10-12) — ui/avvisi.ui.js ────────
+   Messaggi in basso al posto di alert(), finestre al posto di confirm()/
+   prompt(). Sopra modali e tendina (9010), sotto la cutscene della Bustina. */
+#avvisiPila { position: fixed; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); z-index: 100000; display: flex; flex-direction: column; align-items: center; gap: 8px; width: min(520px, calc(100vw - 24px)); pointer-events: none; }
+.avviso-bolla { pointer-events: auto; display: flex; align-items: center; gap: 10px; width: 100%; box-sizing: border-box; padding: 10px 10px 10px 14px; border-radius: 14px; background: #241f31; color: #fff; box-shadow: 0 10px 30px rgba(0, 0, 0, .28); font-size: 0.86rem; line-height: 1.35; animation: avvisoEntra .2s ease-out; }
+.avviso-bolla > i { flex: 0 0 auto; font-size: 1rem; }
+.avviso-ok > i { color: #81c784; }
+.avviso-errore > i { color: #ff8a80; }
+.avviso-info > i { color: #b39ddb; }
+.avviso-fisso.avviso-errore { background: #4a1f24; }
+.avviso-testo { flex: 1; min-width: 0; overflow-wrap: anywhere; white-space: pre-line; }
+.avviso-azione { flex: 0 0 auto; border: 0; border-radius: 9px; padding: 7px 12px; font: inherit; font-weight: 800; font-size: 0.8rem; background: rgba(255, 255, 255, .16); color: #fff; cursor: pointer; }
+.avviso-azione:hover, .avviso-azione:focus-visible { background: rgba(255, 255, 255, .28); }
+.avviso-chiudi { flex: 0 0 auto; border: 0; background: transparent; color: rgba(255, 255, 255, .7); width: 30px; height: 30px; border-radius: 8px; cursor: pointer; font-size: 0.9rem; }
+.avviso-chiudi:hover { color: #fff; background: rgba(255, 255, 255, .12); }
+.avviso-esce { opacity: 0; transform: translateY(6px); transition: opacity .2s, transform .2s; }
+@keyframes avvisoEntra { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+.avviso-fondo { position: fixed; inset: 0; z-index: 100010; background: rgba(0, 0, 0, .5); display: flex; align-items: center; justify-content: center; padding: 16px; animation: avvisoFondo .15s ease-out; -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px); }
+.avviso-fondo.avviso-esce { transform: none; }
+.avviso-finestra { width: min(420px, 100%); max-height: calc(100vh - 32px); overflow: auto; box-sizing: border-box; background: var(--card-bg, #fff); color: var(--text-dark, #2a2438); border: 1px solid var(--border-color, #e2d9f3); border-radius: 18px; padding: 20px; box-shadow: 0 20px 60px rgba(0, 0, 0, .3); outline: none; }
+.avviso-titolo { display: flex; align-items: center; gap: 10px; margin: 0 0 8px; font-size: 1.02rem; font-weight: 800; color: var(--text-dark, #2a2438); }
+.avviso-titolo i { color: var(--primary-text, var(--primary, #7c4dff)); }
+.avviso-corpo { margin: 0 0 14px; font-size: 0.88rem; line-height: 1.5; color: var(--text-dark, #2a2438); white-space: pre-line; overflow-wrap: anywhere; }
+.avviso-campo { width: 100%; box-sizing: border-box; margin: 0 0 14px; padding: 10px 12px; border-radius: 10px; border: 1.5px solid var(--border-color, #e2d9f3); background: var(--card-bg, #fff); color: var(--text-dark, #2a2438); font: inherit; font-size: 0.95rem; }
+textarea.avviso-campo { resize: vertical; font-size: 0.8rem; line-height: 1.4; font-family: 'JetBrains Mono', monospace; }
+.avviso-campo:focus { outline: none; border-color: var(--primary, #7c4dff); }
+.avviso-bottoni { display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
+.avviso-bottoni .btn-main.avviso-pericolo { background: var(--danger, #d32f2f); color: #fff; }
+@keyframes avvisoFondo { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .avviso-bolla, .avviso-fondo { animation: none; } .avviso-esce { transition: none; } }
+
+/* ── RICERCA GLOBALE (Q4, 2026-10-12) — ui/navigation-ricerca.ui.js ───────
+   Risultati divisi per gruppo (Carte, Wishlist, Sealed, Binder, Scaffali);
+   la riga scelta con le frecce resta evidenziata. */
+.ricerca-gruppo-titolo { font-size: 0.68rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); padding: 0.7rem 0.3rem 0.25rem; }
+.ricerca-gruppo-titolo span { font-weight: 700; opacity: .7; margin-left: 4px; }
+.risultato-ricerca-globale.evidenziato { background-color: var(--primary-light); border-radius: 8px; }
+
+/* ── TESSERE STRETTE LARGHE E BASSE (Q7, 2026-10-12) ──────────────────────
+   Telefono (tessera <= 360px): 4x2-6x2 sono larghe quanto la 3x2 e l'elenco
+   accanto alla testata restava di ~114px ("Cha…", "Mega Lucar…"). Testata in
+   colonna — sfera sopra, titolo e dato sotto — e l'elenco passa a ~180-230px.
+   Nelle righe del Centro operativo le miniature lasciano il posto al testo. */
+@container (max-width: 360px) {
+    .ball-ui .wf-largo > .ball-testa,
+    .ball-ui .wf-piccolo:not(.widget-tile-mini):has(> .ball-slot-blocco) > .ball-testa {
+        flex-direction: column; align-items: flex-start; justify-content: center; gap: 6px;
+        flex: 0 0 auto; width: auto; max-width: 40%;
+    }
+    .ball-ui .wf-largo > .ball-testa .ball-slot-inline,
+    .ball-ui .wf-piccolo:not(.widget-tile-mini):has(> .ball-slot-blocco) > .ball-testa .ball-slot-inline { flex: 0 0 auto; width: 100%; }
+    .ball-ui .wf-largo .ball-co-it .th,
+    .ball-ui .wf-piccolo:not(.widget-tile-mini) .ball-co-it .th { display: none; }
+}

@@ -411,21 +411,21 @@ async function _locEliminaModale() {
 // ── Aggiungi ────────────────────────────────────────────────────────────
 async function _locAggiungi() {
     if (_locOccupato) return;
-    const nome = (prompt('Nome della nuova location:') || '').trim();
+    const nome = ((await chiediTesto({ titolo: 'Nuova location', testo: 'Nome della nuova location:', conferma: 'Crea', maxLength: 60 })) || '').trim();
     if (!nome) return;
-    if (_locRiservata(nome)) { alert(`"${nome}" è un nome di sistema (già esistente e non modificabile): scegline un altro.`); return; }
+    if (_locRiservata(nome)) { mostraAvviso(`"${nome}" è un nome di sistema (già esistente e non modificabile): scegline un altro.`); return; }
     const uguale = _locDati.voci.find(v => String(v.nome).toLowerCase() === nome.toLowerCase());
-    if (uguale) { alert(`"${uguale.nome}" esiste già.`); return; }
+    if (uguale) { mostraAvviso(`"${uguale.nome}" esiste già.`); return; }
 
     _locOccupato = true;
     try {
         const userId = await authGetUserId();
         if (!userId) return;
         const { data: esistenti, error: errCheck } = await locationExists(userId, nome);
-        if (errCheck) { alert('Errore nel controllo: ' + errCheck.message); return; }
-        if (esistenti && esistenti.length > 0) { alert(`"${nome}" esiste già.`); return; }
+        if (errCheck) { mostraAvviso('Errore nel controllo: ' + errCheck.message); return; }
+        if (esistenti && esistenti.length > 0) { mostraAvviso(`"${nome}" esiste già.`); return; }
         const { error: errIns } = await locationInsert(userId, nome);
-        if (errIns) { alert('Errore nella creazione: ' + errIns.message); return; }
+        if (errIns) { mostraAvviso('Errore nella creazione: ' + errIns.message); return; }
         _locInvalidaCache();
         await renderPaginaLocation({ mantieni: true });
     } finally { _locOccupato = false; }
@@ -435,39 +435,39 @@ async function _locAggiungi() {
 async function _locRinomina(nome) {
     if (_locOccupato) return;
     if (!_locVoce(nome)) return;
-    if (!_locModificabile(nome)) { alert(`"${nome}" è un contenitore di sistema: non si può rinominare.`); return; }
+    if (!_locModificabile(nome)) { mostraAvviso(`"${nome}" è un contenitore di sistema: non si può rinominare.`); return; }
 
-    const input = prompt(`Nuovo nome per "${nome}":`, nome);
+    const input = await chiediTesto({ titolo: 'Rinomina location', testo: `Nuovo nome per "${nome}":`, valore: nome, conferma: 'Avanti', maxLength: 60 });
     if (input === null) return;
     const nuovo = input.trim();
     if (!nuovo || nuovo === nome) return;
-    if (_locRiservata(nuovo)) { alert(`"${nuovo}" è un nome di sistema: scegline un altro.`); return; }
+    if (_locRiservata(nuovo)) { mostraAvviso(`"${nuovo}" è un nome di sistema: scegline un altro.`); return; }
     const uguale = _locDati.voci.find(v => v.nome !== nome && String(v.nome).toLowerCase() === nuovo.toLowerCase());
-    if (uguale) { alert(`"${uguale.nome}" esiste già. Scegli un altro nome (oppure usa "Sposta tutte le carte" per unirle).`); return; }
+    if (uguale) { mostraAvviso(`"${uguale.nome}" esiste già. Scegli un altro nome (oppure usa "Sposta tutte le carte" per unirle).`); return; }
 
     const n = _locConteggioLive(nome);
-    if (!confirm(`Rinominare "${nome}" in "${nuovo}"?\n\nSi aggiornano anche le ${_locCarte(n)} di questa location. Il nome del binder collegato cambierà solo dopo l'approvazione di un admin.`)) return;
+    if (!(await chiediConferma({ titolo: 'Rinominare la location?', testo: `"${nome}" → "${nuovo}"\n\nSi aggiornano anche le ${_locCarte(n)} di questa location. Il nome del binder collegato cambierà solo dopo l'approvazione di un admin.`, conferma: 'Rinomina' }))) return;
 
     _locOccupato = true;
     try {
         const { data, error } = await locationRinomina(nome, nuovo);
-        if (error) { alert('Errore nella rinomina: ' + error.message); return; }
+        if (error) { mostraAvviso('Errore nella rinomina: ' + error.message); return; }
 
         // Il nome in attesa è GIÀ nel DB (la RPC ha scritto nome_proposto +
         // nome_stato='pending', mai binders.nome — trigger sql/26). Qui
         // manca solo la richiesta all'admin, con il flusso già esistente.
-        let avviso = '';
+        let notaRichiesta = '';
         if (data && data.proposta_nome && data.binder_id) {
             const userId = await authGetUserId();
             const { error: errRichiesta } = await creaRichiestaPendente(userId, 'binder_nome', { binder_id: data.binder_id, nome_proposto: nuovo });
             if (errRichiesta) {
                 console.error('Nome binder in attesa ma richiesta non inviata:', errRichiesta.message);
-                avviso = `Location rinominata. Il nuovo nome del binder è in attesa, ma la richiesta all'admin non è partita (${errRichiesta.message}). Riproponilo dal pannello Design del binder.`;
+                notaRichiesta = `Location rinominata. Il nuovo nome del binder è in attesa, ma la richiesta all'admin non è partita (${errRichiesta.message}). Riproponilo dal pannello Design del binder.`;
             }
         }
         _locChiudiModale();
         await _locDopoModificaCarte();
-        if (avviso) alert(avviso);
+        if (notaRichiesta) mostraAvviso('⚠️ ' + notaRichiesta);
     } finally { _locOccupato = false; }
 }
 
@@ -483,21 +483,21 @@ async function _locElimina(nomi) {
         else eliminabili.push(nome);
     });
     if (eliminabili.length === 0) {
-        alert(`Nessuna location eliminabile:\n- ${saltate.join('\n- ')}\n\nSi eliminano solo le location VUOTE. Sposta prima le carte.`);
+        mostraAvviso(`Nessuna location eliminabile:\n- ${saltate.join('\n- ')}\n\nSi eliminano solo le location VUOTE. Sposta prima le carte.`);
         return;
     }
     let msg = eliminabili.length === 1
         ? `Eliminare la location "${eliminabili[0]}"? È vuota.`
         : `Eliminare ${eliminabili.length} location vuote?\n- ${eliminabili.join('\n- ')}`;
     if (saltate.length > 0) msg += `\n\nNon verranno eliminate:\n- ${saltate.join('\n- ')}`;
-    if (!confirm(msg)) return;
+    if (!(await chiediConferma({ titolo: 'Eliminare le location?', testo: msg, conferma: 'Elimina', pericolo: true }))) return;
 
     _locOccupato = true;
     try {
         const userId = await authGetUserId();
         if (!userId) return;
         const { error } = await locationDeleteBatch(userId, eliminabili);
-        if (error) { alert('Errore nella cancellazione: ' + error.message); return; }
+        if (error) { mostraAvviso('Errore nella cancellazione: ' + error.message); return; }
         _locInvalidaCache();
         _locSelezione.clear();
         _locChiudiModale();
@@ -510,7 +510,7 @@ function _locEliminaSelezionate() { _locElimina([..._locSelezione]); }
 function _locApriSposta(nomi) {
     if (_locOccupato) return;
     const sorgenti = (nomi || []).filter(nome => _locModificabile(nome) && _locConteggioLive(nome) > 0);
-    if (sorgenti.length === 0) { alert('Nessuna carta da spostare: le location scelte sono vuote.'); return; }
+    if (sorgenti.length === 0) { mostraAvviso('Nessuna carta da spostare: le location scelte sono vuote.'); return; }
     _locApriModale({ tipo: 'sposta', sorgenti });
     const sel = document.getElementById('locDestSelect');
     if (sel) sel.focus();
@@ -526,18 +526,23 @@ async function _locConfermaSposta() {
     let destinazione = scelta;
     let daCreare = false;
     if (nuovaTesto) {
-        if (_locRiservata(nuovaTesto)) { alert(`"${nuovaTesto}" è un nome di sistema: per "?" usa la tendina, gli altri non sono validi come destinazione.`); return; }
+        if (_locRiservata(nuovaTesto)) { mostraAvviso(`"${nuovaTesto}" è un nome di sistema: per "?" usa la tendina, gli altri non sono validi come destinazione.`); return; }
         const uguale = _locDati.voci.find(v => String(v.nome).toLowerCase() === nuovaTesto.toLowerCase());
         destinazione = uguale ? uguale.nome : nuovaTesto;
         daCreare = !uguale;
     }
-    if (!destinazione) { alert('Scegli una location di destinazione oppure scrivine una nuova.'); return; }
-    if (sorgenti.includes(destinazione)) { alert('La destinazione coincide con una delle location di partenza.'); return; }
-    if (_locInerte(destinazione) || (_locSistema(destinazione) && destinazione !== '?')) { alert(`"${destinazione}" non è una destinazione valida.`); return; }
+    if (!destinazione) { mostraAvviso('Scegli una location di destinazione oppure scrivine una nuova.'); return; }
+    if (sorgenti.includes(destinazione)) { mostraAvviso('La destinazione coincide con una delle location di partenza.'); return; }
+    if (_locInerte(destinazione) || (_locSistema(destinazione) && destinazione !== '?')) { mostraAvviso(`"${destinazione}" non è una destinazione valida.`); return; }
 
     const totale = sorgenti.reduce((somma, nome) => somma + _locConteggioLive(nome), 0);
-    if (totale === 0) { alert('Nel frattempo non ci sono più carte da spostare.'); return; }
-    if (!confirm(`Spostare ${_locCarte(totale)} da ${sorgenti.map(n => `"${n}"`).join(', ')} in "${destinazione}"?\n\nLe location di partenza NON vengono eliminate: restano, vuote e ben evidenziate.`)) return;
+    if (totale === 0) { mostraAvviso('Nel frattempo non ci sono più carte da spostare.'); return; }
+    if (!(await chiediConferma({ titolo: 'Spostare le carte?', testo: `${_locCarte(totale)} da ${sorgenti.map(n => `"${n}"`).join(', ')} in "${destinazione}".\n\nLe location di partenza NON vengono eliminate: restano, vuote e ben evidenziate.`, conferma: 'Sposta' }))) return;
+
+    // (Q3) Location di partenza di ogni carta, per "Annulla".
+    const primaDi = carteReali
+        .filter(c => c.tabella === 'carte' && c.stato === 'collezione' && sorgenti.includes(c.location || '—'))
+        .map(c => ({ id: c.id, location: c.location || '' }));
 
     _locOccupato = true;
     try {
@@ -545,17 +550,37 @@ async function _locConfermaSposta() {
         if (!userId) return;
         if (daCreare) {
             const { data: esistenti, error: errCheck } = await locationExists(userId, destinazione);
-            if (errCheck) { alert('Errore nel controllo: ' + errCheck.message); return; }
+            if (errCheck) { mostraAvviso('Errore nel controllo: ' + errCheck.message); return; }
             if (!esistenti || esistenti.length === 0) {
                 const { error: errIns } = await locationInsert(userId, destinazione);
-                if (errIns) { alert('Errore nella creazione della location: ' + errIns.message); return; }
+                if (errIns) { mostraAvviso('Errore nella creazione della location: ' + errIns.message); return; }
             }
         }
         const { error } = await locationSpostaCarte(userId, sorgenti, destinazione);
-        if (error) { alert('Errore nello spostamento: ' + error.message); return; }
+        if (error) { mostraAvviso('❌ Errore nello spostamento: ' + error.message); return; }
         _locChiudiModale();
         await _locDopoModificaCarte();
+        avvisoBreve(`${_locCarte(totale)} in "${destinazione}".`, {
+            tipo: 'ok', durata: 6000,
+            azione: { etichetta: 'Annulla', fn: () => _locAnnullaSposta(primaDi) },
+        });
     } finally { _locOccupato = false; }
+}
+
+// (Q3) Rimette ogni carta nella location di partenza (quella creata come
+// destinazione, se nuova, resta: vuota, come le location di partenza).
+async function _locAnnullaSposta(primaDi) {
+    if (!primaDi || !primaDi.length) return;
+    const gruppi = new Map();
+    primaDi.forEach(c => { if (!gruppi.has(c.location)) gruppi.set(c.location, []); gruppi.get(c.location).push(c.id); });
+    let errore = null;
+    for (const [location, ids] of gruppi) {
+        const { error } = await cardsUpdateLocationBatch('carte', ids, location);
+        if (error) { errore = error; break; }
+    }
+    await _locDopoModificaCarte();
+    if (errore) mostraAvviso('❌ Annullamento non riuscito: ' + errore.message);
+    else avvisoBreve('Spostamento annullato.', { tipo: 'ok' });
 }
 
 // ── Selezione multipla (spunte sulle tessere) ───────────────────────────
@@ -611,7 +636,7 @@ function _locOrdina() {
     else voci.sort((a, b) => conCarte(b) - conCarte(a) || b.valore - a.valore || b.n - a.n || String(a.nome).localeCompare(String(b.nome)));
 }
 
-function _locImpostaOrdine(o) { _locOrd = o; _locDisegna(); }
+function _locImpostaOrdine(o) { _locOrd = o; prefFiltroPaginaSet('location', 'ordine', o); _locDisegna(); } // (Q5) ricordato
 
 function _locToggleSeleziona() {
     _locSelezionando = !_locSelezionando;
@@ -775,7 +800,7 @@ async function renderPaginaLocation(opzioni) {
     if (!mantieni) {
         _locSelezione.clear();
         _locSelezionando = false;
-        _locOrd = 'valore';
+        _locOrd = prefFiltroPaginaScegli('location', 'ordine', ['valore', 'carte', 'az'], 'valore'); // (Q5)
         _locChiudiModale();
         container.innerHTML = '<p style="text-align:center; color:var(--text-muted); font-size:0.85rem; padding:1rem 0;">Caricamento…</p>';
     }

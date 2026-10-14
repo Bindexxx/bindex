@@ -23,6 +23,10 @@
 // ───────────────────────────────────────────────────────────────────────
 
 // ── CARICAMENTO DATI ──────────────────────────────────────────────────
+// (Q1, 2026-10-12) true se l'ultima lettura è fallita: la tessera scrive "—"
+// invece di "Nessun prodotto" finché non arriva una lettura riuscita.
+let _sealedLetturaFallita = false;
+
 async function caricaProdottiSealedReali() {
     const userId = await authGetUserId();
     if (!userId) return;
@@ -30,8 +34,10 @@ async function caricaProdottiSealedReali() {
     const { data, error } = await sealedListMie(userId);
     if (error) {
         console.error('Errore caricamento prodotti sealed:', error.message);
+        _sealedLetturaFallita = true;
         return;
     }
+    _sealedLetturaFallita = false;
 
     prodottiSealedReali = (data || []).map(r => ({
         id: r.id,
@@ -56,6 +62,7 @@ CATALOGO_WIDGET.sealed = {
         titolo: 'Sealed', icona: 'fa-box-archive',
         preview: () => {
             const prodotti = prodottiSealedReali;
+            if (prodotti.length === 0 && _sealedLetturaFallita) return { righe: ['—'] }; // (Q1) lettura fallita, non "vuoto"
             if (prodotti.length === 0) return { righe: ['Nessun prodotto'], dati: { totale: 0, valore: 0, lista: [] } };
             const perValore = prodotti.slice().sort((a, b) => (b.price || 0) - (a.price || 0));
             const inEvidenza = perValore[0];
@@ -142,7 +149,7 @@ async function renderPaginaSealed() {
     const userId = await authGetUserId();
     if (userId) await _sealedCaricaContesto(userId);
 
-    _sealedOrdinamento = 'valore';
+    _sealedOrdinamento = prefFiltroPaginaScegli('sealed', 'ordine', ['valore', 'quantita', 'alfabetico'], 'valore'); // (Q5)
     _sealedRicercaTesto = '';
     const { totale, valore } = _sealedCalcola();
     const eur = (v) => formattaEuro(v); // formato unico "12.345,00 €" (decisione Claudio 2026-09-25)
@@ -170,9 +177,9 @@ async function renderPaginaSealed() {
             </div>
             <div class="sl-cerca"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="Cerca tra i sealed…" oninput="_sealedCercaInput(this.value)"></div>
             <div class="sl-chips">
-                <span class="sl-chip attivo" data-ord="valore" onclick="_sealedImpostaOrdinamento('valore')">Valore</span>
-                <span class="sl-chip" data-ord="quantita" onclick="_sealedImpostaOrdinamento('quantita')">Quantità</span>
-                <span class="sl-chip" data-ord="alfabetico" onclick="_sealedImpostaOrdinamento('alfabetico')">A → Z</span>
+                <span class="sl-chip${_sealedOrdinamento === 'valore' ? ' attivo' : ''}" data-ord="valore" onclick="_sealedImpostaOrdinamento('valore')">Valore</span>
+                <span class="sl-chip${_sealedOrdinamento === 'quantita' ? ' attivo' : ''}" data-ord="quantita" onclick="_sealedImpostaOrdinamento('quantita')">Quantità</span>
+                <span class="sl-chip${_sealedOrdinamento === 'alfabetico' ? ' attivo' : ''}" data-ord="alfabetico" onclick="_sealedImpostaOrdinamento('alfabetico')">A → Z</span>
             </div>
             <div id="sealedElenco"></div>
         </div>
@@ -191,6 +198,7 @@ function _sealedEPC() { const s = document.getElementById('sealed'); return !!s 
 
 function _sealedImpostaOrdinamento(ordine) {
     _sealedOrdinamento = ordine;
+    prefFiltroPaginaSet('sealed', 'ordine', ordine); // (Q5)
     document.querySelectorAll('#sealed .sl-chip').forEach(el => {
         el.classList.toggle('attivo', el.dataset.ord === ordine);
     });
@@ -342,7 +350,7 @@ async function _sealedOffriInScambio() {
     if (!_scaffaleScambioId) {
         const userId = await authGetUserId();
         const { data, error } = await scaffaleScambioGarantisci(userId);
-        if (error || !data) { alert('Errore: impossibile preparare lo Scambio.'); return; }
+        if (error || !data) { mostraAvviso('❌ Errore: impossibile preparare lo Scambio.'); return; }
         _scaffaleScambioId = data.id;
     }
     apriModaleQuantitaScambioSealed(_sealedDettaglioId);
@@ -458,7 +466,7 @@ async function salvaModificaSealed() {
     btn.innerHTML = '<i class="fa-solid fa-check"></i> Salva Modifiche';
 
     if (error) {
-        alert('❌ Errore nel salvare: ' + error.message);
+        mostraAvviso('❌ Errore nel salvare: ' + error.message);
         return;
     }
 
@@ -517,13 +525,22 @@ async function eliminaSealedDaModale() {
 
 
 async function eliminaSealed(id) {
-    if (!confirm('Eliminare definitivamente questo prodotto sealed dalla collezione?\n\nQuesta azione non si può annullare.')) return;
     // Fase 8, Step 2 (2026-09-13): snapshot PRIMA della delete — l'oggetto
     // non esisterà più per rileggerlo dopo.
     const prodotto = prodottiSealedReali.find(p => String(p.id) === String(id));
+    // (Q2/Q3) finestra del sito; il prodotto va nel cestino (sql/98) e dopo
+    // l'eliminazione c'è "Annulla".
+    const nelCestino = typeof cestinoAttivo === 'function' && await cestinoAttivo();
+    const sicuro = await chiediConferma({
+        titolo: 'Eliminare il prodotto?',
+        testo: (prodotto && prodotto.name ? `"${prodotto.name}" esce dalla collezione.\n\n` : '') + cestinoTestoConferma(nelCestino),
+        conferma: 'Elimina',
+        pericolo: true,
+    });
+    if (!sicuro) return;
     const { error } = await sealedDelete(id);
     if (error) {
-        alert('❌ Errore nell\'eliminazione: ' + error.message);
+        mostraAvviso('❌ Errore nell\'eliminazione: ' + error.message);
         return;
     }
     if (prodotto) {
@@ -541,4 +558,5 @@ async function eliminaSealed(id) {
         })();
     }
     await _sealedRinfrescaDopoModifica();
+    cestinoOffriAnnulla('prodotti_sealed', [{ id }], ((prodotto && prodotto.name) ? `"${prodotto.name}"` : 'Prodotto') + ' eliminato.', _sealedRinfrescaDopoModifica);
 }

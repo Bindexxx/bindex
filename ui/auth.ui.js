@@ -30,7 +30,7 @@
             const btnLogout = document.getElementById('profiloMenuLogout');
             btnLogout.onclick = async (e) => {
                 e.stopPropagation();
-                if (!confirm('Uscire da Bindex (' + email + ')?')) return;
+                if (!(await chiediConferma({ titolo: 'Uscire da Bindex?', testo: email, conferma: 'Esci' }))) return;
                 await authLogout();
                 // (V5 velocità, 2026-10-12) nessuna copia della collezione resta
                 // sul dispositivo dopo il logout (ui/cards.ui.js).

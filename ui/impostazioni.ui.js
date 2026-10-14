@@ -146,9 +146,9 @@ function _impostazioniCopiaLog() {
     if (typeof _logDiagnosticoTesto !== 'function' || typeof _logDiagnosticoInfoDispositivo !== 'function') return;
     const testo = _logDiagnosticoInfoDispositivo() + '\n\n--- Log ---\n' + _logDiagnosticoTesto(80);
     navigator.clipboard.writeText(testo).then(() => {
-        alert('📋 Log copiato negli appunti.');
+        mostraAvviso('📋 Log copiato negli appunti.');
     }).catch(() => {
-        alert(testo); // fallback se il clipboard non è disponibile
+        chiediTesto({ titolo: 'Copia il log', testo: 'Selezionalo e copialo:', valore: testo, multiriga: true, conferma: 'Fatto', annulla: 'Chiudi' }); // fallback se il clipboard non è disponibile
     });
 }
 

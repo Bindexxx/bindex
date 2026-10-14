@@ -129,14 +129,15 @@ async function renderPaginaWishlist() {
     const container = document.getElementById('wishlistContenuto');
     if (!container) return;
 
-    _wishlistFiltroAttivo = 'tutte';
+    _wishlistFiltroAttivo = prefFiltroPaginaScegli('wishlist', 'filtro', ['tutte', 'raggiunte', 'in_corso', 'senza_obiettivo'], 'tutte'); // (Q5)
+    _wishlistOrdine = prefFiltroPaginaScegli('wishlist', 'ordine', ['vicine', 'prezzo', 'az'], _wishlistOrdine);
     _wishlistRicercaTesto = '';
     _wishlistTabAttiva = 'carte';
     _wishlistSelId = null;
     _wishlistSealedCaricato = false; // Fase 6, Step 2: ricarica sempre ad ogni apertura pagina
     const { totale, conObiettivo, raggiunte } = _wishlistClassificaEOrdina();
     const perPrenderle = _wishlistCarteComputate.reduce((t, r) => t + (r.prezzo || 0), 0);
-    const filtro = (id, t) => `<button type="button" class="wl-chip${id === 'tutte' ? ' attivo' : ''}" data-filtro="${id}" onclick="_wishlistImpostaFiltro('${id}')">${t}</button>`;
+    const filtro = (id, t) => `<button type="button" class="wl-chip${id === _wishlistFiltroAttivo ? ' attivo' : ''}" data-filtro="${id}" onclick="_wishlistImpostaFiltro('${id}')">${t}</button>`;
 
     container.innerHTML = `
         <div class="wl-pagina">
@@ -197,6 +198,7 @@ function _wishlistCondividi(evt) {
 
 function _wishlistImpostaFiltro(filtro) {
     _wishlistFiltroAttivo = filtro;
+    prefFiltroPaginaSet('wishlist', 'filtro', filtro); // (Q5)
     document.querySelectorAll('#wishlistContenuto .wl-chip[data-filtro]').forEach(el => {
         el.classList.toggle('attivo', el.dataset.filtro === filtro);
     });
@@ -212,9 +214,10 @@ const _WL_ORDINI = { vicine: 'più vicine', prezzo: 'prezzo', az: 'A → Z' };
 function _wishlistCambiaOrdine() {
     const k = Object.keys(_WL_ORDINI);
     _wishlistOrdine = k[(k.indexOf(_wishlistOrdine) + 1) % k.length];
+    prefFiltroPaginaSet('wishlist', 'ordine', _wishlistOrdine); // (Q5)
     _wishlistRenderElenco();
 }
-function _wishlistOrdinaPer(o) { _wishlistOrdine = o; _wishlistRenderElenco(); }
+function _wishlistOrdinaPer(o) { _wishlistOrdine = o; prefFiltroPaginaSet('wishlist', 'ordine', o); _wishlistRenderElenco(); }
 
 // Distanza dall'obiettivo: negativa = sotto obiettivo (raggiunta).
 function _wlDistanza(r) { return r.obiettivo != null ? r.prezzo - r.obiettivo : null; }
@@ -543,7 +546,7 @@ async function salvaModificaWishlistSealed() {
     btn.innerHTML = '<i class="fa-solid fa-check"></i> Salva Modifiche';
 
     if (error) {
-        alert('❌ Errore nel salvare: ' + error.message);
+        mostraAvviso('❌ Errore nel salvare: ' + error.message);
         return;
     }
 
@@ -557,10 +560,10 @@ async function eliminaWishlistSealedDaModale() {
     if (!_wishlistSealedInModifica) return;
     const id = _wishlistSealedInModifica.id;
     chiudiModificaWishlistSealed();
-    if (!confirm('Eliminare definitivamente questo prodotto dalla Wishlist?\n\nQuesta azione non si può annullare.')) return;
+    if (!(await chiediConferma({ titolo: 'Togliere dalla wishlist?', testo: 'Il prodotto esce dalla wishlist. Questa azione non si può annullare.', conferma: 'Elimina', pericolo: true }))) return;
     const { error } = await wishlistSealedDelete(id);
     if (error) {
-        alert('❌ Errore nell\'eliminazione: ' + error.message);
+        mostraAvviso('❌ Errore nell\'eliminazione: ' + error.message);
         return;
     }
     await caricaWishlistSealedReali();

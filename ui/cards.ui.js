@@ -188,6 +188,65 @@
         }
 
 
+        // ── (Q1 quality of life, 2026-10-12) COLLEZIONE NON CARICATA ─────────
+        // Prima un caricamento fallito finiva solo in console: tessere e
+        // pagine mostravano "0 carte", "tutto in ordine"... come se fosse vero,
+        // fino al refresh. Ora: barra fissa con Riprova (ui/avvisi.ui.js),
+        // nuovi tentativi da soli (10 s, 30 s, 1 min, poi ogni 2 min; subito al
+        // ritorno della rete; con la scheda in secondo piano al ritorno) e, se
+        // non c'è nessun dato da mostrare, le tessere che dipendono dalla
+        // collezione scrivono "—" (_carteNonCaricate, letta da renderWidgetHome).
+        const _CARTE_ATTESE_TENTATIVO = [10000, 30000, 60000, 120000];
+        let _carteTentativi = 0;
+        let _carteTimerTentativo = null;
+
+        function _carteNonCaricate() {
+            return !!_carteUltimoErrore && !_carteDaCache && carteReali.length === 0;
+        }
+
+        function _carteSegnalaErrore() {
+            let testo;
+            if (_carteDaCache) {
+                const quando = _carteCacheSalvataIl ? new Date(_carteCacheSalvataIl) : null;
+                testo = 'Nessun collegamento al database: stai vedendo la collezione salvata'
+                    + (quando ? ' il ' + quando.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' }) + ' alle ' + quando.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }) : '') + '.';
+            } else if (carteReali.length) {
+                testo = 'Aggiornamento della collezione non riuscito: quello che vedi potrebbe non essere aggiornato.';
+            } else {
+                testo = 'Collezione non caricata: controlla la connessione.';
+            }
+            if (typeof avvisoFisso === 'function') {
+                avvisoFisso('carte', testo, { tipo: 'errore', azione: { etichetta: 'Riprova', fn: () => { _carteTentativi = 0; caricaCarteReali(); } } });
+            }
+            clearTimeout(_carteTimerTentativo);
+            const attesa = _CARTE_ATTESE_TENTATIVO[Math.min(_carteTentativi, _CARTE_ATTESE_TENTATIVO.length - 1)];
+            _carteTentativi++;
+            _carteTimerTentativo = setTimeout(() => {
+                _carteTimerTentativo = null;
+                if (document.hidden) { _ricaricaCarteAlRitorno = true; return; } // riprova al ritorno sulla scheda
+                caricaCarteReali();
+            }, attesa);
+            // Senza dati: tessere a "—" invece degli stati "tutto ok" falsi.
+            if (_carteNonCaricate() && typeof renderWidgetHome === 'function' && typeof _editModeWidget !== 'undefined' && !_editModeWidget
+                && !document.body.classList.contains('phone-detail-open')) {
+                renderWidgetHome();
+            }
+        }
+
+        function _carteErroreRisolto() {
+            clearTimeout(_carteTimerTentativo);
+            _carteTimerTentativo = null;
+            _carteTentativi = 0;
+            if (typeof avvisoFissoTogli === 'function') avvisoFissoTogli('carte');
+        }
+
+        window.addEventListener('online', () => {
+            if (!_carteUltimoErrore) return;
+            _carteTentativi = 0;
+            caricaCarteReali();
+        });
+
+
         let _caricamentoCarteInCorso = false;
 
         async function caricaCarteReali() {
@@ -204,6 +263,12 @@
             _caricamentoCarteInCorso = true;
             try {
                 await _caricaCarteRealiDalDb(userId);
+            } catch (e) {
+                // (Q1) rete caduta a metà, risposta non valida...: stesso
+                // trattamento di un errore restituito da Supabase.
+                console.error('Errore caricamento carte:', e);
+                _carteUltimoErrore = (e && e.message) || 'errore sconosciuto';
+                _carteSegnalaErrore();
             } finally {
                 _caricamentoCarteInCorso = false;
             }
@@ -259,6 +324,7 @@
             if (errCarte || errWishlist) {
                 console.error('Errore caricamento carte:', (errCarte || errWishlist).message);
                 _carteUltimoErrore = (errCarte || errWishlist).message || 'errore sconosciuto';
+                _carteSegnalaErrore(); // (Q1)
                 return;
             }
 
@@ -293,6 +359,7 @@
             carteReali = [...righeCarte, ...righeWishlist];
             _carteDaCache = false;
             _carteUltimoErrore = null;
+            _carteErroreRisolto(); // (Q1) via la barra d'errore e i tentativi in coda
 
             _aggiornaVisteDopoCarte({});
             _salvaCacheCarte(userId);

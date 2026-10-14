@@ -371,12 +371,16 @@ async function _richiesteConcludiTutto(richiestaId) {
         .filter(r => String(r.richiesta_id || r.id) === String(richiestaId) && r.stato_riga === 'accettata');
     if (!righe.length) return;
     const conOspite = !!_richiestaOspite(righe[0]);
-    if (!confirm(conOspite
-        ? `Concludere tutti e ${righe.length} gli oggetti riservati? Escono dalla tua collezione ora, azione irreversibile.`
-        : `Concludere tutti e ${righe.length} gli oggetti riservati? Gli oggetti verranno trasferiti ora, azione irreversibile.\nIl destinatario li troverà nella Location "?" e potrà spostarli dove vuole.`)) return;
+    if (!(await chiediConferma({
+        titolo: `Concludere ${righe.length} oggetti?`,
+        testo: conOspite
+            ? `Tutti e ${righe.length} gli oggetti riservati escono dalla tua collezione ora. Azione irreversibile.`
+            : `Tutti e ${righe.length} gli oggetti riservati verranno trasferiti ora. Azione irreversibile.\nIl destinatario li troverà nella Location "?" e potrà spostarli dove vuole.`,
+        conferma: 'Concludi', pericolo: true,
+    }))) return;
     for (const r of righe) {
         const { error } = await concludiRigaRichiesta(r.id, '?');
-        if (error) { alert('❌ ' + error.message); break; }
+        if (error) { mostraAvviso('❌ ' + error.message); break; }
     }
     await apriPaginaRichieste(true);
 }
@@ -387,10 +391,10 @@ async function _richiesteConcludiTutto(richiestaId) {
 async function _richiesteAccettaTutto(richiestaId) {
     const righe = _richiesteRicevute.filter(r => String(r.richiesta_id || r.id) === String(richiestaId) && r.stato_riga === 'in_attesa');
     if (!righe.length) return;
-    if (!confirm(`Accettare tutti e ${righe.length} gli oggetti? Diventeranno riservati.`)) return;
+    if (!(await chiediConferma({ titolo: `Accettare ${righe.length} oggetti?`, testo: 'Diventeranno riservati.', conferma: 'Accetta tutto' }))) return;
     for (const r of righe) {
         const { error } = await accettaRigaRichiesta(r.id);
-        if (error) { alert('❌ ' + error.message); break; }
+        if (error) { mostraAvviso('❌ ' + error.message); break; }
     }
     await apriPaginaRichieste(true);
 }
@@ -398,15 +402,15 @@ async function _richiesteAccettaTutto(richiestaId) {
 // FASE 8b: Blocca un ospite — il suo dispositivo non potrà più chiederti
 // nulla e le sue richieste aperte verso di te si annullano.
 async function _richiesteBloccaOspite(richiestaId) {
-    if (!confirm('Bloccare questo ospite? Non potrà più inviarti richieste da questo dispositivo e le sue richieste aperte verso di te verranno annullate.')) return;
+    if (!(await chiediConferma({ titolo: 'Bloccare questo ospite?', testo: 'Non potrà più inviarti richieste da questo dispositivo e le sue richieste aperte verso di te verranno annullate.', conferma: 'Blocca', pericolo: true }))) return;
     const { error } = await bloccaOspite(richiestaId);
-    if (error) { alert('❌ ' + error.message); return; }
+    if (error) { mostraAvviso('❌ ' + error.message); return; }
     await apriPaginaRichieste(true);
 }
 
 async function _richiesteCopiaContatto(testo) {
-    try { await navigator.clipboard.writeText(testo); alert('Contatto copiato.'); }
-    catch (_) { prompt('Copia il contatto:', testo); }
+    try { await navigator.clipboard.writeText(testo); avvisoBreve('📋 Contatto copiato.', { tipo: 'ok' }); }
+    catch (_) { await chiediTesto({ titolo: 'Copia il contatto', testo: 'Selezionalo e copialo:', valore: testo, conferma: 'Fatto', annulla: 'Chiudi' }); }
 }
 
 
@@ -416,11 +420,11 @@ async function _azioneRichiesta(azione, rigaId) {
     let risultato;
 
     if (azione === 'accetta') {
-        if (!confirm('Accettare questa richiesta? La carta/prodotto diventerà riservato.')) return;
+        if (!(await chiediConferma({ titolo: 'Accettare la richiesta?', testo: 'La carta/prodotto diventerà riservato.', conferma: 'Accetta' }))) return;
         risultato = await accettaRigaRichiesta(rigaId);
 
     } else if (azione === 'rifiuta') {
-        if (!confirm('Rifiutare questa richiesta?')) return;
+        if (!(await chiediConferma({ titolo: 'Rifiutare la richiesta?', conferma: 'Rifiuta', pericolo: true }))) return;
         risultato = await rifiutaRigaRichiesta(rigaId);
 
     } else if (azione === 'annulla' || azione === 'sblocca') {
@@ -435,14 +439,14 @@ async function _azioneRichiesta(azione, rigaId) {
         // dove vuole. Prima era un prompt() a testo libero.
         const rigaC = _richiesteRicevute.find(x => String(x.id) === String(rigaId));
         const msgC = (rigaC && _richiestaOspite(rigaC))
-            ? 'Concludere lo scambio con l\'ospite? L\'oggetto esce dalla tua collezione ora, azione irreversibile.'
-            : 'Concludere lo scambio? L\'oggetto verrà trasferito ora, azione irreversibile.\nIl destinatario lo troverà nella Location "?" e potrà spostarlo dove vuole.';
-        if (!confirm(msgC)) return;
+            ? 'Con l\'ospite: l\'oggetto esce dalla tua collezione ora. Azione irreversibile.'
+            : 'L\'oggetto verrà trasferito ora. Azione irreversibile.\nIl destinatario lo troverà nella Location "?" e potrà spostarlo dove vuole.';
+        if (!(await chiediConferma({ titolo: 'Concludere lo scambio?', testo: msgC, conferma: 'Concludi', pericolo: true }))) return;
         risultato = await concludiRigaRichiesta(rigaId, '?');
     }
 
     if (risultato && risultato.error) {
-        alert('❌ ' + risultato.error.message);
+        mostraAvviso('❌ ' + risultato.error.message);
         return;
     }
 
