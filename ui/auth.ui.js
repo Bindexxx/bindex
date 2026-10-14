@@ -32,6 +32,9 @@
                 e.stopPropagation();
                 if (!confirm('Uscire da Bindex (' + email + ')?')) return;
                 await authLogout();
+                // (V5 velocità, 2026-10-12) nessuna copia della collezione resta
+                // sul dispositivo dopo il logout (ui/cards.ui.js).
+                if (typeof cacheCarteSvuota === 'function') cacheCarteSvuota();
                 // Azzera la tab ricordata (per-dispositivo) — dispositivo
                 // condiviso tra il gruppo, il prossimo login non deve
                 // ritrovarsi nella stessa schermata di chi ha appena fatto
@@ -271,14 +274,18 @@
                 await renderWidgetHome();
             }
 
-            await caricaCarteReali();
             // FASE 1 (2026-09-12): prodotti sealed, array parallelo — non
             // blocca l'avvio se fallisce (stesso spirito già in uso qui
             // sotto per binder/preferenze), il widget mostrerà "nessun
             // prodotto" finché non si riprova.
-            if (typeof caricaProdottiSealedReali === 'function') {
-                await caricaProdottiSealedReali();
-            }
+            // (V5 velocità, 2026-10-12) parte INSIEME alle carte invece che
+            // dopo: sono indipendenti (caricaProdottiSealedReali riempie solo
+            // prodottiSealedReali), l'ordine in cui finiscono non cambia nulla.
+            const _sealedInArrivo = (typeof caricaProdottiSealedReali === 'function')
+                ? caricaProdottiSealedReali().catch(e => console.error('Errore caricamento prodotti sealed:', e))
+                : null;
+            await caricaCarteReali();
+            if (_sealedInArrivo) await _sealedInArrivo;
             await _avviaRealtimeCarte();
 
             const prefUtente = await caricaPreferenzeUtente();

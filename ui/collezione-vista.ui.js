@@ -190,12 +190,12 @@ async function collEliminaSealed(id) {
 }
 
 // ── TELEFONO: lista ─────────────────────────────────────────────────────
-function _collListaTelefono(data) {
-    if (!data.length) return '<p class="coll-vuoto">Nessun oggetto trovato.</p>';
-    return data.map(card => {
-        const id = _collAttr(card.id);
-        const aperta = String(_collAzioniId) === String(card.id);
-        return `<div class="coll-riga${aperta ? ' aperta' : ''}${card.tabella === 'wishlist' ? ' e-wish' : ''}" onclick="collToccaRiga('${id}')">
+// (V3 velocità) Una riga alla volta, così la lista si può disegnare a blocchi
+// (vedi _collDisegnaABlocchi). HTML identico a prima.
+function _collRigaTelefonoHtml(card) {
+    const id = _collAttr(card.id);
+    const aperta = String(_collAzioniId) === String(card.id);
+    return `<div class="coll-riga${aperta ? ' aperta' : ''}${card.tabella === 'wishlist' ? ' e-wish' : ''}" data-coll-id="${escapeHtml(String(card.id))}" onclick="collToccaRiga('${id}')">
             <div class="coll-riga-top">
                 ${_collMiniatura(card, 'coll-mini')}
                 <div class="coll-riga-testo">
@@ -210,27 +210,116 @@ function _collListaTelefono(data) {
             </div>
             ${aperta ? `<div class="coll-azioni" onclick="event.stopPropagation()">${_collAzioniHtml(card)}</div>` : ''}
         </div>`;
-    }).join('');
+}
+
+function _collListaTelefono(data) {
+    if (!data.length) return '<p class="coll-vuoto">Nessun oggetto trovato.</p>';
+    return data.map(_collRigaTelefonoHtml).join('');
+}
+
+// (V3 velocità, 2026-10-12) Il tocco su una riga cambia SOLO le righe
+// coinvolte (quella che si chiude e quella che si apre) e, su PC, il pannello
+// dettagli: prima ridisegnava e riordinava l'intera lista a ogni tocco (oltre
+// 1 s sul telefono con 1000+ carte). Se qualcosa non torna (riga non trovata,
+// vista griglia) si ripiega sul render completo di sempre.
+function _collRigaDom(corpo, id) {
+    if (id == null) return null;
+    const sel = '[data-coll-id="' + (window.CSS && CSS.escape ? CSS.escape(String(id)) : String(id).replace(/"/g, '\\"')) + '"]';
+    return corpo.querySelector(sel);
+}
+
+function _collAggiornaRigheTelefono(corpo, primaAperta) {
+    const vecchia = _collRigaDom(corpo, primaAperta);
+    const nuova = _collRigaDom(corpo, _collAzioniId);
+    if ((primaAperta != null && !vecchia) || (_collAzioniId != null && !nuova)) return false;
+    if (vecchia) {
+        vecchia.classList.remove('aperta');
+        const az = vecchia.querySelector(':scope > .coll-azioni');
+        if (az) az.remove();
+    }
+    if (nuova) {
+        const card = _collUltimiDati.find(c => String(c.id) === String(_collAzioniId));
+        if (!card) return false;
+        nuova.classList.add('aperta');
+        nuova.insertAdjacentHTML('beforeend', `<div class="coll-azioni" onclick="event.stopPropagation()">${_collAzioniHtml(card)}</div>`);
+    }
+    return true;
+}
+
+function _collAggiornaSelezionePC(corpo, primaSel) {
+    const dettaglio = document.getElementById('collDettaglio');
+    const vecchia = _collRigaDom(corpo, primaSel);
+    const nuova = _collRigaDom(corpo, _collSelId);
+    if (!dettaglio || (primaSel != null && !vecchia) || (_collSelId != null && !nuova)) return false;
+    if (vecchia) vecchia.classList.remove('sel');
+    if (nuova) nuova.classList.add('sel');
+    dettaglio.innerHTML = _collDettaglioHtml(_collUltimiDati);
+    return true;
 }
 
 function collToccaRiga(id) {
-    if (_collEPC()) { _collSelId = String(_collSelId) === String(id) ? null : id; }
-    else { _collAzioniId = String(_collAzioniId) === String(id) ? null : id; }
+    const corpo = document.getElementById('collCorpo');
+    const parziale = corpo && _collVista !== 'griglia' && !_collRenderInSospeso;
+    if (_collEPC()) {
+        const prima = _collSelId;
+        _collSelId = String(_collSelId) === String(id) ? null : id;
+        if (parziale && _collUltimoPC === true && _collAggiornaSelezionePC(corpo, prima)) return;
+    } else {
+        const prima = _collAzioniId;
+        _collAzioniId = String(_collAzioniId) === String(id) ? null : id;
+        if (parziale && _collUltimoPC === false && _collAggiornaRigheTelefono(corpo, prima)) return;
+    }
     collezioneRender(_collUltimiDati);
 }
 
 // ── GRIGLIA (telefono e PC) ─────────────────────────────────────────────
-function _collGriglia(data) {
-    if (!data.length) return '<p class="coll-vuoto">Nessun oggetto trovato.</p>';
-    return `<div class="coll-griglia">${data.map(card => {
-        const id = _collAttr(card.id);
-        const src = _urlImmagineVisualizzabile(card.immagine);
-        return `<button type="button" class="coll-tessera${card.tipo === 'sealed' ? ' e-sealed' : ''}${card.tabella === 'wishlist' ? ' e-wish' : ''}" onclick="${_collEdSealed(card) ? `apriModificaSealed('${id}')` : `apriImmagineIngrandita('${id}')`}">
+function _collTesseraHtml(card) {
+    const id = _collAttr(card.id);
+    const src = _urlImmagineVisualizzabile(card.immagine);
+    return `<button type="button" class="coll-tessera${card.tipo === 'sealed' ? ' e-sealed' : ''}${card.tabella === 'wishlist' ? ' e-wish' : ''}" onclick="${_collEdSealed(card) ? `apriModificaSealed('${id}')` : `apriImmagineIngrandita('${id}')`}">
             <span class="coll-tessera-img">${src ? `<img src="${src}" alt="" loading="lazy" onerror="this.remove()">` : ''}<i class="fa-solid ${card.tipo === 'sealed' ? 'fa-box' : 'fa-clone'} coll-segnaposto"></i></span>
             <span class="coll-tessera-nome">${escapeHtml(card.name || '(senza nome)')}</span>
             <span class="coll-tessera-sotto"><span>${card.tabella === 'wishlist' ? 'Wishlist' : (_collEdSealed(card) ? 'Sealed' : escapeHtml(card.location || '—'))}</span><b>${formattaEuro(card.price)}</b></span>
         </button>`;
-    }).join('')}</div>`;
+}
+
+function _collGriglia(data) {
+    if (!data.length) return '<p class="coll-vuoto">Nessun oggetto trovato.</p>';
+    return `<div class="coll-griglia">${data.map(_collTesseraHtml).join('')}</div>`;
+}
+
+// (V3 velocità, 2026-10-12) Lista e griglia a blocchi: le prime 80 voci
+// subito (la parte che si vede), il resto a blocchi da 200 subito dopo, senza
+// bloccare la pagina (prima: 1000+ voci in un colpo solo, ~1 s fermo sul
+// telefono all'apertura). Un nuovo render ferma i blocchi del precedente.
+// La tabella PC resta in un colpo solo: "seleziona tutte" deve trovare tutte
+// le righe subito, e sul PC il costo è basso.
+const _COLL_PRIMO_BLOCCO = 80;
+const _COLL_BLOCCO = 200;
+let _collGiroBlocchi = 0;
+let _collTimerBlocchi = null;
+
+function _collFermaBlocchi() {
+    _collGiroBlocchi++;
+    clearTimeout(_collTimerBlocchi);
+    _collTimerBlocchi = null;
+}
+
+function _collDisegnaABlocchi(corpo, dati, rigaHtml, apri, chiudi, selContenitore) {
+    if (!dati.length) { corpo.innerHTML = '<p class="coll-vuoto">Nessun oggetto trovato.</p>'; return; }
+    corpo.innerHTML = apri + dati.slice(0, _COLL_PRIMO_BLOCCO).map(rigaHtml).join('') + chiudi;
+    if (dati.length <= _COLL_PRIMO_BLOCCO) return;
+    const dentro = selContenitore ? corpo.querySelector(selContenitore) : corpo;
+    if (!dentro) return;
+    const giro = ++_collGiroBlocchi;
+    let i = _COLL_PRIMO_BLOCCO;
+    const passo = () => {
+        if (giro !== _collGiroBlocchi || !dentro.isConnected) return;
+        dentro.insertAdjacentHTML('beforeend', dati.slice(i, i + _COLL_BLOCCO).map(rigaHtml).join(''));
+        i += _COLL_BLOCCO;
+        _collTimerBlocchi = i < dati.length ? setTimeout(passo, 0) : null;
+    };
+    _collTimerBlocchi = setTimeout(passo, 0);
 }
 
 // ── PC: tabella + pannello dettagli ─────────────────────────────────────
@@ -245,7 +334,7 @@ function _collTabellaPC(data) {
         const id = _collAttr(card.id);
         const sel = String(_collSelId) === String(card.id);
         const wish = card.tabella === 'wishlist';
-        return `<tr class="${sel ? 'sel' : ''}${wish ? ' e-wish' : ''}" onclick="collToccaRiga('${id}')">
+        return `<tr class="${sel ? 'sel' : ''}${wish ? ' e-wish' : ''}" data-coll-id="${escapeHtml(String(card.id))}" onclick="collToccaRiga('${id}')">
             <td class="coll-td-check">${_collEdSealed(card) ? '' : `<input type="checkbox" class="riga-checkbox" data-id="${escapeHtml(String(card.id))}" data-tabella="${card.tabella}" onclick="event.stopPropagation(); aggiornaSelezioneMultipla();">`}</td>
             <td><div class="coll-td-carta">${_collMiniatura(card, 'coll-mini piccola')}<div><div class="coll-nome">${escapeHtml(card.name || '(senza nome)')}</div><div class="coll-meta">${escapeHtml([card.code, card.tipo === 'sealed' ? 'Sealed' : null].filter(Boolean).join(' · '))}</div></div></div></td>
             <td>${_collChip(card)}</td>
@@ -357,8 +446,25 @@ function _collAggiornaTesta(data) {
 }
 
 // ── punto d'ingresso, chiamato da renderViewTable ───────────────────────
+// (V1 velocità, 2026-10-12) Con la pagina chiusa (home) niente DOM: i dati
+// si tengono e il disegno parte da collezioneRiallinea(), che
+// apriDettaglioWidget chiama appena il pannello è visibile — una volta sola
+// e con la misura giusta. Prima: render anche a pagina chiusa (a ogni
+// ricarica realtime) e, su PC, due render all'apertura ("telefono" a
+// pannello nascosto, poi quello vero).
+let _collRenderInSospeso = false;
+let _collUltimaFirma = null;
+function _collFirma(data, pc) {
+    const statoRiga = id => id == null ? null
+        : [_idsNelBinder.has(String(id)), _idsInScambio.has(String(id)), _quantitaOfferteScambio[String(id)] ?? null];
+    try {
+        return JSON.stringify([_collVista, pc, _collOrdine, _collSelId, _collAzioniId, statoRiga(_collSelId), statoRiga(_collAzioniId), data]);
+    } catch (_) { return null; } // in caso di dubbio si ridisegna
+}
 function collezioneRender(data) {
     _collUltimiDati = data;
+    if (!document.body.classList.contains('phone-detail-open')) { _collRenderInSospeso = true; return; }
+    _collRenderInSospeso = false;
     document.body.classList.add('coll-attiva');
     const pannelloTabella = document.getElementById('pannelloTabella');
     const compatto = document.getElementById('viewCardsCompact');
@@ -367,13 +473,25 @@ function collezioneRender(data) {
     const tbody = document.getElementById('viewTableBody');
     if (tbody) tbody.innerHTML = ''; // niente checkbox doppie nella tabella vecchia nascosta
 
-    const ordinati = _collOrdina(data);
     const pc = _collEPC();
     _collUltimoPC = pc;
     const corpo = document.getElementById('collCorpo');
+    // (V3 velocità) Stessi dati e stesso stato della lista già disegnata (es.
+    // la rilettura dei sealed che switchTab fa subito dopo l'apertura): niente
+    // da ridisegnare. La firma copre anche Binder/Scambio della riga aperta.
+    const firma = _collFirma(data, pc);
+    if (corpo && firma !== null && firma === _collUltimaFirma && corpo.firstChild) {
+        _collAggiornaTesta(data);
+        _aggiornaBarraSelezioneMultipla();
+        return;
+    }
+    _collUltimaFirma = firma;
+    const ordinati = _collOrdina(data);
     if (corpo) {
-        corpo.innerHTML = _collVista === 'griglia' ? _collGriglia(ordinati)
-            : (pc ? _collTabellaPC(ordinati) : _collListaTelefono(ordinati));
+        _collFermaBlocchi();
+        if (_collVista === 'griglia') _collDisegnaABlocchi(corpo, ordinati, _collTesseraHtml, '<div class="coll-griglia">', '</div>', '.coll-griglia');
+        else if (pc) corpo.innerHTML = _collTabellaPC(ordinati);
+        else _collDisegnaABlocchi(corpo, ordinati, _collRigaTelefonoHtml, '', '', null);
     }
     document.body.classList.toggle('coll-griglia-attiva', _collVista === 'griglia');
     _collAggiornaTesta(data);
@@ -385,6 +503,7 @@ function collezioneRender(data) {
 // misura vera dice PC. Chiamata da apriDettaglioWidget.
 let _collUltimoPC = null;
 function collezioneRiallinea() {
+    if (_collRenderInSospeso) { collezioneRender(_collUltimiDati); return; }
     if (!_collUltimiDati || !document.body.classList.contains('coll-attiva')) return;
     if (_collEPC() !== _collUltimoPC) collezioneRender(_collUltimiDati);
 }
@@ -392,6 +511,9 @@ function collezioneRiallinea() {
 // Uscendo dalla tab Collezione la classe va tolta, altrimenti le altre tab
 // (stessa sezione) resterebbero con i comandi vecchi nascosti.
 function collezioneDisattiva() {
+    _collRenderInSospeso = false;
+    _collUltimaFirma = null;
+    _collFermaBlocchi();
     document.body.classList.remove('coll-attiva', 'coll-griglia-attiva');
     const corpo = document.getElementById('collCorpo');
     if (corpo) corpo.innerHTML = '';
