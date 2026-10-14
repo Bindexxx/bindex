@@ -8722,3 +8722,46 @@ textarea.avviso-campo { resize: vertical; font-size: 0.8rem; line-height: 1.4; f
     .ball-ui .wf-largo .ball-co-it .th,
     .ball-ui .wf-piccolo:not(.widget-tile-mini) .ball-co-it .th { display: none; }
 }
+
+/* ══ COERENZA DELLE PAGINE (2026-10-14, giro "ogni pagina di ogni widget") ══
+   Stessa misura per titoli e sottotitoli di tutte le pagine di dettaglio e
+   bottoni in testata in due soli stili: pillola bianca (azioni secondarie)
+   e viola (aggiungi). Regole messe qui in fondo apposta: vincono su quelle
+   delle singole pagine, comprese le varianti @media/@container. */
+
+/* Titoli: 1.5rem come .page-header .page-title (erano 1.7rem). */
+.coll-titolo,
+#binder .bn-titolo,
+.sh-testa h2 { font-size: 1.5rem; letter-spacing: -0.3px; }
+
+/* Sottotitoli/riepiloghi sotto il titolo: 0.82rem come .pg-sotto. */
+#dafare .co-riepilogo,
+#match .match-riepilogo,
+#valore .val-sotto,
+#binder .bn-riepilogo,
+#wishlist .wl-conti,
+.sh-testa p,
+#missioni .msn-riepilogo-sotto { font-size: 0.82rem; }
+#binder .bn-riepilogo b,
+#wishlist .wl-conti b { font-size: inherit; }
+
+/* Valore collezione, telefono: il numero grande spingeva "Vai a Prezzi"
+   fuori dallo schermo (la colonna di sinistra non poteva restringersi). */
+#valore .val-testa-sx { flex: 1 1 auto; min-width: 0; }
+#valore .val-grande { overflow-wrap: anywhere; }
+
+/* Bottoni in testata. Lente di Binders: bianca come la gomma di Inserimento. */
+#binder .bn-cerca-btn {
+    width: 44px; height: 44px; border-radius: 14px;
+    border: 1px solid var(--border-color); background: var(--card-bg); color: var(--text-dark);
+}
+/* "Vai a Valore" (Variazione valore): pillola bianca come "Vai a Prezzi". */
+#variazione .page-azione {
+    flex: 0 0 auto; font-weight: 700; font-size: 0.88rem; padding: 10px 16px; border-radius: 999px;
+    border: 1px solid var(--border-color); background: var(--card-bg); color: var(--text-dark); white-space: nowrap;
+}
+/* Valore collezione, telefono, "Le più preziose": il nome lungo della location
+   (chip) non si accorciava e spingeva il prezzo fuori dallo schermo. */
+#valore .val-chip { flex: 0 1 auto; min-width: 0; max-width: 34%; overflow: hidden; text-overflow: ellipsis; }
+#valore .val-top-destra { flex: 0 0 auto; }
+#valore .val-top-destra b { white-space: nowrap; }
