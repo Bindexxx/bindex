@@ -59,6 +59,7 @@ function _impostazioniAlMostrare(gruppo) {
     }
     if (gruppo === 'account') {
         _impostazioniAggiornaDiagnostica(); // card Diagnostica: solo admin
+        if (typeof cestinoAggiorna === 'function') cestinoAggiorna(); // (S8) ui/cestino.ui.js
     }
 }
 
@@ -157,6 +158,7 @@ function _impostazioniTornaHub() {
     if (cerca && cerca.value) { cerca.value = ''; _impostazioniCerca(''); }
     _impostazioniProfiloRiepilogo();
     _impostazioniCompila();
+    if (typeof cestinoAggiorna === 'function') cestinoAggiorna(); // (S8) conteggio e card nascosta se sql/98 manca
     if (_impostazioniEPC()) {
         // PC: a destra non resta mai vuoto — si riparte da Aspetto.
         _impostazioniApri('aspetto');

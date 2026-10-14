@@ -1439,6 +1439,21 @@
                             <button class="btn-main imp-btn" onclick="importCsvApri()"><i class="fa-solid fa-file-import"></i> Importa</button>
                         </div>
                     </div>
+                    <!-- (S8, 2026-10-12) Cestino: carte e sealed eliminati negli ultimi
+                         30 giorni (sql/98). ui/cestino.ui.js la riempie e la nasconde
+                         finché la tabella non esiste. -->
+                    <div id="impCestinoCard" class="imp-card">
+                        <div class="imp-voce espandibile" onclick="_impostazioniEspandi(this); cestinoAggiorna();">
+                            <span class="imp-ico"><i class="fa-solid fa-trash-can-arrow-up"></i></span>
+                            <div class="imp-voce-testo"><h4>Cestino <span class="imp-nuovo">nuovo</span></h4><p id="impCestinoRiassunto">Le carte e i sealed che elimini restano qui 30 giorni</p></div>
+                            <i class="fa-solid fa-chevron-right imp-freccia"></i>
+                        </div>
+                        <div class="imp-corpo">
+                            <div id="impCestinoLista" class="imp-cestino-lista"></div>
+                            <p id="impCestinoMsg" class="imp-nota imp-cestino-msg" style="display:none;"></p>
+                            <button type="button" class="btn-secondary imp-btn" id="impCestinoSvuota" onclick="cestinoSvuotaChiedi()" style="display:none;"><i class="fa-solid fa-trash"></i> Svuota il cestino</button>
+                        </div>
+                    </div>
                         <!-- Preferenze estensione: visibili solo se
                              l'estensione risponde (_aggiornaControlliApriApp
                              in ui/extension.ui.js imposta display). Spostate qui da
@@ -2704,6 +2719,7 @@
          mirror di data/sealed.repository.js per la wishlist_sealed
          (sql/52). Caricato subito dopo per lo stesso motivo. -->
     <script src="data/wishlist-sealed.repository.js"></script>
+    <script src="data/cestino.repository.js"></script><!-- (S8) cestino carte/sealed, sql/98 -->
     <!-- data/movimenti.repository.js: Fase 8, Step 2 (2026-09-13) — log
          eventi su movimenti_collezione (sql/54), usato da ui/entry.ui.js
          (log "aggiunta" sealed) e dai prossimi punti di mutazione. -->
@@ -2895,6 +2911,7 @@
     <!-- ui/impostazioni.ui.js: Fase 10 (2026-09-13) — router hub/sotto-
          pagine per #impostazioni. -->
     <script src="ui/impostazioni.ui.js"></script>
+    <script src="ui/cestino.ui.js"></script><!-- (S8) cestino in Impostazioni → Account e dati -->
     <!-- ui/wip.ui.js: Fase 11 (2026-09-13) — verifica/blocco Work in
          Progress per widget/pagine (sql/62). -->
     <script src="ui/wip.ui.js"></script>
