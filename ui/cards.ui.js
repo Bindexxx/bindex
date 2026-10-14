@@ -361,6 +361,7 @@
             _carteUltimoErrore = null;
             _carteErroreRisolto(); // (Q1) via la barra d'errore e i tentativi in coda
 
+            if (typeof raritaAggiorna === 'function') raritaAggiorna(); // rarità dal catalogo (parte sincrona = dalla cache)
             _aggiornaVisteDopoCarte({});
             _salvaCacheCarte(userId);
         }
@@ -486,6 +487,7 @@
                 await caricaCarteReali();
                 return;
             }
+            if (typeof raritaAggiorna === 'function') raritaAggiorna();
             _aggiornaVisteDopoCarte({ leggero: true });
             const userId = await authGetUserId();
             if (userId) _salvaCacheCarte(userId);

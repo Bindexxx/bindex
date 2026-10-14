@@ -152,13 +152,14 @@ function _ballMiniCarta(c, badge, origine) {
     const clic = `onclick="_ballAzioneRiga(event,'carta','${c.id}','${origine || ''}')"`;
     const badgeHtml = badge ? `<b class="ball-mini-badge">${badge}</b>` : '';
 
-    // Holo scorrevole: nel mockup segnala le carte speciali. Qui dipende dal
-    // campo 'rarita', che al 27/08/2026 NON esiste nello schema (verificato
-    // in sessione precedente su information_schema.columns) — quindi oggi
-    // non si accende su nulla e non costa niente. Se un giorno il campo
-    // arriverà, si accenderà da solo sulle carte rare.
-    const speciale = c.rarita && /rara|ultra|secret|holo/i.test(String(c.rarita));
-    const classi = 'ball-mini' + (speciale ? ' holo' : '');
+    // Rarità (2026-10-14): c.rarita è un livello (comune, non_comune, rara,
+    // ultra_rara, secret) ricavato dal catalogo dei set da ui/rarita.ui.js —
+    // la colonna nella tabella carte non esiste. Anello colorato per rara,
+    // ultra rara e secret (nessun anello per comune/non comune, niente rumore)
+    // e riflesso scorrevole solo per ultra rara e secret.
+    const speciale = c.rarita && /ultra|secret/i.test(String(c.rarita));
+    const anello = (c.rarita === 'rara' || c.rarita === 'ultra_rara' || c.rarita === 'secret') ? ' r-' + c.rarita : '';
+    const classi = 'ball-mini' + anello + (speciale ? ' holo' : '');
 
     if (c.immagine) {
         const url = _urlImmagineVisualizzabile(c.immagine, 96) || '';
