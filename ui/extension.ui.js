@@ -68,10 +68,13 @@
         // ── "APRI L'APP" — manda la sessione già attiva qui all'estensione ──────
         // Un sito normale non può aprire da solo una pagina chrome-extension://
         // (bloccato dal browser per sicurezza) — per questo chiediamo
-        // all'estensione stessa di aprirsi, passandole anche il token di
-        // sessione Supabase già ottenuto qui: entra già autenticata con lo
-        // stesso account, senza un secondo login separato. Vedi il listener
+        // all'estensione stessa di aprirsi. Vedi il listener
         // CARDSYNC_OPEN_APP in background.js (estensione).
+        // Estensione 5.17: NON le passiamo più i token di sessione. Sito ed
+        // estensione finivano per usare la stessa sessione e Supabase la
+        // chiudeva a entrambi appena uno dei due riusava una chiave di rinnovo
+        // vecchia (succedeva riaprendo il sito dopo qualche ora). L'estensione
+        // ora ha un suo login, una volta per dispositivo.
 
         // I 16 temi dell'estensione sono scelti dal sito con solo 3 opzioni
         // (viola/verde/pokemon, vedi setSiteTheme) — mappiamo qui i nomi,
@@ -87,22 +90,16 @@
         function _mandaAperturaAppAEstensione() {
             return new Promise((resolve) => {
                 if (!window.chrome || !chrome.runtime || !chrome.runtime.sendMessage) { resolve(false); return; }
-                authGetSession().then((sessione) => {
-                    const payload = {
-                        type: 'CARDSYNC_OPEN_APP',
-                        tema: _temaEstensioneDaSito(),
-                        temaScuro: prefDarkModeGet(),
-                    };
-                    if (sessione) {
-                        payload.access_token = sessione.access_token;
-                        payload.refresh_token = sessione.refresh_token;
-                    }
-                    try {
-                        chrome.runtime.sendMessage(ID_ESTENSIONE_CARDSYNC, payload, (risposta) => {
-                            resolve(!chrome.runtime.lastError && !!risposta && risposta.ok === true);
-                        });
-                    } catch (_) { resolve(false); }
-                });
+                const payload = {
+                    type: 'CARDSYNC_OPEN_APP',
+                    tema: _temaEstensioneDaSito(),
+                    temaScuro: prefDarkModeGet(),
+                };
+                try {
+                    chrome.runtime.sendMessage(ID_ESTENSIONE_CARDSYNC, payload, (risposta) => {
+                        resolve(!chrome.runtime.lastError && !!risposta && risposta.ok === true);
+                    });
+                } catch (_) { resolve(false); }
             });
         }
 
