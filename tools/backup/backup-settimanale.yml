@@ -1,0 +1,120 @@
+# ── Backup settimanale di Bindex (S2, 2026-10-12) ─────────────────────────
+# NON va in questo repository (è pubblico): si copia nel repository PRIVATO dei
+# backup come .github/workflows/backup-settimanale.yml, insieme a
+# scarica_storage.py nella radice. Istruzioni complete: tools/backup/LEGGIMI.txt.
+#
+# Ogni lunedì (o a mano da Actions → "Backup settimanale" → Run workflow):
+#  1. database: ruoli, struttura e dati con la CLI di Supabase (il metodo dei
+#     docs Supabase per il piano Free, che non ha backup scaricabili);
+#  2. policy di accesso dello Storage (non incluse nel dump dello schema);
+#  3. file dei bucket con dati degli utenti o contenuti caricati a mano;
+#  4. tutto in un archivio CIFRATO (AES-256, passphrase nei secret), provato
+#     subito con una decifratura di controllo;
+#  5. pubblicato come release del repository privato; restano le ultime 8.
+# Nei log non finiscono mai dati né segreti: solo conteggi e nomi dei passi.
+#
+# Secret richiesti nel repository privato (Settings → Secrets and variables → Actions):
+#   SUPABASE_DB_URL            stringa di connessione "Session pooler" con la password del DB
+#   SUPABASE_SERVICE_ROLE_KEY  chiave service_role (solo lettura dei file, qui)
+#   BACKUP_PASSPHRASE          passphrase lunga per cifrare (custodita fuori da GitHub!)
+
+name: Backup settimanale
+
+on:
+  schedule:
+    - cron: '17 3 * * 1'   # lunedì 03:17 UTC (05:17 in Italia con l'ora legale)
+  workflow_dispatch:
+
+permissions:
+  contents: write          # serve solo per creare/togliere le release dei backup
+
+concurrency:
+  group: backup
+  cancel-in-progress: false
+
+env:
+  SUPABASE_URL: https://xpfibrzsffurdlypxnrw.supabase.co
+  # Bucket copiati: dati degli utenti (user-media, foto-carte) e contenuti
+  # caricati a mano (shop, bustina). Esclusi: immagini-carte (le rigenera
+  # l'estensione) e immaginivisibili (copie pubbliche di user-media).
+  BUCKET: user-media foto-carte shop-articoli bustina-assets bustina-immagini bustina-testi bustina-quotes
+  TIENI_ULTIMI: 8
+
+jobs:
+  backup:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Controllo dei secret
+        env:
+          DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+        run: |
+          mancano=""
+          [ -n "$DB_URL" ] || mancano="$mancano SUPABASE_DB_URL"
+          [ -n "$SERVICE_KEY" ] || mancano="$mancano SUPABASE_SERVICE_ROLE_KEY"
+          [ -n "$PASSPHRASE" ] || mancano="$mancano BACKUP_PASSPHRASE"
+          if [ -n "$mancano" ]; then echo "::error::Secret mancanti:$mancano"; exit 1; fi
+          if [ "${#PASSPHRASE}" -lt 20 ]; then echo "::error::BACKUP_PASSPHRASE troppo corta (almeno 20 caratteri)"; exit 1; fi
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Database (ruoli, struttura, dati)
+        env:
+          DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          mkdir -p out/database
+          supabase db dump --db-url "$DB_URL" -f out/database/roles.sql --role-only
+          supabase db dump --db-url "$DB_URL" -f out/database/schema.sql
+          supabase db dump --db-url "$DB_URL" -f out/database/data.sql --use-copy --data-only -x "storage.buckets_vectors" -x "storage.vector_indexes"
+          wc -c out/database/*.sql | tail -1
+
+      - name: Policy dello Storage
+        env:
+          DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          psql -X -q -A -t -v ON_ERROR_STOP=1 -d "$DB_URL" -c "
+            select format('create policy %I on %I.%I as %s for %s to %s%s%s;',
+                   policyname, schemaname, tablename, permissive, cmd, array_to_string(roles, ', '),
+                   coalesce(' using (' || qual || ')', ''), coalesce(' with check (' || with_check || ')', ''))
+            from pg_policies where schemaname = 'storage' order by tablename, policyname" > out/database/storage_policies.sql
+          echo "policy: $(grep -c '^create policy' out/database/storage_policies.sql)"
+
+      - name: File dello Storage
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: python3 scarica_storage.py out/storage $BUCKET
+
+      - name: Archivio cifrato (con prova di decifratura)
+        env:
+          PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+        run: |
+          nome="bindex-$(date -u +%Y-%m-%d-%H%M)"
+          tar -czf "$nome.tar.gz" -C out .
+          gpg --batch --yes --pinentry-mode loopback --passphrase-fd 3 --symmetric --cipher-algo AES256 \
+              --output "$nome.tar.gz.gpg" "$nome.tar.gz" 3< <(printf '%s\n' "$PASSPHRASE")
+          gpg --batch --quiet --pinentry-mode loopback --passphrase-fd 3 --decrypt "$nome.tar.gz.gpg" 3< <(printf '%s\n' "$PASSPHRASE") \
+              | tar -tzf - > /dev/null
+          rm -rf out "$nome.tar.gz"
+          sha256sum "$nome.tar.gz.gpg" > "$nome.sha256"
+          ls -l "$nome.tar.gz.gpg"
+          echo "NOME=$nome" >> "$GITHUB_ENV"
+
+      - name: Release e pulizia dei backup vecchi
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$NOME" "$NOME.tar.gz.gpg" "$NOME.sha256" \
+            --repo "$GITHUB_REPOSITORY" --title "$NOME" \
+            --notes "Backup cifrato di Bindex (database + policy Storage + file dei bucket: $BUCKET). Per aprirlo: tools/backup/LEGGIMI.txt nel repository del sito."
+          gh release list --repo "$GITHUB_REPOSITORY" --limit 200 --json tagName,createdAt \
+            --jq "[.[] | select(.tagName | startswith(\"bindex-\"))] | sort_by(.createdAt) | reverse | .[$TIENI_ULTIMI:] | .[].tagName" \
+            | while read -r vecchio; do
+                gh release delete "$vecchio" --repo "$GITHUB_REPOSITORY" --yes --cleanup-tag
+                echo "tolto $vecchio"
+              done
