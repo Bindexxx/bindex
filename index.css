@@ -8793,3 +8793,13 @@ textarea.avviso-campo { resize: vertical; font-size: 0.8rem; line-height: 1.4; f
 /* Scheda location: testata in cima, senza la X, allineata a sinistra come le altre. */
 #locGestisciModal .loc-mtesta { margin: 0 0 0.8rem; text-align: left; align-items: flex-start; }
 #locGestisciModal .loc-mtesta .page-title { font-size: 1.25rem; line-height: 1.25; padding-top: 4px; }
+
+/* ── PC: tutte le pagine centrate con la stessa larghezza (2026-10-14) ─────
+   Prima: Foto, Richieste, Shop, Scaffali e Contributi a 900 px centrate,
+   Impostazioni a 1040, Location a 1240, tutte le altre a tutta larghezza.
+   Ora una sola misura per tutte. Sul telefono non cambia nulla (la pagina è
+   comunque più stretta). */
+.container .view-section:not(#home) { max-width: 1240px; margin-inline: auto; }
+.container .view-section:not(#home) .pg-contenuto-pagina { max-width: none; }
+#impostazioni { max-width: 1240px; }
+#location .pg-pagina { max-width: none !important; }
