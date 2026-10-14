@@ -1,7 +1,13 @@
 -- ============================================================================
 -- 97 — CONTATORI PUBBLICI (S7, piano 2026-10-12)
 -- Scritto partendo dalle definizioni LIVE lette il 2026-10-12 (connettore in
--- sola lettura). Da eseguire con OK esplicito di Claudio.
+-- sola lettura).
+--
+-- GIA' ESEGUITO il 2026-10-14 sul DB reale (OK di Claudio), col connettore:
+-- migrazione 97_contatori_pubblici (stesso testo, senza begin/commit).
+-- Verificato dopo: entrambe le funzioni hanno il controllo dei 10 minuti,
+-- restano SECURITY DEFINER, permessi invariati (anon e authenticated).
+-- Rieseguirlo non fa danni (CREATE OR REPLACE con lo stesso testo).
 --
 -- PROBLEMA: registra_apertura_binder_pubblico e registra_apertura_scaffale_
 -- pubblico sono chiamabili da chiunque (anche senza login: servono alle
