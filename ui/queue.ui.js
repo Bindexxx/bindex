@@ -33,6 +33,7 @@
         // utenti nel gruppo.
         let _numNuoviMatchScambio = 0;
         let _numNuoviMatchWishlist = 0;
+        let _matchLetturaFallita = false; // (2026-10-14) le due RPC dei match hanno dato errore: la tessera mostra "—", non "Nessuna novità"
 
         // Sistema "letto/non letto": ogni match ha una chiave stabile
         // (coppia di id che non cambia tra un controllo e l'altro) —
@@ -140,10 +141,17 @@
             const userId = await authGetUserId();
             if (!userId) return;
 
-            const [{ data: dataScambio }, { data: dataWishlist }] = await Promise.all([
+            const [{ data: dataScambio, error: errMatchScambio }, { data: dataWishlist, error: errMatchWishlist }] = await Promise.all([
                 trovaMatch('trova_match_scambio_wishlist', userId),
                 trovaMatch('trova_match_wishlist_scambio', userId),
             ]);
+            // (2026-10-14) Lettura fallita: si tengono i numeri di prima (prima un
+            // errore li azzerava come se non ci fossero match) e la tessera lo dice.
+            _matchLetturaFallita = !!(errMatchScambio || errMatchWishlist);
+            if (errMatchScambio && errMatchWishlist) {
+                console.error('aggiornaBadgeMatch:', errMatchScambio.message, '|', errMatchWishlist.message);
+                return;
+            }
 
             // Traguardi #46-55 "Match" (Fase 2, 2026-09-01): registra le
             // chiavi di TUTTI i match attualmente trovati — non solo quelli
