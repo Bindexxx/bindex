@@ -8722,3 +8722,84 @@ textarea.avviso-campo { resize: vertical; font-size: 0.8rem; line-height: 1.4; f
     .ball-ui .wf-largo .ball-co-it .th,
     .ball-ui .wf-piccolo:not(.widget-tile-mini) .ball-co-it .th { display: none; }
 }
+
+/* ══ COERENZA DELLE PAGINE (2026-10-14, giro "ogni pagina di ogni widget") ══
+   Stessa misura per titoli e sottotitoli di tutte le pagine di dettaglio e
+   bottoni in testata in due soli stili: pillola bianca (azioni secondarie)
+   e viola (aggiungi). Regole messe qui in fondo apposta: vincono su quelle
+   delle singole pagine, comprese le varianti @media/@container. */
+
+/* Titoli: 1.5rem come .page-header .page-title (erano 1.7rem). */
+.coll-titolo,
+#binder .bn-titolo,
+.sh-testa h2 { font-size: 1.5rem; letter-spacing: -0.3px; }
+
+/* Sottotitoli/riepiloghi sotto il titolo: 0.82rem come .pg-sotto. */
+#dafare .co-riepilogo,
+#match .match-riepilogo,
+#valore .val-sotto,
+#binder .bn-riepilogo,
+#wishlist .wl-conti,
+.sh-testa p,
+#missioni .msn-riepilogo-sotto { font-size: 0.82rem; }
+#binder .bn-riepilogo b,
+#wishlist .wl-conti b { font-size: inherit; }
+
+/* Valore collezione, telefono: il numero grande spingeva "Vai a Prezzi"
+   fuori dallo schermo (la colonna di sinistra non poteva restringersi). */
+#valore .val-testa-sx { flex: 1 1 auto; min-width: 0; }
+#valore .val-grande { overflow-wrap: anywhere; }
+
+/* Bottoni in testata. Lente di Binders: bianca come la gomma di Inserimento. */
+#binder .bn-cerca-btn {
+    width: 44px; height: 44px; border-radius: 14px;
+    border: 1px solid var(--border-color); background: var(--card-bg); color: var(--text-dark);
+}
+/* "Vai a Valore" (Variazione valore): pillola bianca come "Vai a Prezzi". */
+#variazione .page-azione {
+    flex: 0 0 auto; font-weight: 700; font-size: 0.88rem; padding: 10px 16px; border-radius: 999px;
+    border: 1px solid var(--border-color); background: var(--card-bg); color: var(--text-dark); white-space: nowrap;
+}
+/* Valore collezione, telefono, "Le più preziose": il nome lungo della location
+   (chip) non si accorciava e spingeva il prezzo fuori dallo schermo. */
+#valore .val-chip { flex: 0 1 auto; min-width: 0; max-width: 34%; overflow: hidden; text-overflow: ellipsis; }
+#valore .val-top-destra { flex: 0 0 auto; }
+#valore .val-top-destra b { white-space: nowrap; }
+
+/* ── Tasto "indietro" uguale in tutte le sottopagine (2026-10-14) ──────────
+   Stesso aspetto di .sc-indietro / .sl-indietro: chevron grigio, senza
+   riquadro, accanto al titolo. Usato da binder aperto, set, richieste e
+   scheda della location. */
+.pg-indietro {
+    width: 34px; height: 34px; flex: 0 0 auto; padding: 0; border: none; border-radius: 10px;
+    background: transparent; color: var(--text-muted); font-size: 1rem; cursor: pointer;
+    display: inline-flex; align-items: center; justify-content: center;
+}
+.pg-indietro:active { opacity: .6; }
+/* Binder aperto: titolo e riepilogo come le altre pagine. */
+#binder.binder-dettaglio-attivo #binderDettaglioTitolo { font-size: 1.5rem !important; letter-spacing: -0.3px; }
+#binder .bn-det-titoli p { font-size: 0.82rem; }
+/* Set: "Ignora carte"/"Fine" in testata come pillola bianca (come nel pannello PC). */
+#set .page-header .page-azione {
+    background: var(--card-bg); color: var(--text-dark); border: 1px solid var(--border-color);
+    border-radius: 999px; padding: 8px 14px; font-weight: 700; font-size: 0.85rem; white-space: nowrap;
+}
+#set .page-header .page-azione.attiva { background: var(--primary); border-color: var(--primary); color: var(--on-primary, #fff); }
+/* Richieste: l'indietro ora sta nella testata della scheda (prima era una riga
+   intera "‹ Tutte le richieste"). Su PC resta nascosto come prima. */
+#richieste .ric-indietro { width: 34px; padding: 0; border-bottom: none; justify-content: center; color: var(--text-muted); margin-left: -6px; }
+/* Set aperto: il nome si accorcia con i puntini invece di spingere fuori "Ignora carte". */
+#set .page-header .page-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Scheda location: testata in cima, senza la X, allineata a sinistra come le altre. */
+#locGestisciModal .loc-mtesta { margin: 0 0 0.8rem; text-align: left; align-items: flex-start; }
+#locGestisciModal .loc-mtesta .page-title { font-size: 1.25rem; line-height: 1.25; padding-top: 4px; }
+
+/* ── PC: tutte le pagine centrate con la stessa larghezza (2026-10-14) ─────
+   Prima: Foto, Richieste, Shop, Scaffali e Contributi a 900 px centrate,
+   Impostazioni a 1040, Location a 1240, tutte le altre a tutta larghezza.
+   Ora una sola misura per tutte. Sul telefono non cambia nulla (la pagina è
+   comunque più stretta). */
+.container .view-section:not(#home) { max-width: 1240px; margin-inline: auto; }
+.container .view-section:not(#home) .pg-contenuto-pagina { max-width: none; }
+#impostazioni { max-width: 1240px; }
+#location .pg-pagina { max-width: none !important; }

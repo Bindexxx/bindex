@@ -271,7 +271,10 @@ function _locAssicuraStile() {
 // (ui/widget-condividi.ui.js): duplicazione intenzionale, stessa tecnica.
 function _locModalePosiziona() {
     const modal = document.getElementById('locGestisciModal');
-    const r = (typeof _rettangoloSchermoCornice === 'function') ? _rettangoloSchermoCornice() : null;
+    // 2026-10-14: sotto la barra di stato (come le pagine): prima la copriva e il
+    // tasto di chiusura in alto finiva sotto l'avatar del profilo.
+    const r = (typeof _rettangoloPaginaSottoBarra === 'function') ? _rettangoloPaginaSottoBarra()
+        : (typeof _rettangoloSchermoCornice === 'function') ? _rettangoloSchermoCornice() : null;
     if (!modal || !r) return;
     modal.style.top = r.top + 'px';
     modal.style.left = r.left + 'px';
@@ -292,7 +295,10 @@ function _locAssicuraModale() {
     m.setAttribute('onclick', '_locChiudiModale()');
     m.innerHTML = `
         <div class="modal-content" onclick="event.stopPropagation()">
-            <button class="close-modal-btn" onclick="_locChiudiModale()"><i class="fa-solid fa-xmark"></i></button>
+            <div class="page-header loc-mtesta">
+                <button type="button" class="pg-indietro" onclick="_locChiudiModale()" aria-label="Indietro"><i class="fa-solid fa-chevron-left"></i></button>
+                <span class="page-title" id="locModaleTitolo" style="flex:1; min-width:0; word-break:break-word;"></span>
+            </div>
             <div id="locModaleCorpo" style="max-width:380px; margin:0 auto;"></div>
         </div>`;
     document.body.appendChild(m);
@@ -324,6 +330,9 @@ function _locChiudiModale() {
 function _locModaleDisegna() {
     const corpo = document.getElementById('locModaleCorpo');
     if (!corpo || !_locModale) return;
+    // Titolo nella testata "‹ + titolo" (2026-10-14, come le altre sottopagine).
+    const titoloEl = document.getElementById('locModaleTitolo');
+    if (titoloEl) titoloEl.textContent = _locModale.tipo === 'sposta' ? 'Sposta le carte' : (_locModale.nome || '');
 
     // ── Sposta: scelta destinazione ─────────────────────────────────────
     if (_locModale.tipo === 'sposta') {
@@ -334,7 +343,6 @@ function _locModaleDisegna() {
             .filter(n => (_locModificabile(n) || n === '?') && !sorgenti.includes(n))
             .map(n => `<option value="${_locAttr(n)}">${escapeHtml(n)}</option>`).join('');
         corpo.innerHTML = `
-            <h3 style="font-weight:800; margin-bottom:0.4rem;"><i class="fa-solid fa-arrow-right" style="color:var(--primary);"></i> Sposta le carte</h3>
             <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:1rem;">${_locCarte(totale)} da ${sorgenti.map(n => `<b style="color:var(--text-dark);">${escapeHtml(n)}</b>`).join(', ')} in:</p>
             <select id="locDestSelect" class="pg-cerca">
                 <option value="">— scegli una location —</option>${opzioni}
@@ -377,7 +385,6 @@ function _locModaleDisegna() {
 
     corpo.innerHTML = `
         <div class="loc-mcover">${cover}</div>
-        <h3 style="font-weight:800; margin-bottom:0.3rem; word-break:break-word;">${escapeHtml(nome)}</h3>
         <div style="font-size:0.85rem; color:var(--text-muted);">${meta}</div>
         ${inAttesa}${nota}
         <div style="margin-top:0.8rem;">${azioni}</div>`;
