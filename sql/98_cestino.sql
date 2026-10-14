@@ -27,6 +27,14 @@
 -- Utente eliminato definitivamente (admin_hard_delete_user): il suo cestino se
 -- ne va in cascata con auth.users.
 --
+-- GIA' ESEGUITO il 2026-10-14 sul DB reale (OK di Claudio): tabella e policy
+-- col connettore (migrazione 98a_cestino_tabella); funzioni e trigger lanciati
+-- da Claudio nell'editor SQL (il connettore annulla le istruzioni di revoca).
+-- Verificato dopo: 2 trigger (trg_carte_cestino, trg_prodotti_sealed_cestino),
+-- RLS attiva con 2 policy, ripristina_dal_cestino non eseguibile da anon,
+-- _cestino_registra non eseguibile da anon/authenticated.
+-- Rieseguirlo NON e' sicuro (create table/function senza 'if not exists').
+--
 -- PER ANNULLARE: sql/98_cestino_ROLLBACK.sql
 -- ============================================================================
 
