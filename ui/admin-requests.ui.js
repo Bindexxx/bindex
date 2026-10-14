@@ -288,7 +288,7 @@ function renderRichieste() {
             <button class="btn-small btn-toggle-role" id="pw-share-${id}">📤 Condividi</button>
           </div>`;
         document.getElementById(`pw-share-${id}`).addEventListener('click', async () => {
-          const testo = `CardSync Pro — la tua nuova password è: ${nuovaPwGenerata}`;
+          const testo = `Bindex — la tua nuova password è: ${nuovaPwGenerata}`;
           if (navigator.share) { try { await navigator.share({ text: testo }); } catch (e) {} }
           else { await navigator.clipboard.writeText(testo); mostraStatus('Copiato negli appunti (condivisione nativa non disponibile su questo browser).', true); }
         });

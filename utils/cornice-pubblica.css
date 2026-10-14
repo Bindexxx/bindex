@@ -168,7 +168,10 @@ html, body {
     position: absolute; left: 4px; top: 4px; z-index: 3;
     background: rgba(20,16,30,0.85); color: #fff; font-size: 0.6rem; font-weight: 800;
     padding: 0.1rem 0.35rem; border-radius: 999px; font-family: 'JetBrains Mono', monospace;
+    white-space: nowrap; max-width: calc(100% - 4px); overflow: hidden; text-overflow: ellipsis;
 }
+/* Telefoni molto stretti (320 px): le miniature sono larghe ~63 px, "max 4,00 €" non ci stava. */
+@media (max-width: 340px) { .bx-slot-prezzo { font-size: 0.52rem; padding: 0.1rem 0.25rem; } }
 .bx-slot-azione {
     position: absolute; right: 4px; bottom: 4px; z-index: 4;
     display: flex; align-items: center; gap: 2px;

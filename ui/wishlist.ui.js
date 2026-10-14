@@ -125,7 +125,7 @@ async function caricaCatalogo() {
                 // comportamento, tenerlo d'occhio nel test. Fallback al
                 // testo statico originale se _binderInfo.nome è vuoto.
                 if (_binderInfo.nome) {
-                    document.title = 'CardSync Pro — ' + _binderInfo.nome;
+                    document.title = 'Bindex — ' + _binderInfo.nome;
                     document.getElementById('titoloBinder').textContent = _binderInfo.nome;
                 }
             }
