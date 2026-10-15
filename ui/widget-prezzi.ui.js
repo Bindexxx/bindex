@@ -663,9 +663,9 @@ function prezziSistemaCarta(id) {
 }
 
 // Annulla (sql/115): ferma un proprio controllo in attesa o in corso. Se un
-// PC lo sta già eseguendo, il controllo delle carte si ferma al lotto
-// successivo; wishlist e sealed finiscono il giro già partito, ma l'ordine
-// resta annullato.
+// PC lo sta già eseguendo, dall'estensione 5.22 la sessione (carte, sealed o
+// wishlist) se ne accorge entro 5 s, finisce la carta attuale e si ferma;
+// l'ordine resta annullato.
 async function prezziAnnullaControllo(ordineId) {
     const o = _pzControlliRighe.find(x => String(x.id) === String(ordineId));
     if (!o) return;
