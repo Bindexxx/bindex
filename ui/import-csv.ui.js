@@ -23,24 +23,31 @@
 const _IMPORT_CSV_BLOCCO = 100;
 const _IMPORT_CSV_MAX_RIGHE = 2000;
 const _IMPORT_CSV_CAMPI = [
-    ['', '— non usare —'], ['nome', 'Nome'], ['qty', 'Quantità'], ['lingua', 'Lingua'],
+    ['', '— non usare —'], ['nome', 'Nome'], ['codice', 'Codice'], ['qty', 'Quantità'], ['lingua', 'Lingua'],
     ['condizione', 'Condizione'], ['location', 'Location'], ['nota', 'Note'], ['reverse', 'Reverse'],
     ['first_ed', 'Prima edizione'], ['sigillata_originale', 'Sigillata'], ['destinazione', 'Destinazione'],
+    ['url', 'Link Cardmarket'],
 ];
 const _IMPORT_CSV_ALIAS = {
-    nome: ['nome', 'name', 'carta', 'card', 'codice', 'titolo'],
+    nome: ['nome', 'name', 'carta', 'card', 'titolo', 'nome_carta', 'card_name'],
+    codice: ['codice', 'code', 'cod', 'numero', 'number', 'set_code'],
     lingua: ['lingua', 'lang', 'language', 'idioma'],
-    condizione: ['condizione', 'cond', 'condition', 'stato'],
-    qty: ['qty', 'quantita', 'quantità', 'quantity', 'q', 'qta', 'qtà', 'pezzi', 'n'],
+    condizione: ['condizione', 'cond', 'condiz', 'condition', 'stato'],
+    qty: ['qty', 'quantita', "quantita'", 'quantità', 'quantity', 'q', 'qt', 'qta', 'qtà', 'pezzi', 'n'],
     reverse: ['reverse', 'rev', 'reverse_holo'],
     first_ed: ['first_ed', 'first', 'prima_edizione', 'firsted', '1st'],
     sigillata_originale: ['sigillata_originale', 'sigillata', 'sig'],
     nota: ['nota', 'note', 'notes', 'commento'],
     location: ['location', 'ubicazione', 'posizione', 'dove', 'binder', 'scatola'],
     destinazione: ['destinazione', 'dest'],
+    url: ['link', 'url', 'cardmarket', 'link_cardmarket', 'url_cardmarket'],
 };
 const _IMPORT_CSV_LINGUE = { IT: 'IT', ITA: 'IT', ITALIANO: 'IT', EN: 'EN', ENG: 'EN', INGLESE: 'EN', ENGLISH: 'EN', JP: 'JP', JPN: 'JP', JAP: 'JP', GIAPPONESE: 'JP', KOR: 'KOR', KO: 'KOR', KR: 'KOR', COREANO: 'KOR' };
-const _IMPORT_CSV_COND = { NM: 'NM', MINT: 'NM', 'NEAR MINT': 'NM', EX: 'EX', EXCELLENT: 'EX', GD: 'GD', GOOD: 'GD' };
+// Le stesse 7 condizioni di Cardmarket usate da Modifica carta e dall'estensione.
+const _IMPORT_CSV_COND = {
+    MT: 'MT', MINT: 'MT', NM: 'NM', 'NEAR MINT': 'NM', EX: 'EX', EXCELLENT: 'EX', GD: 'GD', GOOD: 'GD',
+    LP: 'LP', 'LIGHT PLAYED': 'LP', PL: 'PL', PLAYED: 'PL', PO: 'PO', POOR: 'PO',
+};
 
 let _impCsv = null; // { file, tabella, mappa[], dest, tipo, saltaGia, righe[], inviate, errore, invio }
 
@@ -68,6 +75,22 @@ function _importCsvParse(testo) {
     riga.push(cella);
     if (riga.some(x => x.trim() !== '')) righe.push(riga);
     return righe;
+}
+
+// Link a una carta di Cardmarket: l'estensione lo legge direttamente invece
+// di cercare per nome. Lingua e condizione le applica lei dai campi della
+// riga, quindi i parametri del link si tolgono; reverse/prima edizione si
+// leggono da lì se il file non ha la colonna apposita.
+function _importCsvLink(v) {
+    let u;
+    try { u = new URL(String(v || '').trim()); } catch (e) { return null; }
+    // Stessa regola del database (sql/96): solo https://(www.)cardmarket.com.
+    if (u.protocol !== 'https:' || !/^(www\.)?cardmarket\.com$/i.test(u.hostname) || !/\/Products\//i.test(u.pathname)) return null;
+    return {
+        url: u.origin + u.pathname,
+        reverse: u.searchParams.get('isReverseHolo') === 'Y',
+        first_ed: u.searchParams.get('isFirstEd') === 'Y',
+    };
 }
 
 function _importCsvBool(v) {
@@ -106,8 +129,17 @@ function _importCsvValuta() {
     const col = (campo) => s.mappa.indexOf(campo);
     const idx = {}; Object.keys(_IMPORT_CSV_ALIAS).forEach(k => { idx[k] = col(k); });
     const val = (r, k) => (idx[k] >= 0 ? String(r[idx[k]] || '').trim() : '');
-    s.righe = s.tabella.slice(1).map(r => {
-        const nome = val(r, 'nome');
+    // Un'intestazione ripetuta sotto la prima (fogli con due righe di
+    // titoli) non è una carta: si riconosce dal nome uguale al titolo.
+    const titoloNome = idx.nome >= 0 ? String(s.tabella[0][idx.nome] || '').trim().toLowerCase() : '';
+    s.righe = s.tabella.slice(1).filter(r => !titoloNome || val(r, 'nome').toLowerCase() !== titoloNome).map(r => {
+        // Il codice (es. "OBF 125") identifica la carta: va in coda attaccato
+        // al nome, come in Inserimento ("Charizard ex OBF 125"), salvo che il
+        // nome lo contenga già.
+        const nomeGrezzo = val(r, 'nome');
+        const codice = val(r, 'codice');
+        const nome = nomeGrezzo && codice && !nomeGrezzo.toLowerCase().includes(codice.toLowerCase())
+            ? `${nomeGrezzo} ${codice}` : nomeGrezzo;
         const avvisi = [];
         const linguaGrezza = val(r, 'lingua');
         let lingua = _IMPORT_CSV_LINGUE[linguaGrezza.toUpperCase()] || 'IT';
@@ -119,16 +151,20 @@ function _importCsvValuta() {
         const qty = Math.max(1, parseInt(qtyGrezza, 10) || 1);
         if (qtyGrezza && String(qty) !== qtyGrezza) avvisi.push(`quantità "${qtyGrezza}" → ${qty}`);
         const loc = val(r, 'location');
+        const linkGrezzo = val(r, 'url');
+        const link = _importCsvLink(linkGrezzo);
+        if (linkGrezzo && !link) avvisi.push('link non di Cardmarket: ignorato, si cerca per nome');
         const destGrezza = val(r, 'destinazione').toLowerCase();
         const dest = idx.destinazione >= 0 && destGrezza ? (destGrezza === 'wishlist' ? 'wishlist' : 'collezione') : s.dest;
         const db = {
             nome, lingua, condizione: cond,
-            reverse: _importCsvBool(val(r, 'reverse')),
-            first_ed: _importCsvBool(val(r, 'first_ed')),
+            reverse: idx.reverse >= 0 ? _importCsvBool(val(r, 'reverse')) : !!(link && link.reverse),
+            first_ed: idx.first_ed >= 0 ? _importCsvBool(val(r, 'first_ed')) : !!(link && link.first_ed),
             sigillata_originale: _importCsvBool(val(r, 'sigillata_originale')),
             nota: val(r, 'nota') || null,
             location: (loc && loc !== '?') ? loc : null,
             destinazione: dest, qty,
+            ...(link ? { url_diretto: link.url } : {}),
             ...(s.tipo === 'sealed' ? { tipo: 'sealed' } : {}),
         };
         let stato = 'ok', nota = '';
@@ -212,8 +248,8 @@ function _importCsvRilascia(ev) {
 }
 
 function importCsvScaricaModello() {
-    const testo = 'nome;qty;lingua;condizione;location;nota;reverse;first_ed;sigillata_originale\n' +
-        'Charizard ex OBF 125;1;IT;NM;Binder 1;;no;no;no\n';
+    const testo = 'nome;codice;qty;lingua;condizione;location;nota;reverse;first_ed;sigillata_originale\n' +
+        'Charizard ex;OBF 125;1;IT;NM;Binder 1;;no;no;no\n';
     const blob = new Blob(['﻿' + testo], { type: 'text/csv;charset=utf-8' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
@@ -331,7 +367,7 @@ function _importCsvRender() {
             <tbody>${visibili.map(r => `
                 <tr class="st-${r.stato}${r.stato === 'gia' && s.saltaGia ? ' esclusa' : ''}">
                     <td><i class="fa-solid ${icona[r.stato]}"></i></td>
-                    <td class="csv-nome">${esc(r.db.nome || '—')}</td>
+                    <td class="csv-nome">${esc(r.db.nome || '—')}${r.db.reverse ? ' <small>RH</small>' : ''}${r.db.first_ed ? ' <small>1ª ed.</small>' : ''}${r.db.url_diretto ? ' <i class="fa-solid fa-link" title="Link Cardmarket"></i>' : ''}</td>
                     <td>${r.db.qty}</td>
                     <td>${esc(r.linguaGrezza && r.stato === 'avviso' ? r.linguaGrezza : r.db.lingua)}</td>
                     <td>${esc(r.db.condizione)}</td>
