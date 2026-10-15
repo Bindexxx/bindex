@@ -56,7 +56,38 @@ const _WIDGET_SU_CARTE = new Set([
 ]);
 
 // ── RENDER GRIGLIA HOME ──────────────────────────────────────────────────
-async function renderWidgetHome() {
+// (velocità, 2026-10-15) UN SOLO RENDER ALLA VOLTA. renderWidgetHome() è
+// chiamata da una trentina di punti (carte caricate, rarità, tema, status
+// bar, primo piano, polling...) e ogni render rifà le anteprime di TUTTI i
+// widget, cioè decine di richieste a Supabase. All'apertura ne partivano
+// diversi insieme: dai log del 2026-10-15 ogni query usciva 2-6 volte nello
+// stesso secondo (141 richieste in 25 s, solo 86 diverse) e il gateway di
+// Supabase (piano free), sommerso, teneva ferme le prime fino a 18 s anche
+// se il database rispondeva in pochi millisecondi. Ora una chiamata che
+// arriva durante un render non ne avvia un altro in parallelo: si accoda a
+// UN unico render successivo (che legge lo stato più recente), e chi fa
+// "await renderWidgetHome()" aspetta proprio quello.
+let _renderHomeInCorso = null;
+let _renderHomeAccodato = null;
+// Anteprime rimaste oltre il tetto al primo render (instanceId -> promessa):
+// il render successivo usa queste risposte invece di richiederle di nuovo.
+let _anteprimeTardiveDaRiusare = new Map();
+
+function renderWidgetHome() {
+    if (_renderHomeInCorso) {
+        if (!_renderHomeAccodato) {
+            _renderHomeAccodato = _renderHomeInCorso.catch(() => {}).then(() => {
+                _renderHomeAccodato = null;
+                return renderWidgetHome();
+            });
+        }
+        return _renderHomeAccodato;
+    }
+    _renderHomeInCorso = _eseguiRenderWidgetHome().finally(() => { _renderHomeInCorso = null; });
+    return _renderHomeInCorso;
+}
+
+async function _eseguiRenderWidgetHome() {
     if (!_layoutWidget) await _caricaLayoutWidget();
 
     const cont = document.getElementById('phoneWidgetPagine');
@@ -82,6 +113,15 @@ async function renderWidgetHome() {
     // direttamente sulla globale lascerebbe residui dei widget rimossi.
     const attenzioni = {};
     const carteMancanti = typeof _carteNonCaricate === 'function' && _carteNonCaricate(); // (Q1)
+    // (velocità, 2026-10-15) Al primo render il tetto per anteprima è 1,5 s
+    // invece di 5: la home si disegna subito, le tessere lente col ripiego
+    // "—", e appena le loro risposte arrivano parte un nuovo render che le
+    // riempie riusando quelle stesse risposte, senza nuove richieste
+    // (anteprimeInRitardo, in fondo alla funzione).
+    const tettoAnteprimaMs = primoRender ? 1500 : 5000;
+    const anteprimeInRitardo = new Map();
+    const daRiusare = _anteprimeTardiveDaRiusare;
+    _anteprimeTardiveDaRiusare = new Map();
 
     const tessere = await Promise.all(visibili.map(async (w, indice) => {
         const def = CATALOGO_WIDGET[w.id];
@@ -99,8 +139,9 @@ async function renderWidgetHome() {
             // Stesso ripiego se un'anteprima torna vuota (prima: errore e home non disegnata).
             let timerTetto = null;
             try {
-                const tetto = new Promise(ris => { timerTetto = setTimeout(() => ris(null), 5000); });
-                anteprima = (await Promise.race([Promise.resolve(def.preview(w)), tetto])) || { righe: ['—'] };
+                const richiesta = (w.instanceId && daRiusare.get(w.instanceId)) || Promise.resolve(def.preview(w));
+                const tetto = new Promise(ris => { timerTetto = setTimeout(() => { if (w.instanceId) anteprimeInRitardo.set(w.instanceId, richiesta); ris(null); }, tettoAnteprimaMs); });
+                anteprima = (await Promise.race([richiesta, tetto])) || { righe: ['—'] };
             } catch (e) { console.error('Errore preview widget ' + w.id + ':', e); }
             finally { clearTimeout(timerTetto); }
         } else {
@@ -432,6 +473,17 @@ async function renderWidgetHome() {
     if (primoRender && BALL_ATTIVA) setTimeout(_ballGiraSemaforo, 900);
 
     if (_editModeWidget) _attivaDragEResize();
+
+    // Tessere rimaste sul "—" perché oltre il tetto: quando le loro risposte
+    // arrivano (o falliscono), un nuovo render le mostra senza aspettare i
+    // 15 s del polling. Solo al primo render: dopo ci pensa il polling, e una
+    // tessera sempre lenta non deve innescare render a ripetizione.
+    if (primoRender && anteprimeInRitardo.size) {
+        Promise.allSettled([...anteprimeInRitardo.values()]).then(() => {
+            _anteprimeTardiveDaRiusare = anteprimeInRitardo;
+            renderWidgetHome();
+        });
+    }
 }
 
 // ── NIENTE RIGHE TAGLIATE A META' (Claudio, 2026-09-03) ─────────────────
