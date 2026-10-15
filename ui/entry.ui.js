@@ -525,7 +525,19 @@
                 ...righe.map(r => ({ nome: r.nome, location: r.location, destinazione: r.destinazione, quando: r.creato_il, stato: r.stato === 'completato' ? 'fatta' : (r.stato === 'errore' ? 'errore' : 'cerca') })),
                 ...correzioni.map(r => ({ nome: r.nome, location: r.location, destinazione: r.destinazione, quando: r.creato_il, stato: 'correggere' })),
             ].sort((a, b) => new Date(b.quando) - new Date(a.quando));
-            const html = _insUltimoInvioHtml(tutti);
+            // Totali veri dal database: l'elenco qui sopra ha al massimo 60
+            // righe della coda, un'importazione CSV ne manda centinaia.
+            let totali = null;
+            if (tutti.length) {
+                const da = new Date(new Date(tutti[0].quando).getTime() - 3 * 60000).toISOString();
+                const [tot, fatte, errori] = await Promise.all([
+                    codaCarteConta(userId, { da }),
+                    codaCarteConta(userId, { da, stati: ['completato'] }),
+                    codaCarteConta(userId, { da, stati: ['errore'] }),
+                ]);
+                if (!tot.error && !fatte.error && !errori.error) totali = { coda: tot.count, fatte: fatte.count, errori: errori.count };
+            }
+            const html = _insUltimoInvioHtml(tutti, totali);
             ['insUltimoTel', 'insUltimoPc'].forEach(id => { const el = document.getElementById(id); if (el) el.innerHTML = html; });
         }
 
@@ -535,13 +547,18 @@
             btn.textContent = box.classList.contains('aperto') ? 'Nascondi ▴' : 'Mostra ▾';
         }
 
-        function _insUltimoInvioHtml(tutti) {
+        // totali (facoltativo): { coda, fatte, errori } contati dal database
+        // sulle righe di coda dell'invio; senza, si conta l'elenco.
+        function _insUltimoInvioHtml(tutti, totali) {
             if (!tutti.length) return '';
             const primo = new Date(tutti[0].quando).getTime();
             const invio = tutti.filter(r => primo - new Date(r.quando).getTime() <= 3 * 60000);
-            const fatte = invio.filter(r => r.stato === 'fatta').length;
-            const cerca = invio.filter(r => r.stato === 'cerca').length;
-            const corr = invio.filter(r => r.stato === 'correggere' || r.stato === 'errore').length;
+            const nCorrezioni = invio.filter(r => r.stato === 'correggere').length;
+            const totale = totali ? totali.coda + nCorrezioni : invio.length;
+            const fatte = totali ? totali.fatte : invio.filter(r => r.stato === 'fatta').length;
+            const corr = totali ? totali.errori + nCorrezioni : invio.filter(r => r.stato === 'correggere' || r.stato === 'errore').length;
+            const cerca = totali ? Math.max(0, totale - fatte - corr) : invio.filter(r => r.stato === 'cerca').length;
+            const altre = Math.max(0, totale - invio.length);
             const ora = new Date(primo).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
             const oggi = new Date(primo).toDateString() === new Date().toDateString();
             const quando = (oggi ? '' : new Date(primo).toLocaleDateString('it-IT', { day: 'numeric', month: 'short' }) + ' ') + ora;
@@ -549,10 +566,10 @@
                 correggere: () => '<span class="ins-pill ko">da correggere</span>', errore: () => '<span class="ins-pill ko">non riuscita</span>' };
             const righe = invio.map(r => `<div class="ins-ultimo-riga"><div><b>${escapeHtml(r.nome || '—')}</b><span>${escapeHtml(r.location || '')}</span></div>${pill[r.stato](r)}</div>`).join('');
             return `
-                <div class="ins-ultimo-testa"><b>Ultimo invio</b><span>${oggi ? 'oggi ' : ''}${quando} · ${invio.length} cart${invio.length === 1 ? 'a' : 'e'}</span></div>
-                <div class="ins-ultimo-pista"><div style="width:${invio.length ? (fatte / invio.length * 100).toFixed(0) : 0}%"></div></div>
+                <div class="ins-ultimo-testa"><b>Ultimo invio</b><span>${oggi ? 'oggi ' : ''}${quando} · ${totale} cart${totale === 1 ? 'a' : 'e'}</span></div>
+                <div class="ins-ultimo-pista"><div style="width:${totale ? (fatte / totale * 100).toFixed(0) : 0}%"></div></div>
                 <div class="ins-ultimo-sotto"><span>${fatte} fatt${fatte === 1 ? 'a' : 'e'}${cerca ? ` · ${cerca} in cerca` : ''}${corr ? ` · <b class="ins-ko">${corr} da correggere</b>` : ''}</span><button type="button" class="ins-solo-tel" onclick="insMostraUltimo(this)">Mostra ▾</button></div>
-                <div class="ins-ultimo-lista">${righe}</div>`;
+                <div class="ins-ultimo-lista">${righe}${altre ? `<div class="ins-ultimo-riga"><div><span>… e altre ${altre} carte di questo invio</span></div></div>` : ''}</div>`;
         }
 
 

@@ -37,6 +37,18 @@ async function codaCarteUltimoInvio(userId, quante = 60) {
         .limit(quante);
 }
 
+// Quante righe della propria coda, senza scaricarle (head: true). "Ultimo
+// invio" e il widget Inserimento leggono solo le ultime 50-60 righe per
+// l'elenco: un'importazione CSV ne crea centinaia, e contare l'elenco dava
+// "60 carte". da = creato_il minimo (ISO), stati = filtro facoltativo.
+async function codaCarteConta(userId, { da = null, stati = null } = {}) {
+    let q = supabaseClient.from('coda_carte').select('id', { count: 'exact', head: true }).eq('owner_id', userId);
+    if (da) q = q.gte('creato_il', da);
+    if (stati) q = q.in('stato', stati);
+    const { count, error } = await q;
+    return { count: count || 0, error };
+}
+
 async function correzioniManualiConta(userId) {
     return supabaseClient
         .from('correzioni_manuali_carte')
