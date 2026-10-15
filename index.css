@@ -7130,8 +7130,13 @@
         .coll-tessera-sotto b { color: var(--text-muted); white-space: nowrap; order: -1; }
 
         /* PC: tabella + dettagli */
-        .coll-pc { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 1rem; align-items: start; }
+        .coll-pc { display: grid; grid-template-columns: minmax(0, 1fr) clamp(270px, 28%, 320px); gap: 1rem; align-items: start; }
         .coll-tabella-box { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 18px; overflow: hidden; }
+        /* (2026-10-15) Niente più tabella tagliata: con overflow:hidden le ultime
+           colonne (Note, menu) sparivano quando lo spazio non bastava. Ora i
+           testi vanno a capo (sotto) e, se proprio non ci sta, la tabella
+           scorre di lato invece di essere tagliata. */
+        .coll-tabella-box { overflow-x: auto; overflow-y: hidden; }
         .coll-tabella { width: 100%; border-collapse: collapse; }
         .coll-tabella th {
             text-align: left; font-size: 0.7rem; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted);
@@ -7147,7 +7152,13 @@
         .coll-tabella .num { text-align: right; }
         .coll-tabella .forte { font-weight: 700; white-space: nowrap; }
         .coll-td-check { width: 36px; }
-        .coll-td-carta { display: flex; align-items: center; gap: 0.75rem; min-width: 0; max-width: 340px; }
+        .coll-td-carta { display: flex; align-items: center; gap: 0.75rem; min-width: 0; }
+        /* Nella tabella PC nome, codice e location si leggono per intero (a capo). */
+        .coll-tabella .coll-nome, .coll-tabella .coll-meta { white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: anywhere; }
+        .coll-tabella .coll-chip { white-space: normal; max-width: 160px; overflow: visible; text-overflow: clip; overflow-wrap: anywhere; line-height: 1.25; }
+        .coll-tabella td:not(:nth-child(2)) { white-space: nowrap; }
+        .coll-tabella td:nth-child(3) { white-space: normal; }
+        .coll-tabella td, .coll-tabella th { padding-left: 0.45rem; padding-right: 0.45rem; }
         .coll-td-carta > div { min-width: 0; }
         .coll-td-nota { color: var(--primary-text, var(--primary)); text-align: center; }
         .coll-td-nota .vuota { color: var(--text-muted); opacity: .45; }
@@ -7168,7 +7179,7 @@
         .coll-campi { display: grid; grid-template-columns: 1fr 1fr; gap: 0.4rem; margin-bottom: 0.4rem; }
         .coll-campo { background: var(--bg-color); border-radius: 10px; padding: 0.45rem 0.6rem; display: flex; flex-direction: column; min-width: 0; }
         .coll-campo span { font-size: 0.68rem; text-transform: uppercase; letter-spacing: .05em; color: var(--text-muted); }
-        .coll-campo b { font-size: 0.88rem; color: var(--text-dark); overflow: hidden; text-overflow: ellipsis; }
+        .coll-campo b { font-size: 0.88rem; color: var(--text-dark); overflow-wrap: anywhere; } /* (2026-10-15) a capo, mai "…" */
         .coll-campo.editabile { cursor: pointer; }
         .coll-campo.editabile:hover { outline: 1px solid var(--primary); }
         .coll-note b { white-space: normal; font-weight: 500; }
@@ -7684,8 +7695,9 @@
             #wishlist .wl-conti b { margin-left: 10px; }
             #wishlist .wl-conti b:first-child { margin-left: 0; }
             #wishlist .wl-filtri { margin: 0; }
-            #wishlist .wl-layout { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 18px; align-items: start; }
-            #wishlist .wl-tabella-box { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 18px; overflow: hidden; }
+            #wishlist .wl-layout { display: grid; grid-template-columns: minmax(0, 1fr) clamp(280px, 30%, 360px); gap: 18px; align-items: start; }
+            /* (2026-10-15) come .coll-tabella-box: mai colonne tagliate, al massimo scorre di lato. */
+            #wishlist .wl-tabella-box { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 18px; overflow-x: auto; overflow-y: hidden; }
             #wishlist .wl-tabella { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
             #wishlist .wl-tabella th { text-align: left; font-size: 0.7rem; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; color: var(--text-muted); padding: 12px 10px; border-bottom: 1px solid var(--border-color); cursor: pointer; white-space: nowrap; }
             #wishlist .wl-tabella th.attivo { color: var(--primary-text, var(--primary)); }
@@ -7697,9 +7709,13 @@
             #wishlist .wl-td-nome span { font-size: 0.78rem; color: var(--text-muted); }
             #wishlist .wl-num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
             #wishlist .wl-num b { color: var(--text-dark); }
-            #wishlist .wl-td-dist { width: 170px; font-size: 0.78rem; color: var(--text-muted); }
+            #wishlist .wl-td-dist { width: 150px; min-width: 96px; font-size: 0.78rem; color: var(--text-muted); }
+            #wishlist .wl-td-nome, #wishlist .wl-td-dist, #wishlist .wl-td-gruppo { white-space: normal; } /* la regola generale td { nowrap } teneva tutto su una riga */
+            #wishlist .wl-td-nome { min-width: 120px; }
+            #wishlist .wl-td-nome b, #wishlist .wl-td-nome span { overflow-wrap: break-word; }
+            #wishlist .wl-tabella th, #wishlist .wl-tabella td { padding-left: 8px; padding-right: 8px; }
             #wishlist .wl-td-dist .wl-pista { margin: 0 0 4px; }
-            #wishlist .wl-gruppo { font-size: 0.74rem; font-weight: 700; padding: 3px 8px; border-radius: 6px; background: #e3f1e4; color: #2e7d32; white-space: nowrap; }
+            #wishlist .wl-gruppo { font-size: 0.74rem; font-weight: 700; padding: 3px 8px; border-radius: 6px; background: #e3f1e4; color: #2e7d32; display: inline-block; line-height: 1.25; }
             #wishlist .wl-menu { border: 0; background: none; color: var(--text-muted); cursor: pointer; font-size: 1rem; }
             #wishlist .wl-dettaglio { display: block; position: sticky; top: 8px; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 18px; padding: 18px; }
             #wishlist .wl-invito { display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; color: var(--text-muted); font-size: 0.85rem; padding: 3rem 0.5rem; }
