@@ -568,6 +568,7 @@ async function prezziRiepilogo() {
     const scadute = carte.filter(c => !c.ultimoControllo || new Date(c.ultimoControllo).getTime() < soglia);
     _elencoPrezziScaduti = scadute.map(c => ({ name: c.name, code: c.code,
         ultimoTesto: c.ultimoControllo ? new Date(c.ultimoControllo).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' }) : 'mai' }));
+    _pzDisegnaEsiti(carte);
     const disegna = (ultimo, frecce, attivi) => {
         box.innerHTML = `
             <div class="pz-box"><span>Ultimo<em class="pz-solo-pc"> controllo</em></span><b>${ultimo || '—'}</b>${frecce || ''}</div>
@@ -597,6 +598,62 @@ async function prezziRiepilogo() {
         }
     } catch (e) { console.error('[controllo prezzi] riepilogo:', e); }
     disegna(ultimoTxt, frecce, attivi);
+}
+
+// ── "Prezzo non trovato" (sql/111) ─────────────────────────────────────
+// Carte di cui l'ultimo controllo prezzi non ha trovato il prezzo
+// (carte.esito_controllo, scritto dall'estensione, mai nelle note). Avviso
+// sotto i riquadri + elenco con "Sistema" (modifica carta). L'esito sparisce
+// da solo quando un controllo trova il prezzo, o salvando la carta con
+// lingua/condizione cambiate (salvaModificaCarta).
+function _pzCarteConEsito(carte) {
+    return (carte || _pzCarteColl()).filter(c => c.esitoControllo)
+        .sort((a, b) => (a.name || '').localeCompare(b.name || '', 'it'));
+}
+
+function _pzDisegnaEsiti(carte) {
+    const el = document.getElementById('pzEsiti');
+    if (!el) return;
+    const n = _pzCarteConEsito(carte).length;
+    el.innerHTML = n ? `
+        <div class="pz-esiti">
+            <i class="fa-solid fa-triangle-exclamation"></i>
+            <span><b>${n} cart${n === 1 ? 'a' : 'e'} senza prezzo</b> · il controllo non l${n === 1 ? "'ha" : 'e ha'} trovat${n === 1 ? 'a' : 'e'} su Cardmarket</span>
+            <button type="button" class="pz-riprova" onclick="prezziApriEsiti()">Sistema</button>
+        </div>` : '';
+}
+
+function prezziApriEsiti() {
+    const lista = document.getElementById('esitiPrezziLista');
+    if (!lista) return;
+    const carte = _pzCarteConEsito();
+    lista.innerHTML = carte.length === 0
+        ? '<p style="text-align:center; color:var(--text-muted); padding:1rem 0;">Nessuna carta da sistemare.</p>'
+        : carte.map(c => {
+            const link = urlEsternoSicuro(c.link);
+            const quando = c.esitoControlloIl ? new Date(c.esitoControlloIl).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' }) : '';
+            return `
+                <div style="display:flex; align-items:center; gap:0.6rem; padding:0.55rem 0; border-bottom:1px solid var(--border-color);">
+                    <div style="flex:1; min-width:0; text-align:left;">
+                        <div style="font-size:0.85rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"><strong>${escapeHtml(c.name)}</strong> <code style="font-size:0.72rem;">${escapeHtml(c.code)}</code></div>
+                        <div style="font-size:0.72rem; color:var(--text-muted);">${escapeHtml(c.lang || '—')} · ${escapeHtml(c.cond || '—')}${c.location ? ' · ' + escapeHtml(c.location) : ''}</div>
+                        <div style="font-size:0.72rem; color:var(--danger);">${escapeHtml(c.esitoControllo)}${quando ? ' · ' + quando : ''}</div>
+                    </div>
+                    ${link ? `<a href="${link}" target="_blank" rel="noopener noreferrer" class="btn-secondary" style="flex-shrink:0; padding:0.4rem 0.6rem;" title="Apri su Cardmarket"><i class="fa-solid fa-arrow-up-right-from-square"></i></a>` : ''}
+                    <button type="button" class="btn-secondary" style="flex-shrink:0; font-size:0.75rem; padding:0.4rem 0.7rem;" onclick="prezziSistemaCarta('${escapeJsAttr(String(c.id))}')"><i class="fa-solid fa-pen"></i> Sistema</button>
+                </div>`;
+        }).join('');
+    document.getElementById('esitiPrezziModal').style.display = 'flex';
+}
+
+function prezziChiudiEsiti() {
+    const m = document.getElementById('esitiPrezziModal');
+    if (m) m.style.display = 'none';
+}
+
+function prezziSistemaCarta(id) {
+    prezziChiudiEsiti();
+    apriModificaCarta(id);
 }
 
 // Riprova = nuovo ordine con lo stesso tipo e gli stessi parametri.

@@ -13,7 +13,7 @@
 -- Compatibile con l'estensione 5.18–5.21: NON è necessaria per la 5.21, la
 -- rende solo più ordinata.
 --
--- NON ANCORA ESEGUITO. PER ANNULLARE: sql/113_esito_controllo_azzera_ROLLBACK.sql
+-- ESEGUITO sul DB il 2026-10-15 (connettore). PER ANNULLARE: sql/113_esito_controllo_azzera_ROLLBACK.sql
 -- ============================================================================
 
 CREATE OR REPLACE FUNCTION public.aggiorna_nota_controllo_gruppo(p_id uuid, p_nota text)

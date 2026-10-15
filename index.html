@@ -645,6 +645,9 @@
                     <p class="pz-sottotitolo">Chiedi all'estensione di aggiornare le quotazioni da Cardmarket</p>
                 </div>
                 <div class="pz-stat" id="pzStat"></div>
+                <!-- sql/111: carte di cui il controllo prezzi non ha trovato il
+                     prezzo (carte.esito_controllo) — da sistemare. -->
+                <div id="pzEsiti"></div>
 
                 <div class="pz-layout">
                     <div class="pz-sx">
@@ -2317,6 +2320,17 @@
             <h3 style="font-weight: 800; margin-bottom: 0.3rem;"><i class="fa-solid fa-clock-rotate-left" style="color: var(--danger);"></i> Prezzi da aggiornare</h3>
             <p id="prezziScadutiSottotitolo" style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 1rem;">Mai controllate o con ultimo controllo più vecchio di 7 giorni.</p>
             <div id="prezziScadutiLista" style="max-height: 340px; overflow-y: auto;"></div>
+        </div>
+    </div>
+
+    <!-- MODALE "Prezzo non trovato" (sql/111): carte con esito del controllo
+         prezzi, ognuna con "Sistema" (modifica carta) e il link Cardmarket. -->
+    <div id="esitiPrezziModal" class="modal-overlay" onclick="prezziChiudiEsiti()">
+        <div class="modal-content" style="max-width: 480px;" onclick="event.stopPropagation()">
+            <button class="close-modal-btn" onclick="prezziChiudiEsiti()"><i class="fa-solid fa-xmark"></i></button>
+            <h3 style="font-weight: 800; margin-bottom: 0.3rem;"><i class="fa-solid fa-triangle-exclamation" style="color: var(--danger);"></i> Prezzo non trovato</h3>
+            <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 1rem;">Il controllo prezzi non ha trovato queste carte su Cardmarket. Controlla lingua, condizione e link: l'avviso sparisce quando il prezzo viene trovato.</p>
+            <div id="esitiPrezziLista" style="max-height: 360px; overflow-y: auto;"></div>
         </div>
     </div>
 

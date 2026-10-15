@@ -167,6 +167,14 @@
             if (!isWishlist) {
                 aggiornamento.location = document.getElementById('editLocation').value.trim() || null;
                 aggiornamento.sigillata_originale = document.getElementById('editSigillata').checked;
+                // sql/111: "Prezzo non trovato" dipende da lingua e condizione —
+                // se le cambi, l'avviso non vale più (il prossimo controllo
+                // prezzi lo riscrive se il prezzo continua a mancare).
+                if (_cartaInModifica.esitoControllo
+                    && (aggiornamento.lingua !== _cartaInModifica.lang || aggiornamento.condizione !== _cartaInModifica.cond)) {
+                    aggiornamento.esito_controllo = null;
+                    aggiornamento.esito_controllo_il = null;
+                }
             } else {
                 // Speculare: 'prezzo_obiettivo' esiste solo su 'wishlist'.
                 // Campo facoltativo — vuoto significa "nessun obiettivo
@@ -236,6 +244,7 @@
 
             chiudiModificaCarta();
             await caricaCarteReali();
+            if (typeof _pzDisegnaEsiti === 'function') _pzDisegnaEsiti(); // avviso "senza prezzo" in Controlla prezzi
             if (direzionePrezzo) _animaPrezzoCarta(idCartaModificata, direzionePrezzo);
         }
 
@@ -420,7 +429,15 @@
                 if (!(await chiediConferma({ titolo: 'Salvare la modifica?', testo: `"${campo}" = "${nuovo || 'Qualsiasi'}"`, conferma: 'Salva' }))) { filterTable(); return; }
                 const { error } = await cardsUpdateCampo(tabella, id, campo, nuovo);
                 if (error) { mostraAvviso(`❌ Errore nel salvare: ` + error.message); filterTable(); return; }
+                // sql/111: lingua/condizione cambiate → l'avviso "Prezzo non
+                // trovato" non vale più (vedi salvaModificaCarta).
+                const carta = carteReali.find(c => String(c.id) === String(id));
+                if (tabella === 'carte' && carta && carta.esitoControllo) {
+                    const { error: errEsito } = await cardsAzzeraEsitoControllo(id);
+                    if (errEsito) console.error('[esito controllo] azzeramento:', errEsito.message);
+                }
                 await caricaCarteReali();
+                if (typeof _pzDisegnaEsiti === 'function') _pzDisegnaEsiti();
             };
             elemento.replaceWith(select);
             select.focus();

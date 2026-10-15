@@ -59,6 +59,12 @@ async function cardsUpdateCampo(tabella, id, campo, valore) {
     return supabaseClient.from(tabella).update({ [campo]: valore }).eq('id', id);
 }
 
+// sql/111: toglie l'avviso "Prezzo non trovato" di una propria carta
+// (dopo aver cambiato lingua o condizione dalla tabella).
+async function cardsAzzeraEsitoControllo(id) {
+    return supabaseClient.from('carte').update({ esito_controllo: null, esito_controllo_il: null }).eq('id', id);
+}
+
 async function cardsDeleteBatch(tabella, ids) {
     return supabaseClient.from(tabella).delete().in('id', ids);
 }
