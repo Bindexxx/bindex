@@ -41,18 +41,26 @@ async function _widgetInserimentoCoda() {
     const { data, error } = await codaCarteUltimeRighe(userId, 50);
     if (error) { console.error('[widget-inserimento] coda:', error.message); return null; }
     const righe = data || [];
-    const inCoda = righe.filter(r => r.stato === 'pending' || r.stato === 'in_corso').length;
+    // Numeri contati dal database: le 50 righe lette servono solo a sapere
+    // quando è partito l'ultimo invio (un'importazione CSV ne crea centinaia).
+    const conta = async (opz, daRighe) => {
+        const { count, error: e } = await codaCarteConta(userId, opz);
+        return e ? daRighe() : count;
+    };
+    const attive = ['pending', 'in_corso'];
+    const inCoda = await conta({ stati: attive }, () => righe.filter(r => attive.includes(r.stato)).length);
     let ultimoInvio = null;
     if (righe.length) {
         const t0 = new Date(righe[0].creato_il).getTime();
+        const da = new Date(t0 - 10 * 60 * 1000).toISOString();
         const invio = righe.filter(r => t0 - new Date(r.creato_il).getTime() <= 10 * 60 * 1000);
-        ultimoInvio = {
-            quante: invio.length,
-            quando: righe[0].creato_il,
-            trovate: invio.filter(r => r.stato === 'completato').length,
-            errori: invio.filter(r => r.stato === 'errore').length,
-            inCorso: invio.filter(r => r.stato === 'pending' || r.stato === 'in_corso').length,
-        };
+        const [quante, trovate, errori, inCorso] = await Promise.all([
+            conta({ da }, () => invio.length),
+            conta({ da, stati: ['completato'] }, () => invio.filter(r => r.stato === 'completato').length),
+            conta({ da, stati: ['errore'] }, () => invio.filter(r => r.stato === 'errore').length),
+            conta({ da, stati: attive }, () => invio.filter(r => attive.includes(r.stato)).length),
+        ]);
+        ultimoInvio = { quante, quando: righe[0].creato_il, trovate, errori, inCorso };
     }
     const dati = { inCoda, ultimoInvio };
     _widgetInserimentoCache = { quando: Date.now(), dati };
