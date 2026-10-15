@@ -130,7 +130,9 @@ async function tentaLoginPubblico() {
         errEl.style.display = 'block';
         return;
     }
-    const email = inputUtente.includes('@') ? inputUtente : `${inputUtente.toLowerCase()}@cardsyncpro.local`;
+    // AMBIENTE DI TEST (2026-10-15): account di test @test.local — in
+    // produzione tornare a '@cardsyncpro.local' (vedi ui/auth.ui.js).
+    const email = inputUtente.includes('@') ? inputUtente : `${inputUtente.toLowerCase()}@test.local`;
     btn.disabled = true;
     btn.textContent = 'Accesso in corso…';
 
