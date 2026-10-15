@@ -7568,6 +7568,10 @@
         #prezzi .pz-box > span { font-size: 0.74rem; color: var(--text-muted); }
         #prezzi .pz-box > b { font-size: 1rem; color: var(--text-dark); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 6px; }
         #prezzi .pz-box small { font-size: 0.72rem; color: var(--text-muted); }
+        #prezzi .pz-esiti { display: flex; align-items: center; gap: 10px; margin: -6px 0 16px; padding: 10px 12px; border-radius: 16px; background: var(--danger-bg); border: 1px solid var(--border-color); font-size: 0.8rem; color: var(--text-dark); }
+        #prezzi .pz-esiti > i { color: var(--danger); flex-shrink: 0; }
+        #prezzi .pz-esiti > span { flex: 1; min-width: 0; }
+        #prezzi .pz-esiti > .pz-riprova { flex-shrink: 0; }
         #prezzi .pz-allerta { color: #b07800 !important; }
         #prezzi .pz-link-sotto { font-size: 0.74rem; color: var(--primary-text, var(--primary)); text-decoration: underline; cursor: pointer; }
         #prezzi .pz-su { color: #2e7d32; font-weight: 700; }

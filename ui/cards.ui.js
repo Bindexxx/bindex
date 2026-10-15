@@ -81,6 +81,11 @@
                 immagine: r.immagine || null,
                 createdAt: r.created_at || null, // usato per l'ordine automatico nel Binder (Stage 1)
                 ultimoControllo: r.ultimo_controllo || null, // RESTYLE: "controllate" in Prezzi aggiornati e Controllo prezzi
+                // sql/111: perché il controllo prezzi non ha trovato il prezzo
+                // (es. "Prezzo non trovato per lingua e/o condizione"). Mai
+                // nelle note: si vede in Controlla prezzi e accanto al prezzo.
+                esitoControllo: r.esito_controllo || null,
+                esitoControlloIl: r.esito_controllo_il || null,
             };
         }
 
@@ -680,7 +685,7 @@
                     <td data-label="Location"><span class="badge badge-location" title="${(card.location || '').replace(/"/g, '&quot;')} — clicca per modificare" onclick="event.stopPropagation(); modificaLocationInline(event, '${idAttr}', '${card.tabella}', '${locAttr}')">${escapeHtml(card.location || '—')}</span></td>
                     <td data-label="Lingua"><span class="badge ${langClass} cella-editabile" title="Clicca per modificare" onclick="event.stopPropagation(); modificaLinguaInline(event, '${idAttr}', '${card.tabella}', '${escapeJsAttr(card.lang || '')}')">${card.lang ? escapeHtml(card.lang) : 'Qualsiasi'}</span></td>
                     <td data-label="Cond."><span class="badge ${condClass} cella-editabile" title="Clicca per modificare" onclick="event.stopPropagation(); modificaCondizioneInline(event, '${idAttr}', '${card.tabella}', '${escapeJsAttr(card.cond || '')}')">${escapeHtml(card.cond)}</span></td>
-                    <td data-label="Prezzo" id="prezzoCella-${idAttr}" class="price cella-editabile" title="Clicca per modificare" onclick="event.stopPropagation(); modificaCampoInline('${idAttr}', '${card.tabella}', 'prezzo', ${card.price}, 'Prezzo (€)', 'numero')">${formattaEuro(card.price)}</td>
+                    <td data-label="Prezzo" id="prezzoCella-${idAttr}" class="price cella-editabile" title="Clicca per modificare" onclick="event.stopPropagation(); modificaCampoInline('${idAttr}', '${card.tabella}', 'prezzo', ${card.price}, 'Prezzo (€)', 'numero')">${formattaEuro(card.price)}${card.esitoControllo ? ` <i class="fa-solid fa-triangle-exclamation" style="color:var(--danger); font-size:0.75rem;" title="${escapeHtml(card.esitoControllo)} — da sistemare in Controlla prezzi"></i>` : ''}</td>
                     <td data-label="Var." class="${varClass}">${escapeHtml(card.variation)}</td>
                     <td data-label="Link">
                         ${linkSicuro ? `<a href="${linkSicuro}" target="_blank" rel="noopener noreferrer" class="link-icon">
