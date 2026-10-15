@@ -88,7 +88,11 @@
             // un'email valida, ma l'utente non deve più saperlo né
             // digitarla per intero. Se qualcuno incolla già l'email
             // completa (abitudine precedente), la usiamo così com'è.
-            const email = inputUtente.includes('@') ? inputUtente : `${inputUtente.toLowerCase()}@cardsyncpro.local`;
+            // AMBIENTE DI TEST (2026-10-15, richiesta di Claudio): gli account
+            // di test sono tutti @test.local. In produzione tornare a
+            // '@cardsyncpro.local' (stesso cambio in ui/admin-shell.ui.js,
+            // utils/shared-public.js e auth_ui.js dell'estensione).
+            const email = inputUtente.includes('@') ? inputUtente : `${inputUtente.toLowerCase()}@test.local`;
             authSubmit.disabled = true;
             authSubmit.textContent = 'Accesso in corso…';
             authError.style.display = 'none';
