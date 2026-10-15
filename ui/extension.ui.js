@@ -164,6 +164,38 @@
         }
 
 
+        // "Lavora anche a estensione chiusa" (v5.25, per-dispositivo come
+        // aiutaGruppo — CARDSYNC_GET/SET_LAVORA_A_CHIUSO in background.js).
+        // Senza risposta vale acceso, il comportamento delle versioni prima.
+        function _chiediLavoraAChiusoEstensione() {
+            return new Promise((resolve) => {
+                if (!window.chrome || !chrome.runtime || !chrome.runtime.sendMessage) { resolve(true); return; }
+                let risolto = false;
+                const timeoutId = setTimeout(() => { if (!risolto) { risolto = true; resolve(true); } }, TIMEOUT_RISPOSTA_ESTENSIONE_MS);
+                try {
+                    chrome.runtime.sendMessage(ID_ESTENSIONE_CARDSYNC, { type: 'CARDSYNC_GET_LAVORA_A_CHIUSO' }, (risposta) => {
+                        if (risolto) return;
+                        risolto = true;
+                        clearTimeout(timeoutId);
+                        if (chrome.runtime.lastError || !risposta || !risposta.ok) { resolve(true); return; }
+                        resolve(risposta.lavoraAChiuso !== false);
+                    });
+                } catch (_) {
+                    if (!risolto) { risolto = true; clearTimeout(timeoutId); resolve(true); }
+                }
+            });
+        }
+
+        function salvaPreferenzaLavoraAChiuso(attivo) {
+            if (!window.chrome || !chrome.runtime || !chrome.runtime.sendMessage) return;
+            try {
+                chrome.runtime.sendMessage(ID_ESTENSIONE_CARDSYNC, { type: 'CARDSYNC_SET_LAVORA_A_CHIUSO', valore: attivo }, () => {
+                    void chrome.runtime.lastError;
+                });
+            } catch (_) { /* silenzioso */ }
+        }
+
+
         // Mostra i controlli "Apri l'app" (sidebar) e "Apri sempre l'app" +
         // "Aiuta il gruppo da questo dispositivo" (Impostazioni) solo se
         // l'estensione è stata rilevata (installata e aggiornata — vedi
@@ -184,7 +216,9 @@
             document.getElementById('chkApriSempreApp').checked = apriSempre;
             if (apriSempre) _mandaAperturaAppAEstensione();
 
-            document.getElementById('chkAiutaGruppoDispositivo').checked = await _chiediAiutaGruppoEstensione();
+            const [aiuta, lavoraAChiuso] = await Promise.all([_chiediAiutaGruppoEstensione(), _chiediLavoraAChiusoEstensione()]);
+            document.getElementById('chkAiutaGruppoDispositivo').checked = aiuta;
+            document.getElementById('chkLavoraAChiuso').checked = lavoraAChiuso;
         }
 
 
