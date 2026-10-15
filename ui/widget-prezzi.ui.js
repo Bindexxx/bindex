@@ -605,10 +605,27 @@ async function prezziRiprovaControllo(ordineId) {
     if (!o) return;
     const userId = await authGetUserId();
     if (!userId) return;
-    const payload = { tipo: o.tipo, creato_da: userId };
-    if (o.parametri) payload.parametri = o.parametri;
-    const { error } = await ordiniInsert(payload);
     const esito = document.getElementById('pzEsito');
+    let error = null;
+    if (o.tipo === 'controlla_prezzi') {
+        // Punto 26 (2026-10-15): le location stanno nella tabella privata
+        // (sql/108), non in o.parametri — si rileggono da lì e l'ordine si
+        // ricrea con la stessa funzione sul DB dell'avvio normale. Ordini
+        // vecchi senza riga privata: si usano le location rimaste nei
+        // parametri, se ci sono.
+        const { data: priv, error: errPriv } = await ordiniLocationPrivateLeggi(o.id);
+        if (errPriv) {
+            if (esito) esito.textContent = 'Non sono riuscito a riprovare: ' + errPriv.message;
+            return;
+        }
+        const locations = priv && Array.isArray(priv.locations) ? priv.locations
+            : (o.parametri && Array.isArray(o.parametri.locations) ? o.parametri.locations : []);
+        ({ error } = await ordiniCreaControlloPrezzi(locations, !!(o.parametri && o.parametri.aiutaGruppo)));
+    } else {
+        const payload = { tipo: o.tipo, creato_da: userId };
+        if (o.parametri) payload.parametri = o.parametri;
+        ({ error } = await ordiniInsert(payload));
+    }
     if (esito) esito.textContent = error ? ('Non sono riuscito a riprovare: ' + error.message) : 'Controllo rimesso in coda.';
     prezziCaricaControlli();
 }

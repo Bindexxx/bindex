@@ -10,6 +10,24 @@ async function ordiniInsert(payload) {
     return supabaseClient.from('ordini').insert(payload).select().single();
 }
 
+// Punto 26 (2026-10-15, sql/108): l'ordine "controlla_prezzi" si crea con
+// una funzione sul DB, che salva le location scelte in una tabella privata
+// (ordini_parametri_privati, la legge solo chi ha creato l'ordine) invece che
+// in ordini.parametri, leggibile da tutto il gruppo. Restituisce l'id
+// dell'ordine (uuid).
+async function ordiniCreaControlloPrezzi(locations, aiutaGruppo) {
+    return supabaseClient.rpc('crea_ordine_controllo_prezzi', {
+        p_locations: Array.isArray(locations) ? locations : [],
+        p_aiuta_gruppo: !!aiutaGruppo,
+    });
+}
+
+// Location private di un PROPRIO ordine (per "Riprova"): null se l'ordine non
+// ha la riga privata.
+async function ordiniLocationPrivateLeggi(ordineId) {
+    return supabaseClient.from('ordini_parametri_privati').select('locations').eq('ordine_id', ordineId).maybeSingle();
+}
+
 async function ordiniLeggiStato(ordineId) {
     return supabaseClient.from('ordini').select('stato, risultato, errore_msg').eq('id', ordineId).single();
 }

@@ -83,10 +83,14 @@
 
             const locations = _locationSelezionate();
 
-            const { data: ordine, error } = await ordiniInsert({ tipo: 'controlla_prezzi', creato_da: userId, parametri: { locations, aiutaGruppo: _ambitoControlloPrezzi === 'gruppo' } });
+            // Punto 26 (2026-10-15): le location non vanno più in
+            // ordini.parametri (leggibile da tutto il gruppo) ma in una
+            // tabella privata, scritta dalla funzione sul DB insieme all'ordine.
+            const { data: ordineId, error } = await ordiniCreaControlloPrezzi(locations, _ambitoControlloPrezzi === 'gruppo');
+            const ordine = ordineId ? { id: ordineId } : null;
 
-            if (error) {
-                sub.textContent = '❌ Errore: ' + error.message;
+            if (error || !ordine) {
+                sub.textContent = '❌ Errore: ' + (error ? error.message : 'ordine non creato');
                 btn.disabled = false;
                 btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Avvia Controllo Prezzi';
                 return;
