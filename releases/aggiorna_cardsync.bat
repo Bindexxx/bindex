@@ -11,9 +11,13 @@ REM    pacchettizzate", con il loro percorso reale sul disco)
 REM 2. Se non la trova da solo, apre un selettore di cartelle - PRE-COMPILATO
 REM    con quella usata l'ultima volta, se c'e' - cosi' basta un click se e'
 REM    ancora giusta, o si puo' scegliere al volo quella corretta se no
-REM 3. Scarica l'ultima versione
-REM 4. La estrae nella cartella scelta, sovrascrivendo i file vecchi
-REM 5. Chiude e riavvia Chrome da solo, cosi' la nuova versione si carica
+REM 3. Controlla che la cartella scelta sia sicura da svuotare (vuota, nuova
+REM    o con dentro CardSync Pro) - altrimenti si ferma senza toccare nulla
+REM 4. Scarica l'ultima versione, la estrae in una cartella temporanea e
+REM    controlla che sia davvero CardSync Pro - TUTTO prima di chiudere Chrome:
+REM    se qualcosa va storto, Chrome resta aperto e l'estensione intatta
+REM 5. Chiude Chrome, sostituisce i file nella cartella dell'estensione e
+REM    riavvia Chrome sul sito, cosi' la nuova versione si carica
 REM
 REM NOTA TECNICA: ogni comando PowerShell un po' complesso viene scritto
 REM prima in un file .ps1 temporaneo ed eseguito da li' (invece di essere
@@ -32,6 +36,11 @@ set "CONFIG_FILE=%CONFIG_DIR%\cartella_estensione.txt"
 set "TEMP_ZIP=%TEMP%\cardsync-extension-update.zip"
 set "PS_RILEVA=%TEMP%\cardsync_rileva_cartella.ps1"
 set "PS_SCEGLI=%TEMP%\cardsync_scegli_cartella.ps1"
+set "PS_CONTROLLA=%TEMP%\cardsync_controlla_cartella.ps1"
+set "PS_VERIFICA=%TEMP%\cardsync_verifica_zip.ps1"
+set "PS_INSTALLA=%TEMP%\cardsync_installa.ps1"
+set "TEMP_ESTRATTA=%TEMP%\cardsync-nuova-versione"
+set "URL_SITO=https://bindexxx.github.io/bindex/"
 set "RILEVATA_DA_CHROME=0"
 
 echo.
@@ -147,17 +156,89 @@ echo.
 REM Non blocca piu' se manifest.json non c'e' ancora - per la primissima
 REM installazione e' normale che la cartella sia vuota o nuova: la si
 REM installa li', semplicemente.
+REM
+REM NOTA (v5.17): i percorsi passano ai comandi PowerShell come variabili
+REM d'ambiente ($env:CARTELLA_ESTENSIONE, $env:TEMP_ZIP, ...) e non scritti
+REM tra apici nel comando: un apostrofo nel percorso (es. C:\Users\D'Amico)
+REM rompeva il comando. -LiteralPath evita che [ ] nel nome vengano letti
+REM come caratteri jolly.
 
-REM --- Passo 2: scarica l'ultima versione ------------------------------------
-echo Scarico l'ultima versione...
-powershell -NoProfile -Command "try { Invoke-WebRequest -Uri '%URL_ZIP%' -OutFile '%TEMP_ZIP%' -UseBasicParsing } catch { Write-Output 'ERRORE_DOWNLOAD'; exit 1 }"
+REM --- Passo 1d: la cartella scelta e' sicura da svuotare? -------------------
+REM FIX v5.17: prima la cartella veniva svuotata SEMPRE e senza guardare cosa
+REM conteneva - scegliendo per sbaglio la cartella sbagliata nel selettore
+REM (es. Documenti) la si cancellava tutta. Ora si procede solo se e' nuova,
+REM vuota, o contiene gia' CardSync Pro (manifest.json con quel nome).
+> "%PS_CONTROLLA%" echo $d = $env:CARTELLA_ESTENSIONE
+>> "%PS_CONTROLLA%" echo if (-not (Test-Path -LiteralPath $d)) { Write-Output 'CARTELLA_OK'; exit 0 }
+>> "%PS_CONTROLLA%" echo $contenuto = @(Get-ChildItem -LiteralPath $d -Force -ErrorAction SilentlyContinue)
+>> "%PS_CONTROLLA%" echo if ($contenuto.Count -eq 0) { Write-Output 'CARTELLA_OK'; exit 0 }
+>> "%PS_CONTROLLA%" echo $man = Join-Path $d 'manifest.json'
+>> "%PS_CONTROLLA%" echo if (Test-Path -LiteralPath $man) {
+>> "%PS_CONTROLLA%" echo     try {
+>> "%PS_CONTROLLA%" echo         $m = Get-Content -LiteralPath $man -Raw -Encoding UTF8 ^| ConvertFrom-Json
+>> "%PS_CONTROLLA%" echo         if ($m.name -eq 'CardSync Pro') { Write-Output 'CARTELLA_OK'; exit 0 }
+>> "%PS_CONTROLLA%" echo     } catch {}
+>> "%PS_CONTROLLA%" echo }
+>> "%PS_CONTROLLA%" echo Write-Output 'CARTELLA_NON_SICURA'
 
-if not exist "%TEMP_ZIP%" (
-    echo Download fallito - controlla la connessione e riprova.
+set "ESITO_CARTELLA="
+for /f "usebackq delims=" %%E in (`powershell -NoProfile -ExecutionPolicy Bypass -File "%PS_CONTROLLA%"`) do set "ESITO_CARTELLA=%%E"
+del "%PS_CONTROLLA%" >nul 2>&1
+
+if not "!ESITO_CARTELLA!"=="CARTELLA_OK" (
+    echo ATTENZIONE: la cartella scelta non e' vuota e non contiene CardSync Pro:
+    echo !CARTELLA_ESTENSIONE!
+    echo.
+    echo Per sicurezza NON la tocco - l'aggiornamento la svuoterebbe tutta.
+    echo Rilancia il comando e scegli la cartella con dentro manifest.json di
+    echo CardSync Pro, oppure una cartella nuova e vuota per installarla.
+    del "%CONFIG_FILE%" >nul 2>&1
     pause
     exit /b 1
 )
-echo Fatto.
+
+REM --- Passo 2: scarica e controlla la nuova versione (Chrome resta aperto) -
+REM FIX v5.17: prima Chrome veniva chiuso e la cartella svuotata PRIMA di
+REM sapere se lo zip fosse valido - uno zip rovinato lasciava l'estensione
+REM vuota. Ora si scarica, si estrae in una cartella temporanea e si
+REM controlla il manifest: solo se e' tutto a posto si chiude Chrome. Lo zip
+REM di un giro precedente interrotto viene cancellato prima, cosi' un
+REM download fallito non passa per buono.
+echo Scarico l'ultima versione...
+if exist "%TEMP_ZIP%" del "%TEMP_ZIP%" >nul 2>&1
+powershell -NoProfile -Command "try { Invoke-WebRequest -Uri $env:URL_ZIP -OutFile $env:TEMP_ZIP -UseBasicParsing } catch { Write-Output 'ERRORE_DOWNLOAD'; exit 1 }"
+
+if not exist "%TEMP_ZIP%" (
+    echo Download fallito - controlla la connessione e riprova.
+    echo Chrome e l'estensione non sono stati toccati.
+    pause
+    exit /b 1
+)
+
+> "%PS_VERIFICA%" echo try {
+>> "%PS_VERIFICA%" echo     $tmp = $env:TEMP_ESTRATTA
+>> "%PS_VERIFICA%" echo     if (Test-Path -LiteralPath $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force -ErrorAction Stop }
+>> "%PS_VERIFICA%" echo     Expand-Archive -LiteralPath $env:TEMP_ZIP -DestinationPath $tmp -Force -ErrorAction Stop
+>> "%PS_VERIFICA%" echo     $man = Join-Path $tmp 'manifest.json'
+>> "%PS_VERIFICA%" echo     if (-not (Test-Path -LiteralPath $man)) { Write-Output 'ZIP_NON_VALIDO'; exit 1 }
+>> "%PS_VERIFICA%" echo     $m = Get-Content -LiteralPath $man -Raw -Encoding UTF8 -ErrorAction Stop ^| ConvertFrom-Json
+>> "%PS_VERIFICA%" echo     if ($m.name -ne 'CardSync Pro') { Write-Output 'ZIP_NON_VALIDO'; exit 1 }
+>> "%PS_VERIFICA%" echo     Write-Output ('ZIP_OK ' + $m.version)
+>> "%PS_VERIFICA%" echo } catch { Write-Output 'ZIP_NON_VALIDO'; exit 1 }
+
+set "ESITO_ZIP="
+for /f "usebackq delims=" %%E in (`powershell -NoProfile -ExecutionPolicy Bypass -File "%PS_VERIFICA%"`) do set "ESITO_ZIP=%%E"
+del "%PS_VERIFICA%" >nul 2>&1
+
+if not "!ESITO_ZIP:~0,6!"=="ZIP_OK" (
+    echo Il file scaricato non e' valido - riprova tra qualche minuto.
+    echo Chrome e l'estensione non sono stati toccati.
+    del "%TEMP_ZIP%" >nul 2>&1
+    powershell -NoProfile -Command "Remove-Item -LiteralPath $env:TEMP_ESTRATTA -Recurse -Force -ErrorAction SilentlyContinue"
+    pause
+    exit /b 1
+)
+echo Fatto: scaricata la versione !ESITO_ZIP:~7!
 echo.
 
 REM --- Passo 3: chiude Chrome (con un breve avviso) --------------------------
@@ -178,30 +259,48 @@ REM caricate manualmente - "disinstallandole" di fatto al riavvio
 REM successivo. Meglio un prompt di ripristino occasionale che perdere
 REM l'estensione ogni volta.
 
-REM --- Passo 4: estrae (crea la cartella se non esiste ancora) ---------------
-echo Installo...
-if not exist "!CARTELLA_ESTENSIONE!" mkdir "!CARTELLA_ESTENSIONE!" >nul 2>&1
-REM FIX (bug [13]): svuota la cartella PRIMA di estrarre, cosi' un file
+REM --- Passo 4: sostituisce i file (crea la cartella se non esiste ancora) ---
+REM FIX (bug [13]): svuota la cartella PRIMA di copiare, cosi' un file
 REM rimosso/rinominato in una release non resta come "orfano" inutilizzato
-REM insieme ai nuovi file (Expand-Archive -Force sovrascrive solo gli
-REM omonimi, non cancella quelli che non fanno piu' parte dello zip).
-powershell -NoProfile -Command "Remove-Item -Path '!CARTELLA_ESTENSIONE!\*' -Recurse -Force" >nul 2>&1
-powershell -NoProfile -Command "Expand-Archive -Path '%TEMP_ZIP%' -DestinationPath '!CARTELLA_ESTENSIONE!' -Force"
+REM insieme ai nuovi file. v5.17: arrivati qui la cartella e' gia' stata
+REM controllata (Passo 1d) e la nuova versione e' gia' estratta e verificata
+REM nella cartella temporanea (Passo 2) - si copia da li'.
+echo Installo...
+> "%PS_INSTALLA%" echo try {
+>> "%PS_INSTALLA%" echo     $d = $env:CARTELLA_ESTENSIONE
+>> "%PS_INSTALLA%" echo     [System.IO.Directory]::CreateDirectory($d) ^| Out-Null
+>> "%PS_INSTALLA%" echo     Get-ChildItem -LiteralPath $d -Force ^| Remove-Item -Recurse -Force -ErrorAction Stop
+>> "%PS_INSTALLA%" echo     Get-ChildItem -LiteralPath $env:TEMP_ESTRATTA -Force ^| Copy-Item -Destination $d -Recurse -Force -ErrorAction Stop
+>> "%PS_INSTALLA%" echo     Write-Output 'INSTALLATA'
+>> "%PS_INSTALLA%" echo } catch { Write-Output ('ERRORE ' + $_.Exception.Message); exit 1 }
+
+set "ESITO_INSTALLA="
+for /f "usebackq delims=" %%E in (`powershell -NoProfile -ExecutionPolicy Bypass -File "%PS_INSTALLA%"`) do set "ESITO_INSTALLA=%%E"
+del "%PS_INSTALLA%" >nul 2>&1
+
+if not "!ESITO_INSTALLA!"=="INSTALLATA" (
+    echo.
+    echo Installazione NON riuscita: !ESITO_INSTALLA!
+    echo Chiudi le finestre che potrebbero usare quei file e rilancia il comando.
+    echo Riapro Chrome...
+    start "" "chrome" "%URL_SITO%"
+    pause
+    exit /b 1
+)
 del "%TEMP_ZIP%" >nul 2>&1
+powershell -NoProfile -Command "Remove-Item -LiteralPath $env:TEMP_ESTRATTA -Recurse -Force -ErrorAction SilentlyContinue"
 echo Fatto.
 echo.
 
-REM --- Passo 5: riavvia Chrome, forzando il ricaricamento dell'estensione ----
-REM FIX (estensione rimasta alla versione vecchia dopo l'aggiornamento):
-REM un semplice "start chrome" dopo il taskkill /F si affida al fatto che
-REM Chrome "si ricordi" da solo di ricaricare da disco l'estensione non
-REM pacchettizzata - non sempre affidabile con una chiusura forzata. Il
-REM flag --load-extension e' il modo ufficiale per dire a Chrome "carica
-REM (o ricarica) DAVVERO questa cartella come estensione adesso", cosi'
-REM il codice nuovo appena estratto viene letto per certo, senza bisogno
-REM di cliccare "ricarica" a mano su chrome://extensions.
-echo Riavvio Chrome (forzando il ricaricamento dell'estensione)...
-start "" "chrome" --load-extension="!CARTELLA_ESTENSIONE!"
+REM --- Passo 5: riavvia Chrome sul sito --------------------------------------
+REM v5.17: tolto --load-extension - Chrome lo ignora dalla versione 137 (vedi
+REM annuncio "PSA: Removing --load-extension flag in Chrome branded builds"
+REM sul gruppo chromium-extensions). Non serve: le estensioni caricate come
+REM "non pacchettizzate" vengono rilette dalla loro cartella a ogni avvio di
+REM Chrome, quindi al riavvio parte gia' la versione appena copiata. Chrome
+REM riparte sul sito, da dove e' partito l'aggiornamento.
+echo Riavvio Chrome...
+start "" "chrome" "%URL_SITO%"
 echo.
 echo ================================================
 echo Installazione completata!
