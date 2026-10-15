@@ -22,10 +22,15 @@ CREATE OR REPLACE FUNCTION public.aggiorna_nota_controllo_gruppo(p_id uuid, p_no
  SECURITY DEFINER
  SET search_path TO 'public'
 AS $function$
+  -- Unica differenza da prima di sql/111: "p_nota is not null". Dalla 5.21
+  -- l'estensione manda nota null per TOGLIERE l'esito quando trova il
+  -- prezzo; senza questo controllo, dopo il rollback, cancellerebbe la nota
+  -- dell'utente a ogni carta controllata.
   update carte
   set note = p_nota
   where id = p_id
-    and stato = 'collezione';
+    and stato = 'collezione'
+    and p_nota is not null;
 $function$;
 
 CREATE OR REPLACE FUNCTION public.aggiorna_prezzo_controllo_gruppo(p_id uuid, p_prezzo numeric, p_immagine text DEFAULT NULL::text)
