@@ -23,10 +23,18 @@
     <meta name="apple-mobile-web-app-title" content="Bindex">
 
     <!-- Font, Icone e Libreria QR Code -->
-    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- (velocità, 2026-10-15) preconnect: la connessione a Google Fonts parte
+         subito invece che dopo aver letto il CSS. Share Tech Mono è nella
+         stessa richiesta degli altri font: prima arrivava con un @import in
+         cima a index.css, una richiesta in più IN SERIE che bloccava il
+         disegno della pagina finché index.css non era tutto scaricato.
+         QR code con defer: serve solo dopo un clic, non deve bloccare l'apertura. -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Share+Tech+Mono&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="vendor/fontawesome-free-6.4.0/css/all.min.css">
     <link rel="stylesheet" href="statusbar.css">
-    <script src="vendor/qrcode-1.0.0.min.js"></script>
+    <script src="vendor/qrcode-1.0.0.min.js" defer></script>
     
     <!-- Stili della pagina: spostati in index.css il 2026-09-25 (prima erano
          un blocco <style> di ~5.400 righe qui). Stessa posizione nella cascata. -->
@@ -2713,8 +2721,9 @@
                 dai che quella roba non la legge nessuno
             </div>
 
-            <!-- IMMAGINE BULBASAUR -->
-            <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/1.png" alt="Bulbasaur" style="width: 170px; height: 170px; object-fit: contain; filter: drop-shadow(0 8px 12px rgba(0,0,0,0.15)); margin-top: 5px;">
+            <!-- IMMAGINE BULBASAUR — loading="lazy" (2026-10-15): ~200 KB da un altro
+                 sito, prima scaricati a ogni apertura anche col popup chiuso. -->
+            <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/1.png" alt="Bulbasaur" loading="lazy" style="width: 170px; height: 170px; object-fit: contain; filter: drop-shadow(0 8px 12px rgba(0,0,0,0.15)); margin-top: 5px;">
         </div>
     </div>
 
@@ -2972,12 +2981,12 @@
          chiamata (primo giro 20s dopo il load), quindi l'ordine è di
          chiarezza più che di necessità — ma tenendolo per ultimo non c'è
          modo di sbagliare. Si avvia da solo con un proprio listener di
-         'load': NON tocca il window.onload qui sotto. -->
+         'load': NON tocca l'avvio dell'app qui sotto. -->
     <script src="ui/missioni-watcher.js"></script>
     <!-- Scrive l'istantanea giornaliera del valore (migration 36) una volta
          per sessione. Va dopo data/storico-valore.repository.js, di cui usa
          le funzioni. Si avvia da solo con un proprio listener di 'load':
-         NON tocca il window.onload piu' sotto. -->
+         NON tocca l'avvio dell'app piu' sotto. -->
     <script src="ui/storico-valore.avvio.js"></script>
 
     <script>
@@ -2988,7 +2997,15 @@
         // Prima nasceva qui, nell'ultimo script della pagina.
 
         // ── AVVIO APP — punto d'ingresso unico, eseguito al caricamento pagina ──
-        window.onload = async () => {
+        // (velocità, 2026-10-15) DOMContentLoaded invece di window.onload:
+        // 'load' aspetta che sia scaricata OGNI immagine e ogni font della
+        // pagina (cornici, retro carta, icone...), e fino ad allora né il
+        // pannello di accesso né la home partivano. A DOMContentLoaded tutti
+        // gli script qui sopra sono già eseguiti e il CSS è applicato: è
+        // tutto quello che l'avvio usa. Gli altri avvii in sottofondo
+        // (missioni-watcher, storico-valore, chat, service worker) restano
+        // su 'load', cioè dopo questo, come prima.
+        document.addEventListener('DOMContentLoaded', async () => {
             // Ripristina Dark Mode e Colori tema salvati.
             // AGGIORNATO (STEP 1 restyle "cornice Pokédex", 2026-09-17):
             // setSiteTheme(savedTheme) sostituita — applicaColoriTema()
@@ -3032,7 +3049,12 @@
             // pannello a schermo intero se manca qualcosa, altrimenti
             // prosegue direttamente (vedi funzione più sotto per i dettagli
             // di ciascun caso).
-            await controlloIngressoCardsync();
+            // (velocità, 2026-10-15) NON più "await" qui: prima la home
+            // aspettava la fine del controllo (risposta dell'estensione,
+            // fino a 5 s se il suo service worker dorme, + sessione) e solo
+            // dopo iniziava a caricarsi. Ora i due partono insieme, come
+            // diceva già il commento qui sotto.
+            const ingresso = controlloIngressoCardsync();
 
             // Home a widget (sessione 2026-08-23) — parte in parallelo,
             // non in sequenza dopo il controllo: il pannello #cardsyncPanel
@@ -3044,7 +3066,8 @@
             // volta elementi che qui servono — se noti la home a widget
             // non comparire dopo il login, è il primo posto da controllare.
             initPhoneShell();
-        };
+            await ingresso;
+        });
     </script>
 
     <!-- Overlay cutscene/apertura Bustina — SPOSTATO QUI il 2026-09-10.

@@ -6,16 +6,11 @@
    cambiata in questo spostamento. Percorsi relativi (es. carta_retro.png)
    invariati: il file sta nella stessa cartella di index.html.
    ============================================================================ */
-        /* Numero countdown (.bs-countdown-timer, vedi CSS bustina più giù)
-           e .phone-lcd (display numerici) condividono questo font.
-           @import DEVE stare qui, come primissima regola dello
-           stylesheet — prima stava più giù (vicino a .phone-lcd) e il
-           browser lo ignorava del tutto ("@import rules must be at the
-           top", verificato nel pannello Issues di Chrome DevTools,
-           2026-09-10). Effetto del bug: solo estetico (fallback su
-           Courier New/monospace, già previsto in CSS) — non era la causa
-           dello schermo nero della bustina, verificato separatamente. */
-        @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
+        /* Font Share Tech Mono (.bs-countdown-timer, .phone-lcd): dal
+           2026-10-15 si carica dal <link> di Google Fonts in index.html,
+           insieme agli altri font. Prima c'era qui un @import, che
+           costringeva il browser a una richiesta in più in serie, dopo
+           aver scaricato tutto index.css, prima di disegnare la pagina. */
 
         /* TEMA BASE / VIOLA PASTELLO */
         :root {
