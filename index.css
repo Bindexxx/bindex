@@ -7155,7 +7155,7 @@
         .coll-td-carta { display: flex; align-items: center; gap: 0.75rem; min-width: 0; }
         /* Nella tabella PC nome, codice e location si leggono per intero (a capo). */
         .coll-tabella .coll-nome, .coll-tabella .coll-meta { white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: anywhere; }
-        .coll-tabella .coll-chip { white-space: normal; max-width: 160px; overflow: visible; text-overflow: clip; overflow-wrap: anywhere; line-height: 1.25; }
+        .coll-tabella .coll-chip { white-space: normal; max-width: 240px; overflow: visible; text-overflow: clip; overflow-wrap: anywhere; line-height: 1.25; }
         .coll-tabella td:not(:nth-child(2)) { white-space: nowrap; }
         .coll-tabella td:nth-child(3) { white-space: normal; }
         .coll-tabella td, .coll-tabella th { padding-left: 0.45rem; padding-right: 0.45rem; }
@@ -7648,7 +7648,7 @@
 
         /* ── Wishlist (RESTYLE, tavole "Wishlist") ─────────────────────────── */
         #wishlist { container-type: inline-size; }
-        #wishlist .wl-pagina { max-width: 1240px; padding-bottom: 4.5rem; }
+        #wishlist .wl-pagina { max-width: 1240px; padding-bottom: 4.5rem; } /* 1600 su PC: vedi in fondo, "Eccezione: Collezione e Wishlist" */
         #wishlist .wl-solo-pc, #wishlist .wl-solo-pc-flex { display: none !important; }
         #wishlist .wl-testa { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
         #wishlist .wl-testa .page-title { font-size: 1.5rem; font-weight: 800; letter-spacing: -0.3px; color: var(--text-dark); }
@@ -8831,5 +8831,11 @@ textarea.avviso-campo { resize: vertical; font-size: 0.8rem; line-height: 1.4; f
    comunque più stretta). */
 .container .view-section:not(#home) { max-width: 1240px; margin-inline: auto; }
 .container .view-section:not(#home) .pg-contenuto-pagina { max-width: none; }
+/* (2026-10-15) Eccezione: Collezione e Wishlist sono tabelle, sugli schermi
+   grandi lo spazio in più va alla tabella (righe su una linea, più colonne
+   leggibili). 1600 e non "nessun limite": oltre, una riga diventa troppo
+   lunga da seguire con l'occhio. Il pannello dettagli resta della sua misura. */
+.container .view-section#visualizzazione, .container .view-section#wishlist { max-width: 1600px; }
+#wishlist .wl-pagina { max-width: 1600px; }
 #impostazioni { max-width: 1240px; }
 #location .pg-pagina { max-width: none !important; }
