@@ -23,15 +23,16 @@
 const _IMPORT_CSV_BLOCCO = 100;
 const _IMPORT_CSV_MAX_RIGHE = 2000;
 const _IMPORT_CSV_CAMPI = [
-    ['', '— non usare —'], ['nome', 'Nome'], ['qty', 'Quantità'], ['lingua', 'Lingua'],
+    ['', '— non usare —'], ['nome', 'Nome'], ['codice', 'Codice'], ['qty', 'Quantità'], ['lingua', 'Lingua'],
     ['condizione', 'Condizione'], ['location', 'Location'], ['nota', 'Note'], ['reverse', 'Reverse'],
     ['first_ed', 'Prima edizione'], ['sigillata_originale', 'Sigillata'], ['destinazione', 'Destinazione'],
 ];
 const _IMPORT_CSV_ALIAS = {
-    nome: ['nome', 'name', 'carta', 'card', 'codice', 'titolo'],
+    nome: ['nome', 'name', 'carta', 'card', 'titolo', 'nome_carta', 'card_name'],
+    codice: ['codice', 'code', 'cod', 'numero', 'number', 'set_code'],
     lingua: ['lingua', 'lang', 'language', 'idioma'],
-    condizione: ['condizione', 'cond', 'condition', 'stato'],
-    qty: ['qty', 'quantita', 'quantità', 'quantity', 'q', 'qta', 'qtà', 'pezzi', 'n'],
+    condizione: ['condizione', 'cond', 'condiz', 'condition', 'stato'],
+    qty: ['qty', 'quantita', "quantita'", 'quantità', 'quantity', 'q', 'qt', 'qta', 'qtà', 'pezzi', 'n'],
     reverse: ['reverse', 'rev', 'reverse_holo'],
     first_ed: ['first_ed', 'first', 'prima_edizione', 'firsted', '1st'],
     sigillata_originale: ['sigillata_originale', 'sigillata', 'sig'],
@@ -106,8 +107,17 @@ function _importCsvValuta() {
     const col = (campo) => s.mappa.indexOf(campo);
     const idx = {}; Object.keys(_IMPORT_CSV_ALIAS).forEach(k => { idx[k] = col(k); });
     const val = (r, k) => (idx[k] >= 0 ? String(r[idx[k]] || '').trim() : '');
-    s.righe = s.tabella.slice(1).map(r => {
-        const nome = val(r, 'nome');
+    // Un'intestazione ripetuta sotto la prima (fogli con due righe di
+    // titoli) non è una carta: si riconosce dal nome uguale al titolo.
+    const titoloNome = idx.nome >= 0 ? String(s.tabella[0][idx.nome] || '').trim().toLowerCase() : '';
+    s.righe = s.tabella.slice(1).filter(r => !titoloNome || val(r, 'nome').toLowerCase() !== titoloNome).map(r => {
+        // Il codice (es. "OBF 125") identifica la carta: va in coda attaccato
+        // al nome, come in Inserimento ("Charizard ex OBF 125"), salvo che il
+        // nome lo contenga già.
+        const nomeGrezzo = val(r, 'nome');
+        const codice = val(r, 'codice');
+        const nome = nomeGrezzo && codice && !nomeGrezzo.toLowerCase().includes(codice.toLowerCase())
+            ? `${nomeGrezzo} ${codice}` : nomeGrezzo;
         const avvisi = [];
         const linguaGrezza = val(r, 'lingua');
         let lingua = _IMPORT_CSV_LINGUE[linguaGrezza.toUpperCase()] || 'IT';
@@ -212,8 +222,8 @@ function _importCsvRilascia(ev) {
 }
 
 function importCsvScaricaModello() {
-    const testo = 'nome;qty;lingua;condizione;location;nota;reverse;first_ed;sigillata_originale\n' +
-        'Charizard ex OBF 125;1;IT;NM;Binder 1;;no;no;no\n';
+    const testo = 'nome;codice;qty;lingua;condizione;location;nota;reverse;first_ed;sigillata_originale\n' +
+        'Charizard ex;OBF 125;1;IT;NM;Binder 1;;no;no;no\n';
     const blob = new Blob(['﻿' + testo], { type: 'text/csv;charset=utf-8' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
