@@ -219,7 +219,62 @@
             const [aiuta, lavoraAChiuso] = await Promise.all([_chiediAiutaGruppoEstensione(), _chiediLavoraAChiusoEstensione()]);
             document.getElementById('chkAiutaGruppoDispositivo').checked = aiuta;
             document.getElementById('chkLavoraAChiuso').checked = lavoraAChiuso;
+
+            _controllaAccountEstensione();
         }
+
+
+        // ── ACCOUNT DIVERSO TRA SITO ED ESTENSIONE ──────────────────────────────
+        // Dalla 5.17 sito ed estensione hanno due login separati: cambiare
+        // account sul sito non cambia quello dell'estensione, che continua a
+        // lavorare coda e ordini con l'account vecchio. Qui il sito chiede
+        // all'estensione chi è loggato (CARDSYNC_GET_UTENTE, estensione 5.26:
+        // risponde con id e nome, mai token) e, se non è lo stesso utente,
+        // lascia una barra fissa finché non combaciano. Estensioni più vecchie
+        // non conoscono il messaggio: nessuna risposta, nessun avviso.
+        const ID_AVVISO_ACCOUNT_ESTENSIONE = 'account-estensione';
+
+        function _chiediUtenteEstensione() {
+            return new Promise((resolve) => {
+                if (!window.chrome || !chrome.runtime || !chrome.runtime.sendMessage) { resolve(null); return; }
+                let risolto = false;
+                const timeoutId = setTimeout(() => { if (!risolto) { risolto = true; resolve(null); } }, TIMEOUT_RISPOSTA_ESTENSIONE_MS);
+                try {
+                    chrome.runtime.sendMessage(ID_ESTENSIONE_CARDSYNC, { type: 'CARDSYNC_GET_UTENTE' }, (risposta) => {
+                        if (risolto) return;
+                        risolto = true;
+                        clearTimeout(timeoutId);
+                        if (chrome.runtime.lastError || !risposta || !risposta.ok) { resolve(null); return; }
+                        resolve({ userId: risposta.userId || null, nome: risposta.nome || null });
+                    });
+                } catch (_) {
+                    if (!risolto) { risolto = true; clearTimeout(timeoutId); resolve(null); }
+                }
+            });
+        }
+
+        async function _controllaAccountEstensione() {
+            if (!_versioneVecchiaRilevata) return;
+            try {
+                const [estensione, userIdSito] = await Promise.all([_chiediUtenteEstensione(), authGetUserId()]);
+                // Estensione senza login: all'apertura mostra già il suo form.
+                if (!estensione || !estensione.userId || !userIdSito || estensione.userId === userIdSito) {
+                    avvisoFissoTogli(ID_AVVISO_ACCOUNT_ESTENSIONE);
+                    return;
+                }
+                avvisoFisso(ID_AVVISO_ACCOUNT_ESTENSIONE,
+                    `L'estensione è collegata a ${_nomeDaEmail(estensione.nome)}, non al tuo account: coda e ordini partono come ${_nomeDaEmail(estensione.nome)}. Apri l'app, premi "Esci" e rientra con il tuo utente.`,
+                    { tipo: 'errore', azione: { etichetta: "Apri l'app", fn: _mandaAperturaAppAEstensione } });
+            } catch (e) {
+                console.error('[estensione] controllo account:', e);
+            }
+        }
+
+        // Tornando sulla scheda del sito (es. dopo aver rifatto il login
+        // nell'estensione) ricontrolla, così la barra sparisce da sola.
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') _controllaAccountEstensione();
+        });
 
 
         // Emoji diversa in base al tema attivo del sito — solo "atmosfera"
