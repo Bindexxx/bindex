@@ -430,9 +430,11 @@
                 const { error } = await cardsUpdateCampo(tabella, id, campo, nuovo);
                 if (error) { mostraAvviso(`❌ Errore nel salvare: ` + error.message); filterTable(); return; }
                 // sql/111: lingua/condizione cambiate → l'avviso "Prezzo non
-                // trovato" non vale più (vedi salvaModificaCarta).
+                // trovato" non vale più (vedi salvaModificaCarta). Solo
+                // quelle due: questa tendina serve anche per la location, e
+                // spostare una carta non cambia il prezzo da cercare.
                 const carta = carteReali.find(c => String(c.id) === String(id));
-                if (tabella === 'carte' && carta && carta.esitoControllo) {
+                if (tabella === 'carte' && (campo === 'lingua' || campo === 'condizione') && carta && carta.esitoControllo) {
                     const { error: errEsito } = await cardsAzzeraEsitoControllo(id);
                     if (errEsito) console.error('[esito controllo] azzeramento:', errEsito.message);
                 }
