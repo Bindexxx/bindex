@@ -43,9 +43,10 @@
 -- una prova in un blocco annullato (13/13 casi come atteso: aiutante senza
 -- presa bloccato, presa in carico ok, nome/link altrui intoccabili, estraneo
 -- bloccato, carta al proprietario con la sua location).
--- PARTE 3 DA ESEGUIRE nell'SQL editor di Supabase: contiene un DELETE e il
--- connettore chiede una conferma manuale. Si può rieseguire l'intero file:
--- sono solo CREATE OR REPLACE.
+-- PARTE 3 eseguita da Claudio nell'SQL editor (contiene un DELETE, il
+-- connettore chiedeva una conferma), poi provata in un blocco annullato:
+-- estraneo bloccato, aiutante con la riga in carico ok, correzione al
+-- proprietario con la sua location, riga tolta dalla coda.
 -- PER ANNULLARE: sql/114_coda_carte_solo_proprietario_o_chi_lavora_ROLLBACK.sql
 -- ============================================================================
 
