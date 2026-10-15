@@ -287,7 +287,7 @@ function _wishlistRenderElenco() {
                 <td class="wl-num">${r.obiettivo != null ? eur(r.obiettivo) : '—'}</td>
                 <td class="wl-td-dist">${r.obiettivo != null ? `<div class="wl-pista"><div class="${b.cls}" style="width:${b.pct}%"></div></div><span class="${b.cls ? 'wl-ok' : ''}">${b.testo}</span>` : '<span>—</span>'}</td>
                 <td class="wl-num ${v > 0 ? 'wl-su' : (v < 0 ? 'wl-giu' : '')}">${v ? (v > 0 ? '+' : '−') + formattaEuro(Math.abs(v)).replace(' €', '') : '—'}</td>
-                <td>${chi.length ? `<span class="wl-gruppo">${escapeHtml(chi[0].nickname)} ce l’ha${chi.length > 1 ? ` +${chi.length - 1}` : ''}</span>` : ''}</td>
+                <td class="wl-td-gruppo">${chi.length ? `<span class="wl-gruppo">${escapeHtml(chi[0].nickname)} ce l’ha${chi.length > 1 ? ` +${chi.length - 1}` : ''}</span>` : ''}</td>
                 <td><button type="button" class="wl-menu" title="Modifica" onclick="event.stopPropagation(); apriModificaCarta('${id(r)}')"><i class="fa-solid fa-ellipsis"></i></button></td>
             </tr>`;
         }).join('')}</tbody></table></div>`;

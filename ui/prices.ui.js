@@ -156,6 +156,11 @@
                         const r = data.risultato || {};
                         _resetBottonePrezzi(btn, sub);
                         sub.innerHTML = `✅ Fatto! <span style="color:var(--success)">▲ ${r.salite ?? 0}</span> · <span style="color:var(--danger)">▼ ${r.scese ?? 0}</span> · ➖ ${r.invariate ?? 0} invariate`;
+                    } else if (data.stato === 'annullato') {
+                        // sql/115: annullato dal pannello "Controlla prezzi".
+                        clearInterval(_pollOrdineInterval);
+                        _resetBottonePrezzi(btn, sub);
+                        sub.textContent = 'Controllo annullato.';
                     } else if (data.stato === 'errore') {
                         clearInterval(_pollOrdineInterval);
                         _resetBottonePrezzi(btn, sub);
@@ -259,6 +264,11 @@
                         const r = data.risultato || {};
                         _resetBottonePrezzi(btn, sub, testoDefault);
                         sub.textContent = `✅ Fatto! ${r.aggiornate ?? 0} su ${r.totale ?? 0} carte aggiornate.`;
+                    } else if (data.stato === 'annullato') {
+                        // sql/115: annullato dal pannello "Controlla prezzi".
+                        clearInterval(_pollOrdineWishlistInterval);
+                        _resetBottonePrezzi(btn, sub, testoDefault);
+                        sub.textContent = 'Controllo annullato.';
                     } else if (data.stato === 'errore') {
                         clearInterval(_pollOrdineWishlistInterval);
                         _resetBottonePrezzi(btn, sub, testoDefault);
@@ -552,6 +562,11 @@
                         const r = data.risultato || {};
                         _resetBottonePrezzi(btn, sub, testoDefault);
                         sub.innerHTML = `✅ Fatto! <span style="color:var(--success)">▲ ${r.salite ?? 0}</span> · <span style="color:var(--danger)">▼ ${r.scese ?? 0}</span> · ➖ ${r.invariate ?? 0} invariati`;
+                    } else if (data.stato === 'annullato') {
+                        // sql/115: annullato dal pannello "Controlla prezzi".
+                        clearInterval(_pollOrdineSealedInterval);
+                        _resetBottonePrezzi(btn, sub, testoDefault);
+                        sub.textContent = 'Controllo annullato.';
                     } else if (data.stato === 'errore') {
                         clearInterval(_pollOrdineSealedInterval);
                         _resetBottonePrezzi(btn, sub, testoDefault);

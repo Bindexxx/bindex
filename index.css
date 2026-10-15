@@ -6,16 +6,11 @@
    cambiata in questo spostamento. Percorsi relativi (es. carta_retro.png)
    invariati: il file sta nella stessa cartella di index.html.
    ============================================================================ */
-        /* Numero countdown (.bs-countdown-timer, vedi CSS bustina più giù)
-           e .phone-lcd (display numerici) condividono questo font.
-           @import DEVE stare qui, come primissima regola dello
-           stylesheet — prima stava più giù (vicino a .phone-lcd) e il
-           browser lo ignorava del tutto ("@import rules must be at the
-           top", verificato nel pannello Issues di Chrome DevTools,
-           2026-09-10). Effetto del bug: solo estetico (fallback su
-           Courier New/monospace, già previsto in CSS) — non era la causa
-           dello schermo nero della bustina, verificato separatamente. */
-        @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
+        /* Font Share Tech Mono (.bs-countdown-timer, .phone-lcd): dal
+           2026-10-15 si carica dal <link> di Google Fonts in index.html,
+           insieme agli altri font. Prima c'era qui un @import, che
+           costringeva il browser a una richiesta in più in serie, dopo
+           aver scaricato tutto index.css, prima di disegnare la pagina. */
 
         /* TEMA BASE / VIOLA PASTELLO */
         :root {
@@ -7135,8 +7130,13 @@
         .coll-tessera-sotto b { color: var(--text-muted); white-space: nowrap; order: -1; }
 
         /* PC: tabella + dettagli */
-        .coll-pc { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 1rem; align-items: start; }
+        .coll-pc { display: grid; grid-template-columns: minmax(0, 1fr) clamp(270px, 28%, 320px); gap: 1rem; align-items: start; }
         .coll-tabella-box { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 18px; overflow: hidden; }
+        /* (2026-10-15) Niente più tabella tagliata: con overflow:hidden le ultime
+           colonne (Note, menu) sparivano quando lo spazio non bastava. Ora i
+           testi vanno a capo (sotto) e, se proprio non ci sta, la tabella
+           scorre di lato invece di essere tagliata. */
+        .coll-tabella-box { overflow-x: auto; overflow-y: hidden; }
         .coll-tabella { width: 100%; border-collapse: collapse; }
         .coll-tabella th {
             text-align: left; font-size: 0.7rem; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted);
@@ -7152,7 +7152,13 @@
         .coll-tabella .num { text-align: right; }
         .coll-tabella .forte { font-weight: 700; white-space: nowrap; }
         .coll-td-check { width: 36px; }
-        .coll-td-carta { display: flex; align-items: center; gap: 0.75rem; min-width: 0; max-width: 340px; }
+        .coll-td-carta { display: flex; align-items: center; gap: 0.75rem; min-width: 0; }
+        /* Nella tabella PC nome, codice e location si leggono per intero (a capo). */
+        .coll-tabella .coll-nome, .coll-tabella .coll-meta { white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: anywhere; }
+        .coll-tabella .coll-chip { white-space: normal; max-width: 240px; overflow: visible; text-overflow: clip; overflow-wrap: anywhere; line-height: 1.25; }
+        .coll-tabella td:not(:nth-child(2)) { white-space: nowrap; }
+        .coll-tabella td:nth-child(3) { white-space: normal; }
+        .coll-tabella td, .coll-tabella th { padding-left: 0.45rem; padding-right: 0.45rem; }
         .coll-td-carta > div { min-width: 0; }
         .coll-td-nota { color: var(--primary-text, var(--primary)); text-align: center; }
         .coll-td-nota .vuota { color: var(--text-muted); opacity: .45; }
@@ -7173,7 +7179,7 @@
         .coll-campi { display: grid; grid-template-columns: 1fr 1fr; gap: 0.4rem; margin-bottom: 0.4rem; }
         .coll-campo { background: var(--bg-color); border-radius: 10px; padding: 0.45rem 0.6rem; display: flex; flex-direction: column; min-width: 0; }
         .coll-campo span { font-size: 0.68rem; text-transform: uppercase; letter-spacing: .05em; color: var(--text-muted); }
-        .coll-campo b { font-size: 0.88rem; color: var(--text-dark); overflow: hidden; text-overflow: ellipsis; }
+        .coll-campo b { font-size: 0.88rem; color: var(--text-dark); overflow-wrap: anywhere; } /* (2026-10-15) a capo, mai "…" */
         .coll-campo.editabile { cursor: pointer; }
         .coll-campo.editabile:hover { outline: 1px solid var(--primary); }
         .coll-note b { white-space: normal; font-weight: 500; }
@@ -7642,7 +7648,7 @@
 
         /* ── Wishlist (RESTYLE, tavole "Wishlist") ─────────────────────────── */
         #wishlist { container-type: inline-size; }
-        #wishlist .wl-pagina { max-width: 1240px; padding-bottom: 4.5rem; }
+        #wishlist .wl-pagina { max-width: 1240px; padding-bottom: 4.5rem; } /* 1600 su PC: vedi in fondo, "Eccezione: Collezione e Wishlist" */
         #wishlist .wl-solo-pc, #wishlist .wl-solo-pc-flex { display: none !important; }
         #wishlist .wl-testa { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
         #wishlist .wl-testa .page-title { font-size: 1.5rem; font-weight: 800; letter-spacing: -0.3px; color: var(--text-dark); }
@@ -7689,8 +7695,9 @@
             #wishlist .wl-conti b { margin-left: 10px; }
             #wishlist .wl-conti b:first-child { margin-left: 0; }
             #wishlist .wl-filtri { margin: 0; }
-            #wishlist .wl-layout { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 18px; align-items: start; }
-            #wishlist .wl-tabella-box { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 18px; overflow: hidden; }
+            #wishlist .wl-layout { display: grid; grid-template-columns: minmax(0, 1fr) clamp(280px, 30%, 360px); gap: 18px; align-items: start; }
+            /* (2026-10-15) come .coll-tabella-box: mai colonne tagliate, al massimo scorre di lato. */
+            #wishlist .wl-tabella-box { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 18px; overflow-x: auto; overflow-y: hidden; }
             #wishlist .wl-tabella { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
             #wishlist .wl-tabella th { text-align: left; font-size: 0.7rem; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; color: var(--text-muted); padding: 12px 10px; border-bottom: 1px solid var(--border-color); cursor: pointer; white-space: nowrap; }
             #wishlist .wl-tabella th.attivo { color: var(--primary-text, var(--primary)); }
@@ -7702,9 +7709,13 @@
             #wishlist .wl-td-nome span { font-size: 0.78rem; color: var(--text-muted); }
             #wishlist .wl-num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
             #wishlist .wl-num b { color: var(--text-dark); }
-            #wishlist .wl-td-dist { width: 170px; font-size: 0.78rem; color: var(--text-muted); }
+            #wishlist .wl-td-dist { width: 150px; min-width: 96px; font-size: 0.78rem; color: var(--text-muted); }
+            #wishlist .wl-td-nome, #wishlist .wl-td-dist, #wishlist .wl-td-gruppo { white-space: normal; } /* la regola generale td { nowrap } teneva tutto su una riga */
+            #wishlist .wl-td-nome { min-width: 120px; }
+            #wishlist .wl-td-nome b, #wishlist .wl-td-nome span { overflow-wrap: break-word; }
+            #wishlist .wl-tabella th, #wishlist .wl-tabella td { padding-left: 8px; padding-right: 8px; }
             #wishlist .wl-td-dist .wl-pista { margin: 0 0 4px; }
-            #wishlist .wl-gruppo { font-size: 0.74rem; font-weight: 700; padding: 3px 8px; border-radius: 6px; background: #e3f1e4; color: #2e7d32; white-space: nowrap; }
+            #wishlist .wl-gruppo { font-size: 0.74rem; font-weight: 700; padding: 3px 8px; border-radius: 6px; background: #e3f1e4; color: #2e7d32; display: inline-block; line-height: 1.25; }
             #wishlist .wl-menu { border: 0; background: none; color: var(--text-muted); cursor: pointer; font-size: 1rem; }
             #wishlist .wl-dettaglio { display: block; position: sticky; top: 8px; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 18px; padding: 18px; }
             #wishlist .wl-invito { display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; color: var(--text-muted); font-size: 0.85rem; padding: 3rem 0.5rem; }
@@ -8820,5 +8831,11 @@ textarea.avviso-campo { resize: vertical; font-size: 0.8rem; line-height: 1.4; f
    comunque più stretta). */
 .container .view-section:not(#home) { max-width: 1240px; margin-inline: auto; }
 .container .view-section:not(#home) .pg-contenuto-pagina { max-width: none; }
+/* (2026-10-15) Eccezione: Collezione e Wishlist sono tabelle, sugli schermi
+   grandi lo spazio in più va alla tabella (righe su una linea, più colonne
+   leggibili). 1600 e non "nessun limite": oltre, una riga diventa troppo
+   lunga da seguire con l'occhio. Il pannello dettagli resta della sua misura. */
+.container .view-section#visualizzazione, .container .view-section#wishlist { max-width: 1600px; }
+#wishlist .wl-pagina { max-width: 1600px; }
 #impostazioni { max-width: 1240px; }
 #location .pg-pagina { max-width: none !important; }
