@@ -28,6 +28,14 @@ async function ordiniLocationPrivateLeggi(ordineId) {
     return supabaseClient.from('ordini_parametri_privati').select('locations').eq('ordine_id', ordineId).maybeSingle();
 }
 
+// sql/115 (2026-10-15): annulla un PROPRIO ordine ancora 'pending' o
+// 'in_corso' (funzione sul DB: dopo sql/112 chi crea un ordine non può più
+// modificarlo direttamente). Errore ORDINE_NON_ANNULLABILE se non è tuo o è
+// già chiuso.
+async function ordiniAnnulla(ordineId) {
+    return supabaseClient.rpc('annulla_ordine', { p_ordine_id: ordineId });
+}
+
 async function ordiniLeggiStato(ordineId) {
     return supabaseClient.from('ordini').select('stato, risultato, errore_msg').eq('id', ordineId).single();
 }

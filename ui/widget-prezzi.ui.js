@@ -461,6 +461,7 @@ const _PZ_STATI_CONTROLLO = {
     completato: ['Completato', 'ok'],
     errore: ['Non riuscito', 'ko'],
     in_corso: ['In corso', 'att'],
+    annullato: ['Annullato', 'ko'],
 };
 let _pzControlliRighe = [];
 
@@ -491,14 +492,19 @@ async function prezziCaricaControlli() {
         completato: () => 'completato',
         errore: o => o.errore_msg ? escapeHtml(o.errore_msg) : 'non riuscito',
         in_corso: () => 'in corso · un dispositivo sta leggendo Cardmarket',
+        annullato: () => 'annullato da te',
     };
-    const iconaStato = { completato: 'fa-check', errore: 'fa-xmark', in_corso: 'fa-spinner' };
+    const iconaStato = { completato: 'fa-check', errore: 'fa-xmark', in_corso: 'fa-spinner', annullato: 'fa-ban' };
     cont.innerHTML = _pzControlliRighe.map(o => {
         const [nome] = _PZ_TIPI_CONTROLLO[o.tipo] || [o.tipo];
         const [, classe] = _PZ_STATI_CONTROLLO[o.stato] || ['In attesa', 'att'];
         const sotto = (sottoStato[o.stato] || (() => 'in attesa che un dispositivo lo prenda'))(o);
         const ico = iconaStato[o.stato] || 'fa-hourglass-half';
-        const riprova = o.stato === 'errore'
+        // sql/115: "Annulla" sugli ordini non ancora chiusi, "Riprova" su
+        // quelli finiti male o annullati.
+        const riprova = (o.stato === 'pending' || o.stato === 'in_corso')
+            ? `<button type="button" class="pz-riprova" onclick="prezziAnnullaControllo('${o.id}')">Annulla</button>`
+            : (o.stato === 'errore' || o.stato === 'annullato')
             ? `<button type="button" class="pz-riprova" onclick="prezziRiprovaControllo('${o.id}')">Riprova</button>` : `<span class="pz-quando">${_pzQuandoBreve(o.completato_il || o.creato_il)}</span>`;
         return `<div class="pz-controllo"><span class="pz-controllo-ico ${classe}"><i class="fa-solid ${ico}"></i></span><div class="pz-controllo-info"><b>${nome}</b><span>${sotto}</span></div>${riprova}</div>`;
     }).join('');
@@ -654,6 +660,27 @@ function prezziChiudiEsiti() {
 function prezziSistemaCarta(id) {
     prezziChiudiEsiti();
     apriModificaCarta(id);
+}
+
+// Annulla (sql/115): ferma un proprio controllo in attesa o in corso. Se un
+// PC lo sta già eseguendo, il controllo delle carte si ferma al lotto
+// successivo; wishlist e sealed finiscono il giro già partito, ma l'ordine
+// resta annullato.
+async function prezziAnnullaControllo(ordineId) {
+    const o = _pzControlliRighe.find(x => String(x.id) === String(ordineId));
+    if (!o) return;
+    const testo = o.stato === 'in_corso'
+        ? 'Un dispositivo lo sta già eseguendo: si ferma il prima possibile.'
+        : 'Nessun dispositivo lo eseguirà.';
+    if (!(await chiediConferma({ titolo: 'Annullare il controllo?', testo, conferma: 'Annulla controllo', annulla: 'Indietro', pericolo: true }))) return;
+    const esito = document.getElementById('pzEsito');
+    const { error } = await ordiniAnnulla(o.id);
+    if (esito) {
+        esito.textContent = !error ? 'Controllo annullato.'
+            : /ORDINE_NON_ANNULLABILE/.test(error.message) ? 'Questo controllo è già chiuso: niente da annullare.'
+            : 'Non sono riuscito ad annullare: ' + error.message;
+    }
+    prezziCaricaControlli();
 }
 
 // Riprova = nuovo ordine con lo stesso tipo e gli stessi parametri.
