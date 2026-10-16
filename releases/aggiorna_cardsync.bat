@@ -272,6 +272,28 @@ timeout /t 3 >nul
 taskkill /F /IM chrome.exe /T >nul 2>&1
 timeout /t 2 >nul
 
+REM FIX (2026-10-16): prima non si controllava se Chrome si fosse chiuso
+REM davvero. Se restava acceso (es. avviato come amministratore, o un
+REM processo che non si lascia chiudere) i file venivano sostituiti con
+REM Chrome in funzione: le pagine dell'app si aprivano nuove, ma il motore
+REM dell'estensione (service worker) restava quello vecchio fino a una
+REM ricarica a mano da chrome://extensions. Ora si installa solo con Chrome
+REM chiuso del tutto; altrimenti si chiede di chiuderlo a mano. Fin qui
+REM nessun file e' stato toccato: chiudere questa finestra annulla senza danni.
+:verifica_chrome_chiuso
+tasklist /FI "IMAGENAME eq chrome.exe" 2>nul | find /I "chrome.exe" >nul
+if errorlevel 1 goto :chrome_chiuso
+echo.
+echo Chrome e' ancora aperto e non riesco a chiuderlo da solo.
+echo Chiudilo a mano: tutte le finestre, e anche l'icona di Chrome vicino
+echo all'orologio se c'e' (tasto destro - Esci). Poi premi un tasto qui.
+echo (Per annullare chiudi questa finestra: l'estensione resta com'e'.)
+pause >nul
+taskkill /F /IM chrome.exe /T >nul 2>&1
+timeout /t 2 >nul
+goto :verifica_chrome_chiuso
+:chrome_chiuso
+
 REM RIMOSSO (era qui un tentativo di evitare il prompt "Ripristina le
 REM pagine?" riscrivendo il file di preferenze di Chrome) - causava un
 REM problema molto peggiore: Chrome rileva quando le sue preferenze sono
