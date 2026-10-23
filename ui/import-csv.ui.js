@@ -17,7 +17,8 @@
 // Supabase qui.
 //
 // Dipende da: authGetUserId (data/auth.repository.js), queueInsertRighe
-// (data/queue.repository.js), carteReali (ui/cards.ui.js, solo lettura per
+// (data/queue.repository.js), locationsList/locationInsert
+// (data/locations.repository.js, dal 2026-10-23), carteReali (ui/cards.ui.js, solo lettura per
 // i "già presenti"), escapeHtml, insAggiornaPagina (facoltativa).
 
 const _IMPORT_CSV_BLOCCO = 100;
@@ -274,6 +275,41 @@ function _importCsvImposta(chiave, valore) {
     _importCsvRender();
 }
 
+// ── Location del CSV (FIX 2026-10-23) ───────────────────────────────────
+// Sul sito una location esiste solo se ha una riga nella tabella 'location':
+// da lì escono la pagina Location, le tendine di Inserimento/Modifica e i
+// binder-location (creati da binder.ui.js all'apertura di Binders). L'import
+// metteva il nome solo sulla riga di coda: le carte arrivavano con una
+// location "fantasma" (caso reale: BULK BORDO GIALLO, 642 carte).
+// Qui, PRIMA di mandare i blocchi, ogni location del CSV che manca viene
+// creata con lo stesso tipo dell'import ('carta' o 'sealed'), come fa
+// aggiungiNuovaLocationComune() in ui/entry.ui.js. Se esiste già con
+// maiuscole diverse ("bulk" vs "BULK") si riusa quella, riscrivendo il nome
+// sulle righe: niente doppioni che differiscono solo per le maiuscole.
+// I nomi di sistema (SCAMBIO, "?"…) non si creano mai (_locRiservata in
+// ui/widget-location.ui.js, usata solo se caricata).
+// Restituisce null se tutto ok, altrimenti { nome, messaggio }.
+async function _importCsvCreaLocation(userId, righe) {
+    const tipo = _impCsv && _impCsv.tipo === 'sealed' ? 'sealed' : 'carta';
+    const nomi = [...new Set(righe.map(r => r.location).filter(Boolean))];
+    if (!nomi.length) return null;
+    const { data, error } = await locationsList(userId, tipo);
+    if (error) return { nome: nomi[0], messaggio: error.message };
+    const esistenti = new Map((data || []).map(l => [String(l.nome).toLowerCase(), l.nome]));
+    for (const nome of nomi) {
+        const giaPresente = esistenti.get(nome.toLowerCase());
+        if (giaPresente) {
+            if (giaPresente !== nome) righe.forEach(r => { if (r.location === nome) r.location = giaPresente; });
+            continue;
+        }
+        if (typeof _locRiservata === 'function' && _locRiservata(nome)) continue;
+        const { error: errIns } = await locationInsert(userId, nome, tipo);
+        if (errIns) return { nome, messaggio: errIns.message };
+        esistenti.set(nome.toLowerCase(), nome);
+    }
+    return null;
+}
+
 // ── Invio a blocchi ─────────────────────────────────────────────────────
 async function importCsvInvia() {
     const s = _impCsv;
@@ -284,6 +320,16 @@ async function importCsvInvia() {
     if (!righe.length) return;
     s.invio = true; s.errore = ''; s.totale = righe.length;
     _importCsvRender();
+    // FIX 2026-10-23: le location del CSV vanno create anche nella tabella
+    // 'location' (vedi _importCsvCreaLocation): prima finivano solo come
+    // testo sulle carte, fuori da elenco Location, tendine e binder.
+    const errLoc = await _importCsvCreaLocation(userId, righe);
+    if (errLoc) {
+        s.invio = false;
+        s.errore = `Non è stato possibile creare la location "${errLoc.nome}" (${errLoc.messaggio}). ${s.inviate ? 'I blocchi già partiti restano in coda' : 'Nessuna carta è stata messa in coda'}: riprova.`;
+        _importCsvRender();
+        return;
+    }
     for (let i = s.inviate; i < righe.length; i += _IMPORT_CSV_BLOCCO) {
         const blocco = righe.slice(i, i + _IMPORT_CSV_BLOCCO);
         const { error } = await queueInsertRighe(blocco);
