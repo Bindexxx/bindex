@@ -1,7 +1,7 @@
 // Chrome e Supabase finti per caricare i file dell'estensione fuori da Chrome.
 // Registrano le chiamate, non fanno rete.
 function creaAmbiente(opts = {}) {
-  const log = { alarms: [], errori: [], messaggi: [], tabs: [], rpc: [], from: [] };
+  const log = { alarms: [], errori: [], messaggi: [], tabs: [], rpc: [], from: [], chiamate: [] };
   const store = opts.store || {};
   const listeners = { onMessage: [], onMessageExternal: [], onAlarm: [], onChanged: [], onUpdated: [] };
   let nextTab = 100;
@@ -123,8 +123,11 @@ function creaAmbiente(opts = {}) {
   const qb = (tabella) => {
     const q = { _t: tabella };
     const chain = ['select', 'eq', 'neq', 'in', 'or', 'not', 'gt', 'gte', 'lt', 'lte', 'order', 'limit', 'range', 'update', 'insert', 'delete', 'is', 'maybeSingle', 'single', 'upsert'];
-    chain.forEach(m => { q[m] = (...a) => { log.from.push(tabella + '.' + m); return q; }; });
-    q.then = (res, rej) => Promise.resolve({ data: opts.dati && opts.dati[tabella] ? opts.dati[tabella] : [], error: null, count: opts.conta && opts.conta[tabella] !== undefined ? opts.conta[tabella] : 0 }).then(res, rej);
+    chain.forEach(m => { q[m] = (...a) => { log.from.push(tabella + '.' + m); log.chiamate.push({ tabella, metodo: m, args: a }); return q; }; });
+    q.then = (res, rej) => {
+      const righe = opts.dati ? opts.dati[tabella] : undefined; // letto una volta sola (opts.dati può avere getter)
+      return Promise.resolve({ data: righe || [], error: null, count: opts.conta && opts.conta[tabella] !== undefined ? opts.conta[tabella] : 0 }).then(res, rej);
+    };
     return q;
   };
   const sessione = opts.loggato === false ? null : { access_token: 't', user: { id: 'u-me', email: 'utente@test.local' } };
@@ -136,7 +139,7 @@ function creaAmbiente(opts = {}) {
         signOut: () => Promise.resolve({}), signInWithPassword: () => Promise.resolve({ data: { session: sessione }, error: null }),
       },
       from: qb,
-      rpc: (nome, args) => { log.rpc.push(nome); return Promise.resolve({ data: opts.rpc && opts.rpc[nome] !== undefined ? opts.rpc[nome] : null, error: null }); },
+      rpc: (nome, args) => { log.rpc.push(nome); log.chiamate.push({ rpc: nome, args }); return Promise.resolve({ data: opts.rpc && opts.rpc[nome] !== undefined ? opts.rpc[nome] : null, error: null }); },
       storage: { from: () => ({ upload: () => Promise.resolve({ error: null }), getPublicUrl: (n) => ({ data: { publicUrl: 'https://x/' + n } }) }) },
     }),
   };

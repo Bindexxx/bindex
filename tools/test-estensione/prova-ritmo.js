@@ -72,9 +72,10 @@ const LAVORO_MS = 300;         // lettura finta della pagina
 
   uguale('4 pagine lette (2 lotti)', pagine.length, 4);
   const distanze = pagine.slice(1).map((t, i) => t - pagine[i]);
-  // Il conto alla rovescia di popup.js va a secondi interi: 2,2 s diventano 3 s.
-  const attesa = Math.ceil(ATTESA_MS / 1000) * 1000 + LAVORO_MS;
-  controlla(`tra due pagine UN'attesa (~${(attesa / 1000).toFixed(1)} s; con due ~${((attesa + Math.ceil(ATTESA_MS / 1000) * 1000) / 1000).toFixed(1)} s)`,
+  // Un'attesa = 2,2 s + 0,3 s di lettura (fino alla 5.38 il conto alla rovescia
+  // andava a secondi interi: ~3,3 s). Con due turni per carta: almeno 4,7 s.
+  const attesa = ATTESA_MS + LAVORO_MS;
+  controlla(`tra due pagine UN'attesa (~${(attesa / 1000).toFixed(1)} s; con due turni almeno ${((attesa + ATTESA_MS) / 1000).toFixed(1)} s)`,
     distanze.length === 3 && distanze.every(x => x >= ATTESA_MS - 100 && x < attesa + 1000),
     distanze.map(x => (x / 1000).toFixed(1) + ' s').join(', '));
   uguale('un turno Cardmarket per pagina', contaDopo - contaPrima, 4);
@@ -106,6 +107,17 @@ const LAVORO_MS = 300;         // lettura finta della pagina
     distSealed.map(x => (x / 1000).toFixed(1) + ' s').join(', '));
   uguale('sealed: un turno Cardmarket per pagina', c1 - c0, 4);
   controlla('sealed: prezzi scritti', azioniSealed.filter(a => a === 'aggiornaPrezzoRigaSealed').length === 4, azioniSealed);
+
+  // ── Scheda in secondo piano (dalla 5.39): Chrome può far scattare i timer
+  // ripetuti molto più di rado. L'attesa deve finire in orario lo stesso
+  // (fino alla 5.38 contava i tick: con un tick ogni 3 s, 2 s diventavano 6 s).
+  const setIntervalVero = w.setInterval;
+  w.setInterval = (fn, ms, ...a) => setIntervalVero.call(w, fn, Math.max(ms, 3000), ...a);
+  const tAttesa = Date.now();
+  await w.attendiConCountdown(2000);
+  const durataAttesa = Date.now() - tAttesa;
+  w.setInterval = setIntervalVero;
+  controlla('attesa di 2 s con timer rallentati (scheda nascosta): finisce in orario', durataAttesa >= 1900 && durataAttesa < 2800, (durataAttesa / 1000).toFixed(1) + ' s');
   w.close();
   chiudi();
 })().catch(e => { console.log('CRASH', e.stack); process.exit(1); });

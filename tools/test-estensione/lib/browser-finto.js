@@ -35,6 +35,10 @@
     location: ['BULK GIALLO', 'BINDER', 'SCAMBIO'].map(n => ({ nome: n })),
     carte: [{ location: 'BULK GIALLO' }, { location: 'BINDER' }],
     profiles: [{ banned_until: null, deleted_at: null }],
+    correzioni_manuali_carte: [
+      { id: 'c1', nome: 'MAGIKARP HS 72', errore_msg: '❌ link non più valido: scegli la versione', creato_il: new Date(ora - 3e5).toISOString() },
+      { id: 'c2', nome: 'MEW 8', errore_msg: '❌ più versioni: scegli', creato_il: new Date(ora - 9e6).toISOString() },
+    ],
   };
   const qb = (t) => {
     const q = {}; let single = false;
