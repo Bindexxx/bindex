@@ -23,7 +23,9 @@ function caricaBackground(opts = {}) {
   const ctx = {
     console: opts.console ? console : { log: muto, warn: muto, info: muto, error: (...a) => env.log.errori.push('console.error: ' + a.join(' ')) },
     chrome: env.chrome, supabase: env.supabase,
-    setTimeout, clearTimeout, setInterval, clearInterval, Date, Math, JSON, Promise, URL, URLSearchParams,
+    // opts.accelera = N: i timer del service worker durano N volte meno (prove sui 15 s di lettura).
+    setTimeout: opts.accelera ? (f, ms, ...a) => setTimeout(f, (ms || 0) / opts.accelera, ...a) : setTimeout,
+    clearTimeout, setInterval, clearInterval, Date, Math, JSON, Promise, URL, URLSearchParams,
     TextEncoder, crypto: require('crypto').webcrypto, Map, Set, Array, Object, String, Number, Error, RegExp,
     fetch: async (u, init) => {
       const url = String(u);
