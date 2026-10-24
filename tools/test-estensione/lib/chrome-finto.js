@@ -1,7 +1,7 @@
 // Chrome e Supabase finti per caricare i file dell'estensione fuori da Chrome.
 // Registrano le chiamate, non fanno rete.
 function creaAmbiente(opts = {}) {
-  const log = { alarms: [], errori: [], messaggi: [], tabs: [], rpc: [], from: [], chiamate: [] };
+  const log = { alarms: [], errori: [], messaggi: [], tabs: [], rpc: [], from: [], chiamate: [], script: [] };
   const store = opts.store || {};
   const listeners = { onMessage: [], onMessageExternal: [], onAlarm: [], onChanged: [], onUpdated: [] };
   let nextTab = 100;
@@ -9,6 +9,22 @@ function creaAmbiente(opts = {}) {
   const sveglie = new Map(opts.sveglie ? opts.sveglie.map(a => [a.name, a]) : []);
   const ev = (arr) => ({ addListener: (f) => arr.push(f), removeListener: (f) => { const i = arr.indexOf(f); if (i >= 0) arr.splice(i, 1); } });
   const cbOrPromise = (val, cb) => { if (typeof cb === 'function') { setTimeout(() => cb(val), 0); return undefined; } return Promise.resolve(val); };
+  const sessione_ = opts.storeSessione || {};
+  // Archivio chrome.storage generico (usato per storage.session).
+  function archivio(dati) {
+    return {
+      get: (keys, cb) => {
+        let out = {};
+        if (keys == null) out = { ...dati };
+        else if (typeof keys === 'string') { if (keys in dati) out[keys] = dati[keys]; }
+        else if (Array.isArray(keys)) keys.forEach(k => { if (k in dati) out[k] = dati[k]; });
+        else Object.keys(keys).forEach(k => { out[k] = k in dati ? dati[k] : keys[k]; });
+        return cbOrPromise(JSON.parse(JSON.stringify(out)), cb);
+      },
+      set: (obj, cb) => { Object.assign(dati, obj); return cbOrPromise(undefined, cb); },
+      remove: (keys, cb) => { (Array.isArray(keys) ? keys : [keys]).forEach(k => delete dati[k]); return cbOrPromise(undefined, cb); },
+    };
+  }
   const storage = {
     local: {
       get: (keys, cb) => {
@@ -27,7 +43,8 @@ function creaAmbiente(opts = {}) {
       },
       remove: (keys, cb) => { (Array.isArray(keys) ? keys : [keys]).forEach(k => delete store[k]); return cbOrPromise(undefined, cb); },
     },
-    session: { get: () => Promise.resolve({}), set: () => Promise.resolve() },
+    // Dalla 5.42 la sessione Supabase può stare qui ("Mantienimi loggato" spento).
+    session: archivio(sessione_),
     onChanged: ev(listeners.onChanged),
   };
   // ── schede su pagine finte (opts.pagine, opts.rimandi) ──
@@ -42,7 +59,9 @@ function creaAmbiente(opts = {}) {
     const html = htmlPer(url);
     if (html == null) return null;
     const { JSDOM } = require('jsdom');
-    const dom = new JSDOM(html, { url, runScripts: 'outside-only' });
+    // 'dangerously': gli script iniettati come file (executeScript files, dalla
+    // 5.42) entrano come <script>, con lo stesso ambito globale come in Chrome.
+    const dom = new JSDOM(html, { url, runScripts: 'dangerously' });
     const w = dom.window;
     Object.defineProperty(w.HTMLElement.prototype, 'innerText', { get() { return this.textContent; } });
     w.scrollTo = () => {};
@@ -106,8 +125,31 @@ function creaAmbiente(opts = {}) {
     // (jsdom), con shared.js caricato come su Cardmarket. Senza: risultato vuoto.
     scripting: {
       executeScript: (o, cb) => {
+        log.script.push({ tabId: o.target && o.target.tabId, files: o.files || null, func: !!o.func });
         const esegui = async () => {
           const t = tabs.get(o.target && o.target.tabId);
+          if (opts.pagine && t && o.files) {
+            // v5.42: file dell'estensione eseguiti nella pagina finta, in ordine.
+            const w = finestraPer(t.url);
+            if (!w) return [{ result: undefined }];
+            const { cartellaEstensione } = require('./cartella-estensione');
+            // Lo script iniettato parla con l'estensione come un content script:
+            // i suoi messaggi arrivano ai listener con sender.tab = questa scheda.
+            if (!w.chrome) {
+              w.chrome = { runtime: { lastError: undefined, sendMessage: (m, cb) => {
+                log.messaggiScheda = (log.messaggiScheda || []).concat([m && m.type]);
+                listeners.onMessage.forEach(f => { try { f(m, { tab: { id: t.id }, url: t.url }, () => {}); } catch (e) { log.errori.push('onMessage (scheda): ' + e.message); } });
+                if (typeof cb === 'function') setTimeout(cb, 0);
+              } } };
+            }
+            for (const f of o.files) {
+              const el = w.document.createElement('script');
+              el.textContent = require('fs').readFileSync(require('path').join(cartellaEstensione(), f), 'utf8');
+              w.document.body.appendChild(el);
+            }
+            log.fileEseguiti = (log.fileEseguiti || []).concat(o.files.map(f => ({ url: t.url, file: f })));
+            return [{ result: undefined }];
+          }
           if (!opts.pagine || !t || !o.func) return [{ result: undefined }];
           const w = finestraPer(t.url);
           if (!w) return [{ result: undefined }];
@@ -136,7 +178,7 @@ function creaAmbiente(opts = {}) {
   };
   const sessione = opts.loggato === false ? null : { access_token: 't', user: { id: 'u-me', email: 'utente@test.local' } };
   const supabase = {
-    createClient: () => ({
+    createClient: (url, chiave, opzioni) => { log.opzioniClient = opzioni; return {
       auth: {
         getSession: () => Promise.resolve({ data: { session: sessione }, error: null }),
         onAuthStateChange: () => ({ data: { subscription: { unsubscribe() {} } } }),
@@ -145,8 +187,8 @@ function creaAmbiente(opts = {}) {
       from: qb,
       rpc: (nome, args) => { log.rpc.push(nome); log.chiamate.push({ rpc: nome, args }); return Promise.resolve({ data: opts.rpc && opts.rpc[nome] !== undefined ? opts.rpc[nome] : null, error: null }); },
       storage: { from: () => ({ upload: () => Promise.resolve({ error: null }), getPublicUrl: (n) => ({ data: { publicUrl: 'https://x/' + n } }) }) },
-    }),
+    }; },
   };
-  return { chrome, supabase, log, store, listeners, tabs, sveglie };
+  return { chrome, supabase, log, store, storeSessione: sessione_, listeners, tabs, sveglie };
 }
 module.exports = { creaAmbiente };
