@@ -26,6 +26,7 @@ fallisce.
 |---|---|
 | `prova-background.js` | `background.js` parte senza errori, crea le sveglie; il turno comune di Cardmarket non fa mai partire due carte troppo vicine (3 flussi in parallelo); riconoscimento della lista di un'espansione; nome e codice letti dall'h1. |
 | `prova-ricerca.js` | Scelta della carta giusta tra i risultati di una ricerca (`_trovaMatchCartaSingola`), con link veri di Cardmarket. I casi "NOME SET NUMERO" si attivano dalla versione 5.36. |
+| `prova-cardmarket.js` | Pagine finte di Cardmarket (dalla 5.36): link vecchio che porta alla lista dell'espansione e ricerca di riserva per nome, "NOME SET NUMERO" dal fetch, errore 429, testo della ricerca con "&", decisione dai dati letti nella scheda, content.js su una lista, offerte non comprabili. |
 | `prova-pagine.js` | Ogni pagina `.html` parte in jsdom con i suoi `<script>` nello stesso ordine della pagina vera: trova elementi mancanti, funzioni non definite e nomi `let`/`const` doppi tra file. |
 | `codice-morto.js` | Dichiarazioni di primo livello mai usate (analisi della sintassi, i commenti non contano). |
 | `schermate.js` | Schermate di app, popup, Aggiungi carte e changelog con dati finti. `PLAYWRIGHT_MODULE` = percorso di Playwright se non è installato qui; `CHROME_PATH` = percorso di Chrome. |
