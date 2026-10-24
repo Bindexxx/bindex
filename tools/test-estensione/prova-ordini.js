@@ -12,6 +12,7 @@
 //   4.2 "Nessuna carta da controllare" → ordine 'completato' con totale 0, non errore;
 //   4.3 "mi unisco" guarda anche l'ultima attività dell'ordine;
 //   4.10 coda sempre piena: ogni 25 carte un lotto solo di 3 prezzi.
+// dalla 5.41: app.js ricarica l'estensione se il motore in uso è vecchio (una volta per versione).
 const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
@@ -24,6 +25,11 @@ const { controlla, uguale, chiudi } = require('./lib/verifica');
 const EXT = cartellaEstensione();
 const CM = 'https://www.cardmarket.com';
 const attendi = (ms) => new Promise(r => setTimeout(r, ms));
+// Risposta del motore a CARDSYNC_VERSIONE_MOTORE (dalla 5.41), per le pagine caricate da sole.
+const motoreFinto = (v) => (msg, sender, sendResponse) => {
+  if (msg && msg.type === 'CARDSYNC_VERSIONE_MOTORE') { sendResponse({ motore: v }); return false; }
+  return false;
+};
 
 // Carica una pagina dell'estensione in jsdom con gli script locali, come prova-ritmo.js.
 function caricaPagina(file, env, { prima } = {}) {
@@ -153,7 +159,8 @@ function caricaPagina(file, env, { prima } = {}) {
   // ═══ PAGINE ═══════════════════════════════════════════════════════════════
   // 4.1 — app.js: cambia sezione e avvisa l'iframe della sezione
   {
-    const envApp = creaAmbiente({ store: { selectedTheme: 'default' } });
+    const envApp = creaAmbiente({ version: versione, store: { selectedTheme: 'default' } });
+    envApp.listeners.onMessage.push(motoreFinto(versione)); // motore aggiornato: nessuna ricarica (5.41)
     envApp.chrome.tabs.getCurrent = (cb) => setTimeout(() => cb({ id: 5 }), 0);
     const { w, errori } = caricaPagina('app.html', envApp);
     await attendi(300);
@@ -176,6 +183,30 @@ function caricaPagina(file, env, { prima } = {}) {
     uguale('app.js: messaggio per un\'altra scheda → nessuna risposta', altra, 'nessuna risposta');
     controlla('app.js: nessun errore', errori.length === 0, errori);
     w.close();
+  }
+
+  // 5.41 — app.js controlla il motore all'apertura e ricarica l'estensione se è vecchio
+  if (maj > 5 || (maj === 5 && min >= 41)) {
+    const apri = async (rispostaMotore, store = {}) => {
+      const e = creaAmbiente({ version: versione, store: { selectedTheme: 'default', ...store } });
+      if (rispostaMotore) e.listeners.onMessage.push(motoreFinto(rispostaMotore));
+      const { w, errori } = caricaPagina('app.html', e);
+      await attendi(300);
+      const conSrc = [...w.document.querySelectorAll('.column iframe[data-src]')].filter(f => f.getAttribute('src')).length;
+      const ricariche = e.log.messaggi.filter(m => m === 'RELOAD').length;
+      w.close();
+      return { ricariche, conSrc, store: e.store, errori };
+    };
+    const ok = await apri(versione);
+    uguale('motore aggiornato: nessuna ricarica, sezioni caricate', [ok.ricariche, ok.conSrc > 0], [0, true]);
+    const vecchio = await apri(null); // motore che non conosce la domanda (≤ 5.40)
+    uguale('motore vecchio (non risponde): una ricarica, sezioni non caricate', [vecchio.ricariche, vecchio.conSrc, vecchio.store.ricaricaMotoreDaApp], [1, 0, versione]);
+    const diverso = await apri('5.39');
+    uguale('motore di un\'altra versione: una ricarica', diverso.ricariche, 1);
+    const giaFatto = await apri(null, { ricaricaMotoreDaApp: versione });
+    uguale('già ricaricato per questa versione: niente seconda ricarica', [giaFatto.ricariche, giaFatto.conSrc > 0], [0, true]);
+    uguale('motore: risponde con la sua versione', await interno({ type: 'CARDSYNC_VERSIONE_MOTORE' }), { motore: versione });
+    controlla('app.js con il controllo del motore: nessun errore', [ok, vecchio, diverso, giaFatto].every(x => x.errori.length === 0), [ok, vecchio, diverso, giaFatto].map(x => x.errori));
   }
 
   // popup.js con il service worker vero (stesso Chrome finto)
