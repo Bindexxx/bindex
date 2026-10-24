@@ -124,7 +124,7 @@ function creaAmbiente(opts = {}) {
     const q = { _t: tabella };
     const chain = ['select', 'eq', 'neq', 'in', 'or', 'not', 'gt', 'gte', 'lt', 'lte', 'order', 'limit', 'range', 'update', 'insert', 'delete', 'is', 'maybeSingle', 'single', 'upsert'];
     chain.forEach(m => { q[m] = (...a) => { log.from.push(tabella + '.' + m); return q; }; });
-    q.then = (res, rej) => Promise.resolve({ data: opts.dati && opts.dati[tabella] ? opts.dati[tabella] : [], error: null, count: 0 }).then(res, rej);
+    q.then = (res, rej) => Promise.resolve({ data: opts.dati && opts.dati[tabella] ? opts.dati[tabella] : [], error: null, count: opts.conta && opts.conta[tabella] !== undefined ? opts.conta[tabella] : 0 }).then(res, rej);
     return q;
   };
   const sessione = opts.loggato === false ? null : { access_token: 't', user: { id: 'u-me', email: 'utente@test.local' } };

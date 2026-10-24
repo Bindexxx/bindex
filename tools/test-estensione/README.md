@@ -28,9 +28,10 @@ fallisce.
 | `prova-ricerca.js` | Scelta della carta giusta tra i risultati di una ricerca (`_trovaMatchCartaSingola`), con link veri di Cardmarket. I casi "NOME SET NUMERO" si attivano dalla versione 5.36. |
 | `prova-cardmarket.js` | Pagine finte di Cardmarket (dalla 5.36): link vecchio che porta alla lista dell'espansione e ricerca di riserva per nome, "NOME SET NUMERO" dal fetch, errore 429, testo della ricerca con "&", decisione dai dati letti nella scheda, content.js su una lista, offerte non comprabili. |
 | `prova-pagine.js` | Ogni pagina `.html` parte in jsdom con i suoi `<script>` nello stesso ordine della pagina vera: trova elementi mancanti, funzioni non definite e nomi `let`/`const` doppi tra file. |
+| `prova-wishlist.js` | Controllo prezzi wishlist di gruppo (dalla 5.37): le azioni dell'adapter chiamano le funzioni di `sql/118` con i parametri scritti lì; la sessione del controllo prezzi usa solo le azioni del suo dominio e tiene il proprietario della riga (contributi); home dell'app senza sezione Wishlist, "di cui wishlist" e errori recenti dalle correzioni manuali. |
 | `codice-morto.js` | Dichiarazioni di primo livello mai usate (analisi della sintassi, i commenti non contano). |
 | `schermate.js` | Schermate di app, popup, Aggiungi carte e changelog con dati finti. `PLAYWRIGHT_MODULE` = percorso di Playwright se non è installato qui; `CHROME_PATH` = percorso di Chrome. |
-| `lib/chrome-finto.js` | `chrome.*` e Supabase finti per Node: registrano sveglie, messaggi, schede, RPC e tabelle toccate. |
+| `lib/chrome-finto.js` | `chrome.*` e Supabase finti per Node: registrano sveglie, messaggi, schede, RPC e tabelle toccate. `opts.dati` = righe per tabella, `opts.conta` = conteggio per tabella. |
 | `lib/browser-finto.js` | Lo stesso, iniettato nelle pagine per le schermate, con dati di esempio. |
 | `lib/carica-background.js` | Carica il service worker; `opts.fetch` permette di servire pagine finte di Cardmarket. |
 
