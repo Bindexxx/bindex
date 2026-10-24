@@ -38,6 +38,9 @@ const PAGINE = {
   const versione = JSON.parse(fs.readFileSync(path.join(EXT, 'manifest.json'), 'utf8')).version;
   const [maj, min] = versione.split('.').map(Number);
   if (maj < 5 || (maj === 5 && min < 36)) { console.log(`Versione ${versione}: prove dalla 5.36, saltate.`); process.exit(0); }
+  // Dalla 5.43 (Fase 6.2) un link diretto non si scarica più prima: lo legge la scheda
+  // del prezzo (pagine finte), e dalla ricerca non si scarica più la pagina della carta.
+  const dalla543 = maj > 5 || (maj === 5 && min >= 43);
 
   const richieste = [];
   const { ctx } = caricaBackground({
@@ -62,17 +65,37 @@ const PAGINE = {
 
   // 1.4 ripiego: ricerca per nome → le 2 versioni vere, con il motivo
   richieste.length = 0;
-  const r2 = await ctx._leggiNomeDaCardmarket(B + 'HeartGold-SoulSilver/Magikarp-HS72', 'IT', 'NM', '', false, 0, null, null,
-    ctx._urlRicercaAutonoma('MAGIKARP HS 72'));
-  uguale('link vecchio + ricerca per nome: scelta tra le 2 versioni vere',
-    (r2.opzioni || []).map(o => o.urlSingles.split('/').pop()), ['Magikarp-V1-HS72', 'Magikarp-V2-HS72']);
-  controlla('link vecchio + ricerca per nome: motivo "link non valido"', r2.linkNonValido === true && r2.disambiguation === true, r2);
-  uguale('link vecchio + ricerca: 2 richieste in tutto (nessun tentativo ripetuto)', richieste.length, 2);
+  if (!dalla543) {
+    const r2 = await ctx._leggiNomeDaCardmarket(B + 'HeartGold-SoulSilver/Magikarp-HS72', 'IT', 'NM', '', false, 0, null, null,
+      ctx._urlRicercaAutonoma('MAGIKARP HS 72'));
+    uguale('link vecchio + ricerca per nome: scelta tra le 2 versioni vere',
+      (r2.opzioni || []).map(o => o.urlSingles.split('/').pop()), ['Magikarp-V1-HS72', 'Magikarp-V2-HS72']);
+    controlla('link vecchio + ricerca per nome: motivo "link non valido"', r2.linkNonValido === true && r2.disambiguation === true, r2);
+    uguale('link vecchio + ricerca: 2 richieste in tutto (nessun tentativo ripetuto)', richieste.length, 2);
+  } else {
+    // La scheda del prezzo apre il link vecchio, Cardmarket la rimanda alla lista
+    // dell'espansione → link non valido → ricerca per nome (scaricata).
+    const conScheda = caricaBackground({
+      fetch: async (url) => { richieste.push(url); return PAGINE[url] ? rispostaFinta(PAGINE[url]) : null; },
+      pagine: { [B + 'HeartGold-SoulSilver']: PAGINE[B + 'HeartGold-SoulSilver/Magikarp-HS72'] },
+      rimandi: { [B + 'HeartGold-SoulSilver/Magikarp-HS72']: B + 'HeartGold-SoulSilver' },
+      sharedJs: fs.readFileSync(path.join(EXT, 'shared.js'), 'utf8'),
+    });
+    const r2 = await conScheda.ctx._leggiNomeDaCardmarket(B + 'HeartGold-SoulSilver/Magikarp-HS72', 'IT', 'NM', '', false, 0, null, null,
+      conScheda.ctx._urlRicercaAutonoma('MAGIKARP HS 72'));
+    uguale('link vecchio + ricerca per nome: scelta tra le 2 versioni vere',
+      (r2.opzioni || []).map(o => o.urlSingles.split('/').pop()), ['Magikarp-V1-HS72', 'Magikarp-V2-HS72']);
+    controlla('link vecchio + ricerca per nome: motivo "link non valido"', r2.linkNonValido === true && r2.disambiguation === true, r2);
+    const pagineAperte = conScheda.env.log.tabs.filter(t => t[0] === 'create' || t[0] === 'update').length;
+    uguale('link vecchio + ricerca: 2 richieste in tutto (la scheda e la ricerca)', [pagineAperte, richieste.length], [1, 1]);
+  }
 
   // 1.2 ricerca "NOME SET NUMERO" dal fetch: scelta giusta senza chiedere
+  richieste.length = 0;
   const r3 = await ctx._risolviSinglesENomeFetch(ctx._urlRicercaAutonoma('ZUBAT SIT 103'), '');
   uguale('"ZUBAT SIT 103": presa Zubat-SIT103', (r3.urlSingles || '').split('/').pop(), 'Zubat-SIT103');
-  uguale('"ZUBAT SIT 103": nome e codice dalla pagina', [r3.nome, r3.codice], ['Zubat', 'SIT 103']);
+  if (!dalla543) uguale('"ZUBAT SIT 103": nome e codice dalla pagina', [r3.nome, r3.codice], ['Zubat', 'SIT 103']);
+  else uguale('"ZUBAT SIT 103": una sola richiesta (nome e codice li legge poi la scheda)', [richieste.length, r3.nome, r3.codice], [1, null, null]);
 
   // 1.8 429
   const r4 = await ctx._risolviSinglesENomeFetch(ctx._urlRicercaAutonoma('TROPPE 1'), '');

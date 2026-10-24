@@ -49,7 +49,10 @@ function creaAmbiente(opts = {}) {
   };
   // ── schede su pagine finte (opts.pagine, opts.rimandi) ──
   const finestre = new Map(); // url → window jsdom
-  function urlFinale(url) { let u = url; for (let i = 0; i < 5 && opts.rimandi && opts.rimandi[u]; i++) u = opts.rimandi[u]; return u; }
+  // Un rimando vale anche con i filtri (?language=…): Cardmarket rimanda un link vecchio
+  // alla lista dell'espansione qualunque sia la query.
+  function rimandoPer(u) { return opts.rimandi && (opts.rimandi[u] || opts.rimandi[u.split('?')[0]]); }
+  function urlFinale(url) { let u = url; for (let i = 0; i < 5 && rimandoPer(u); i++) u = rimandoPer(u); return u; }
   function htmlPer(url) {
     if (!opts.pagine) return null;
     return opts.pagine[url] ?? opts.pagine[url.split('?')[0]] ?? null;
