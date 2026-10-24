@@ -3,7 +3,7 @@
 function creaAmbiente(opts = {}) {
   const log = { alarms: [], errori: [], messaggi: [], tabs: [], rpc: [], from: [] };
   const store = opts.store || {};
-  const listeners = { onMessage: [], onMessageExternal: [], onAlarm: [], onChanged: [] };
+  const listeners = { onMessage: [], onMessageExternal: [], onAlarm: [], onChanged: [], onUpdated: [] };
   let nextTab = 100;
   const tabs = new Map();
   const ev = (arr) => ({ addListener: (f) => arr.push(f), removeListener: (f) => { const i = arr.indexOf(f); if (i >= 0) arr.splice(i, 1); } });
@@ -29,6 +29,35 @@ function creaAmbiente(opts = {}) {
     session: { get: () => Promise.resolve({}), set: () => Promise.resolve() },
     onChanged: ev(listeners.onChanged),
   };
+  // ── schede su pagine finte (opts.pagine, opts.rimandi) ──
+  const finestre = new Map(); // url → window jsdom
+  function urlFinale(url) { let u = url; for (let i = 0; i < 5 && opts.rimandi && opts.rimandi[u]; i++) u = opts.rimandi[u]; return u; }
+  function htmlPer(url) {
+    if (!opts.pagine) return null;
+    return opts.pagine[url] ?? opts.pagine[url.split('?')[0]] ?? null;
+  }
+  function finestraPer(url) {
+    if (finestre.has(url)) return finestre.get(url);
+    const html = htmlPer(url);
+    if (html == null) return null;
+    const { JSDOM } = require('jsdom');
+    const dom = new JSDOM(html, { url, runScripts: 'outside-only' });
+    const w = dom.window;
+    Object.defineProperty(w.HTMLElement.prototype, 'innerText', { get() { return this.textContent; } });
+    w.scrollTo = () => {};
+    if (opts.sharedJs) w.eval(opts.sharedJs);
+    finestre.set(url, w);
+    return w;
+  }
+  function naviga(t, url) {
+    const finale = urlFinale(url);
+    t.url = finale; t.status = 'loading';
+    if (!opts.pagine) { t.status = 'complete'; return; }
+    setTimeout(() => {
+      t.status = 'complete';
+      listeners.onUpdated.forEach(f => { try { f(t.id, { status: 'complete' }, t); } catch (e) { log.errori.push('onUpdated: ' + e.message); } });
+    }, 30);
+  }
   const chrome = {
     runtime: {
       id: 'fake',
@@ -60,16 +89,33 @@ function creaAmbiente(opts = {}) {
     },
     tabs: {
       query: (q, cb) => cbOrPromise([...tabs.values()].filter(t => !q.url || t.url.startsWith(q.url.replace('*', ''))), cb),
-      create: (p, cb) => { const t = { id: nextTab++, url: p.url, windowId: 1, status: 'complete' }; tabs.set(t.id, t); log.tabs.push(['create', p.url]); return cbOrPromise(t, cb); },
-      update: (id, p, cb) => { const t = tabs.get(id); if (t && p.url) t.url = p.url; log.tabs.push(['update', id, p.url]); return cbOrPromise(t, cb); },
+      create: (p, cb) => { const t = { id: nextTab++, url: p.url, windowId: 1, status: 'complete' }; tabs.set(t.id, t); log.tabs.push(['create', p.url]); naviga(t, p.url); return cbOrPromise(t, cb); },
+      update: (id, p, cb) => { const t = tabs.get(id); if (t && p.url) naviga(t, p.url); log.tabs.push(['update', id, p.url]); return cbOrPromise(t, cb); },
       remove: (id, cb) => { tabs.delete(id); log.tabs.push(['remove', id]); return cbOrPromise(undefined, cb); },
       get: (id, cb) => cbOrPromise(tabs.get(id), cb),
       getCurrent: (cb) => cbOrPromise(undefined, cb),
       sendMessage: () => Promise.resolve(),
-      onUpdated: ev([]), onRemoved: ev([]),
+      onUpdated: ev(listeners.onUpdated), onRemoved: ev([]),
     },
     windows: { update: (i, p, cb) => cbOrPromise({}, cb), getAll: () => Promise.resolve([{ id: 1, focused: true }]) },
-    scripting: { executeScript: (o, cb) => cbOrPromise([{ result: undefined }], cb) },
+    // Con opts.pagine (url → html) gli script iniettati girano davvero su una pagina finta
+    // (jsdom), con shared.js caricato come su Cardmarket. Senza: risultato vuoto.
+    scripting: {
+      executeScript: (o, cb) => {
+        const esegui = async () => {
+          const t = tabs.get(o.target && o.target.tabId);
+          if (!opts.pagine || !t || !o.func) return [{ result: undefined }];
+          const w = finestraPer(t.url);
+          if (!w) return [{ result: undefined }];
+          const fn = w.eval('(' + o.func.toString() + ')');
+          const result = await fn.apply(null, o.args || []);
+          return [{ result: result === undefined ? undefined : JSON.parse(JSON.stringify(result)) }];
+        };
+        const p = esegui().catch(e => { log.errori.push('executeScript: ' + e.message); return [{ result: undefined }]; });
+        if (typeof cb === 'function') { p.then(r => cb(r)); return undefined; }
+        return p;
+      },
+    },
     declarativeNetRequest: { updateDynamicRules: () => Promise.resolve() },
     offscreen: { createDocument: () => Promise.resolve() },
     action: { onClicked: ev([]) },
