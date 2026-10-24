@@ -672,7 +672,7 @@
             ).join('');
 
             tr.innerHTML = `
-                <td data-label="Nome"><input type="text" placeholder="es. Booster Box Obsidian Flames" value="${escapeHtml(nameVal)}" oninput="handleEntryInputSealed(this)"></td>
+                <td data-label="Nome"><input type="text" placeholder="Nome come su Cardmarket (italiano o inglese)" title="Nome del prodotto come su Cardmarket, in italiano o in inglese — es. Booster Box Obsidian Flames, Set Allenatore Fuoriclasse Evoluzioni Prismatiche" value="${escapeHtml(nameVal)}" oninput="handleEntryInputSealed(this)"></td>
                 <td data-label="Lingua">
                     <select onchange="handleEntryInputSealed(this)">
                         <option value="IT" ${langVal === 'IT' ? 'selected' : ''}>IT</option>
