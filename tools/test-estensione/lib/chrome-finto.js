@@ -6,6 +6,7 @@ function creaAmbiente(opts = {}) {
   const listeners = { onMessage: [], onMessageExternal: [], onAlarm: [], onChanged: [], onUpdated: [] };
   let nextTab = 100;
   const tabs = new Map();
+  const sveglie = new Map(opts.sveglie ? opts.sveglie.map(a => [a.name, a]) : []);
   const ev = (arr) => ({ addListener: (f) => arr.push(f), removeListener: (f) => { const i = arr.indexOf(f); if (i >= 0) arr.splice(i, 1); } });
   const cbOrPromise = (val, cb) => { if (typeof cb === 'function') { setTimeout(() => cb(val), 0); return undefined; } return Promise.resolve(val); };
   const storage = {
@@ -82,9 +83,12 @@ function creaAmbiente(opts = {}) {
       },
     },
     storage,
+    // Sveglie: registro come in Chrome (dalla 5.40 l'estensione le crea solo se mancano).
     alarms: {
-      create: (name, info) => log.alarms.push({ name, info, t: Date.now() }),
-      clear: () => Promise.resolve(true), get: () => Promise.resolve(null), getAll: () => Promise.resolve([]),
+      create: (name, info) => { log.alarms.push({ name, info, t: Date.now() }); sveglie.set(name, { name, ...(info || {}) }); },
+      clear: (name) => Promise.resolve(sveglie.delete(name)),
+      get: (name) => Promise.resolve(sveglie.get(name)),
+      getAll: () => Promise.resolve([...sveglie.values()]),
       onAlarm: ev(listeners.onAlarm),
     },
     tabs: {
@@ -143,6 +147,6 @@ function creaAmbiente(opts = {}) {
       storage: { from: () => ({ upload: () => Promise.resolve({ error: null }), getPublicUrl: (n) => ({ data: { publicUrl: 'https://x/' + n } }) }) },
     }),
   };
-  return { chrome, supabase, log, store, listeners, tabs };
+  return { chrome, supabase, log, store, listeners, tabs, sveglie };
 }
 module.exports = { creaAmbiente };

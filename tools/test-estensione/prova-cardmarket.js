@@ -13,6 +13,11 @@ const { controlla, uguale, chiudi } = require('./lib/verifica');
 const CM = 'https://www.cardmarket.com';
 const B = CM + '/it/Pokemon/Products/Singles/';
 
+// shared.js + content.js come li carica Chrome (manifest, content_scripts): stesso
+// ambito globale, quindi le costanti di shared.js (es. TEMPO_MAX_LETTURA_MS dalla
+// 5.40) si vedono da content.js. Due eval separati non lo farebbero.
+const scriptCardmarket = () => fs.readFileSync(path.join(cartellaEstensione(), 'shared.js'), 'utf8') + '\n;\n'
+  + fs.readFileSync(path.join(cartellaEstensione(), 'content.js'), 'utf8');
 const link = (slug) => `<a href="/it/Pokemon/Products/Singles/${slug}">${slug}</a>`;
 const PAGINE = {
   // Link vecchio: Cardmarket rimanda alla lista dell'espansione (prima pagina, senza Magikarp).
@@ -113,8 +118,7 @@ const PAGINE = {
   dom.window.chrome = { runtime: { sendMessage: (m, cb) => { mandati.push(m); if (cb) cb(); }, lastError: undefined } };
   dom.window.scrollTo = () => {}; // jsdom non li ha
   Object.defineProperty(dom.window.HTMLElement.prototype, 'innerText', { get() { return this.textContent; } });
-  dom.window.eval(fs.readFileSync(path.join(EXT, 'shared.js'), 'utf8'));
-  dom.window.eval(fs.readFileSync(path.join(EXT, 'content.js'), 'utf8'));
+  dom.window.eval(scriptCardmarket());
   uguale('content.js su una lista: prezzo "LinkNonValido"', mandati.filter(m => m.type === 'PREZZO_TROVATO').map(m => m.prezzo), ['LinkNonValido']);
   dom.window.close();
   // ...e su una pagina carta normale no.
@@ -124,8 +128,7 @@ const PAGINE = {
   dom2.window.chrome = { runtime: { sendMessage: (m, cb) => { mandati2.push(m); if (cb) cb(); }, lastError: undefined } };
   dom2.window.scrollTo = () => {};
   Object.defineProperty(dom2.window.HTMLElement.prototype, 'innerText', { get() { return this.textContent; } });
-  dom2.window.eval(fs.readFileSync(path.join(EXT, 'shared.js'), 'utf8'));
-  dom2.window.eval(fs.readFileSync(path.join(EXT, 'content.js'), 'utf8'));
+  dom2.window.eval(scriptCardmarket());
   await new Promise(r => setTimeout(r, 300));
   uguale('content.js su una pagina carta: nessun "LinkNonValido"', mandati2.filter(m => m.prezzo === 'LinkNonValido').length, 0);
   dom2.window.close();
