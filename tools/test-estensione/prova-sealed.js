@@ -18,21 +18,25 @@ const P = CM + '/it/Pokemon/Products/';
 const RIC = (q) => CM + '/it/Pokemon/Products/Search?searchMode=v2&searchString=' + encodeURIComponent(q).replace(/%20/g, '+') + '&language=5';
 const slug = (u) => (u || '').split('?')[0].split('/').pop();
 
-// Risultati della ricerca: per ogni prodotto un link-immagine senza testo e un link col nome.
-const risultato = (perc, nome) => `<div class="row"><a href="/it/Pokemon/Products/${perc}"><img src="x.jpg"></a>
-  <a href="/it/Pokemon/Products/${perc}">${nome}</a></div>`;
+// Risultati della ricerca: per ogni prodotto un link-immagine senza testo e un link con il
+// nome E il prezzo minimo, senza spazi tra i due (come visto dal vivo il 25/10:
+// "Set Allenatore Fuoriclasse di Evoluzioni PrismaticheDa 80,90 €").
+const risultato = (perc, nome, da) => `<div class="row"><a href="/it/Pokemon/Products/${perc}"><img src="x.jpg"></a>
+  <a href="/it/Pokemon/Products/${perc}"><span class="nome">${nome}</span><span class="prezzo">Da ${da} €</span></a></div>`;
+// I 3 risultati veri della ricerca "Set Allenatore Fuoriclasse di Evoluzioni Prismatiche" (25/10),
+// più la scatola vuota.
 const ETB = [
-  ['Elite-Trainer-Boxes/Prismatic-Evolutions-Elite-Trainer-Box', 'Set Allenatore Fuoriclasse di Evoluzioni Prismatiche'],
-  ['Elite-Trainer-Boxes/Prismatic-Evolutions-Pokemon-Center-Elite-Trainer-Box', 'Set Allenatore Fuoriclasse Pok&eacute;mon Center di Evoluzioni Prismatiche'],
-  ['Elite-Trainer-Boxes/Prismatic-Evolutions-Elite-Trainer-Box-10-Pack', 'Confezione da 10 Set Allenatore Fuoriclasse di Evoluzioni Prismatiche'],
-  ['Elite-Trainer-Boxes/Prismatic-Evolutions-Elite-Trainer-Box-Empty', 'Set Allenatore Fuoriclasse di Evoluzioni Prismatiche: scatola vuota'],
+  ['Elite-Trainer-Boxes/Prismatic-Evolutions-Elite-Trainer-Box', 'Set Allenatore Fuoriclasse di Evoluzioni Prismatiche', '80,90'],
+  ['Elite-Trainer-Boxes/Prismatic-Evolutions-Pokemon-Center-Elite-Trainer-Box', 'Set Allenatore Fuoriclasse Pok&eacute;mon Center di Evoluzioni Prismatiche', '430,00'],
+  ['Elite-Trainer-Boxes/Prismatic-Evolutions-10-Elite-Trainer-Box-Case', 'Confezione di 10 Set Allenatore Fuoriclasse di Evoluzioni Prismatiche', '1.150,00'],
+  ['Elite-Trainer-Boxes/Prismatic-Evolutions-Elite-Trainer-Box-Empty', 'Set Allenatore Fuoriclasse di Evoluzioni Prismatiche: scatola vuota', '5,00'],
 ];
 const OBF = [
-  ['Booster-Boxes/Obsidian-Flames-Booster-Box', 'Box di buste di espansione Ossidiana Infuocata'],
-  ['Booster-Boxes/Obsidian-Flames-Booster-Box-Case', 'Cassa di box di buste di espansione Ossidiana Infuocata'],
+  ['Booster-Boxes/Obsidian-Flames-Booster-Box', 'Box di buste di espansione Ossidiana Infuocata', '150,00'],
+  ['Booster-Boxes/Obsidian-Flames-Booster-Box-Case', 'Cassa di box di buste di espansione Ossidiana Infuocata', '900,00'],
 ];
 const paginaRicerca = (righe) => `<html><head><title>Risultati Di Ricerca | Cardmarket</title></head><body><h1>Risultati Di Ricerca</h1>
-  <a href="/it/Pokemon/Products/Elite-Trainer-Boxes">Set Allenatore Fuoriclasse</a>${righe.map(([p, n]) => risultato(p, n)).join('')}</body></html>`;
+  <a href="/it/Pokemon/Products/Elite-Trainer-Boxes">Set Allenatore Fuoriclasse</a>${righe.map(([p, n, da]) => risultato(p, n, da)).join('')}</body></html>`;
 
 // Offerta di un prodotto sealed (bandiera = primo span[aria-label]; carrello comprabile o grigio).
 const offerta = (lingua, prezzo, comprabile = true) => `<div class="article-row"><div class="product-attributes"><span aria-label="${lingua}"></span></div>
@@ -62,7 +66,7 @@ const paginaProdotto = (h1, offerte) => `<html><head><title>${h1} | Cardmarket</
     const links = ctx._estraiLinkSealed(htmlEtb);
     const testi = ctx._testiLinkSealed(htmlEtb);
     uguale('ricerca: 4 prodotti (la categoria esclusa)', links.length, 4);
-    uguale('nome mostrato dalla ricerca (entità decodificate, link-immagine senza testo ignorato)',
+    uguale('nome mostrato dalla ricerca (senza "Da … €", entità decodificate, link-immagine senza testo ignorato)',
       testi.get(P + ETB[1][0]), ['Set Allenatore Fuoriclasse Pokémon Center di Evoluzioni Prismatiche']);
     uguale('nome italiano → Elite Trainer Box (non Pokémon Center, non confezione da 10, non scatola vuota)', slug(ctx._trovaMatchSealed(links, IT_ETB, testi)), slug(ETB_URL));
     uguale('nome inglese → stesso prodotto', slug(ctx._trovaMatchSealed(links, EN_ETB, testi)), slug(ETB_URL));
@@ -108,7 +112,11 @@ const paginaProdotto = (h1, offerte) => `<html><head><title>${h1} | Cardmarket</
 
   // Stessa scelta quando la ricerca si legge nella scheda (fetch bloccato).
   const viaScheda = await ctx._risolviProdottoSealedTab(RIC(IT_ETB), 'IT', null, null);
-  uguale('scheda della ricerca, nome italiano → Elite Trainer Box con ?language=5', [slug(viaScheda.urlProdotto), (viaScheda.urlProdotto || '').split('?')[1]], [slug(ETB_URL), 'language=5']);
+  uguale('scheda della ricerca, nome italiano → Elite Trainer Box con ?language=5 (caso visto dal vivo il 25/10)', [slug(viaScheda.urlProdotto), (viaScheda.urlProdotto || '').split('?')[1]], [slug(ETB_URL), 'language=5']);
+  pagine[RIC('Set Allenatore Fuoriclasse Scintille')] = paginaRicerca(ETB.slice(0, 3));
+  const sceltaScheda = await ctx._risolviProdottoSealedTab(RIC('Set Allenatore Fuoriclasse Scintille'), 'IT', null, null);
+  uguale('scheda, ricerca che non decide: scelta manuale con i nomi puliti (niente "Da … €")', (sceltaScheda.opzioni || []).map(o => o.label),
+    ['Set Allenatore Fuoriclasse di Evoluzioni Prismatiche', 'Set Allenatore Fuoriclasse Pokémon Center di Evoluzioni Prismatiche', 'Confezione di 10 Set Allenatore Fuoriclasse di Evoluzioni Prismatiche']);
 
   // Nessuna offerta comprabile nella lingua: niente prezzo (prima: il primo della pagina).
   const soloEn = await ctx._leggiPrezzoSealed(P + 'Elite-Trainer-Boxes/Solo-Inglese-ETB?language=5', null, null);
