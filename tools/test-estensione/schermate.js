@@ -23,7 +23,10 @@ const server = http.createServer((req, res) => {
 
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.CHROME_PATH || '/opt/google/chrome/chrome', args: ['--no-sandbox'] });
-  const init = fs.readFileSync(path.join(__dirname, 'lib/browser-finto.js'), 'utf8');
+  // Versione mostrata nella barra dell'app = quella del manifest provato (prima fissa a 5.46).
+  const versione = JSON.parse(fs.readFileSync(path.join(EXT, 'manifest.json'), 'utf8')).version;
+  const init = fs.readFileSync(path.join(__dirname, 'lib/browser-finto.js'), 'utf8')
+    .replace("getManifest: () => ({ version: '5.46' })", `getManifest: () => ({ version: '${versione}' })`);
   // Dalla 5.46: le due larghezze del piano (1.440 e 1.180), la Coda anche a
   // 1.024, lo scuro (?scuro, vedi lib/browser-finto.js) e il menu utente aperto.
   const schermate = [
