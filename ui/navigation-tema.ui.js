@@ -30,6 +30,7 @@
                 document.body.classList.remove('dark-mode');
             }
             applicaColoriTema();
+            mandaTemaScuroAEstensione(isDark); // ui/extension.ui.js
         }
 
         // ── TEMA A 2 COLORI (STEP 1 restyle "cornice Pokédex", 2026-09-17) ──

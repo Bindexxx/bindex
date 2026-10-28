@@ -87,6 +87,18 @@
         }
 
 
+        // Estensione 5.46: il chiaro/scuro scelto qui vale subito anche
+        // nell'estensione (CARDSYNC_SET_TEMA in background.js, le pagine
+        // aperte cambiano senza ricaricarsi). Prima arrivava solo con "Apri
+        // l'app". Nessuna risposta attesa: senza estensione non succede nulla.
+        function mandaTemaScuroAEstensione(isDark) {
+            if (!window.chrome || !chrome.runtime || !chrome.runtime.sendMessage) return;
+            try {
+                chrome.runtime.sendMessage(ID_ESTENSIONE_CARDSYNC, { type: 'CARDSYNC_SET_TEMA', temaScuro: !!isDark }, () => { void chrome.runtime.lastError; });
+            } catch (_) { /* estensione assente */ }
+        }
+
+
         function _mandaAperturaAppAEstensione() {
             return new Promise((resolve) => {
                 if (!window.chrome || !chrome.runtime || !chrome.runtime.sendMessage) { resolve(false); return; }

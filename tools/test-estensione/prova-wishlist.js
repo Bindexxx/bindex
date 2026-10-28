@@ -148,15 +148,32 @@ async function avviaApp(opts) {
   controlla('app.html parte senza errori', errori.length === 0, errori);
   controlla('nessuna colonna wishlist', !d.querySelector('.column[data-sezione="wishlist"]'));
   controlla('nessun bottone verso #wishlist', !d.querySelector('[data-vai-a="wishlist"]'));
-  const home = (d.getElementById('codaPendentePrincipaleBody') || {}).textContent || '';
-  const piatto = home.replace(/\s+/g, ' ');
+  // Dalla 5.46 la home è "Adesso" con tre tessere: i numeri di prima (barre,
+  // "di cui wishlist", "Tue carte da sistemare") stanno solo in "Coda del gruppo".
+  const [maj, min] = JSON.parse(fs.readFileSync(path.join(EXT, 'manifest.json'), 'utf8')).version.split('.').map(Number);
+  const dalla546 = maj > 5 || (maj === 5 && min >= 46);
+  const dettaglio = ((d.getElementById('codaPendenteDettaglioBody') || {}).textContent || '').replace(/\s+/g, ' ');
+  const piatto = dalla546 ? dettaglio : ((d.getElementById('codaPendentePrincipaleBody') || {}).textContent || '').replace(/\s+/g, ' ');
   controlla('home: riga "di cui wishlist" 1 in attesa · 1 in corso', /di cui wishlist 1 in attesa · 1 in corso/.test(piatto), piatto.slice(0, 400));
   controlla('home: "Tue carte da sistemare" 2', /Tue carte da sistemare 2 \(dal sito\)/.test(piatto), piatto.slice(0, 400));
   controlla('home: niente più riga "Wishlist" a parte', !/\bWishlist \d+ in attesa/.test(piatto));
-  const dettaglio = ((d.getElementById('codaPendenteDettaglioBody') || {}).textContent || '').replace(/\s+/g, ' ');
   controlla('dettaglio: errore recente dalle correzioni', /Celebi errore nuovo/.test(dettaglio) && !/Vecchia correzione/.test(dettaglio), dettaglio.slice(0, 600));
   controlla('dettaglio: righe wishlist etichettate', /Mewtwo Carta · Wishlist|Mewtwo\s*In attesa\s*Carta · Wishlist/.test(dettaglio), dettaglio.slice(0, 600));
-  controlla('hub: legge correzioni_manuali_carte, non coda_carte stato errore', env.log.from.includes('correzioni_manuali_carte.select') && !env.log.from.includes('coda_carte.gte'));
+  // Errori recenti dalle correzioni, mai da coda_carte con stato 'errore'. Dalla 5.46
+  // coda_carte si legge anche con .gte (carte fatte oggi da questo PC, stato 'completato').
+  const statiLetti = env.log.chiamate.filter(c => c.tabella === 'coda_carte' && c.metodo === 'eq' && c.args[0] === 'stato').map(c => c.args[1]);
+  controlla('hub: legge correzioni_manuali_carte, non coda_carte stato errore', env.log.from.includes('correzioni_manuali_carte.select') && !statiLetti.includes('errore') && (dalla546 || !env.log.from.includes('coda_carte.gte')), statiLetti);
+  if (dalla546) {
+    uguale('tessera "Da sistemare": 2 e badge 2', [d.getElementById('tileFixNum').textContent, d.getElementById('tileFixBadge').textContent, d.getElementById('tileFixBadge').hidden], ['2', '2', false]);
+    controlla('tessera "Da sistemare": tipo di problema dal testo', /più versioni|non trovate/.test(d.getElementById('tileFixSotto').textContent), d.getElementById('tileFixSotto').textContent);
+    // Il Supabase finto dà 1 a ogni conteggio: in attesa 1 + in corso 1 = 2, di cui 1 tue.
+    uguale('tessera Coda e numero nella barra', [d.getElementById('tileCodaNum').textContent, d.getElementById('navContaCoda').textContent], ['2', '2']);
+    controlla('tessera Coda: tue e del gruppo', /1 tua · 1 del gruppo/.test(d.getElementById('tileCodaSotto').textContent), d.getElementById('tileCodaSotto').textContent);
+    controlla('barra in alto: Home attiva, Esci nel menu', d.querySelector('.nav-voce.attiva') && d.querySelector('.nav-voce.attiva').dataset.nav === 'coda' && !!d.getElementById('menuEsci'));
+    const conLink = ['app.html', 'popup.html', 'aggiungi_carta_popup.html', 'changelog.html']
+      .filter(f => /(href|src)="https:\/\/(fonts\.googleapis|fonts\.gstatic|cdnjs)/.test(fs.readFileSync(path.join(EXT, f), 'utf8')));
+    uguale('niente Google Fonts né cdnjs nelle pagine (D13)', conLink, []);
+  }
   w.close();
 
   chiudi();
