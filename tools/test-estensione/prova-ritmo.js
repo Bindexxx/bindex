@@ -66,7 +66,9 @@ const LAVORO_MS = 300;         // lettura finta della pagina
 
   const { turnoCardmarketConta: contaPrima = 0 } = await env.chrome.storage.local.get('turnoCardmarketConta');
   const t0 = Date.now();
-  await w.eseguiSessione(false, { dominio: 'wishlist', ordineId: 'o1', aiutaGruppo: true });
+  // Dalla 5.47 niente più primo argomento "dry run" (era sempre false).
+  const parametri = { dominio: 'wishlist', ordineId: 'o1', aiutaGruppo: true };
+  await (w.eseguiSessione.length === 1 ? w.eseguiSessione(false, parametri) : w.eseguiSessione(parametri));
   const durata = Date.now() - t0;
   const { turnoCardmarketConta: contaDopo = 0 } = await env.chrome.storage.local.get('turnoCardmarketConta');
 
