@@ -4,12 +4,12 @@
   const K = '__fake_store__';
   const leggi = () => { try { return JSON.parse(localStorage.getItem(K) || '{}'); } catch (_) { return {}; } };
   const scrivi = (s) => localStorage.setItem(K, JSON.stringify(s));
-  if (!localStorage.getItem(K)) scrivi({ aiutaGruppo: true, sliderDelayMinSec: 10, sliderDelayMaxSec: 20, bulkLocation: 'BULK GIALLO', bulkUltimoUtilizzo: { ts: Date.now() - 3600e3, ok: 12 } });
+  if (!localStorage.getItem(K)) scrivi({ aiutaGruppo: true, sliderDelayMinSec: 10, sliderDelayMaxSec: 20, bulkLocation: 'BULK GIALLO', bulkUltimoUtilizzo: { ts: Date.now() - 3600e3, ok: 12 }, nomeDispositivo: 'PC-AB', giorniMinimi: 3, statoLoginCardmarket: { loggato: true, quando: Date.now() - 120e3 }, cardsyncDarkMode: /scuro/.test(location.search) });
   const ev = () => ({ addListener() {}, removeListener() {} });
   const cbp = (v, cb) => { if (typeof cb === 'function') { setTimeout(() => cb(v), 0); return; } return Promise.resolve(v); };
   window.chrome = {
     runtime: {
-      id: 'fake', getURL: (p) => location.origin + '/' + p, getManifest: () => ({ version: '5.35' }),
+      id: 'fake', getURL: (p) => location.origin + '/' + p, getManifest: () => ({ version: '5.46' }),
       sendMessage: (...a) => { const cb = a.find(x => typeof x === 'function'); if (cb) setTimeout(() => cb({ ok: true, loggato: true, attendi: false }), 0); return cb ? undefined : Promise.resolve(); },
       onMessage: ev(), lastError: undefined,
     },
@@ -26,14 +26,18 @@
   };
   const ora = Date.now();
   const D = {
-    coda_carte: Array.from({ length: 14 }, (_, i) => ({ id: i + 1, nome: ['MEW 151', 'OBF 125', 'PAR 230', 'Eevee 55', 'SV01 006'][i % 5], tipo: i === 3 ? 'sealed' : null, qty: 1 + (i % 2), stato: i < 2 ? 'in_corso' : 'pending', dispositivo: 'PC-AB', creato_il: new Date(ora - (60 - i) * 60e3).toISOString(), owner_id: 'u-me' })),
+    // Dalla 5.46 anche righe di altri (nickname) e righe finite oggi (home e Coda).
+    coda_carte: [
+      ...Array.from({ length: 14 }, (_, i) => ({ id: i + 1, nome: ['MEW 151', 'OBF 125', 'PAR 230', 'Eevee 55', 'SV01 006', 'Kricketot ASR 009', 'Lickitung LOR 138'][i % 7], lingua: i % 4 === 1 ? 'EN' : 'IT', condizione: i % 3 === 2 ? 'EX' : 'NM', reverse: i % 5 === 2, first_ed: i === 6, tipo: i === 3 ? 'sealed' : null, destinazione: i === 9 ? 'wishlist' : 'collezione', qty: 1 + (i % 2), stato: i < 1 ? 'in_corso' : 'pending', dispositivo: i < 1 ? 'PC-CD' : null, creato_il: new Date(ora - (60 - i) * 60e3).toISOString(), owner_id: ['u-me', 'u-fra', 'u-ric'][i % 3], location: i % 3 === 0 ? 'BULK GIALLO' : null, nota: i === 4 ? 'dal binder rosso' : null })),
+      ...Array.from({ length: 30 }, (_, i) => ({ id: 100 + i, nome: ['Zubat SIT 103', 'Pikachu PAF 85', 'Mewtwo MEW 150'][i % 3], lingua: 'IT', condizione: 'NM', qty: 1, stato: 'completato', dispositivo: 'PC-AB', owner_id: i % 2 ? 'u-me' : 'u-fra', creato_il: new Date(ora - 5 * 3600e3).toISOString(), completato_il: new Date(ora - (30 - i) * 19e3 - 60e3).toISOString() })),
+    ],
     ordini: [{ id: 'o1', stato: 'pending', creato_il: new Date(ora - 5e5).toISOString(), preso_in_carico_il: null }],
     wishlist: [
       { id: 'w1', nome: 'Charizard ex', codice: 'OBF 125', qty: 1, lingua: 'IT', condizione: 'NM', url: 'https://www.cardmarket.com/it/Pokemon/Products/Singles/x/Charizard-ex-OBF125', prezzo: 41.9, prezzo_obiettivo: 45 },
       { id: 'w2', nome: 'Mew ex', codice: 'MEW 151', qty: 1, lingua: 'EN', condizione: 'NM', url: null, prezzo: 18.5, prezzo_obiettivo: 12 },
     ],
     location: ['BULK GIALLO', 'BINDER', 'SCAMBIO'].map(n => ({ nome: n })),
-    carte: [{ location: 'BULK GIALLO' }, { location: 'BINDER' }],
+    carte: [{ location: 'BULK GIALLO', ultimo_controllo: new Date(ora - 75 * 60e3).toISOString() }, { location: 'BINDER', ultimo_controllo: new Date(ora - 3 * 86400e3).toISOString() }],
     profiles: [{ banned_until: null, deleted_at: null }],
     correzioni_manuali_carte: [
       { id: 'c1', nome: 'MAGIKARP HS 72', errore_msg: '❌ link non più valido: scegli la versione', creato_il: new Date(ora - 3e5).toISOString() },
@@ -51,7 +55,10 @@
   window.supabase = { createClient: () => ({
     auth: { getSession: async () => ({ data: { session: sess } }), onAuthStateChange: () => ({ data: { subscription: { unsubscribe() {} } } }), signOut: async () => ({}) },
     from: qb,
-    rpc: async (n) => ({ data: n === 'leggi_stato_claim_gruppo' ? [{ dispositivo: 'PC-AB' }, { dispositivo: 'PC-AB' }, { dispositivo: 'PC-CD' }] : (n.startsWith('conta') ? 42 : null), error: null }),
+    rpc: async (n, a) => ({ data: n === 'leggi_stato_claim_gruppo' ? [{ dispositivo: 'PC-AB' }, { dispositivo: 'PC-AB' }, { dispositivo: 'PC-CD' }]
+      : n === 'ottieni_nicknames' ? [{ owner_id: 'u-me', nickname: 'ire' }, { owner_id: 'u-fra', nickname: 'francesco' }, { owner_id: 'u-ric', nickname: 'riccardo' }]
+      : n === 'conta_carte_da_controllare_gruppo' ? (a && a.p_solo_vecchie ? 874 : 1801)
+      : (n.startsWith('conta') ? 42 : null), error: null }),
     storage: { from: () => ({}) },
   }) };
   Object.defineProperty(window, 'supabase', { configurable: false, writable: false, value: window.supabase });

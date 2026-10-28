@@ -3,7 +3,7 @@
   "private": true,
   "description": "Prove dell'estensione CardSync Pro fuori da Chrome (service worker finto, pagine in jsdom, ricerca carte).",
   "scripts": {
-    "test": "node prova-background.js && node prova-ricerca.js && node prova-cardmarket.js && node prova-pagine.js && node prova-wishlist.js && node prova-ritmo.js && node prova-coda.js && node prova-ordini.js && node prova-impronta.js && node prova-velocita.js && node prova-sealed.js",
+    "test": "node prova-background.js && node prova-ricerca.js && node prova-cardmarket.js && node prova-pagine.js && node prova-wishlist.js && node prova-ritmo.js && node prova-coda.js && node prova-ordini.js && node prova-impronta.js && node prova-velocita.js && node prova-sealed.js && node prova-grafica.js",
     "morti": "node codice-morto.js",
     "schermate": "node schermate.js"
   },
