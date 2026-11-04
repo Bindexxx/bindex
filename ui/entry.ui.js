@@ -1,19 +1,6 @@
-// ── ui/entry.ui.js ─────────────────────────────────────────────────────
-// Form di Inserimento: bozza (salvata/ripristinata), righe editabili della
-// tabella di inserimento, invio alla coda_carte.
+// Inserimento: bozza, righe della tabella, invio alla coda dell'estensione.
 
-
-        // ── LOCATION COMUNE (sezione Inserimento) ────────────────────────────────
-        // Stessa tabella 'location' già usata per le checkbox della sezione
-        // Prezzi — qui in più permettiamo di aggiungerne una nuova al volo,
-        // così non serve aprire l'estensione solo per registrare una location
-        // che ancora non esiste.
-
-        // FASE 1: la tendina mostra le location del dominio giusto —
-        // 'carta' o 'sealed' a seconda di _tipoInserimento. Richiamata anche
-        // da impostaTipoInserimento() ogni volta che si cambia toggle, non
-        // solo all'apertura della pagina.
-        async function caricaSelectLocationComune() {
+async function caricaSelectLocationComune() {
             const userId = await authGetUserId();
             const select = document.getElementById('selectLocationComune');
             if (!userId || !select) return;
@@ -34,7 +21,6 @@
             if (valorePrecedente) select.value = valorePrecedente;
             _locationComuneCaricata = true;
         }
-
 
         async function aggiungiNuovaLocationComune() {
             const userId = await authGetUserId();
@@ -59,14 +45,6 @@
             insLocationComuneCambiata();
         }
 
-
-        // ── INSERIMENTO CARTE — collegato alla coda UNICA coda_carte ─────────────
-        // Ogni riga della tabella diventa UNA riga in 'coda_carte' con il suo
-        // qty — prima veniva "spacchettata" in N righe separate (N ricerche
-        // identiche su Cardmarket per la stessa carta): inutile e più lenta.
-        // 'destinazione' (collezione/wishlist) e 'tipo' (carta/sealed) sono
-        // due scelte indipendenti — la STESSA coda le gestisce entrambe, non
-        // più due tabelle/motori separati (vedi coda_unificata.sql).
         function _rigaEntryToRigheDb(row, userId, tipo = null, destinazione = 'collezione') {
             const nome = (row.name || '').trim();
             if (!nome) return [];
@@ -87,38 +65,14 @@
             }];
         }
 
-
-        // ── TOGGLE INSERIMENTO — due dimensioni indipendenti ─────────────────────
-        // Prima era un'unica scelta a 3 vie (Colleziona/Wishlist/Sealed), che
-        // non permetteva di mettere un prodotto sealed IN wishlist (una cosa
-        // che vuoi comprare potrebbe benissimo essere un ETB, non solo una
-        // carta). Ora sono due scelte indipendenti che si combinano:
-        // destinazione (dove finisce) × tipo (come viene cercato su
-        // Cardmarket — le carte singole e i prodotti sealed vivono in
-        // sezioni diverse del sito).
-
         function impostaDestinazioneInserimento(dest) {
             _destinazioneInserimento = dest;
             document.getElementById('btnDestCollezione').classList.toggle('active', dest === 'collezione');
             document.getElementById('btnDestWishlist').classList.toggle('active', dest === 'wishlist');
 
-            // Fase 6, Step 2 (2026-09-13): la Wishlist per prodotti sealed
-            // ora esiste (wishlist_sealed, sql/52) — non si torna più
-            // automaticamente a "Carta". Il blocco che c'era qui prima
-            // (impostaTipoInserimento('carta') forzato) è stato rimosso.
-
             _aggiornaLocationEBottoneInserimento();
         }
 
-
-        // FASE 1 (2026-09-12): "Sealed" non marca più una carta con
-        // carte.tipo='sealed' (meccanismo ritirato — vedi
-        // Compilato_2026-09-12, mai popolato in produzione). Ora scambia la
-        // tabella visibile: carte singole → coda_carte come sempre; prodotti
-        // sealed → inserimento DIRETTO nella nuova tabella prodotti_sealed
-        // (niente ricerca Cardmarket automatica in questa fase, prezzo
-        // manuale/opzionale — vedi Fase 1.2 per il controllo prezzi di
-        // gruppo, non ancora collegato qui).
         function impostaTipoInserimento(tipo) {
             _tipoInserimento = tipo;
             document.getElementById('btnTipoCarta').classList.toggle('active', tipo === 'carta');
@@ -129,26 +83,10 @@
             if (tabellaSealed) tabellaSealed.style.display = tipo === 'sealed' ? '' : 'none';
 
             _aggiornaLocationEBottoneInserimento();
-            caricaSelectLocationComune(); // ricarica con il tipo di location giusto (carta/sealed)
+            caricaSelectLocationComune();
         }
 
-
         function _aggiornaLocationEBottoneInserimento() {
-            // Wishlist non ha (per ora) location diversa da riga a riga come
-            // la collezione — la tendina resta comunque visibile e
-            // modificabile (in caso servisse in futuro), ma parte già
-            // impostata su un valore fisso, senza dover scegliere nulla.
-            // Fase 1.3 (sql/42, 2026-09-12): i prodotti sealed non hanno più
-            // location — sostituita da Scaffali, assegnabile DOPO
-            // l'inserimento dalla pagina Scaffali (stesso schema di Binder
-            // per le carte: si sceglie dopo, non durante l'inserimento
-            // massivo). Pannello nascosto del tutto per questo tipo.
-            // 2026-10-09: la Wishlist è una destinazione (tab Collezione/
-            // Wishlist), NON una location: niente voce "WISHLIST" tra le
-            // location e, in modalità Wishlist, pannello e colonna Location
-            // nascosti (classe ins-dest-wishlist). Il valore 'WISHLIST' viene
-            // comunque inviato in coda (salvaCarteReali) perché l'estensione
-            // lo usa come contenitore di sistema delle carte in wishlist.
             const pannelloLoc = document.getElementById('pannelloLocationComune');
             const wish = _destinazioneInserimento === 'wishlist';
             document.getElementById('inserimento')?.classList.toggle('ins-dest-wishlist', wish);
@@ -160,12 +98,7 @@
             document.querySelectorAll('#entryTableBody tr').forEach(_insSommario);
         }
 
-
         async function salvaCarteReali() {
-            // FASE 1: il bottone "Salva" è unico (onclick fisso in
-            // index.html) — smista qui invece di duplicare il markup HTML.
-            // 2026-10-09: sealed (collezione e wishlist) → coda con ricerca
-            // Cardmarket, vedi salvaSealedInCoda().
             if (_tipoInserimento === 'sealed') {
                 return salvaSealedInCoda();
             }
@@ -201,7 +134,6 @@
                 return;
             }
 
-            // Wishlist: la location non si sceglie (vedi sopra) — contenitore di sistema fisso.
             const locationComune = _destinazioneInserimento === 'wishlist'
                 ? 'WISHLIST'
                 : (document.getElementById('selectLocationComune')?.value.trim() || '');
@@ -210,10 +142,6 @@
             btn.disabled = true;
             btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Invio in corso...';
 
-            // Coda UNICA: qualunque combinazione di destinazione/tipo passa
-            // sempre da 'coda_carte' — un solo motore (aggiungi_carta_popup.js)
-            // la elabora una riga alla volta, mai due ricerche in parallelo
-            // anche con più dispositivi online insieme.
             const righeDb = righeValide.flatMap(r => _rigaEntryToRigheDb(
                 locationComune ? { ...r, loc: locationComune } : r,
                 userId,
@@ -236,17 +164,6 @@
             mostraAvviso(`✅ ${righeDb.length} cart${righeDb.length === 1 ? 'a inviata' : 'e inviate'} nella coda persistente!\n\nApri l'estensione sulla sezione "Aggiungi Carte" per farle processare — non si perdono, restano lì in attesa finché qualcuno non le lavora.`);
         }
 
-
-        // ── SEGNALAZIONE BUG (EASTER EGG: il bug è un Caterpie) ───────────────────
-        // Fase 10, Step 3 (2026-09-13): "Report to admin" vero — prima era
-        // solo un mailto: (nessuna traccia per l'admin se l'utente non
-        // mandava davvero l'email, niente contesto tecnico allegato). Ora
-        // salva su segnalazioni_bug (sql/61) con il log diagnostico
-        // dell'ultima sessione allegato automaticamente (ui/log-
-        // diagnostico.ui.js) — l'utente non deve più sapere cos'è la
-        // console F12. Se l'insert fallisce (es. offline) il testo viene
-        // copiato negli appunti (audit 2026-09-25: prima un mailto verso un
-        // indirizzo finto), per non perdere comunque la segnalazione.
         async function segnalaCaterpie(descrizioneDaPannello) {
             const descrizione = (typeof descrizioneDaPannello === 'string') ? descrizioneDaPannello
                 : await chiediTesto({ titolo: '🐛 Un Caterpie selvatico appare!', testo: 'Descrivi cosa hai visto (cosa NON funzionava come dovrebbe):', conferma: 'Segnala', maxLength: 1500 });
@@ -272,13 +189,6 @@
                 console.error('Errore invio segnalazione bug, uso il fallback appunti:', error.message);
             }
 
-            // Fallback (utente non loggato, o insert fallito) — CAMBIATO
-            // (audit 2026-09-25, decisione Claudio): prima apriva una mail
-            // verso admin@cardsyncpro.local, un indirizzo finto che non
-            // arriva a nessuno. Ora il testo completo (descrizione + log
-            // diagnostico) viene copiato negli appunti, da incollare dove si
-            // vuole. Se anche la copia non è permessa dal browser, il testo
-            // viene mostrato in un prompt da cui copiarlo a mano.
             const testo = `Ho catturato un Caterpie!\n\nDescrizione: ${descrizione.trim()}\n\nPagina: ${window.location.href}\nData: ${new Date().toLocaleString('it-IT')}\n\n--- Log diagnostico ---\n${logTesto || '(non disponibile)'}`;
             try {
                 await navigator.clipboard.writeText(testo);
@@ -288,7 +198,6 @@
             }
         }
 
-        /* AVVISO DI USCITA/REFRESH SE CI SONO DATI NON SALVATI */
         window.addEventListener('beforeunload', (e) => {
             const draft = prefEntryDraftGet();
             if (draft && draftHasContent(draft)) {
@@ -297,15 +206,12 @@
             }
         });
 
-
         function draftHasContent(draftJson) {
             try {
                 const rows = JSON.parse(draftJson);
                 return rows.some(r => r.name.trim().length > 0 || r.notes.trim().length > 0);
             } catch(e) { return false; }
         }
-
-        /* GESTIONE BOZZA AUTO-SAVE */
 
         function saveEntryDraft() {
             const rows = document.querySelectorAll('#entryTableBody tr');
@@ -328,7 +234,7 @@
             });
             prefEntryDraftSet(JSON.stringify(draft));
             insAggiornaBottone();
-            
+
             const label = document.getElementById('autosaveLabel');
             if(label) {
                 label.innerHTML = `<i class="fa-solid fa-check" style="color:var(--success)"></i> Bozza salvata`;
@@ -337,7 +243,6 @@
                 }, 1200);
             }
         }
-
 
         function restoreEntryDraft() {
             const saved = prefEntryDraftGet();
@@ -358,13 +263,10 @@
             }
         }
 
-
         function clearEntryDraft() {
             prefEntryDraftClear();
             initEntryTable();
         }
-
-        /* INSERIMENTO CARTE CON PULSANTI + E - */
 
         function initEntryTable() {
             const tbody = document.getElementById('entryTableBody');
@@ -372,7 +274,6 @@
             addNewEntryRow();
             insAggiornaBottone();
         }
-
 
         function addNewEntryRow(data = null) {
             const tbody = document.getElementById('entryTableBody');
@@ -389,8 +290,6 @@
             const notesVal = data ? (data.notes || '') : '';
             const opz = (lista, v) => lista.map(x => `<option value="${x}" ${v === x ? 'selected' : ''}>${x}</option>`).join('');
 
-            // RESTYLE: 10 celle come sempre (salvataggio e bozza le leggono
-            // per posizione). Telefono = scheda che si apre/chiude; PC = riga.
             tr.innerHTML = `
                 <td data-label="Nome/Codice" class="ins-td-nome">
                     <input type="text" placeholder="+ Scrivi nome o codice..." value="${escapeHtml(nameVal)}" oninput="handleEntryInput(this)" onkeydown="handleEntryCodiceKeydown(event, this)">
@@ -421,8 +320,6 @@
             _insSommario(tr);
         }
 
-
-        // ── RESTYLE: righe compatte, location, pulsante "Salva N carte" ─────
         let _insLocationNomi = [];
 
         function _insOpzioniLocation(valore) {
@@ -439,7 +336,6 @@
             });
         }
 
-        // "IT · NM · Reverse · Binder B" + "hai già ×N in …" (dalla collezione in memoria)
         function _insSommario(tr) {
             if (!tr || !tr.querySelector('.ins-sommario')) return;
             const nome = tr.querySelector('td:nth-child(1) input').value.trim();
@@ -494,7 +390,6 @@
             btn.innerHTML = `<i class="fa-solid ${ico}"></i> ${n ? `Salva ${cosa}` : 'Salva'}${_destinazioneInserimento === 'wishlist' ? ' in Wishlist' : ''}`;
         }
 
-        // Telefono: la riga su cui stai scrivendo si apre, le altre restano compatte.
         document.addEventListener('focusin', (e) => {
             const tr = e.target.closest && e.target.closest('#entryTableBody tr');
             if (!tr || tr.classList.contains('aperta')) return;
@@ -503,8 +398,6 @@
             tr.classList.add('aperta');
         });
 
-        // Avviso "N carte da correggere" e riquadro "Ultimo invio" (le righe
-        // dell'ultimo invio = inviate entro 3 minuti dalla più recente).
         async function insAggiornaPagina() {
             const userId = await authGetUserId();
             if (!userId) return;
@@ -525,8 +418,6 @@
                 ...righe.map(r => ({ nome: r.nome, location: r.location, destinazione: r.destinazione, quando: r.creato_il, stato: r.stato === 'completato' ? 'fatta' : (r.stato === 'errore' ? 'errore' : 'cerca') })),
                 ...correzioni.map(r => ({ nome: r.nome, location: r.location, destinazione: r.destinazione, quando: r.creato_il, stato: 'correggere' })),
             ].sort((a, b) => new Date(b.quando) - new Date(a.quando));
-            // Totali veri dal database: l'elenco qui sopra ha al massimo 60
-            // righe della coda, un'importazione CSV ne manda centinaia.
             let totali = null;
             if (tutti.length) {
                 const da = new Date(new Date(tutti[0].quando).getTime() - 3 * 60000).toISOString();
@@ -547,8 +438,6 @@
             btn.textContent = box.classList.contains('aperto') ? 'Nascondi ▴' : 'Mostra ▾';
         }
 
-        // totali (facoltativo): { coda, fatte, errori } contati dal database
-        // sulle righe di coda dell'invio; senza, si conta l'elenco.
         function _insUltimoInvioHtml(tutti, totali) {
             if (!tutti.length) return '';
             const primo = new Date(tutti[0].quando).getTime();
@@ -572,7 +461,6 @@
                 <div class="ins-ultimo-lista">${righe}${altre ? `<div class="ins-ultimo-riga"><div><span>… e altre ${altre} carte di questo invio</span></div></div>` : ''}</div>`;
         }
 
-
         function stepEntryQty(btn, delta) {
             const input = btn.parentElement.querySelector('.qty-input');
             let val = parseInt(input.value) || 1;
@@ -580,7 +468,6 @@
             input.value = val;
             handleEntryInput(input);
         }
-
 
         function handleEntryInput(element) {
             const row = element.closest('tr');
@@ -592,12 +479,6 @@
             saveEntryDraft();
         }
 
-
-        // Invio nel campo Nome/Codice sposta subito il focus sulla riga
-        // successiva (quella nuova già aggiunta da handleEntryInput mentre
-        // si digitava, oppure quella già esistente sotto) — comodo per
-        // inserire tante carte una via l'altra senza staccare le mani dalla
-        // tastiera.
         function handleEntryCodiceKeydown(e, input) {
             if (e.key !== 'Enter') return;
             e.preventDefault();
@@ -608,7 +489,6 @@
                 if (nextInput) nextInput.focus();
             }
         }
-
 
         function removeEntryRow(btn) {
             const tbody = document.getElementById('entryTableBody');
@@ -621,30 +501,12 @@
             saveEntryDraft();
         }
 
-        /* RENDERING E SELEZIONE DELLA RIGA */
-
-
-
-
-        // ═══════════════════════════════════════════════════════════════════
-        // FASE 1 (2026-09-12) — INSERIMENTO PRODOTTI SEALED
-        // ═══════════════════════════════════════════════════════════════════
-        // A differenza delle carte, NON passa da coda_carte/estensione: è un
-        // insert diretto su prodotti_sealed (RLS "propria collezione sealed"
-        // già lo protegge). Nessuna ricerca automatica su Cardmarket in
-        // questa fase — prezzo facoltativo, inseribile a mano. Il controllo
-        // prezzi di gruppo automatico arriverà con la Fase 1.2 (RPC gemelle
-        // + modifiche estensione, non ancora fatte).
-
         const INTEGRITA_PACKAGING_OPZIONI = [
             { value: 'sigillato_integro', label: 'Sigillato integro' },
             { value: 'sigillo_danneggiato', label: 'Sigillo danneggiato' },
             { value: 'confezione_danneggiata', label: 'Confezione danneggiata' },
             { value: 'aperto_non_sealed', label: 'Aperto (non sealed)' },
         ];
-        // Nessun CHECK a database su questi valori (decisione Fase 1: deve
-        // essere facile aggiungerne/modificarne senza migration) — questo
-        // array è l'UNICA fonte, aggiungere una voce qui basta.
 
         function initEntryTableSealed() {
             const tbody = document.getElementById('entryTableBodySealed');
@@ -653,7 +515,6 @@
             addNewEntryRowSealed();
             addNewEntryRowSealed();
         }
-
 
         function addNewEntryRowSealed(data = null) {
             const tbody = document.getElementById('entryTableBodySealed');
@@ -701,7 +562,6 @@
             tbody.appendChild(tr);
         }
 
-
         function stepEntryQtySealed(btn, delta) {
             const input = btn.parentElement.querySelector('.qty-input');
             let val = parseInt(input.value) || 1;
@@ -710,11 +570,6 @@
             handleEntryInputSealed(input);
         }
 
-
-        // Nessuna bozza salvata per questa tabella (semplificazione
-        // dichiarata) — aggiunge solo una riga nuova in fondo quando si
-        // digita nell'ultima riga esistente, stesso comportamento della
-        // tabella carte per la comodità di inserimento continuo.
         function handleEntryInputSealed(element) {
             const row = element.closest('tr');
             const tbody = document.getElementById('entryTableBodySealed');
@@ -723,7 +578,6 @@
             }
             insAggiornaBottone();
         }
-
 
         function removeEntryRowSealed(btn) {
             const tbody = document.getElementById('entryTableBodySealed');
@@ -735,21 +589,6 @@
             }
         }
 
-
-        // ═══════════════════════════════════════════════════════════════════
-        // INSERIMENTO SEALED (2026-10-09) — passa dalla coda, con ricerca
-        // Cardmarket
-        // ═══════════════════════════════════════════════════════════════════
-        // Prima i sealed venivano scritti DIRETTAMENTE in prodotti_sealed /
-        // wishlist_sealed: nessuna verifica, qualunque testo veniva accettato
-        // ("✅ salvato") e non c'era né immagine né prezzo. Ora seguono la
-        // stessa strada delle carte: coda_carte (tipo 'sealed') → l'estensione
-        // cerca su Cardmarket (/Products/) e, se trova il prodotto, chiama la
-        // RPC completa_riga_coda_carte, che (sql/94) scrive in prodotti_sealed
-        // (collezione) o wishlist_sealed (wishlist). Se non lo trova la riga va
-        // in "carte da correggere" come per le carte. Niente più Prezzo
-        // manuale in collezione (lo da' Cardmarket); in wishlist la colonna
-        // Prezzo e' il prezzo obiettivo.
         async function salvaSealedInCoda() {
             const userId = await authGetUserId();
             if (!userId) {

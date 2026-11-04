@@ -1,22 +1,9 @@
-// ── data/queue.repository.js ─────────────────────────────────────────────
-// 'coda_carte' (righe in attesa di elaborazione dal worker dell'estensione)
-// e 'correzioni_manuali_carte' (righe fallite dopo 3 tentativi, spostate lì
-// dalla RPC sposta_riga_in_correzione_manuale — vedi 11_schema_correzioni_
-// manuali_carte.sql). Stesso comportamento del codice originale, solo
-// consolidato: il delete-by-id su correzioni_manuali_carte era duplicato
-// in due punti diversi.
-//
-// Dipende da: supabaseClient.
+// Coda per l'estensione (coda_carte) e carte da correggere (correzioni_manuali_carte).
 
 async function queueInsertRighe(righeDb) {
     return supabaseClient.from('coda_carte').insert(righeDb);
 }
 
-// Restyle Bindex FASE 2 (2026-09-30), tessera Inserimento: le ultime righe
-// della PROPRIA coda (stato e date), per "in coda" e "ultimo invio". Solo
-// lettura, filtrata per owner_id. NB: coda_carte è una vista sopra
-// coda_lavoro (stati CHECK: pending/in_corso/completato/errore — verificato
-// sul DB il 2026-09-30).
 async function codaCarteUltimeRighe(userId, quante = 50) {
     return supabaseClient
         .from('coda_carte')
@@ -26,8 +13,6 @@ async function codaCarteUltimeRighe(userId, quante = 50) {
         .limit(quante);
 }
 
-// RESTYLE (Inserimento, "Ultimo invio"): le ultime righe inviate con nome,
-// location, destinazione e stato. Solo lettura, propria coda.
 async function codaCarteUltimoInvio(userId, quante = 60) {
     return supabaseClient
         .from('coda_carte')
@@ -37,10 +22,6 @@ async function codaCarteUltimoInvio(userId, quante = 60) {
         .limit(quante);
 }
 
-// Quante righe della propria coda, senza scaricarle (head: true). "Ultimo
-// invio" e il widget Inserimento leggono solo le ultime 50-60 righe per
-// l'elenco: un'importazione CSV ne crea centinaia, e contare l'elenco dava
-// "60 carte". da = creato_il minimo (ISO), stati = filtro facoltativo.
 async function codaCarteConta(userId, { da = null, stati = null } = {}) {
     let q = supabaseClient.from('coda_carte').select('id', { count: 'exact', head: true }).eq('owner_id', userId);
     if (da) q = q.gte('creato_il', da);

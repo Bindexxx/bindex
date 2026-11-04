@@ -1,57 +1,7 @@
-// ═══════════════════════════════════════════════════════════════════════
-// WIDGET-CONDIVIDI.UI.JS — pagina "Condividi" (CardSync Pro)
-// ═══════════════════════════════════════════════════════════════════════
-// STEP 5 della ristrutturazione file widget home (vedi
-// Roadmap_Ristrutturazione_Widget_Home_2026-09-11.md). Estratto da
-// ui/phone.ui.js il 2026-09-11.
-//
-// AGGIORNATO 2026-09-18 (Claudio): via la vecchia lista testuale
-// (.pg-riga) con riga fissa hardcoded "Sealed" → sostituita del tutto —
-// il Sealed non ha una sua pagina pubblica dedicata, sta dentro gli
-// Scaffali (scaffali-pubblico.html). Ora: griglia con copertina uniforme
-// stile Pokédex (.condividi-grid/.condividi-*, CSS isolato in index.html,
-// stessa formula 58.2%/63:88 di Binder/Scaffali/Achievement — vedi CSS),
-// che elenca ogni BINDER pubblico (copertina reale, come già in
-// binder.ui.js) + ogni SCAFFALE pubblico (solo icona+nome, Claudio: "la
-// copertina non serve, serve il titolo" — stessa scelta già fatta per la
-// pagina Scaffali). Click su una tessera → stesso pannello link/QR/
-// condivisione nativa di sempre, invariato. Aggiunto anche un placeholder
-// "condividi sul profilo" per tessera (feature futura, solo UI).
-//
-// CATEGORIA A: pagina propria.
-//
-// COSA RESTA FUORI (non spostato qui, invariato):
-// - apriDettaglioWidget (ui/paginainiziale.ui.js) continua a chiamare
-//   renderPaginaCondividi() per tabId === 'condividi' — motore home,
-//   dispatch generico, non toccato in questo step.
-// - _ballTITOLI_BREVI.condividi / _ballASPETTO.condividi
-//   (ui/widget-render-condiviso.ui.js) — motore visivo, non toccato.
-// - _risolviCopertinaBinder() / _bindersElenco / apriWidgetBinders()
-//   (ui/binder.ui.js) — RIUSATI qui, non duplicati: stessa cache
-//   (_coperturaBinderCache), nessuna copia locale della logica copertina.
-// - _scaffaliElenco (dichiarato in ui/scaffali.ui.js) — riusato come
-//   variabile globale, ma NON caricato tramite apriPaginaScaffali() (vedi
-//   _garantisciScaffaliElencoWidget più sotto per il motivo).
-// - _rettangoloSchermoCornice() (ui/paginainiziale-drag-resize.ui.js) —
-//   RIUSATA per posizionare il modale share sul rettangolo vero di
-//   #phoneScreen, non toccata né duplicata (vedi _condividiSharePosiziona
-//   più sotto, mirror di _binderImpostazioniPosiziona in binder.ui.js).
-//
-// AGGIORNATO 2026-09-18 (Claudio: "con molti binder/scaffali diventa
-// incastrato"): il pannello link/QR/nativo non è più inline sotto la
-// griglia — è #condividiShareModal, un modale a schermo intero dentro la
-// cornice (markup spostato vicino agli altri modali globali in index.html,
-// subito prima di #qrModal — stessa posizione fisica scelta oggi per
-// #binderImpostazioniModal).
-// ───────────────────────────────────────────────────────────────────────
+// Pagina Condividi.
 
-// ── VOCE DI CATALOGO ──────────────────────────────────────────────────
 CATALOGO_WIDGET.condividi = {
         titolo: 'Condividi', icona: 'fa-share-nodes',
-        // RESTYLE BINDEX FASE 2 (2026-09-30, tavola "Condividi = pubbliche/
-        // private + copertine"): prima solo "Cosa vuoi condividere?". Riusa
-        // le letture (con cache di un minuto) delle tessere Binders e
-        // Scaffali — nessuna query in più se quelle tessere sono in home.
         preview: async () => {
             const [b, s] = await Promise.all([
                 typeof _widgetBinderLeggi === 'function' ? _widgetBinderLeggi() : null,
@@ -72,31 +22,17 @@ CATALOGO_WIDGET.condividi = {
         azione: (dati, punto) => { apriDettaglioWidget('condividi', punto); },
 };
 
-// ── PAGINA "CONDIVIDI" ────────────────────────────────────────────────
-// RESTYLE BINDEX FASE 3e (2026-10-01, tavole "Condividi"): TUTTI i binder
-// e gli scaffali con il loro stato (pubblico / sempre pubblico / privato),
-// non più solo i pubblici. Telefono: griglia di copertine, il tocco apre un
-// foglio dal basso con QR, "Condividi…", "Copia link", "Scarica QR". PC
-// (pagina larga): elenco a sinistra e, a destra, il dettaglio dell'elemento
-// scelto (QR, link con "Copia", "Condividi…", "Apri anteprima"). Su un
-// elemento privato il pannello dice che è privato e offre "Rendi
-// pubblico" (stessa scrittura delle Impostazioni: binderImpostaPubblicazione
-// / scaffaleImpostaPubblicazione).
-// Il link porta tema e colori; il nome di chi condivide è il NICKNAME
-// (preferenze_utente.nickname), mai l'email: senza nickname il parametro
-// ?nome= semplicemente non c'è.
-// NON mostrato (serve una lettura in più, rimandato): "N carte" per elemento.
-let _condividiElementi = [];       // [{ key, kind, id, nome, tipo, pubblico, fisso, cover, pagina, param }]
+let _condividiElementi = [];
 let _condividiSelKey = null;
-let _condividiNick = null;         // nickname dell'utente o null
-let _condividiQrEl = null;         // contenitore del QR attualmente mostrato
+let _condividiNick = null;
+let _condividiQrEl = null;
 
 const _CD_ICONE_BINDER = { wishlist: 'fa-heart', scambio: 'fa-right-left', extra: 'fa-star', location: 'fa-book-open' };
 const _CD_ORDINE_BINDER = { scambio: 0, wishlist: 1, extra: 2, location: 3 };
 
 function _condividiEPC() {
     const pg = document.getElementById('condividi');
-    return !!pg && pg.clientWidth >= 780; // stessa soglia del @container in index.css
+    return !!pg && pg.clientWidth >= 780;
 }
 
 function _condividiElStato(el) { return el.fisso ? 'sempre pubblico' : (el.pubblico ? 'pubblico' : 'privato'); }
@@ -116,8 +52,6 @@ function _condividiElSfondo(el) {
     return `linear-gradient(150deg, ${tinta}, rgba(0,0,0,.4))`;
 }
 
-// Copertina (binder con immagine o tinta + icona; scaffale tinta + icona),
-// con il globo se pubblico e l'etichetta col nome in basso.
 function _condividiCoverHtml(el, piccola) {
     const nome = escapeHtml(el.nome);
     const interno = el.cover
@@ -140,21 +74,13 @@ async function renderPaginaCondividi() {
     const container = document.getElementById('condividiLista');
     if (!container) return;
     container.innerHTML = '<p style="text-align:center; color:var(--text-muted); font-size:0.85rem; padding:1rem 0;">Caricamento…</p>';
-    chiudiCondividiPannelloShare(); // difensivo: se il modale era rimasto aperto (stesso pattern di chiudiImpostazioniBinderAttivo in binder.ui.js)
+    chiudiCondividiPannelloShare();
 
     const userId = await authGetUserId();
 
-    // apriWidgetBinders() è la stessa funzione già riusata altrove (vedi
-    // home.ui.js) per garantire _bindersElenco senza dover navigare via —
-    // qui restiamo sulla pagina Condividi, non su Binders.
     if (!Array.isArray(_bindersElenco) || _bindersElenco.length === 0) {
         try { await apriWidgetBinders(); } catch (e) { console.error('renderPaginaCondividi: caricamento binder:', e); }
     }
-    // Stesso principio per gli scaffali, MA senza passare da
-    // apriPaginaScaffali(): quella imposta currentMode='scaffali' (stato
-    // globale di navigazione, usato da _linkPubblicoCondivisione per
-    // sapere "dove sei") — qui restiamo su Condividi, quell'effetto
-    // collaterale ci taggherebbe come se fossimo dentro Scaffali.
     if (userId) {
         try { await _garantisciScaffaliElencoWidget(userId); } catch (e) { console.error('renderPaginaCondividi: caricamento scaffali:', e); }
         _condividiNick = await _condividiNicknameLeggi(userId);
@@ -227,18 +153,11 @@ async function renderPaginaCondividi() {
             <div class="cd-pane" id="condividiDettaglio"></div>
         </div>`;
 
-    // Pannello del PC: pronto subito sull'elemento scelto (senza contare
-    // come "QR generato" per le missioni: lo conta il gesto esplicito).
     const sel = _condividiElementi.find(e => e.key === _condividiSelKey);
     const pane = document.getElementById('condividiDettaglio');
     if (sel && pane) _condividiRenderDettaglio(sel, pane, false, false);
 }
 
-// Carica _scaffaliElenco (dichiarato in ui/scaffali.ui.js) SENZA gli
-// effetti collaterali di apriPaginaScaffali() — vedi commento sopra nella
-// chiamata. Stessa guardia-sul-vuoto già usata per _bindersElenco: non
-// ricarica se già popolato da una visita precedente alla pagina Scaffali
-// in questa sessione (comportamento preesistente, non introdotto qui).
 async function _garantisciScaffaliElencoWidget(userId) {
     if (Array.isArray(_scaffaliElenco) && _scaffaliElenco.length > 0) return;
     const { data, error } = await scaffaliList(userId);
@@ -246,14 +165,6 @@ async function _garantisciScaffaliElencoWidget(userId) {
     _scaffaliElenco = data || [];
 }
 
-// Stessa identica logica di costruzione URL di _linkPubblicoCondivisione
-// (navigation-condivisione.ui.js) — duplicata qui apposta invece di
-// refactorizzare quella funzione (lei legge lo stato globale di
-// navigazione, qui serve il link per un elemento scelto da una lista).
-// Regola d'Oro #1: duplicazione locale invece di refactoring cross-file.
-// idParamNome: 'binder' o 'scaffale' (scaffali-pubblico.html legge 'scaffale').
-// RESTYLE FASE 3e: ?nome= porta il NICKNAME (mai l'email); senza nickname
-// il parametro non c'è.
 async function _linkCondivisioneWidget(pagina, idParamNome, id, tipoBinder) {
     const sessione = await authGetSession();
     const userId = sessione?.user?.id;
@@ -271,9 +182,6 @@ async function _linkCondivisioneWidget(pagina, idParamNome, id, tipoBinder) {
 
 let _condividiLinkCorrente = null;
 
-// ── Foglio di condivisione (telefono) ───────────────────────────────────
-// Stesso modale di prima, riposizionato sul rettangolo VERO di #phoneScreen
-// (_rettangoloSchermoCornice), ora disegnato come foglio dal basso.
 let _condividiShareResizeHandler = null;
 
 function _condividiSharePosiziona() {
@@ -307,7 +215,6 @@ function chiudiCondividiPannelloShare() {
     }
 }
 
-// Scelta di un elemento (tocco sul telefono, clic sulla riga su PC).
 async function _condividiScegli(key) {
     const el = _condividiElementi.find(e => e.key === key);
     if (!el) return;
@@ -325,9 +232,6 @@ async function _condividiScegli(key) {
     }
 }
 
-// Disegna il dettaglio di un elemento dentro 'dest'. foglio = true per il
-// foglio del telefono. conta = true se è un gesto dell'utente (conta per la
-// missione "QR Hunter" quando il QR viene davvero generato).
 async function _condividiRenderDettaglio(el, dest, foglio, conta) {
     const nome = escapeHtml(el.nome);
     const chiudi = foglio ? '<button type="button" class="cd-chiudi" onclick="chiudiCondividiPannelloShare()" aria-label="Chiudi"><i class="fa-solid fa-xmark"></i></button>' : '';
@@ -398,9 +302,6 @@ async function _condividiRenderDettaglio(el, dest, foglio, conta) {
     catch (e) { console.error('[condividi] QR non generato:', e); qrContainer.textContent = 'QR non disponibile'; }
 
     if (conta) {
-        // Missione #29 "QR Hunter" (2026-08-30). Fire-and-forget, stesso
-        // pattern degli altri hook missioni — un fallimento qui non deve mai
-        // bloccare la generazione del QR, già avvenuta sopra.
         (async () => {
             try {
                 const userId = await authGetUserId();
@@ -410,7 +311,6 @@ async function _condividiRenderDettaglio(el, dest, foglio, conta) {
     }
 }
 
-// "Rendi pubblico": stessa scrittura delle Impostazioni (binder/scaffale).
 async function _condividiRendiPubblico(key) {
     const el = _condividiElementi.find(e => e.key === key);
     if (!el) return;
@@ -429,7 +329,6 @@ async function _condividiRendiPubblico(key) {
     if (!_condividiEPC()) await _condividiScegli(key);
 }
 
-// "Scarica QR": salva il QR mostrato come immagine PNG.
 function _condividiScaricaQr() {
     if (!_condividiQrEl) return;
     const canvas = _condividiQrEl.querySelector('canvas');
@@ -460,5 +359,5 @@ function _condividiApriAnteprima() {
 async function _condividiNativoWidget() {
     if (!_condividiLinkCorrente) return;
     try { await navigator.share({ title: 'Bindex', url: _condividiLinkCorrente }); }
-    catch (e) { /* utente ha annullato, o browser l'ha bloccata — normale, nessun errore da mostrare */ }
+    catch (e) {   }
 }

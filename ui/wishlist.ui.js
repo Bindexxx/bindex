@@ -1,25 +1,8 @@
-// ── ui/wishlist.ui.js ────────────────────────────────────────────────────
-// Logica UI specifica di wishlist.html: caricamento catalogo, rendering
-// lista, flip-card, riepilogo selezione.
-//
-// Dipende da: data/wishlist.repository.js, data/binder-pubblico.repository.js,
-// state/wishlist.state.js, utils/shared-public.js, ui/card-back-viewer.ui.js,
-// ui/binder-flipbook.ui.js (motore del libro sfogliabile, condiviso —
-// aggiunto 26/08/2026).
+// Pagina pubblica wishlist.html.
 
-// Attiva l'overlay di selezione/quantità anche dentro la modalità Sfoglia
-// (libro) — di default false nel modulo condiviso (binder-pubblico.html
-// non ha selezione). Assegnazione, non "let": la variabile è già
-// dichiarata in ui/binder-flipbook.ui.js, caricato prima di questo file.
 _libroSelezionabile = true;
-_libroPrezzoObiettivo = true; // RESTYLE BINDEX FASE 6b: bollino "max X" sulle tasche
+_libroPrezzoObiettivo = true;
 
-// A16: flip-modal — mostra prima il fronte (immagine reale), poi gira da
-// sola dopo una breve pausa rivelando nome/codice/prezzo/obiettivo/note.
-// Stesso concetto già esteso a tutto il sito privato in A15, qui
-// riadattato per la pagina pubblica: niente "Vai al binder" (non ha senso
-// per chi non è il proprietario) e niente location (la wishlist non la
-// possiede ancora).
 function apriFlipCard(id) {
     const card = carte.find(c => String(c.id) === String(id));
     if (!card) return;
@@ -49,14 +32,10 @@ function apriFlipCard(id) {
     _flipCardTimeout = setTimeout(() => inner.classList.add('flipped'), 500);
 }
 
-// Hook per ui/card-back-viewer.ui.js: testo del campo "variazione" sul
-// retro carta — qui mostra il prezzo obiettivo (non esiste "variazione"
-// come dato per una wishlist).
 function _cbdTestoVariazione(card) {
     return (card.prezzoObiettivo !== undefined && card.prezzoObiettivo !== null) ? ('Obiettivo: ' + formattaEuro(card.prezzoObiettivo)) : '';
 }
 
-// RESTYLE BINDEX FASE 6b: "N carte · N pz." e "Ce l'ho" sulla carta a schermo.
 function _testoConteggioSelezione(distinte, pezzi) {
     return `${distinte} cart${distinte === 1 ? 'a' : 'e'} · ${pezzi} pz.`;
 }
@@ -97,33 +76,20 @@ async function caricaCatalogo() {
         return;
     }
 
-    // Fix 26/08/2026 (24_card_back_binder_id.sql): il retro carta con
-    // sleeve personalizzata è per-binder, non più per-owner — risolviamo
-    // qui il binder_id del binder tipo='wishlist' di questo owner, usato
-    // più sotto da renderRetroCartaViewer. In try/catch: un fallimento qui
-    // NON deve mai bloccare il caricamento del catalogo sottostante, che è
-    // la funzionalità primaria della pagina.
     try {
         _ownerBinderId = await cardBackViewerLeggiBinderIdOwner(userId, 'wishlist');
     } catch (e) {
         console.error('risoluzione binder Wishlist:', e);
         _ownerBinderId = null;
     }
-    _binderId = _ownerBinderId; // bridge per ui/binder-flipbook.ui.js
+    _binderId = _ownerBinderId;
 
-    // Info binder (nome/tipo/location_valore) + copertina — servono al
-    // libro sfogliabile. Non bloccante: se fallisce, il libro usa comunque
-    // il fallback a icona già previsto dal modulo condiviso.
     if (_ownerBinderId) {
         try {
             const { data: info } = await binderPubblicoLeggiInfo(_ownerBinderId);
             if (info && info.length) {
                 _binderInfo = { nome: info[0].nome, tipo: info[0].tipo, location_valore: info[0].location_valore, layout: info[0].layout, colore: info[0].colore || null };
-                _caricaCopertinaBinder(_ownerBinderId); // non bloccante
-                // Titolo dinamico (26/08/2026): "Vediamo se mi piace" —
-                // Claudio non ha ancora confermato definitivamente questo
-                // comportamento, tenerlo d'occhio nel test. Fallback al
-                // testo statico originale se _binderInfo.nome è vuoto.
+                _caricaCopertinaBinder(_ownerBinderId);
                 if (_binderInfo.nome) {
                     document.title = 'Bindex — ' + _binderInfo.nome;
                     document.getElementById('titoloBinder').textContent = _binderInfo.nome;
@@ -134,11 +100,6 @@ async function caricaCatalogo() {
         }
     }
 
-    // Dalla v4.8: non si legge più direttamente la tabella 'wishlist' (in
-    // precedenza leggibile per intero da chiunque tramite anon key, non
-    // solo filtrata lato client) — si passa da una funzione RPC dedicata
-    // che restituisce solo le righe del singolo owner richiesto. Vedi
-    // migrazione 2026-08-16_restringi_lettura_pubblica.sql.
     const { data, error } = await wishlistLeggiCondivisa(userId);
 
     if (error) {
@@ -165,13 +126,11 @@ async function caricaCatalogo() {
         return;
     }
 
-    // A16: statistica in cima — conta sempre TUTTE le carte caricate, non
-    // solo quelle visibili dopo un'eventuale ricerca.
     document.getElementById('statRiepilogo').textContent =
         `${carte.length} cart${carte.length === 1 ? 'a desiderata' : 'e desiderate'}`;
 
     renderLista();
-    impostaModalitaBinderPubblico('libro'); // RESTYLE BINDEX FASE 6b: si apre sul Libro
+    impostaModalitaBinderPubblico('libro');
 }
 
 function renderLista() {
@@ -239,22 +198,9 @@ function copiaRiepilogo() {
         btn.innerHTML = '<i class="fa-solid fa-check"></i> Copiato!';
         setTimeout(() => { btn.innerHTML = originale; }, 1800);
     }).catch(() => {
-        alert(testo); // fallback se il clipboard non è disponibile (es. http non sicuro)
+        alert(testo);
     });
 }
-
-
-// ═══════════════════════════════════════════════════════════════════════
-// FASE 6, STEP 4 (2026-09-13) — TAB SEALED DELLA WISHLIST PUBBLICA
-// ═══════════════════════════════════════════════════════════════════════
-// Selezione/totale/riepilogo TENUTI SEPARATI da quelli carte (carte/
-// selezioni, definiti in utils/shared-public.js) — non un'astrazione
-// condivisa: wishlist_sealed non ha un campo 'prezzo' (solo
-// prezzo_obiettivo, vedi nota in sql/53), quindi il riepilogo qui non ha
-// un totale in euro, solo un elenco. Un'unica barra-totale in fondo alla
-// pagina viene RIUSATA per entrambe le tab, aggiornata dalla funzione
-// giusta a seconda della tab attiva (_wishlistPubTabAttiva).
-// ───────────────────────────────────────────────────────────────────────
 
 let _wishlistPubTabAttiva = 'carte';
 let carteSealed = [];
@@ -276,9 +222,6 @@ function _wishlistPubTab(tab) {
     }
 }
 
-// Dispatcher del bottone "Copia riepilogo" — unico bottone, due possibili
-// azioni a seconda della tab attiva (stesso pattern del bottone stesso,
-// che ora punta qui invece che direttamente a copiaRiepilogo()).
 function copiaRiepilogoAttivo() {
     if (_wishlistPubTabAttiva === 'sealed') copiaRiepilogoSealed();
     else copiaRiepilogo();
@@ -373,9 +316,6 @@ function modificaQtySealed(id, delta) {
     aggiornaTotaleSealed();
 }
 
-// Niente prezzo/totale in euro (wishlist_sealed non ce l'ha, vedi header
-// del file) — solo un conteggio elementi, stesso bottone/barra della tab
-// Carte ma testo adattato.
 function aggiornaTotaleSealed() {
     let numProdotti = 0;
     carteSealed.forEach(p => { numProdotti += selezioniSealed[p.id] || 0; });

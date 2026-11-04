@@ -1,132 +1,19 @@
-// ═══════════════════════════════════════════════════════════════════════
-// WIDGET-MISSIONI.UI.JS — tessera + pagina "Missioni" (CardSync Pro)
-// ═══════════════════════════════════════════════════════════════════════
-// STEP 14 della ristrutturazione file widget home (vedi
-// Roadmap_Ristrutturazione_Widget_Home_2026-09-11.md). Estratto da
-// ui/phone.ui.js il 2026-09-11.
-//
-// SEMPLIFICATA (2026-09-25, Milestones = Achievement — decisione di
-// Claudio in sessione): la sezione Traguardi (containerTraguardi, scale a
-// barra, TRAGUARDI_SINGOLI) è stata RIMOSSA da questa pagina — quei dati
-// vivono ora esclusivamente nel widget Achievement
-// (ui/widget-achievement.ui.js). Questa pagina mostra solo missioni
-// giornaliere/settimanali/mensili/una_tantum. MOTORE_MISSIONI.valutaEAssegna()
-// continua a valutare E scrivere i traguardi esattamente come prima
-// (traguardi_riscossi non cambia): qui cambia solo cosa viene mostrato,
-// non cosa viene calcolato/salvato — il popup di sblocco (dentro
-// _missioniNotificaCompletamenti, ui/missioni.ui.js) continua quindi a
-// scattare anche aprendo questa pagina, non solo dal watcher in
-// background.
-//
-// RESTYLE GRAFICO (2026-09-25, Variante C scelta da Claudio dopo revisione
-// di 3 mockup HTML — vedi Compilato precedente). Cambia SOLO la resa
-// visiva di questa pagina, non cosa viene raccolto/calcolato/scritto:
-// - Riepilogo in alto: anello di progresso (missioni di OGGI, sempre —
-//   indipendente dal tab selezionato) + testo + streak "giorni
-//   consecutivi" (dati.giorni_consecutivi, campo GIÀ calcolato da
-//   MOTORE_MISSIONI.raccogliDati() via missioniGiorniConsecutivi() in
-//   data/missioni.repository.js — funzione preesistente, già testata
-//   [fix timezone 2026-09-19], usata finora solo per i traguardi "Torna
-//   domani"/"Costanza": qui viene semplicemente MOSTRATA in UI per la
-//   prima volta, zero query nuove). ATTENZIONE (segnalato a Claudio prima
-//   di scrivere questo file): è uno streak di GIORNI CON ACCESSO
-//   all'app (action='accesso' in activity_log), non di "giorni con
-//   almeno una missione completata" — non esiste nel DB una metrica di
-//   quel secondo tipo (verificato: activity_log non logga un evento
-//   "missione completata", solo eventi di navigazione/apertura widget).
-// - Tab Oggi/Settimana/Mese (riusa .binder-modalita-toggle/-btn,
-//   stesso pattern di Match/Set/Binder) con pallino di notifica rosso sul
-//   tab se quella finestra ha ancora missioni da fare. Cambio tab NON
-//   rifà query: usa la cache _missioniCache popolata da un solo giro di
-//   MOTORE_MISSIONI.valutaEAssegna() per apertura pagina.
-// - Righe checklist più grandi (cerchio di spunta 26px, ricompensa sempre
-//   visibile come sottotitolo) — il tap-to-espandi la descrizione
-//   completa (richiesta originale di Claudio, 2026-08-31) resta invariato,
-//   solo lo stile della riga cambia.
-//
-// AGGIUNTA STESSA SESSIONE (2026-09-25, dopo test di Claudio: "troppo
-// spazio vuoto" sotto una lista corta, #phoneScreen ha altezza fissa e non
-// si adatta al contenuto): 2 card in fondo alla pagina, entrambe lette da
-// 'dati' già raccolto, zero query nuove —
-// - "Prossimo traguardo" (_missioniProssimoTraguardoHtml): il traguardo a
-//   soglia numerica ('>=') NON ancora sbloccato con la percentuale più
-//   alta, con barra di avanzamento, cliccabile → apre il widget Achievement
-//   (apriDettaglioWidget('achievement', event), stessa funzione/tabId già
-//   usata altrove in index.html). Non conta i traguardi booleani a scatto
-//   singolo (operatore '==').
-// - "Costanza" (_missioniStreakCardHtml): stesso streak del riepilogo in
-//   cima, in versione più grande/evidente, con messaggio "Torna domani per
-//   non perdere la serie" — solo informativa, non cliccabile.
-//
-// TERZO GIRO STESSA SESSIONE (2026-09-25, dopo verifica di Claudio su
-// questa seconda modifica):
-// - Streak tolto dal riepilogo in cima (era mostrato lì E nella card
-//   "Costanza" — ridondante, segnalato da Claudio). Resta SOLO nella card
-//   in fondo.
-//
-// QUARTO GIRO STESSA SESSIONE (2026-09-25, decisione architetturale di
-// Claudio: "tutte le permanenti le trasformerei in traguardi e le
-// toglierei dalle missioni"): 6 delle 7 missioni una_tantum
-// (m50_missione_compiuta, m54_cacciatore_di_obiettivi, m44_torna_domani,
-// m45_costanza, m46_settimana_attiva, m75_matchmaker) sono state RIMOSSE
-// dal catalogo (ui/missioni-catalogo.ui.js) e convertite in traguardi —
-// vedi quel file per il dettaglio (3 già coperte da traguardi esistenti,
-// 3 sostituite da una nuova scala t_streak_* estesa). Di conseguenza il tab
-// "Permanenti" qui non avrebbe più nulla di stabile da mostrare ed è stato
-// RIMOSSO (Claudio: "Va benissimo, rimuovi la tab") — restano solo
-// Oggi/Settimana/Mese. La settima missione una_tantum,
-// m95_il_tuo_telefono, è diventata anch'essa un traguardo il 2026-09-26
-// (t_il_tuo_telefono, visibile in Achievement — vedi
-// ui/missioni-catalogo.ui.js e sql/79): oggi non esiste più nessuna
-// missione una_tantum.
-//
-// CONSOLIDAMENTO FATTO NELLO STEP 14 (invariato): avvisi CSBar + beep +
-// rilettura saldo polvere sono in _missioniNotificaCompletamenti(), dentro
-// ui/missioni.ui.js (il motore, non questo file: la usa anche
-// missioni-watcher.js).
-//
-// COSA RESTA FUORI (non spostato qui, invariato):
-// - apriDettaglioWidget (ui/paginainiziale-dettaglio.ui.js) continua a
-//   chiamare renderPaginaMissioni() per tabId === 'missioni' — motore
-//   home, dispatch generico, non toccato in questa sessione.
-// - MOTORE_MISSIONI, CATALOGO_MISSIONI, CATALOGO_TRAGUARDI,
-//   _missioniNotificaCompletamenti (ui/missioni.ui.js) — motore missioni,
-//   non toccato se non per l'aggiunta del trigger popup (vedi quel file,
-//   sessione precedente).
-// - _watcherMissioniGiro e tutto il resto di ui/missioni-watcher.js — non
-//   toccato in questa sessione.
-// - authGetUserId, escapeHtml: esterne, non toccate.
-// ───────────────────────────────────────────────────────────────────────
+// Widget e pagina Missioni.
 
-// ── VOCE DI CATALOGO ──────────────────────────────────────────────────
 CATALOGO_WIDGET.missioni = {
         titolo: 'Missioni', icona: 'fa-list-check',
-        // Async: chiama il repository per il conteggio di oggi. Se l'utente
-        // non è loggato o la query fallisce, ricade su un testo neutro
-        // invece di un errore visibile (stesso principio degli altri
-        // preview() del catalogo).
         preview: async () => {
             try {
                 const userId = await authGetUserId();
                 if (!userId) return { righe: ['Accedi per vedere le missioni'], dati: { placeholder: true } };
                 const oggi = MOTORE_MISSIONI.periodoCorrente('giornaliera');
                 const pool = MOTORE_MISSIONI.missioniDelGiorno(userId, oggi.periodo);
-                // AGGIORNATO 2026-09-26 (tessera Home vera, Claudio:
-                // "Facciamolo"): prima era un conteggio di TUTTE le righe
-                // completate oggi (missioniCompletatePeriodo) — contava anche
-                // m94_personalizza, assegnata dal suo aggancio diretto pure
-                // quando non è tra le 4 estratte, quindi poteva dare "5/4".
-                // Ora legge QUALI missioni sono fatte (stessa funzione del
-                // motore, una query) e conta solo quelle del pool di oggi.
                 const { data: righeFatte, error } = await missioniCompletateIdPerPeriodi(userId, [oggi.periodo]);
                 if (error) throw error;
                 const idFatte = new Set((righeFatte || []).map(r => r.missione_id));
                 const voci = pool.map(m => ({ titolo: m.titolo, fatta: idFatte.has(m.id), ricompensa: m.ricompensa }));
                 const fatte = voci.filter(v => v.fatta).length;
                 return {
-                    // Restyle FASE 2: stato corto accanto alla sfera. Nessun
-                    // badge: i premi si assegnano da soli, non c'è niente da
-                    // riscuotere (vedi widget-dafare).
                     righe: [`${fatte} di ${pool.length} oggi`],
                     dati: { fatte, totali: pool.length, voci },
                 };
@@ -137,21 +24,10 @@ CATALOGO_WIDGET.missioni = {
         },
 };
 
-// ── STATO DI PAGINA (restyle 2026-09-25) ─────────────────────────────
-// Cache popolata una volta per apertura pagina da renderPaginaMissioni(),
-// riletta da _missioniRenderPagina()/_missioniCambiaTab() per ridisegnare
-// solo il markup, senza rifare query. Reimpostata ad ogni renderPaginaMissioni().
 let _missioniCache = null;
 let _missioniTabAttiva = 'oggi';
 const _MISSIONI_TAB_LABEL = { oggi: 'Oggi', settimana: 'Settimana', mese: 'Mese' };
 
-// ── PAGINA "MISSIONI" (giornaliere/settimanali/mensili/una_tantum —
-// SEMPLIFICATA 2026-09-25: i traguardi permanenti sono usciti da questa
-// pagina, ora vivono nel widget Achievement) ─────────────────────────────
-// Chiama MOTORE_MISSIONI.valutaEAssegna() (ui/missioni.ui.js), che raccoglie
-// i dati via data/missioni.repository.js, valuta il catalogo Fase 1 e
-// assegna automaticamente le ricompense delle voci appena soddisfatte
-// (Claudio: "automatico, si sblocca da solo" — nessun bottone Riscuoti).
 async function renderPaginaMissioni() {
     const containerMissioni = document.getElementById('missioniListaOggi');
     if (!containerMissioni) return;
@@ -173,21 +49,10 @@ async function renderPaginaMissioni() {
     }
     const { dati, missioniOggiPool, missioniSettimanaPool, missioniMesePool, nuoveMissioni, nuoviTraguardi } = risultato;
 
-    // Aggiorna il badge del widget in home, se aperto in background —
-    // stesso principio di aggiornaBadgeMatch(), nessun refresh di pagina.
-    if (typeof _aggiornaPallinoMenu === 'function') { /* nessun pallino per missioni al momento, placeholder per coerenza futura */ }
+    if (typeof _aggiornaPallinoMenu === 'function') {   }
 
     const idNuove = new Set(nuoveMissioni.map(m => m.id));
 
-    // CONSOLIDATO (STEP 14 ristrutturazione, 2026-09-11): avvisi CSBar +
-    // beep + rilettura saldo polvere in un'unica funzione condivisa
-    // (_missioniNotificaCompletamenti, ui/missioni.ui.js), usata anche da
-    // ui/missioni-watcher.js. Dal 2026-09-25 quella funzione include anche
-    // il trigger del popup di sblocco Achievement per ogni nuovo
-    // traguardo — invariato qui, nessuna chiamata in più da aggiungere in
-    // questo file. Non awaited, come il refresh del saldo non lo era
-    // nemmeno prima — stesso comportamento fire-and-forget di sempre, non
-    // blocca il render della pagina.
     _missioniNotificaCompletamenti(nuoveMissioni, nuoviTraguardi);
 
     _missioniCache = {
@@ -203,26 +68,11 @@ async function renderPaginaMissioni() {
     _missioniRenderPagina();
 }
 
-// Ridisegna riepilogo + tab + elenco dalla cache già raccolta — nessuna
-// query. Chiamata sia dal primo render (sopra) sia da _missioniCambiaTab()
-// al cambio tab.
-//
-// RESTYLE TAVOLA (2026-10-01, tavole OK-missioni / PC-missioni): testata
-// con bottone "Traguardi", anello di oggi con riepilogo dei premi, righe
-// con avanzamento "1/3" e premio "+5 ✧"; su PC (pagina larga >= 780px,
-// container query su #missioni) le tre finestre stanno affiancate in tre
-// colonne invece che nei tab, e in fondo c'è "Completate di recente".
-// NESSUN bottone "Riscuoti": i premi si assegnano da soli (decisione di
-// Claudio) — una missione fatta mostra il premio già preso in verde.
 function _missioniRenderPagina() {
     const container = document.getElementById('missioniListaOggi');
     if (!container || !_missioniCache) return;
     const { dati, idNuove, gruppi } = _missioniCache;
 
-    // Il riepilogo si riferisce SEMPRE a "Oggi", indipendentemente dal tab
-    // selezionato sotto. Calcolato con MOTORE_MISSIONI.valuta() sullo
-    // stesso pool mostrato nelle righe: stessa fonte di verità di ciò che
-    // l'utente vede spuntato.
     const poolOggi = gruppi.oggi;
     const completateOggi = poolOggi.filter(m => MOTORE_MISSIONI.valuta(m, dati)).length;
     const totaleOggi = poolOggi.length;
@@ -240,14 +90,10 @@ function _missioniRenderPagina() {
     const mancanti = totaleOggi - completateOggi;
     const sottoRiepilogo = mancanti <= 0 ? 'torna domani per le nuove' : (mancanti === 1 ? 'ancora 1 missione oggi' : `ancora ${mancanti} missioni oggi`);
 
-    // Polvere già presa oggi (solo premi di tipo polvere: gli altri tipi
-    // non hanno un numero da sommare) — per la riga sotto il titolo su PC.
     const tutte = [...gruppi.oggi, ...gruppi.settimana, ...gruppi.mese];
     const polverePresa = tutte.filter(m => MOTORE_MISSIONI.valuta(m, dati))
         .reduce((s, m) => s + (m.ricompensa && m.ricompensa.tipo === 'polvere' ? (m.ricompensa.quantita || 0) : 0), 0);
 
-    // Streak = giorni consecutivi CON ACCESSO (vedi commento in testa al
-    // file) — dati.giorni_consecutivi è già calcolato da raccogliDati().
     const streak = dati.giorni_consecutivi || 0;
 
     const pcSotto = [sottoRiepilogo];
@@ -288,7 +134,6 @@ function _missioniRenderPagina() {
         ? t.pool.map(m => _righeMissioneHtml(m, dati, idNuove.has(m.id))).join('')
         : `<div class="msn-vuoto"><i class="fa-regular fa-calendar"></i><b>${escapeHtml(t.vuoto)}</b><span>Per ora non ce ne sono: appena arrivano le trovi qui</span></div>`;
 
-    // Telefono: un solo elenco (tab attivo). PC: tre colonne, tutte visibili.
     const tabAttivo = tabsDef.find(t => t.chiave === _missioniTabAttiva) || tabsDef[0];
     const colonneHtml = tabsDef.map(t => {
         const daFare = t.pool.some(m => !MOTORE_MISSIONI.valuta(m, dati));
@@ -318,10 +163,6 @@ function _missioniRenderPagina() {
     if (_missioniCache.recentiHtml === undefined) _missioniCaricaRecenti();
 }
 
-// Scritte di scadenza delle tre finestre ("scade tra 6 h", "scade
-// domenica", "ottobre"), calcolate dall'ora del dispositivo — stessi
-// confini di MOTORE_MISSIONI.periodoCorrente() (giorno locale, settimana
-// lunedì-domenica, mese di calendario).
 function _missioniScadenze() {
     const ora = new Date();
     const mezzanotte = new Date(ora.getFullYear(), ora.getMonth(), ora.getDate() + 1);
@@ -332,12 +173,6 @@ function _missioniScadenze() {
     return { oggi, settimana, mese };
 }
 
-// "Completate di recente" (solo PC, tavola PC-missioni): gli ultimi giorni
-// e la settimana scorsa, quante missioni del loro pool sono state fatte e
-// quanta polvere hanno dato. Una sola query (missioniCompletateIdPerPeriodi,
-// già usata dalla tessera Home) per tutti i periodi insieme; i pool dei
-// giorni passati sono ricalcolati con la stessa estrazione deterministica
-// del motore. Fatta DOPO il primo disegno, così la pagina non aspetta.
 async function _missioniCaricaRecenti() {
     if (!_missioniCache) return;
     const cache = _missioniCache;
@@ -398,17 +233,6 @@ async function _missioniCaricaRecenti() {
     if (el) el.innerHTML = cache.recentiHtml;
 }
 
-// Card "Prossimo traguardo" (2026-09-25): il traguardo NON ancora sbloccato
-// con la percentuale di completamento più alta — rimando cliccabile al
-// widget Achievement (apriDettaglioWidget('achievement', ...), stessa
-// funzione/tabId già usata altrove in index.html per aprire quella pagina,
-// invariata). Considera SOLO i traguardi con operatore '>=' (soglia
-// numerica, es. "100 carte") — esclude i traguardi booleani a scatto
-// singolo (es. t_giorno_impeccabile, operatore '==', valore true), per cui
-// una "percentuale di avvicinamento" non ha senso. CATALOGO_TRAGUARDI è la
-// stessa costante globale già usata da MOTORE_MISSIONI (ui/missioni-catalogo.ui.js),
-// dati._traguardiRiscossiIds è già esposto da raccogliDati() (ui/missioni.ui.js,
-// sessione precedente) — nessuna nuova query.
 function _missioniProssimoTraguardo(dati) {
     const riscossi = new Set(dati._traguardiRiscossiIds || []);
     let migliore = null;
@@ -417,13 +241,7 @@ function _missioniProssimoTraguardo(dati) {
         if (riscossi.has(t.id)) continue;
         const valoreAttuale = dati[t.metrica];
         if (valoreAttuale === undefined) continue;
-        // Già raggiunto ma non ancora in traguardi_riscossi: lo assegna il
-        // prossimo giro del motore — non è un "prossimo" traguardo.
         if (valoreAttuale >= t.valore) continue;
-        // Percentuale mostrata cappata al 99%: se un traguardo è già >=100%
-        // ma non ancora risulta in traguardi_riscossi, è solo questione del
-        // prossimo giro di MOTORE_MISSIONI.valutaEAssegna() (o del prossimo
-        // apertura pagina) — non ha senso proclamarlo "100% ma bloccato".
         const percent = Math.max(0, Math.min(99, Math.round((valoreAttuale / t.valore) * 100)));
         if (!migliore || percent > migliore.percent) {
             migliore = { t, valoreAttuale, percent };
@@ -434,10 +252,8 @@ function _missioniProssimoTraguardo(dati) {
 
 function _missioniProssimoTraguardoHtml(dati) {
     const migliore = _missioniProssimoTraguardo(dati);
-    if (!migliore) return ''; // tutti i traguardi a soglia numerica già sbloccati, o dato mancante — nessun blocco, nessun errore
+    if (!migliore) return '';
     const { t, valoreAttuale, percent } = migliore;
-    // Arrotondato SOLO per la visualizzazione (es. valore_collezione è una
-    // somma di prezzi, quasi mai un numero intero).
     const valoreVisualizzato = Math.round(valoreAttuale);
     const avanzamento = t.metrica === 'valore_collezione'
         ? `valore collezione ${valoreVisualizzato} € su ${t.valore} €`
@@ -452,8 +268,6 @@ function _missioniProssimoTraguardoHtml(dati) {
         </div>`;
 }
 
-// Card "Costanza": stesso streak calcolato dal chiamante (giorni di fila
-// con accesso), nessuna query aggiuntiva qui.
 function _missioniStreakCardHtml(streak) {
     if (streak > 0) {
         const testo = streak === 1 ? '1 giorno di fila' : `${streak} giorni di fila`;
@@ -473,16 +287,12 @@ function _missioniStreakCardHtml(streak) {
         </div>`;
 }
 
-// Premio in forma corta per la colonna destra delle righe ("+5 ✧"); per i
-// premi senza numero di polvere usa il testo breve già esistente.
 function _missioniPremioBreve(ricompensa) {
     if (!ricompensa) return '';
     if (ricompensa.tipo === 'polvere') return `+${ricompensa.quantita || 1} ✧`;
     return _ricompensaTestoBreve(ricompensa);
 }
 
-// Avanzamento "1/3" di una missione a soglia numerica; null per le
-// missioni a scatto singolo (operatore '==') dove un conteggio non ha senso.
 function _missioniAvanzamento(m, dati) {
     if (m.operatore !== '>=' || typeof m.valore !== 'number' || m.valore <= 1) return null;
     const v = Number(dati[m.metrica]);
@@ -490,34 +300,18 @@ function _missioniAvanzamento(m, dati) {
     return `${Math.min(Math.round(v), m.valore)}/${m.valore}`;
 }
 
-// Cambio tab (Oggi/Settimana/Mese) — usa la cache, nessuna
-// nuova query. Se la pagina non è mai stata renderizzata in questa
-// sessione (cache assente), non fa nulla: non dovrebbe mai accadere dato
-// che i bottoni esistono solo dopo il primo render, difensivo comunque.
 function _missioniCambiaTab(chiave) {
     if (!_missioniCache) return;
     _missioniTabAttiva = chiave;
     _missioniRenderPagina();
 }
 
-// Riga singola per una missione (completata o no), usata in tutti e 3 i
-// tab (Oggi/Settimana/Mese). Tap sulla riga (2026-08-31,
-// richiesta di Claudio: "cliccando su una missione appaia la descrizione,
-// sennò l'utente non sa cosa fare, e anche la ricompensa collegata") →
-// espande un blocco sotto con la descrizione completa — comportamento
-// INVARIATO dal restyle 2026-09-25: cambia solo lo stile della riga
-// (cerchio di spunta più grande, ricompensa breve già visibile come
-// sottotitolo, non solo nel blocco espanso).
 function _righeMissioneHtml(m, dati, appenaCompletata) {
     const soddisfatta = MOTORE_MISSIONI.valuta(m, dati);
     const badgeNuova = appenaCompletata ? `<span class="msn-nuova">Nuovo!</span>` : '';
     const idBase = 'missioneDettaglio-' + m.id;
     const avanzamento = soddisfatta ? null : _missioniAvanzamento(m, dati);
     const premio = _missioniPremioBreve(m.ricompensa);
-    // Restyle tavola: descrizione sempre visibile sotto il titolo, a destra
-    // avanzamento + premio. Fatta → premio in pillola verde ("preso", si
-    // assegna da solo). Il tap apre comunque il dettaglio con la ricompensa
-    // completa (richiesta di Claudio 2026-08-31, invariata).
     const destra = soddisfatta
         ? `<span class="msn-premio-preso" title="Premio già assegnato"><i class="fa-solid fa-check"></i> ${escapeHtml(premio)}</span>`
         : `<div class="msn-destra">${avanzamento ? `<span>${avanzamento}</span>` : ''}<b>${escapeHtml(premio)}</b></div>`;
@@ -544,13 +338,6 @@ function _toggleDettaglioMissione(id) {
     dettaglio.style.display = aperto ? 'none' : 'block';
 }
 
-// Testo BREVE della ricompensa (senza prefisso "Ricompensa:"), usato come
-// sottotitolo sempre visibile nella riga (restyle 2026-09-25). Duplica
-// volutamente la logica di _testoRicompensa() sotto invece di refactorare
-// quest'ultima per condividerla — stesso file, ma Regola d'Oro #1
-// (preferire codice locale duplicato a refactoring, anche a basso
-// rischio): _testoRicompensa() resta identica a prima, nessun rischio di
-// romperla per chi la richiama altrove.
 function _ricompensaTestoBreve(ricompensa) {
     const q = ricompensa.quantita || 1;
     let base;
@@ -563,12 +350,6 @@ function _ricompensaTestoBreve(ricompensa) {
     return `${base}${bonus}`;
 }
 
-// Testo leggibile della ricompensa — stessi 4 tipi già usati nel catalogo
-// (polvere/stampino/bustina/skip_missione), più il campo opzionale 'bonus'
-// (es. m53/m99/m100 "possibilita_bustina/stampino") mostrato come nota a
-// parte, senza promettere una certezza che non c'è. INVARIATA dal restyle
-// (usata oggi solo nel blocco descrizione espanso, se in futuro serve
-// altrove).
 function _testoRicompensa(ricompensa) {
     const q = ricompensa.quantita || 1;
     let base;

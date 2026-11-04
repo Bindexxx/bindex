@@ -2,9 +2,6 @@
 <html lang="it">
 <head>
     <meta charset="UTF-8">
-    <!-- (S5 sicurezza, 2026-10-12) Da dove la pagina puo' caricare script, stili,
-         font e immagini e verso dove puo' inviare dati: il browser blocca tutto il
-         resto. 'unsafe-inline' serve agli onclick nell'HTML. Domini: vendor/LEGGIMI.txt. -->
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https://*.supabase.co https://images.weserv.nl https://raw.githubusercontent.com; media-src 'self' data: blob: https://*.supabase.co; connect-src 'self' https://xpfibrzsffurdlypxnrw.supabase.co wss://xpfibrzsffurdlypxnrw.supabase.co; worker-src 'self'; manifest-src 'self'; frame-src 'none'; object-src 'none'; base-uri 'self'; form-action 'self'">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Bindex — Wishlist</title>
@@ -28,7 +25,6 @@
             --shadow-soft: 0 4px 20px rgba(124, 77, 255, 0.08);
         }
 
-        /* TEMA VERDE PASTELLO */
         body.theme-verde {
             --bg-color: #eef7f2;
             --primary: #2e7d32;
@@ -40,7 +36,6 @@
             --shadow-soft: 0 4px 20px rgba(46, 125, 50, 0.08);
         }
 
-        /* TEMA POKEMON */
         body.theme-pokemon {
             --bg-color: #edf4fc;
             --primary: #2a75d3;
@@ -52,7 +47,6 @@
             --shadow-soft: 0 4px 20px rgba(42, 117, 211, 0.08);
         }
 
-        /* DARK MODE */
         body.dark-mode {
             --bg-color: #121018;
             --card-bg: #1c1826;
@@ -92,11 +86,7 @@
             background-color: var(--bg-color);
             color: var(--text-dark);
             min-height: 100vh;
-            min-height: 100dvh; /* iOS Safari: la barra indirizzi dinamica
-                                    cambia 100vh in continuazione — dvh si
-                                    adatta subito, senza "salti" di layout */
-            /* spazio per la barra totale fissa in basso, + l'home indicator
-               di iPhone (barra bianca in fondo, senza tasto Home fisico) */
+            min-height: 100dvh;
             padding-bottom: calc(90px + env(safe-area-inset-bottom));
         }
 
@@ -282,8 +272,6 @@
             border-top: 1px solid var(--border-color);
             box-shadow: 0 -4px 20px rgba(0,0,0,0.08);
             padding: 0.9rem 1.2rem;
-            /* iPhone senza tasto Home: aggiunge lo spazio dell'home indicator
-               SOPRA al padding normale, così il bottone non ci finisce sotto */
             padding-bottom: calc(0.9rem + env(safe-area-inset-bottom));
             padding-left: calc(1.2rem + env(safe-area-inset-left));
             padding-right: calc(1.2rem + env(safe-area-inset-right));
@@ -315,7 +303,6 @@
 
         .btn-copia:disabled { opacity: 0.5; cursor: not-allowed; }
 
-        /* A16: statistica di riepilogo in cima alla pagina */
         .stat-riepilogo {
             font-size: 0.78rem;
             font-weight: 700;
@@ -323,11 +310,6 @@
             margin-top: 0.4rem;
         }
 
-        /* A16: flip-modal (fronte/retro con statistiche) — stesso concetto
-           già usato nel sito privato (index.html, Home "In primo piano" e
-           poi esteso a tutto il sito in A15), riadattato qui senza il
-           pulsante "Vai al binder" (non ha senso su una pagina pubblica) e
-           senza location (la wishlist non la possiede ancora). */
         #flipCardScene { perspective: 1200px; position: relative; z-index: 1; }
         .flip-card-inner {
             position: relative;
@@ -366,12 +348,9 @@
             position: absolute; top: 0.6rem; right: 0.6rem;
             background: none; border: none; font-size: 1.2rem;
             color: var(--text-muted); cursor: pointer;
-            z-index: 20; /* resta sempre sopra la scena flip 3D */
+            z-index: 20;
         }
 
-        /* FASE 4 (backcarte) — RENDER RETRO CARTA PERSONALIZZATO, ramo
-           non-owner (pagina pubblica via link, mai proprietario loggato —
-           vedi renderRetroCartaViewer). Stesso pattern di scambio.html. */
         .cbd-wrap { position: absolute; inset: 0; overflow: hidden; display: none; z-index: 0; }
         .cbd-stage { position: relative; width: 900px; height: 1260px; transform-origin: top left; }
         .cbd-stage img.cbd-bg {
@@ -422,12 +401,6 @@
             font-size: 26px; font-weight: 800; color: #14142a; text-align: center;
             min-width: 44px; max-width: 114px; line-height: 1.05;
         }
-        /* ═══ Aggiunto 26/08/2026: copertina/titolo dinamici del binder +
-           toggle Elenco/Sfoglia + libro sfogliabile, portati da
-           binder-pubblico.html tramite il modulo condiviso
-           ui/binder-flipbook.ui.js. Stesso identico CSS, nessuna modifica
-           salvo l'ultimo blocco (overlay di selezione, non presente su
-           binder-pubblico.html). ═══ */
         .copertina-banner {
             display: none;
             width: 100%;
@@ -455,7 +428,6 @@
         }
         .binder-modalita-btn.active { border-color: var(--primary); background-color: var(--primary); color: white; }
 
-        /* Tasche del libro (stesso stile del sito privato) */
         .binder-slot-qty-badge {
             position: absolute; top: 6px; right: 6px;
             background: var(--primary); color: #fff;
@@ -493,8 +465,6 @@
         }
         .binder-page-btn:disabled { background-color: var(--border-color); color: var(--text-muted); cursor: not-allowed; }
 
-        /* ═══ LIBRO SFOGLIABILE — stesso identico CSS di binder-pubblico.html,
-           nessuna misura in px qui: le imposta _libroMisura() in JS. ═══ */
         .libro-wrap { width: 100%; margin-top: 0.5rem; touch-action: pan-y; user-select: none; -webkit-user-select: none; }
         .libro-scena { position: relative; margin: 0 auto; perspective: 1800px; }
         .libro-modo-singola { overflow: hidden; }
@@ -540,11 +510,6 @@
             background: repeating-linear-gradient(135deg, rgba(0,0,0,0.028) 0 2px, rgba(0,0,0,0) 2px 7px), var(--bg-color);
         }
 
-        /* ═══ NUOVO 26/08/2026 — overlay selezione/quantità dentro il
-           libro (non presente su binder-pubblico.html, che non ha
-           selezione). Riusa .card-checkbox/.qty-control/.qty-btn/
-           .qty-value già definiti sopra per la modalità Elenco — solo
-           posizionamento e dimensioni ridotte per stare dentro la tasca. ═══ */
         .binder-slot-selezione {
             position: absolute; left: 0; right: 0; bottom: 0;
             display: flex; align-items: center; justify-content: space-between;
@@ -557,8 +522,6 @@
         .qty-control-mini .qty-btn { width: 20px; height: 20px; font-size: 0.7rem; }
         .qty-control-mini .qty-value { font-size: 0.7rem; min-width: 14px; text-align: center; color: #fff; font-weight: 700; }
 
-        /* AGGIORNATO (STEP 5 restyle "cornice Pokédex", 2026-09-17) —
-           stesso trattamento delle altre 2 pagine pubbliche. */
         .barra-totale, #immagineModal { position: absolute !important; }
     </style>
     <link rel="stylesheet" href="statusbar.css">
@@ -582,7 +545,6 @@
 
     <img class="copertina-banner" id="copertinaBinderBanner" alt="">
 
-    <!-- MODALE IMMAGINE INGRANDITA / FLIP-CARD -->
     <div id="immagineModal" style="display:none; inset:0; background:rgba(0,0,0,0.7); z-index:200; align-items:center; justify-content:center;" onclick="chiudiImmagineIngrandita()">
         <div class="bx-carta-schermo" onclick="event.stopPropagation()">
             <button class="close-modal-btn bx-carta-chiudi" onclick="chiudiImmagineIngrandita()" aria-label="Chiudi"><i class="fa-solid fa-xmark"></i></button>
@@ -648,11 +610,6 @@
     </div>
 
     <div class="container">
-        <!-- FASE 6, STEP 4 (2026-09-13): tab Carte/Sealed — link unico
-             Wishlist come richiesto dalla roadmap. Il libro sfogliabile
-             (Elenco/Sfoglia) resta SOLO per le carte (la Wishlist Sealed
-             non ha un binder/layout proprio, stesso trattamento già dato
-             agli Scaffali in Fase 1.3/3). -->
         <div class="binder-modalita-toggle" style="margin-bottom:0.6rem;">
             <button type="button" class="binder-modalita-btn active" data-wtab="carte" onclick="_wishlistPubTab('carte')"><i class="fa-solid fa-layer-group"></i> Carte</button>
             <button type="button" class="binder-modalita-btn" data-wtab="sealed" onclick="_wishlistPubTab('sealed')"><i class="fa-solid fa-box-archive"></i> Sealed</button>
@@ -673,8 +630,6 @@
                 <div class="stato-caricamento"><i class="fa-solid fa-spinner fa-spin"></i> Caricamento carte disponibili...</div>
             </div>
 
-            <!-- Libro sfogliabile — motore condiviso ui/binder-flipbook.ui.js
-                 (estratto da binder-pubblico.ui.js il 26/08/2026). -->
             <div id="binderLibroWrap" class="libro-wrap" style="display:none;">
                 <div class="libro-scena" id="binderLibroScena">
                     <div class="libro-lato libro-lato-sx" id="binderLibroSx"></div>
@@ -704,7 +659,7 @@
         </div>
     </div>
 
-    </div><!-- /phoneContenutoScorribile -->
+    </div>
 
     <div class="barra-totale">
         <div class="barra-totale-info">
@@ -716,20 +671,15 @@
         </button>
     </div>
 
-    </div><!-- /phoneScreen -->
+    </div>
 
-    <!-- Spostato fuori da #phoneScreen (STEP 12 fix restyle "cornice
-         Pokédex", 2026-09-17) — vedi commento identico in index.html:
-         Claudio lo vuole "a cavallo" del bordo, non dentro lo schermo
-         (che tra l'altro lo taglierebbe a metà per overflow:hidden). -->
     <div id="btnPubblicoTornaSu" class="pokedex-ball" onclick="_clickTornaSuPubblico()" title="Torna su">
         <i class="fa-solid fa-arrow-up"></i>
     </div>
-    </div><!-- /phoneFrameBox -->
-    </div><!-- /phoneShell -->
+    </div>
+    </div>
 
-    <script src="vendor/supabase-js-2.117.1.js"></script><!-- versione esatta, uguale in tutte le pagine; copiata nel repo il 2026-10-12 (S4, vedi vendor/LEGGIMI.txt) -->
-    <script src="config/supabase.js" data-client="pubblico"></script>
+    <script src="vendor/supabase-js-2.117.1.js"></script>    <script src="config/supabase.js" data-client="pubblico"></script>
     <script src="data/card-back-viewer.repository.js"></script>
     <script src="data/binder-pubblico.repository.js"></script>
     <script src="data/wishlist.repository.js"></script>
@@ -737,25 +687,14 @@
     <script src="data/cornice-pubblica.repository.js"></script>
     <script src="utils/theme-colori.js"></script>
     <script src="utils/comuni.js"></script>
-    <script src="data/pubblico.repository.js"></script><!-- chiamate DB di shared-public.js, audit 2026-09-25 B8 -->
-    <script src="utils/shared-public.js"></script>
+    <script src="data/pubblico.repository.js"></script>    <script src="utils/shared-public.js"></script>
     <script src="ui/card-back-viewer.ui.js"></script>
     <script src="ui/binder-flipbook.ui.js"></script>
     <script src="ui/wishlist.ui.js"></script>
     <script src="statusbar.js"></script>
     <script src="utils/cornice-pubblica.js"></script>
     <script>
-
-        // Fix 26/08/2026: creazione del client Supabase mancante — mai
-        // presente su questa pagina in questa sessione (stesso bug #9 già
-        // trovato e corretto su binder-pubblico.html). config/supabase.js
-        // definisce solo URL/chiave, la creazione spetta a ogni pagina.
-        // Pagina pubblica anonima → client leggero, nessuna sessione persistita.
-        // supabaseClient ora viene creato in config/supabase.js (data-client="pubblico"), dal 2026-09-25.
-
-        // ── AVVIO ────────────────────────────────────────────────────────
         applicaTemaCondiviso();
-        // STEP 6 (2026-09-17): vedi commento identico in scaffali-pubblico.html
         (async () => {
             await caricaCatalogo();
             await applicaColoreCorniceProprietario(_ownerUserId);

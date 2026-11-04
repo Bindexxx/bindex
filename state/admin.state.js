@@ -1,11 +1,9 @@
-// ── state/admin.state.js ──────────────────────────────────────────────
-// Stato e riferimenti DOM globali della dashboard admin. Stessi valori
-// iniziali del codice originale.
+// Stato e riferimenti DOM della pagina admin.
 
 const loginScreen  = document.getElementById('login-screen');
 const deniedScreen = document.getElementById('denied-screen');
-const mfaScreen    = document.getElementById('mfa-screen'); // (S6) codice da app
-let _mfaFattoreInCorso = null; // id del fattore TOTP da verificare (iscrizione o accesso)
+const mfaScreen    = document.getElementById('mfa-screen');
+let _mfaFattoreInCorso = null;
 const dash         = document.getElementById('dash');
 const elUser  = document.getElementById('login-user');
 const elPass  = document.getElementById('login-pass');
@@ -14,9 +12,9 @@ const elSubmit = document.getElementById('login-submit');
 let _ultimeRichiesteCaricate = [];
 let _mappaUsernameRichieste = {};
 let _mappaAnteprimaFotoRichieste = {};
-let _mappaPrimaRichieste = {}; // request_id -> nome attuale (sql/86), solo rinomine binder/scaffale pending
-let _mappaSlotRichieste = {}; // media_id -> 'card_back' | 'binder_cover'
-let _nascondiGiaGestite = false; // toggle "Nascondi già gestite" (Fase f, solo vista, non tocca il DB)
+let _mappaPrimaRichieste = {};
+let _mappaSlotRichieste = {};
+let _nascondiGiaGestite = false;
 let ultimaListaUtenti = [];
 const modalBackdrop = document.getElementById('user-modal-backdrop');
 const modalBody = document.getElementById('modal-body');

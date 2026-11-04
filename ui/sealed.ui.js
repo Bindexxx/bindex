@@ -1,11 +1,4 @@
-// ── ui/sealed.ui.js ──────────────────────────────────────────────────────
-// Logica UI specifica di sealed.html: caricamento catalogo, filtri
-// (lingua + range prezzo), rendering lista, riepilogo selezione. Unica
-// delle 3 pagine pubbliche senza flip-card/retro carta (i prodotti sealed
-// non hanno un "retro" da mostrare) — usa il modale immagine semplice.
-//
-// Dipende da: data/sealed.repository.js, state/sealed.state.js,
-// utils/shared-public.js.
+// Pagina pubblica sealed.html.
 
 function apriImmagineIngrandita(src) {
     document.getElementById('immagineIngranditaImg').src = src;
@@ -26,14 +19,6 @@ async function caricaCatalogo() {
         return;
     }
 
-    // RISOLTO 18/08/2026 (Problema #2, STATO_PROGETTO.txt sez.7): non si
-    // legge più direttamente la tabella 'carte' filtrata solo lato client —
-    // si passa dalla RPC dedicata leggi_sealed_condiviso (SECURITY
-    // DEFINER, stesso pattern già in uso da mesi in scambio.html/
-    // wishlist.html con leggi_scambio_condiviso / leggi_wishlist_condivisa),
-    // che applica il filtro tipo='sealed' AND stato='collezione' AND
-    // location='SCAMBIO' direttamente nel database, non più solo nel
-    // browser di chi guarda la pagina.
     const { data, error } = await sealedLeggiCondiviso(userId);
 
     if (error) {
@@ -53,9 +38,6 @@ async function caricaCatalogo() {
             notes: r.note || '',
             immagine: r.immagine || null,
         }))
-        // A16: quantità a 0 nascoste ALLA FONTE — non devono comparire mai,
-        // nemmeno cercandole per nome nella barra di ricerca (decisione
-        // esplicita di Claudio).
         .filter(c => c.qtyDisponibile > 0);
 
     if (carte.length === 0) {
@@ -67,10 +49,6 @@ async function caricaCatalogo() {
     renderLista();
 }
 
-// A16: costruisce le pillole Lingua in base a quelle REALMENTE presenti
-// nei dati caricati (non un elenco fisso — se un giorno arriva una lingua
-// nuova, compare da sola), e calcola il range di prezzo dinamico dai
-// prodotti disponibili in quel momento.
 function inizializzaFiltri() {
     const lingue = [...new Set(carte.map(c => c.lang))].sort();
     document.getElementById('filtriLinguaPills').innerHTML = lingue.map(l =>
@@ -80,7 +58,7 @@ function inizializzaFiltri() {
     const prezzi = carte.map(c => c.price);
     prezzoDatiMin = Math.floor(Math.min(...prezzi));
     prezzoDatiMax = Math.ceil(Math.max(...prezzi));
-    if (prezzoDatiMin === prezzoDatiMax) prezzoDatiMax += 1; // evita uno slider "piatto" con un solo prodotto
+    if (prezzoDatiMin === prezzoDatiMax) prezzoDatiMax += 1;
 
     const sliderMin = document.getElementById('sliderPrezzoMin');
     const sliderMax = document.getElementById('sliderPrezzoMax');
@@ -110,8 +88,6 @@ function onSliderPrezzoInput(quale) {
     let min = parseInt(sliderMin.value, 10);
     let max = parseInt(sliderMax.value, 10);
 
-    // Impedisce ai due cursori di "scavalcarsi" — il minimo non può
-    // superare il massimo e viceversa.
     if (quale === 'min' && min > max) { min = max; sliderMin.value = min; }
     if (quale === 'max' && max < min) { max = min; sliderMax.value = max; }
 
@@ -168,9 +144,6 @@ function renderLista() {
     const container = document.getElementById('listaContainer');
     const searchVal = document.getElementById('searchInput').value.toLowerCase();
 
-    // A16: ricerca testuale + filtro Lingua (multi-selezione) + filtro
-    // Prezzo (range) — tutti combinati insieme (AND), come richiesto da
-    // Claudio.
     const filtrate = carte.filter(c => {
         const corrispondeRicerca = c.name.toLowerCase().includes(searchVal) || c.code.toLowerCase().includes(searchVal);
         const corrispondeLingua = filtriStato.lingue.size === 0 || filtriStato.lingue.has(c.lang);
@@ -235,6 +208,6 @@ function copiaRiepilogo() {
         btn.innerHTML = '<i class="fa-solid fa-check"></i> Copiato!';
         setTimeout(() => { btn.innerHTML = originale; }, 1800);
     }).catch(() => {
-        alert(testo); // fallback se il clipboard non è disponibile (es. http non sicuro)
+        alert(testo);
     });
 }

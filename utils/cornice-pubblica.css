@@ -1,22 +1,3 @@
-/* ═══════════════════════════════════════════════════════════════════════
-   utils/cornice-pubblica.css — STEP 5 restyle "cornice Pokédex"
-   (2026-09-17). Cornice condivisa da wishlist.html, binder-pubblico.html,
-   scaffali-pubblico.html — stessa struttura di index.html (#phoneShell >
-   #phoneFrameBox > #phoneScreen) ma SENZA griglia widget: qui dentro
-   #phoneScreen c'è semplicemente il contenuto esistente della pagina
-   (header + lista + eventuale barra in fondo), che scorre verticalmente
-   come sempre — vedi utils/cornice-pubblica.js per il motore di scala.
-
-   Richiede che la pagina abbia già definito --primary/--secondary (e le
-   altre variabili derivate) PRIMA che questo CSS le usi — vedi
-   applicaTemaCondiviso() in utils/shared-public.js, che ora chiama anche
-   derivaVariabiliTema() da utils/theme-colori.js.
-
-   SEMPLIFICATO (STEP 9 restyle "cornice Pokédex", 2026-09-17): niente più
-   motore di scala JS (mai citato correttamente in questo commento — era
-   quello di index.html, mai serviva qui). #phoneFrameBox è puro CSS,
-   width/height:100% del suo contenitore.
-   ═══════════════════════════════════════════════════════════════════════ */
 
 html, body {
     margin: 0;
@@ -51,11 +32,6 @@ html, body {
     #phoneFrameBox { border-radius: 26px; }
 }
 
-/* ALLINEATO a index.html (2026-09-25): le vecchie percentuali spesse
-   (9.2%/17.6%… in verticale, 14.25%/5.43%… in orizzontale) erano rimaste
-   qui dopo che index.html era passato al bordo fisso e sottile. Ora stesso
-   valore e stessa variabile di index.css: se cambia lì, va cambiata anche
-   qui (i due fogli non si condividono). */
 :root { --pokedex-margine-schermo: 16px; }
 
 #phoneScreen {
@@ -73,19 +49,12 @@ html, body {
     }
 }
 
-/* Il vero scroll avviene qui dentro (figlio diretto di #phoneScreen), NON
-   su #phoneScreen stesso — così barra-totale/modali (fratelli di questo
-   div, position:absolute rispetto a #phoneScreen) restano ANCORATI al
-   bordo dello schermo invece di scorrere via col contenuto o dipendere
-   dalle sottigliezze di position:fixed dentro un antenato con transform
-   (vedi commento in utils/cornice-pubblica.js). */
 #phoneContenutoScorribile {
     height: 100%;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
 }
 
-/* ── Poké Ball condivise (stesso componente/stessa idea di index.html) ── */
 :root { --pokeball-size: clamp(32px, 5vw, 56px); }
 .pokedex-ball {
     border-radius: 50%;
@@ -104,15 +73,6 @@ html, body {
     box-shadow: inset 0 0 0 1.5px #fff;
 }
 
-/* AGGIORNATO (STEP 11 fix restyle "cornice Pokédex", 2026-09-17): era in
-   percentuale della cornice (fuori posto ora che #phoneFrameBox riempie
-   tutto lo spazio, Step 9) — spostato a un inset fisso e piccolo dal
-   bordo VERO dello schermo (già dentro #phoneScreen nel markup, nessuno
-   spostamento HTML necessario qui, solo CSS). */
-/* CORRETTO (STEP 12 fix restyle "cornice Pokédex", 2026-09-17) — stesso
-   principio di index.html: "decorazione del bordo", centrata sulla linea
-   di confine tra cornice e schermo (metà pallina su ciascun lato), non
-   dentro lo schermo. */
 #btnPubblicoTornaSu {
     position: absolute;
     left: 50%; bottom: var(--pokedex-margine-schermo, 16px);
@@ -124,53 +84,25 @@ html, body {
 }
 #btnPubblicoTornaSu i { position: relative; z-index: 1; font-size: 0.5rem; color: #171717; }
 
-/* NASCOSTA (STEP 13 fix, 2026-09-17) — stesso residuo dimenticato di
-   index.html: .csb-handle i (barretta 38×5px) non era mai stata coperta,
-   quindi mostrava lo stile di libreria non voluto. .csb-bar gestisce già
-   da sola il trascinamento (stesso onPointerDown), nasconderla non toglie
-   funzione. */
 .csb-handle { display: none; }
 
-/* ── MANIGLIA/TENDINA → UNA SOLA POKÉ BALL (STEP 13, seconda versione —
-   corregge lo Step 11). Stessa correzione geometrica di index.html: la
-   pallina NON è più figlia di .csb-shade (i suoi angoli arrotondati la
-   nascondevano del tutto da chiusa — non uno stacking, una questione di
-   geometria: da chiusa il fondo della tendina coincide col bordo vero
-   dello schermo, un margine di sicurezza verso l'interno la spingeva
-   tutta FUORI dall'area visibile). È una pallina indipendente che segue
-   la posizione vera della tendina ad ogni fotogramma — vedi
-   _avviaSincronizzaPallinaTendina in utils/cornice-pubblica.js. */
 .pokedex-ball-tendina {
     position: absolute;
     left: 50%; top: 0;
-    transform: translate(-50%, 0); /* la componente verticale la scrive il JS */
+    transform: translate(-50%, 0);
     width: calc(var(--pokeball-size, clamp(32px, 5vw, 56px)) * 1.15);
     height: calc(var(--pokeball-size, clamp(32px, 5vw, 56px)) * 1.15);
-    /* CORRETTO (STEP 15 fix, 2026-09-17) — stessa correzione di
-       index.html: pointer-events:none funzionava solo da chiusa. Ora la
-       pallina è interattiva davvero, il suo click viene inoltrato a
-       .csb-handle via JS (vedi utils/cornice-pubblica.js), funziona in
-       entrambe le direzioni. */
     cursor: grab;
-    z-index: 9010; /* sopra .csb-bar (9004) — sorella diretta, nessun trucco di stacking necessario */
+    z-index: 9010;
 }
 .pokedex-ball-tendina:active { cursor: grabbing; }
 
-/* La pagina esistente (header/.container/barra-totale/modali) viene
-   spostata DENTRO #phoneScreen com'era, con overflow naturale — nessuna
-   regola qui sotto: il CSS proprio di ciascuna pagina (già nel suo
-   <style>) resta valido invariato, vive semplicemente in un contenitore
-   più piccolo adesso. */
-
-/* (CSS spostato qui da binder-pubblico.html, FASE 6b: condiviso con wishlist.html) */
-/* ═══ RESTYLE BINDEX FASE 6 — pagine pubbliche (binder e wishlist) ═══ */
 .bx-slot-prezzo {
     position: absolute; left: 4px; top: 4px; z-index: 3;
     background: rgba(20,16,30,0.85); color: #fff; font-size: 0.6rem; font-weight: 800;
     padding: 0.1rem 0.35rem; border-radius: 999px; font-family: 'JetBrains Mono', monospace;
     white-space: nowrap; max-width: calc(100% - 4px); overflow: hidden; text-overflow: ellipsis;
 }
-/* Telefoni molto stretti (320 px): le miniature sono larghe ~63 px, "max 4,00 €" non ci stava. */
 @media (max-width: 340px) { .bx-slot-prezzo { font-size: 0.52rem; padding: 0.1rem 0.25rem; } }
 .bx-slot-azione {
     position: absolute; right: 4px; bottom: 4px; z-index: 4;
@@ -192,7 +124,6 @@ html, body {
 .binder-slot-riservato { filter: grayscale(1); }
 .binder-slot-selected { outline: 2px solid var(--primary); outline-offset: -2px; }
 
-/* Carta a tutto schermo (tocco = flip), con "Aggiungi alla scelta" */
 .bx-carta-schermo {
     position: relative; width: min(92%, 420px); max-height: 96%;
     display: flex; flex-direction: column; align-items: center; gap: 0.8rem;
@@ -211,17 +142,9 @@ html, body {
 }
 .bx-carta-aggiungi:disabled { opacity: 0.5; cursor: not-allowed; }
 
-
-/* RESTYLE BINDEX FASE 6 (correzione): il titolo dell'intestazione finiva
-   SOTTO la barra in alto (misurato: titolo a 41-53px, barra a 19-59px).
-   Spazio in più in cima all'intestazione, uguale all'altezza della barra. */
 #phoneContenutoScorribile > header { padding-top: calc(1rem + 40px); }
 .bx-proprietario { font-size: 0.8rem; font-weight: 700; color: var(--primary); margin-top: 0.2rem; }
 
-/* ==========================================================================
-   RESTYLE BINDEX FASE 8b — Richiesta come ospite (ui/richiesta-ospite.ui.js)
-   Foglio dal basso dentro lo schermo della cornice (#phoneScreen).
-   ========================================================================== */
 .og-velo { position: absolute; inset: 0; z-index: 320; background: rgba(0,0,0,0.55); display: flex; align-items: flex-end; justify-content: center; padding: 12px; box-sizing: border-box; }
 body > .og-velo { position: fixed; }
 .og-foglio { width: 100%; max-width: 460px; max-height: calc(100% - 24px); overflow-y: auto; background: var(--card-bg); color: var(--text-dark); border-radius: 26px; padding: 1.2rem 1.15rem 1.15rem; box-sizing: border-box; box-shadow: 0 -6px 30px rgba(0,0,0,0.25); }
@@ -279,9 +202,6 @@ body.dark-mode .og-pill.att { background: rgba(255, 193, 7, 0.18); color: #ffd54
 body.dark-mode .og-pill.ok { background: rgba(76, 175, 80, 0.18); color: #81c784; }
 body.dark-mode .og-pill.ko { background: rgba(244, 67, 54, 0.18); color: #ef9a9a; }
 
-/* ==========================================================================
-   RESTYLE BINDEX FASE 8c — Foto reali di questa copia (utils/foto-reali.js)
-   ========================================================================== */
 .fr-sezione { margin-top: 10px; text-align: left; }
 .fr-titolo { font-size: 0.82rem; font-weight: 800; margin-bottom: 6px; display: flex; align-items: center; gap: 6px; }
 .fr-striscia { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; }

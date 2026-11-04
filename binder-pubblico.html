@@ -2,9 +2,6 @@
 <html lang="it">
 <head>
     <meta charset="UTF-8">
-    <!-- (S5 sicurezza, 2026-10-12) Da dove la pagina puo' caricare script, stili,
-         font e immagini e verso dove puo' inviare dati: il browser blocca tutto il
-         resto. 'unsafe-inline' serve agli onclick nell'HTML. Domini: vendor/LEGGIMI.txt. -->
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https://*.supabase.co https://images.weserv.nl https://raw.githubusercontent.com; media-src 'self' data: blob: https://*.supabase.co; connect-src 'self' https://xpfibrzsffurdlypxnrw.supabase.co wss://xpfibrzsffurdlypxnrw.supabase.co; worker-src 'self'; manifest-src 'self'; frame-src 'none'; object-src 'none'; base-uri 'self'; form-action 'self'">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Bindex — Binder</title>
@@ -28,7 +25,6 @@
             --shadow-soft: 0 4px 20px rgba(124, 77, 255, 0.08);
         }
 
-        /* TEMA VERDE PASTELLO */
         body.theme-verde {
             --bg-color: #eef7f2;
             --primary: #2e7d32;
@@ -40,7 +36,6 @@
             --shadow-soft: 0 4px 20px rgba(46, 125, 50, 0.08);
         }
 
-        /* TEMA POKEMON */
         body.theme-pokemon {
             --bg-color: #edf4fc;
             --primary: #2a75d3;
@@ -52,7 +47,6 @@
             --shadow-soft: 0 4px 20px rgba(42, 117, 211, 0.08);
         }
 
-        /* DARK MODE */
         body.dark-mode {
             --bg-color: #121018;
             --card-bg: #1c1826;
@@ -93,7 +87,7 @@
             color: var(--text-dark);
             min-height: 100vh;
             min-height: 100dvh;
-            padding-bottom: calc(2rem + env(safe-area-inset-bottom)); /* default vetrina sola lettura — vedi body.binder-pubblico-selezionabile più sotto per il caso Scambio (Fase 1, 26/08/2026) */
+            padding-bottom: calc(2rem + env(safe-area-inset-bottom));
         }
 
         header {
@@ -130,12 +124,6 @@
             font-weight: 600;
         }
 
-        /* Copertina binder — banner sotto l'header, nascosto finché non si
-           risolve un'immagine di tipo 'default' (bucket pubblico). Le
-           copertine caricate dall'utente (bucket privato) non sono
-           mostrabili qui: servirebbe una signed URL generata server-side,
-           che oggi non esiste per un visitatore anonimo — vedi commento in
-           ui/binder-pubblico.ui.js. */
         .copertina-banner {
             display: none;
             width: 100%;
@@ -230,18 +218,10 @@
             min-width: 62px;
         }
 
-        /* ═══ FASE 1 CONSOLIDAMENTO (26/08/2026) — selezione/quantità/
-           barra-totale, copiati da scambio.html: qui nascosti di default,
-           mostrati via JS solo quando _binderPubblicoESelezionabile() è
-           vero (oggi: binder Scambio). Vetrina di sola lettura invariata
-           per tutti gli altri tipi. ═══ */
         .card-row.selected { border-color: var(--primary); background-color: var(--primary-light); }
 
         .card-checkbox { width: 22px; height: 22px; accent-color: var(--primary); cursor: pointer; flex-shrink: 0; }
 
-        /* FASE 5 (2026-09-13): "Riservato ma non selezionabile" — riga
-           attenuata quando l'intera offerta è già accettata altrove;
-           badge dedicato anche per il riservato parziale. */
         .card-row.riservato { opacity: 0.6; }
         .card-checkbox:disabled { cursor: not-allowed; }
         .badge-riservato { background-color: rgba(220, 53, 69, 0.12); color: #c0392b; border-color: rgba(220, 53, 69, 0.35); }
@@ -256,9 +236,6 @@
         .qty-btn:disabled { opacity: 0.4; cursor: not-allowed; }
         .qty-value { width: 24px; text-align: center; font-weight: 700; font-size: 0.85rem; }
 
-        /* Overlay selezione dentro il libro sfogliabile (stesso stile di
-           scambio.html/wishlist.html) — attivo solo quando
-           _libroSelezionabile=true, vedi ui/binder-flipbook.ui.js. */
         .binder-slot-selezione {
             position: absolute; left: 0; right: 0; bottom: 0;
             display: flex; align-items: center; justify-content: space-between;
@@ -271,11 +248,6 @@
         .qty-control-mini .qty-btn { width: 20px; height: 20px; font-size: 0.7rem; }
         .qty-control-mini .qty-value { font-size: 0.7rem; min-width: 14px; text-align: center; color: #fff; font-weight: 700; }
 
-        /* Barra totale fissa in basso — nascosta di default (display:none
-           inline nel markup), mostrata via JS. Quando visibile serve più
-           spazio in fondo alla pagina: la classe sul body (aggiunta in
-           caricaCatalogo()) alza il padding-bottom, altrimenti l'ultima
-           carta della lista resterebbe nascosta dietro la barra. */
         body.binder-pubblico-selezionabile { padding-bottom: calc(90px + env(safe-area-inset-bottom)); }
         .barra-totale {
             position: fixed; bottom: 0; left: 0; right: 0;
@@ -298,9 +270,6 @@
         }
         .btn-copia:disabled { opacity: 0.5; cursor: not-allowed; }
 
-        /* ── Login minimo + bottone Richiedi — Fase 4, Step 4 (2026-09-13),
-           identico a scaffali-pubblico.html (stesse funzioni condivise in
-           utils/shared-public.js). */
         .btn-richiedi {
             background-color: var(--success); color: white; border: none;
             padding: 0.7rem 1.1rem; border-radius: 10px; font-weight: 700; font-size: 0.82rem;
@@ -312,7 +281,6 @@
             background: var(--bg-color); color: var(--text-dark); font-size: 0.9rem; margin-bottom: 0.7rem;
         }
 
-        /* Toggle Elenco/Sfoglia */
         .binder-modalita-toggle { display: flex; gap: 0.4rem; margin-bottom: 1rem; }
         .binder-modalita-btn {
             border: 2px solid var(--border-color);
@@ -329,7 +297,6 @@
         }
         .binder-modalita-btn.active { border-color: var(--primary); background-color: var(--primary); color: white; }
 
-        /* Tasche del libro (stesso stile del sito privato) */
         .binder-slot-qty-badge {
             position: absolute; top: 6px; right: 6px;
             background: var(--primary); color: #fff;
@@ -343,7 +310,6 @@
         }
         .binder-slot-filled { cursor: pointer; transition: transform 0.15s ease; }
         .binder-slot-filled:hover { transform: translateY(-3px) scale(1.02); }
-        /* FASE 5 (2026-09-13): stesso "riservato ma visibile" della vista Elenco */
         .binder-slot-riservato { opacity: 0.55; }
         .binder-slot-riservato-badge { left: 6px; right: auto; background: #c0392b; }
         .binder-slot img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
@@ -369,9 +335,6 @@
         }
         .binder-page-btn:disabled { background-color: var(--border-color); color: var(--text-muted); cursor: not-allowed; }
 
-        /* ═══ LIBRO SFOGLIABILE — porta pubblica del meccanismo di
-           ui/binder.ui.js (sessione Opus, 2026-08-25). Stesso identico CSS,
-           nessuna misura in px qui: le imposta _libroMisura() in JS. ═══ */
         .libro-wrap { width: 100%; margin-top: 0.5rem; touch-action: pan-y; user-select: none; -webkit-user-select: none; }
         .libro-scena { position: relative; margin: 0 auto; perspective: 1800px; }
         .libro-modo-singola { overflow: hidden; }
@@ -433,9 +396,6 @@
             margin-top: 0.4rem;
         }
 
-        /* Flip-modal (fronte/retro con statistiche) — stesso stile di
-           scambio.html/wishlist.html, senza il pulsante "Vai al binder"
-           (non ha senso su una pagina pubblica). */
         #flipCardScene { perspective: 1200px; position: relative; z-index: 1; }
         .flip-card-inner {
             position: relative;
@@ -477,10 +437,6 @@
             z-index: 20;
         }
 
-        /* Sleeve del binder (retro carta personalizzato) — stesso schema
-           visivo del sito, letta qui in autonomia via RPC pubblica (vedi
-           ui/binder-pubblico.ui.js). Se non c'è, resta il semplice sfondo
-           var(--primary) sopra: nessuna regressione. */
         .cbd-wrap { position: absolute; inset: 0; overflow: hidden; display: none; z-index: 0; }
         .cbd-stage { position: relative; width: 900px; height: 1260px; transform-origin: top left; }
         .cbd-stage img.cbd-bg {
@@ -532,9 +488,6 @@
             min-width: 44px; max-width: 114px; line-height: 1.05;
         }
 
-
-        /* AGGIORNATO (STEP 5 restyle "cornice Pokédex", 2026-09-17) —
-           stesso trattamento di scaffali-pubblico.html, vedi commento lì. */
         .barra-totale, #immagineModal, #loginPubblicoModal { position: absolute !important; }
     </style>
     <link rel="stylesheet" href="statusbar.css">
@@ -559,7 +512,6 @@
 
     <img class="copertina-banner" id="copertinaBinderBanner" alt="">
 
-    <!-- MODALE IMMAGINE INGRANDITA / FLIP-CARD -->
     <div id="immagineModal" style="display:none; inset:0; background:rgba(0,0,0,0.7); z-index:200; align-items:center; justify-content:center;" onclick="chiudiImmagineIngrandita()">
         <div class="bx-carta-schermo" onclick="event.stopPropagation()">
             <button class="close-modal-btn bx-carta-chiudi" onclick="chiudiImmagineIngrandita()" aria-label="Chiudi"><i class="fa-solid fa-xmark"></i></button>
@@ -620,7 +572,7 @@
                     </div>
                 </div>
             </div>
-            <div id="flipCardFotoReali" class="bx-foto-reali"></div><!-- FASE 8c: foto reali (sql/89) -->
+            <div id="flipCardFotoReali" class="bx-foto-reali"></div>
             <button type="button" class="btn-richiedi bx-carta-aggiungi" id="flipCardAggiungi" onclick="flipCardAggiungiAllaScelta()" style="display:none;"></button>
         </div>
     </div>
@@ -640,9 +592,6 @@
             <div class="stato-caricamento"><i class="fa-solid fa-spinner fa-spin"></i> Caricamento binder...</div>
         </div>
 
-        <!-- Libro sfogliabile — porta pubblica di ui/binder.ui.js (Opus,
-             2026-08-25). Nessuna misura in px qui: le imposta _libroMisura()
-             in ui/binder-pubblico.ui.js leggendo il rettangolo reale. -->
         <div id="binderLibroWrap" class="libro-wrap" style="display:none;">
             <div class="libro-scena" id="binderLibroScena">
                 <div class="libro-lato libro-lato-sx" id="binderLibroSx"></div>
@@ -661,12 +610,8 @@
         </div>
     </div>
 
-    </div><!-- /phoneContenutoScorribile -->
+    </div>
 
-    <!-- FASE 1 CONSOLIDAMENTO (26/08/2026): barra totale, porta da
-         scambio.html — nascosta di default, mostrata via JS
-         (caricaCatalogo() in ui/binder-pubblico.ui.js) solo quando
-         _binderPubblicoESelezionabile() è vero (oggi: binder Scambio). -->
     <div class="barra-totale" id="barraTotale" style="display:none;">
         <div class="barra-totale-info">
             <div class="barra-totale-count" id="conteggioSelezionate">0 carte selezionate</div>
@@ -680,8 +625,6 @@
         </button>
     </div>
 
-    <!-- Login minimo — Fase 4, Step 4 (2026-09-13). Funzioni in
-         utils/shared-public.js (condivise con scaffali-pubblico.html). -->
     <div id="loginPubblicoModal" class="modal-overlay" style="display:none; inset:0; background:rgba(0,0,0,0.7); z-index:300; align-items:center; justify-content:center;" onclick="chiudiLoginPubblico()">
         <div style="max-width:320px; width:90%; background:var(--card-bg); border-radius:16px; padding:1.3rem; position:relative;" onclick="event.stopPropagation()">
             <button class="close-modal-btn" onclick="chiudiLoginPubblico()"><i class="fa-solid fa-xmark"></i></button>
@@ -694,42 +637,27 @@
         </div>
     </div>
 
-    </div><!-- /phoneScreen -->
+    </div>
 
-    <!-- Spostato fuori da #phoneScreen (STEP 12 fix restyle "cornice
-         Pokédex", 2026-09-17) — vedi commento identico in index.html:
-         Claudio lo vuole "a cavallo" del bordo, non dentro lo schermo
-         (che tra l'altro lo taglierebbe a metà per overflow:hidden). -->
     <div id="btnPubblicoTornaSu" class="pokedex-ball" onclick="_clickTornaSuPubblico()" title="Torna su">
         <i class="fa-solid fa-arrow-up"></i>
     </div>
-    </div><!-- /phoneFrameBox -->
-    </div><!-- /phoneShell -->
+    </div>
+    </div>
 
-    <script src="vendor/supabase-js-2.117.1.js"></script><!-- versione esatta, uguale in tutte le pagine; copiata nel repo il 2026-10-12 (S4, vedi vendor/LEGGIMI.txt) -->
-    <script src="config/supabase.js" data-client="pubblico"></script>
+    <script src="vendor/supabase-js-2.117.1.js"></script>    <script src="config/supabase.js" data-client="pubblico"></script>
     <script src="data/binder-pubblico.repository.js"></script>
     <script src="state/binder-pubblico.state.js"></script>
     <script src="data/cornice-pubblica.repository.js"></script>
     <script src="utils/theme-colori.js"></script>
     <script src="utils/comuni.js"></script>
-    <script src="utils/foto-reali.js"></script><!-- FASE 8c: foto reali delle carte -->
-    <script src="data/pubblico.repository.js"></script><!-- chiamate DB di shared-public.js, audit 2026-09-25 B8 -->
-    <script src="utils/shared-public.js"></script>
-    <script src="ui/richiesta-ospite.ui.js"></script><!-- FASE 8b: richiesta come ospite -->
-    <script src="ui/binder-flipbook.ui.js"></script>
+    <script src="utils/foto-reali.js"></script>    <script src="data/pubblico.repository.js"></script>    <script src="utils/shared-public.js"></script>
+    <script src="ui/richiesta-ospite.ui.js"></script>    <script src="ui/binder-flipbook.ui.js"></script>
     <script src="ui/binder-pubblico.ui.js"></script>
     <script src="statusbar.js"></script>
     <script src="utils/cornice-pubblica.js"></script>
     <script>
-
-        // ── AVVIO ────────────────────────────────────────────────────────
-        // Client "leggero" — stesse opzioni di scambio.html/wishlist.html/
-        // sealed.html (vedi commento in config/supabase.js): pagina pubblica
-        // anonima, nessuna sessione da persistere.
-        // supabaseClient ora viene creato in config/supabase.js (data-client="pubblico"), dal 2026-09-25.
         applicaTemaCondiviso();
-        // STEP 6 (2026-09-17): vedi commento identico in scaffali-pubblico.html
         (async () => {
             await caricaCatalogo();
             await applicaColoreCorniceProprietario(_ownerUserId);

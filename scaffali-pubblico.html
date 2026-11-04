@@ -2,9 +2,6 @@
 <html lang="it">
 <head>
     <meta charset="UTF-8">
-    <!-- (S5 sicurezza, 2026-10-12) Da dove la pagina puo' caricare script, stili,
-         font e immagini e verso dove puo' inviare dati: il browser blocca tutto il
-         resto. 'unsafe-inline' serve agli onclick nell'HTML. Domini: vendor/LEGGIMI.txt. -->
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https://*.supabase.co https://images.weserv.nl https://raw.githubusercontent.com; media-src 'self' data: blob: https://*.supabase.co; connect-src 'self' https://xpfibrzsffurdlypxnrw.supabase.co wss://xpfibrzsffurdlypxnrw.supabase.co; worker-src 'self'; manifest-src 'self'; frame-src 'none'; object-src 'none'; base-uri 'self'; form-action 'self'">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Bindex — Scaffale</title>
@@ -13,14 +10,6 @@
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="vendor/fontawesome-free-6.4.0/css/all.min.css">
 
-    <!-- Fase 1.3, Step 5c (2026-09-12) — mirror di binder-pubblico.html, ma
-         SENZA: copertina banner (Scaffali non ha copertina, solo tema CSS
-         — vedi index.html), flip-card/sleeve (nessun card-back per un
-         prodotto sealed), libro sfogliabile (Claudio, Step 5a: "il
-         flipbook non serve"), selezione/riepilogo (Scambio, fuori scope).
-         Vetrina di sola lettura: griglia + ricerca + immagine ingrandita
-         semplice. Stessi 4 temi/dark-mode del resto del sito, copiati
-         invariati (pagina standalone, non carica lo <style> di index.html). -->
     <style>
         :root {
             --bg-color: #f3eeff;
@@ -93,9 +82,6 @@
         }
         .stato-errore { color: #d32f2f; }
 
-        /* Griglia prodotti — stile ispirato a .binder-contenitore-tile del
-           sito privato (stessa idea visiva), ma indipendente: questa pagina
-           non carica il CSS di index.html. */
         .prodotti-grid {
             display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 1rem;
         }
@@ -123,10 +109,6 @@
         }
         #immagineIngranditaImg { width: 100%; border-radius: 12px; margin-bottom: 0.8rem; }
 
-        /* ═══ Fase 3, Step 4 (2026-09-12) — selezione/quantità/barra-totale
-           per tipo='scambio', mirror di binder-pubblico.html. Vetrina di
-           sola lettura (griglia .prodotti-grid sopra) invariata per tutti
-           gli altri tipi. ═══ */
         .card-row {
             background-color: var(--card-bg); border: 1px solid var(--border-color);
             border-radius: 14px; padding: 0.9rem 1rem; margin-bottom: 0.7rem;
@@ -134,8 +116,6 @@
         }
         .card-row.selected { border-color: var(--primary); background-color: var(--primary-light); }
         .card-checkbox { width: 22px; height: 22px; accent-color: var(--primary); cursor: pointer; flex-shrink: 0; }
-        /* FASE 5 (2026-09-13): "Riservato ma non selezionabile" — mirror di
-           binder-pubblico.html */
         .card-row.riservato { opacity: 0.6; }
         .card-checkbox:disabled { cursor: not-allowed; }
         .badge-riservato { background-color: rgba(220, 53, 69, 0.12); color: #c0392b; border-color: rgba(220, 53, 69, 0.35); }
@@ -186,7 +166,6 @@
         }
         .btn-copia:disabled { opacity: 0.5; cursor: not-allowed; }
 
-        /* ── Login minimo + bottone Richiedi — Fase 4, Step 4 (2026-09-13) */
         .btn-richiedi {
             background-color: var(--success); color: white; border: none;
             padding: 0.7rem 1.1rem; border-radius: 10px; font-weight: 700; font-size: 0.82rem;
@@ -198,7 +177,6 @@
             background: var(--bg-color); color: var(--text-dark); font-size: 0.9rem; margin-bottom: 0.7rem;
         }
 
-        /* ═══ RESTYLE BINDEX FASE 6c — scaffale pubblico (Scambio) ═══ */
         .bx-vista-toggle { display: flex; gap: 0.4rem; margin-bottom: 0.8rem; }
         .bx-vista-btn {
             border: 2px solid var(--border-color); background: var(--card-bg); color: var(--text-dark);
@@ -214,13 +192,6 @@
         .prodotto-tile .bx-slot-prezzo { top: 4px; left: 4px; }
         .prodotto-tile .bx-slot-azione, .prodotto-tile .bx-slot-lucchetto { right: 4px; bottom: 4px; }
 
-        /* AGGIORNATO (STEP 5 restyle "cornice Pokédex", 2026-09-17):
-           barra-totale/modali erano fixed su tutta la finestra — ora sono
-           absolute rispetto a #phoneScreen (vedi utils/cornice-pubblica.css
-           per il perché). header resta sticky, ma DENTRO
-           #phoneContenutoScorribile (il vero contenitore di scroll) invece
-           che rispetto alla finestra intera — stesso comportamento visivo,
-           ambito più piccolo. */
         header { position: sticky; }
         .barra-totale, #immagineModal, #loginPubblicoModal { position: absolute !important; }
     </style>
@@ -244,8 +215,6 @@
         <p class="stat-riepilogo" id="statRiepilogo"></p>
     </header>
 
-    <!-- MODALE IMMAGINE INGRANDITA — semplice, nessun flip (Scaffali non
-         ha un equivalente del card-back di una carta). -->
     <div id="immagineModal" style="display:none; inset:0; background:rgba(0,0,0,0.7); z-index:200; align-items:center; justify-content:center;" onclick="chiudiImmagineIngrandita()">
         <div style="max-width:320px; width:90%; background:var(--card-bg); border-radius:16px; padding:1rem; position:relative;" onclick="event.stopPropagation()">
             <button class="close-modal-btn" onclick="chiudiImmagineIngrandita()"><i class="fa-solid fa-xmark"></i></button>
@@ -270,11 +239,8 @@
         </div>
     </div>
 
-    </div><!-- /phoneContenutoScorribile -->
+    </div>
 
-    <!-- Fase 3, Step 4 (2026-09-12): barra totale, mostrata via JS
-         (caricaCatalogo() in ui/scaffali-pubblico.ui.js) solo per
-         tipo='scambio' — mirror di binder-pubblico.html. -->
     <div class="barra-totale" id="barraTotale" style="display:none;">
         <div class="barra-totale-info">
             <div class="barra-totale-count" id="conteggioSelezionate">0 carte selezionate</div>
@@ -288,8 +254,6 @@
         </button>
     </div>
 
-    <!-- Login minimo — Fase 4, Step 4 (2026-09-13). Funzioni in
-         utils/shared-public.js (condivise con binder-pubblico.html). -->
     <div id="loginPubblicoModal" class="modal-overlay" style="display:none; inset:0; background:rgba(0,0,0,0.7); z-index:300; align-items:center; justify-content:center;" onclick="chiudiLoginPubblico()">
         <div style="max-width:320px; width:90%; background:var(--card-bg); border-radius:16px; padding:1.3rem; position:relative;" onclick="event.stopPropagation()">
             <button class="close-modal-btn" onclick="chiudiLoginPubblico()"><i class="fa-solid fa-xmark"></i></button>
@@ -302,39 +266,25 @@
         </div>
     </div>
 
-    </div><!-- /phoneScreen -->
+    </div>
 
-    <!-- Spostato fuori da #phoneScreen (STEP 12 fix restyle "cornice
-         Pokédex", 2026-09-17) — vedi commento identico in index.html:
-         Claudio lo vuole "a cavallo" del bordo, non dentro lo schermo
-         (che tra l'altro lo taglierebbe a metà per overflow:hidden). -->
     <div id="btnPubblicoTornaSu" class="pokedex-ball" onclick="_clickTornaSuPubblico()" title="Torna su">
         <i class="fa-solid fa-arrow-up"></i>
     </div>
-    </div><!-- /phoneFrameBox -->
-    </div><!-- /phoneShell -->
+    </div>
+    </div>
 
-    <script src="vendor/supabase-js-2.117.1.js"></script><!-- versione esatta, uguale in tutte le pagine; copiata nel repo il 2026-10-12 (S4, vedi vendor/LEGGIMI.txt) -->
-    <script src="config/supabase.js" data-client="pubblico"></script>
+    <script src="vendor/supabase-js-2.117.1.js"></script>    <script src="config/supabase.js" data-client="pubblico"></script>
     <script src="data/scaffali-pubblico.repository.js"></script>
     <script src="data/cornice-pubblica.repository.js"></script>
     <script src="utils/theme-colori.js"></script>
     <script src="utils/comuni.js"></script>
-    <script src="data/pubblico.repository.js"></script><!-- chiamate DB di shared-public.js, audit 2026-09-25 B8 -->
-    <script src="utils/shared-public.js"></script>
-    <script src="ui/richiesta-ospite.ui.js"></script><!-- FASE 8b: richiesta come ospite -->
-    <script src="ui/scaffali-pubblico.ui.js"></script>
+    <script src="data/pubblico.repository.js"></script>    <script src="utils/shared-public.js"></script>
+    <script src="ui/richiesta-ospite.ui.js"></script>    <script src="ui/scaffali-pubblico.ui.js"></script>
     <script src="statusbar.js"></script>
     <script src="utils/cornice-pubblica.js"></script>
     <script>
-        // Client "leggero" — stesse opzioni di binder-pubblico.html/
-        // scambio.html/wishlist.html/sealed.html: pagina pubblica anonima,
-        // nessuna sessione da persistere.
-        // supabaseClient ora viene creato in config/supabase.js (data-client="pubblico"), dal 2026-09-25.
         applicaTemaCondiviso();
-        // STEP 6 (2026-09-17): async perché applicaColoreCorniceProprietario
-        // deve aspettare che caricaCatalogo() abbia risolto _scaffaleInfo —
-        // niente top-level await (script classico, non modulo), quindi IIFE.
         (async () => {
             await caricaCatalogo();
             await applicaColoreCorniceProprietario(_scaffaleInfo && _scaffaleInfo.owner_id);

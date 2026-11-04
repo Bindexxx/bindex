@@ -2,15 +2,11 @@
 <html lang="it">
 <head>
 <meta charset="UTF-8">
-<!-- (S5 sicurezza, 2026-10-12) Da dove la pagina puo' caricare script, stili,
-     font e immagini e verso dove puo' inviare dati: il browser blocca tutto il
-     resto. 'unsafe-inline' serve agli onclick nell'HTML. Domini: vendor/LEGGIMI.txt. -->
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https://*.supabase.co https://images.weserv.nl https://raw.githubusercontent.com; media-src 'self' data: blob: https://*.supabase.co; connect-src 'self' https://xpfibrzsffurdlypxnrw.supabase.co wss://xpfibrzsffurdlypxnrw.supabase.co; worker-src 'self'; manifest-src 'self'; frame-src 'none'; object-src 'none'; base-uri 'self'; form-action 'self'">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bindex — Admin</title>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<script src="vendor/supabase-js-2.117.1.js"></script><!-- versione esatta, uguale in tutte le pagine; copiata nel repo il 2026-10-12 (S4, vedi vendor/LEGGIMI.txt) -->
-<script src="config/supabase.js" data-client="admin"></script>
+<script src="vendor/supabase-js-2.117.1.js"></script><script src="config/supabase.js" data-client="admin"></script>
 <style>
   :root {
     --bg-color: #f3eeff;
@@ -38,7 +34,6 @@
   }
   code, .mono { font-family: 'JetBrains Mono', monospace; }
 
-  /* ── LOGIN ────────────────────────────────────────────────── */
   #login-screen { min-height: 100vh; display: flex; align-items: center; justify-content: center; }
   #login-card { background: var(--card-bg); border-radius: 18px; box-shadow: var(--shadow-soft); padding: 32px 30px; width: min(340px, 90vw); }
   #login-card h1 { font-size: 19px; margin: 0 0 4px; }
@@ -54,12 +49,10 @@
   #login-submit:disabled { opacity: .6; cursor: default; }
   #login-error { display: none; margin-top: 12px; padding: 9px 11px; background: var(--danger-bg); color: var(--danger); border-radius: 8px; font-size: 12.5px; line-height: 1.4; }
 
-  /* ── ACCESSO NEGATO ───────────────────────────────────────── */
   #denied-screen { display: none; min-height: 100vh; align-items: center; justify-content: center; flex-direction: column; gap: 14px; text-align: center; padding: 20px; }
   #denied-screen h1 { font-size: 20px; margin: 0; }
   #denied-screen p { color: var(--text-muted); max-width: 360px; margin: 0; }
 
-  /* ── CODICE DA APP (S6, 2026-10-12) ───────────────────────── */
   #mfa-screen { display: none; min-height: 100vh; align-items: center; justify-content: center; padding: 20px; }
   #mfa-card { background: var(--card-bg); border-radius: 18px; box-shadow: var(--shadow-soft); padding: 28px 26px; width: min(380px, 92vw); }
   #mfa-card h1 { font-size: 19px; margin: 0 0 6px; }
@@ -74,7 +67,6 @@
   #mfa-conferma:disabled { opacity: .6; cursor: default; }
   #mfa-esci { width: 100%; margin-top: 8px; padding: 9px; background: var(--primary-light); color: var(--primary-dark); font-size: 13px; font-weight: 600; }
 
-  /* ── DASHBOARD ────────────────────────────────────────────── */
   #dash { display: none; max-width: 960px; margin: 0 auto; padding: 28px 20px 60px; }
   header.dash-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 22px; }
   header.dash-header h1 { font-size: 20px; margin: 0; }
@@ -125,7 +117,6 @@
   .status-msg.ok { display: block; background: var(--success-bg); color: var(--success); }
   .status-msg.err { display: block; background: var(--danger-bg); color: var(--danger); }
 
-  /* ── MODALE DETTAGLIO UTENTE ─────────────────────────────── */
   #user-modal-backdrop { display: none; position: fixed; inset: 0; background: rgba(42,36,56,.45); z-index: 50; align-items: flex-start; justify-content: center; padding: 30px 16px; overflow-y: auto; }
   #user-modal { background: var(--card-bg); border-radius: 16px; width: min(520px, 100%); box-shadow: var(--shadow-soft); }
   #user-modal .modal-head { display: flex; align-items: center; justify-content: space-between; padding: 18px 20px; border-bottom: 1px solid var(--border-color); }
@@ -145,11 +136,9 @@
   .pw-reveal { background: var(--primary-light); border-radius: 10px; padding: 12px 14px; margin-top: 10px; font-size: 13px; }
   .pw-reveal .pw-value { font-family: 'JetBrains Mono', monospace; font-size: 16px; font-weight: 700; margin: 6px 0; letter-spacing: .5px; }
 
-  /* ═══ RESTYLE BINDEX FASE 7 — Admin ═══ */
   .btn-main { background: var(--primary); color: #fff; padding: 9px 16px; font-size: 13px; font-weight: 700; border-radius: 9px; }
   .btn-secondary { background: var(--border-color); color: var(--text-dark); padding: 8px 14px; font-size: 12.5px; font-weight: 600; border-radius: 9px; }
 
-  /* Menu: barra laterale su PC, barra in basso su telefono */
   .tabs { position: fixed; z-index: 40; background: var(--card-bg); margin: 0; flex-wrap: nowrap; }
   .tab-btn { position: relative; }
   .tab-ico { font-size: 17px; line-height: 1; }
@@ -171,7 +160,6 @@
     .tab-lbl { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
   }
 
-  /* Da approvare: schede con prima → dopo */
   .rq-card { padding: 14px 18px; border-bottom: 1px solid var(--border-color); display: flex; gap: 14px; align-items: flex-start; flex-wrap: wrap; }
   .rq-card:last-child { border-bottom: none; }
   .rq-card .main { flex: 1; min-width: 220px; }
@@ -183,7 +171,6 @@
   .rq-azioni { display: flex; gap: 8px; align-items: center; }
   .rq-foto { width: 84px; height: 84px; border-radius: 10px; object-fit: cover; flex-shrink: 0; cursor: pointer; }
 
-  /* Dialogo interno (al posto di confirm()/prompt()) */
   #adm-dialog-bg { display: none; position: fixed; inset: 0; background: rgba(42,36,56,.55); z-index: 200; align-items: center; justify-content: center; padding: 16px; }
   #adm-dialog { background: var(--card-bg); border-radius: 16px; width: min(420px, 100%); padding: 20px; box-shadow: var(--shadow-soft); }
   #adm-dialog h3 { margin: 0 0 8px; font-size: 16px; }
@@ -194,13 +181,11 @@
   #adm-dialog textarea, #adm-dialog input[type="text"] { width: 100%; padding: 9px 11px; border-radius: 9px; border: 1.5px solid var(--border-color); font: inherit; font-size: 13px; margin-bottom: 12px; }
   #adm-dialog .adm-btns { display: flex; gap: 8px; justify-content: flex-end; }
 
-  /* Utenti: pannello laterale */
   #user-modal-backdrop { padding: 0 !important; align-items: stretch !important; justify-content: flex-end !important; }
   #user-modal { width: min(460px, 100%) !important; border-radius: 16px 0 0 16px !important; min-height: 100vh; }
   @media (max-width: 899px) { #user-modal { border-radius: 0 !important; } }
   .ban-rapidi { display: flex; gap: 6px; flex-wrap: wrap; }
 
-  /* Lavori in corso: interruttore */
   .adm-switch { position: relative; width: 44px; height: 24px; flex-shrink: 0; }
   .adm-switch input { opacity: 0; width: 100%; height: 100%; position: absolute; inset: 0; margin: 0; cursor: pointer; z-index: 1; }
   .adm-switch span { position: absolute; inset: 0; background: var(--border-color); border-radius: 20px; transition: background .15s; }
@@ -208,7 +193,6 @@
   .adm-switch input:checked + span { background: var(--primary); }
   .adm-switch input:checked + span::after { transform: translateX(20px); }
 
-  /* Shop (Fase 9) */
   .ash-testa { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
   .ash-sotto { color: var(--text-muted); font-size: 13px; }
   .ash-filtri { display: flex; gap: 6px; overflow-x: auto; margin-bottom: 14px; }
@@ -256,7 +240,6 @@
 </head>
 <body>
 
-<!-- ── SCHERMATA LOGIN ─────────────────────────────────────────── -->
 <div id="login-screen">
   <div id="login-card">
     <h1>🔐 Bindex — Admin</h1>
@@ -270,16 +253,12 @@
   </div>
 </div>
 
-<!-- ── ACCESSO NEGATO ──────────────────────────────────────────── -->
 <div id="denied-screen">
   <h1>⛔ Accesso riservato</h1>
   <p>Il tuo account non ha i permessi di amministratore, oppure è sospeso/disattivato. Se pensi sia un errore, contatta chi gestisce Bindex.</p>
   <button id="denied-logout" style="background:var(--primary-light);color:var(--primary-dark);padding:9px 16px;font-size:13px;font-weight:600;">Esci</button>
 </div>
 
-<!-- ── CODICE DA APP (S6, 2026-10-12) ──────────────────────────────
-     Dopo la password: QR + chiave la prima volta, poi solo il codice a 6
-     cifre. Testi e stati in ui/admin-shell.ui.js (_mfaMostra). -->
 <div id="mfa-screen">
   <div id="mfa-card">
     <h1 id="mfa-titolo">🔐 Codice di sicurezza</h1>
@@ -298,7 +277,6 @@
   </div>
 </div>
 
-<!-- ── DASHBOARD ───────────────────────────────────────────────── -->
 <div id="dash">
   <header class="dash-header">
     <div>
@@ -318,7 +296,6 @@
 
   <div id="status-msg" class="status-msg"></div>
 
-  <!-- RICHIESTE -->
   <div class="panel active" id="panel-richieste">
     <div class="search-bar" style="flex-wrap:wrap;">
       <select id="filtroTipoRichieste">
@@ -359,7 +336,6 @@
     <div class="card" id="richieste-list"><div class="empty-state">Caricamento…</div></div>
   </div>
 
-  <!-- UTENTI -->
   <div class="panel" id="panel-utenti">
     <div class="search-bar">
       <input type="text" id="utenti-search" placeholder="Cerca per nome utente…">
@@ -374,7 +350,6 @@
     <div class="card" id="utenti-list"><div class="empty-state">Caricamento…</div></div>
   </div>
 
-  <!-- LOG ADMIN -->
   <div class="panel" id="panel-shop">
     <div class="ash-testa"><div><h2 style="margin:0;">Shop</h2><div class="ash-sotto" id="shop-admin-conti"></div></div>
       <button class="btn-main" onclick="admShopNuovo()">＋ Nuovo articolo</button></div>
@@ -390,10 +365,6 @@
     <div class="card" id="logadmin-list"><div class="empty-state">Caricamento…</div></div>
   </div>
 
-  <!-- FASE 11 (2026-09-13): Work in Progress — attiva/disattiva per
-       widget/pagina (binder speciale/funzione: colonne già pronte nel
-       form sotto, ma non ancora verificate da nessun punto del sito,
-       vedi ui/wip.ui.js su index.html). -->
   <div class="panel" id="panel-wip">
     <div class="card">
       <h3 style="margin-top:0;">Metti un lavoro in corso</h3>
@@ -404,11 +375,6 @@
           <option value="binder_speciale">Binder speciale (non ancora verificato lato client)</option>
           <option value="funzione">Singola funzione (non ancora verificato lato client)</option>
         </select>
-        <!-- 2026-09-26: tendina con gli id VERI (quelli che arrivano ad
-             apriDettaglioWidget, dove il WIP viene controllato) invece del
-             testo libero. "Altro…" (e i tipi binder/funzione, che non hanno
-             un elenco fisso) riaprono il campo di testo. Elenco in
-             ui/admin-wip.ui.js (WIP_BERSAGLI). -->
         <select id="wipTargetScelta" onchange="_wipAggiornaCampoId()" style="min-width:220px;"></select>
         <input type="text" id="wipTargetId" placeholder="id del bersaglio" style="min-width:220px; display:none;">
         <select id="wipMessaggio">
@@ -425,10 +391,8 @@
   </div>
 </div>
 
-<!-- ── SHOP (RESTYLE BINDEX FASE 9, ui/admin-shop.ui.js, sql/91) ── -->
 <div id="shop-admin-pannello-bg" onclick="if (event.target === this) admShopChiudi()"><div id="shop-admin-pannello"></div></div>
 
-<!-- ── DIALOGO INTERNO (Fase 7) ─────────────────────────────────── -->
 <div id="adm-dialog-bg"><div id="adm-dialog" role="dialog" aria-modal="true">
   <h3 id="adm-dialog-titolo"></h3>
   <p id="adm-dialog-testo"></p>
@@ -441,7 +405,6 @@
   </div>
 </div></div>
 
-<!-- ── MODALE DETTAGLIO UTENTE ───────────────────────────────────── -->
 <div id="user-modal-backdrop">
   <div id="user-modal">
     <div class="modal-head">
@@ -449,7 +412,6 @@
       <button class="modal-close" id="modal-close">✕</button>
     </div>
     <div class="modal-body" id="modal-body">
-      <!-- riempito via JS -->
     </div>
   </div>
 </div>
@@ -467,10 +429,6 @@
 <script src="data/shop.repository.js"></script>
 <script src="ui/admin-shop.ui.js"></script>
 <script>
-// SUPABASE_URL e SUPABASE_ANON_KEY arrivano da config/supabase.js
-// supabaseClient ora viene creato in config/supabase.js (data-client="admin"), dal 2026-09-25.
-
-// ── AVVIO ─────────────────────────────────────────────────────
 controllaRuoloEAvvia();
 </script>
 </body>

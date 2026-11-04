@@ -1,10 +1,6 @@
-// ── ui/account.ui.js ───────────────────────────────────────────────────
-// Preferenze account lato server (notifiche, privacy match, tab
-// predefinita), esportazione dati, cambio password.
+// Impostazioni dell'account: preferenze, esportazione dati, cambio password.
 
-
-        // ── PREFERENZE UTENTE (notifiche, tab predefinita) ────────────────────────
-        async function caricaPreferenzeUtente() {
+async function caricaPreferenzeUtente() {
             const userId = await authGetUserId();
             if (!userId) return null;
 
@@ -23,7 +19,6 @@
             return data;
         }
 
-
         async function salvaPreferenzePrivacy() {
             const userId = await authGetUserId();
             if (!userId) return;
@@ -33,7 +28,6 @@
             });
             if (error) { mostraAvviso('❌ Errore nel salvare la preferenza: ' + error.message); return; }
         }
-
 
         async function salvaPreferenzeNotifiche() {
             const userId = await authGetUserId();
@@ -51,12 +45,6 @@
             mostraAvviso('✅ Preferenze salvate! (le notifiche vere e proprie non sono ancora attive — questa è la lista d\'attesa)');
         }
 
-
-        // ── RIPRISTINA DISPOSIZIONE HOME ───────────────────────────────────────────
-        // Il layout della home vive in localStorage per utente e dispositivo
-        // (prefWidgetLayout*): si toglie e si ricarica il layout di default.
-        // _caricaLayoutWidget() lo salva da sé con daAzioneUtente=false, quindi
-        // il ripristino NON conta come "personalizzazione" per le missioni.
         async function ripristinaDisposizioneHome() {
             if (!(await chiediConferma({ titolo: 'Ripristinare la home?', testo: 'Le tessere tornano come al primo accesso, su questo dispositivo.', conferma: 'Ripristina' }))) return;
             const userId = await authGetUserId();
@@ -68,8 +56,6 @@
             mostraAvviso('✅ Home ripristinata.');
         }
 
-
-        // ── ESPORTAZIONE DATI ──────────────────────────────────────────────────────
         async function esportaDati(formato) {
             const userId = await authGetUserId();
             if (!userId) return;
@@ -83,8 +69,6 @@
                 ...(carte || []).map(r => ({ ...r, _origine: 'carte' })),
                 ...(wishlistData || []).map(r => ({ ...r, _origine: 'wishlist' })),
             ];
-            // Le immagini incorporate (data URI) sono lunghissime — inutili in
-            // un export leggibile e appesantirebbero il file senza motivo.
             tutto.forEach(r => { delete r.immagine; });
 
             let contenuto, mime, estensione;
@@ -94,10 +78,6 @@
                 estensione = 'json';
             } else {
                 const colonne = [...new Set(tutto.flatMap(r => Object.keys(r)))];
-                // (Audit sicurezza 2026-10-12) Un testo che inizia con = + - @ (o tab/a capo)
-                // verrebbe letto come FORMULA da Excel/Fogli all'apertura del file: note e link
-                // possono essere scritti anche da altri (controllo prezzi di gruppo). Gli si
-                // antepone un apostrofo, che i fogli di calcolo non mostrano. I numeri restano numeri.
                 const escapeCsv = (v) => {
                     if (v === null || v === undefined) return '';
                     let testo = String(v);
@@ -121,8 +101,6 @@
             URL.revokeObjectURL(url);
         }
 
-
-        // ── ACCOUNT ────────────────────────────────────────────────────────────────
         async function cambiaPassword() {
             const nuova = document.getElementById('nuovaPasswordInput').value;
             if (!nuova || nuova.length < 6) { mostraAvviso('La password deve avere almeno 6 caratteri.'); return; }

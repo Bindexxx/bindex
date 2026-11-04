@@ -1,12 +1,8 @@
-// ── ui/admin-log.ui.js ───────────────────────────────────────────────
-// Pannello "Registro" (tab dedicato): elenco sola-lettura di admin_audit_log.
-// RESTYLE BINDEX FASE 7: frasi leggibili ("claudio ha reso admin bill") con
-// i nomi utente al posto degli id, filtro per azione e per admin, CSV.
+// Admin, Registro: azioni degli admin in frasi leggibili.
 
 let _logAdminRighe = [];
 let _logAdminNomi = {};
 
-// Codici scritti da log_admin_action() (DB) e da adminRegistraAzione() (UI).
 function _fraseRegistro(r, nome) {
   const chi = nome(r.admin_id);
   const target = r.target_user_id ? nome(r.target_user_id) : null;
@@ -39,7 +35,6 @@ async function caricaLogAdmin() {
   if (error) { cont.innerHTML = `<div class="empty-state">Errore: ${error.message}</div>`; return; }
   if (!data || data.length === 0) { cont.innerHTML = '<div class="empty-state">Nessuna azione registrata.</div>'; return; }
 
-  // Nomi utente: usa la lista già caricata, altrimenti la chiede.
   let lista = ultimaListaUtenti;
   if (!lista || lista.length === 0) {
     const r = await adminListaUtentiPerFiltro();
@@ -48,7 +43,6 @@ async function caricaLogAdmin() {
   _logAdminNomi = Object.fromEntries(lista.map(u => [u.id, u.username]));
   _logAdminRighe = data;
 
-  // Filtro per azione costruito dalle azioni davvero presenti.
   const sel = document.getElementById('logadmin-filtro');
   if (sel && sel.options.length <= 1) {
     [...new Set(data.map(r => r.action))].sort().forEach(a => {

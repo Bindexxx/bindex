@@ -1,35 +1,5 @@
-// ── ui/binder.ui.js ────────────────────────────────────────────────────
-// Multi-Binder (2026-08-25): griglia di contenitori cliccabili (uno per
-// location + Wishlist + un binder "extra" personalizzabile), ognuno apribile
-// in vista paginata con copertina/sleeve personalizzabili.
-//
-// Dipende da: data/binder.repository.js, data/locations.repository.js,
-// data/user-settings.repository.js, data/moderation.repository.js,
-// state/binder.state.js, state/cards.state.js (carteReali),
-// data/cards.repository.js (wishlistQueryTutte), ui/auth.ui.js
-// (authGetUserId), utils condivisi (_urlImmagineVisualizzabile, escapeHtml).
-//
-// *** COSA MANCA ANCORA, VOLUTAMENTE NON QUI (vedi chat) ***
-// - Modalità "elenco testuale": NON è la stessa funzione di Visualizzazione
-//   (renderViewTable scrive dentro id fissi di quella pagina, non
-//   riusabile da qui senza rifarla generica — vedi nota su
-//   renderBinderElenco più sotto) — è un'implementazione parallela con lo
-//   stesso stile della vista compatta mobile. Visivamente coerente, ma
-//   codice separato.
-// - Effetto "libro sfogliabile" con piega di pagina: DELIBERATAMENTE non
-//   qui, lo farà una sessione con Opus (vedi file di handoff quando ci
-//   arriviamo). Il click su una carta apre per ora la stessa immagine
-//   ingrandita di sempre (apriImmagineIngrandita), non un libro.
-// - "Aggiungi ANCHE al binder X" sulla riga carta in Visualizzazione: tocca
-//   ui/cards.ui.js, non questo file — prossimo passo.
-// - Pubblicazione binder sotto approvazione admin: solo colonne DB pronte
-//   (vedi 17_binders_multipli.sql), nessuna UI admin qui.
-// - Markup HTML nuovo (#bindersContenitoriGrid, #binderDettaglioWrap,
-//   pannello Design con #binderCoverStato/#cardBackStage ecc.): non ancora
-//   in index.html, vedi elenco id richiesti in chat.
+// Binder: griglia dei binder e vista a pagine.
 
-
-// ── Ingresso dal widget "Binders" (phone.ui.js chiamerà questa) ─────────
 async function apriWidgetBinders() {
     const userId = await authGetUserId();
     if (!userId) return;
@@ -50,13 +20,8 @@ async function _caricaModalitaBinderUtente(userId) {
     if (!error && data && data.binder_modalita_visualizzazione) {
         _binderModalita = data.binder_modalita_visualizzazione;
     }
-    // Se non c'è ancora nessuna preferenza salvata resta il default
-    // 'immagini' già impostato in state/binder.state.js.
 }
 
-// Materializza tutti i binder-location (uno per valore distinto di
-// location.nome dell'utente) + garantisce wishlist ed extra — chiamata ad
-// ogni apertura del widget, upsert quindi innocua se già tutto esiste.
 async function _garantisciTuttiIBinder(userId) {
     const { data: locations, error: errLoc } = await locationsList(userId);
     if (errLoc) { console.error('_garantisciTuttiIBinder (locations):', errLoc.message); }
@@ -66,26 +31,13 @@ async function _garantisciTuttiIBinder(userId) {
         binderLocationMaterializzaBatch(userId, nomiLocation),
         binderWishlistGarantisci(userId),
         binderExtraGarantisci(userId, 'Il mio binder'),
-        binderScambioGarantisci(userId), // Fase 3, Step 2 (2026-09-12)
+        binderScambioGarantisci(userId),
     ]);
     risultati.forEach(({ error }) => { if (error) console.error('_garantisciTuttiIBinder:', error.message); });
 }
 
-
-// ── Griglia dei contenitori ──────────────────────────────────────────────
-// Richiede in index.html un contenitore <div id="bindersContenitoriGrid">
-// dentro la view-section Binder, AFFIANCO (non al posto di) al binderGrid
-// esistente — vedi nota separata in chat prima di toccare index.html.
-// RESTYLE BINDEX FASE 4a (2026-10-01, tavole "Binders" telefono e PC):
-// copertine come binder veri (dorso, etichetta col nome, globo sui
-// pubblici), sezioni Speciali / Location, riepilogo "N binder · N carte ·
-// N pubblici", conteggi con valore. Telefono: un tocco apre. PC: un clic =
-// anteprima nel pannello a lato, doppio clic = apri. Il colore della
-// copertina è una tinta fissa dal nome (_ballColoreDaChiave) finché la
-// colonna "colore scelto" non esiste sul DB (FASE 8a). Nessuna funzione del
-// libro toccata.
 let _bindersFiltroTesto = '';
-let _bindersSelezionato = null; // id del binder in anteprima (solo PC)
+let _bindersSelezionato = null;
 
 function _bindersPcLarghezza() {
     const el = document.getElementById('binder');
@@ -116,7 +68,6 @@ function _bindersCopertinaHtml(binder, copertinaUrl, grande) {
     const nome = escapeHtml(binder.nome || '');
     const colore = (typeof _binderColore === 'function') ? _binderColore(binder) : '#7F77DD';
     const pubblico = binder.stato_pubblicazione === 'pubblico';
-    // L'icona sta sempre sotto: se la foto non carica (onerror la toglie) resta quella.
     const sfondo = `<i class="bn-icona fa-solid ${_iconaFallbackBinder(binder.tipo)}"></i>` +
         (copertinaUrl ? `<img class="bn-foto" src="${copertinaUrl}" alt="" loading="lazy" onerror="this.remove();">` : '');
     return `<div class="bn-cop${grande ? ' bn-cop-grande' : ''}${copertinaUrl ? ' con-foto' : ''}" style="--bn-colore:${colore}">
@@ -141,7 +92,7 @@ function bindersToggleRicerca() {
 }
 
 function bindersTessera(binderId, evt) {
-    if (evt && evt.detail === 2) return; // il secondo clic del doppio clic lo gestisce ondblclick
+    if (evt && evt.detail === 2) return;
     if (_bindersPcLarghezza()) {
         _bindersSelezionato = binderId;
         renderGrigliaBinders();
@@ -172,7 +123,6 @@ async function renderGrigliaBinders() {
         return { binder, stat, copertinaUrl };
     }));
 
-    // Riepilogo in testata (sempre sul totale, non sul filtro).
     const riepilogo = document.getElementById('bindersRiepilogo');
     if (riepilogo) {
         const carteTot = righe.reduce((t, r) => t + r.stat.n, 0);
@@ -226,17 +176,10 @@ async function renderGrigliaBinders() {
 function _iconaFallbackBinder(tipo) {
     if (tipo === 'wishlist') return 'fa-heart';
     if (tipo === 'extra') return 'fa-star';
-    if (tipo === 'scambio') return 'fa-right-left'; // Fase 3, Step 2 (2026-09-12)
-    return 'fa-box-open'; // location
+    if (tipo === 'scambio') return 'fa-right-left';
+    return 'fa-box-open';
 }
 
-// wishlistQueryTutte torna il query builder non risolto (per pagination con
-// _selectTuttePagine, vedi cards.repository.js) — qui lo risolvo con un
-// await diretto senza paginare: assumo che la wishlist di un singolo
-// utente non superi il limite di riga default di PostgREST (~1000).
-// Gruppo di 5 persone, rischio concreto basso — se in futuro serve
-// paginare, va usato _selectTuttePagine() come fa il resto del sito
-// (utils/pagination.utils.js, non ancora letto in questa sessione).
 async function _calcolaConteggioBinder(userId, binder) {
     if (binder.tipo === 'location') {
         return carteReali.filter(c => c.tabella === 'carte' && c.stato === 'collezione' && c.location === binder.location_valore).length;
@@ -269,15 +212,6 @@ async function _risolviCopertinaBinder(userId, binder) {
     return url;
 }
 
-
-// ── Vista di dettaglio (modalità immagini, paginata) ────────────────────
-// AGGIORNATO (Claudio, 2026-09-18): "il binder deve essere aperto a
-// schermo intero... dare più importanza al binder che al resto".
-// .binder-dettaglio-attivo su #binder fa passare .settings-card (condiviso
-// con la griglia contenitori) da pagina normale (max-width 900px) a
-// colonna flex a tutta altezza — CSS in index.html, vicino a
-// .binder-page-btn. display:'flex' (non più 'block') su
-// #binderDettaglioWrap perché diventi lui stesso quella colonna.
 async function apriBinderDettaglio(binderId) {
     _binderAttivo = binderId;
     _binderPagina = 0;
@@ -290,9 +224,6 @@ async function apriBinderDettaglio(binderId) {
     const binder = _bindersElenco.find(b => String(b.id) === String(binderId));
     if (!binder) return;
 
-    // Fix 26/08/2026: layout per-binder, non più preferenza globale per
-    // dispositivo (vedi 25_binder_layout_per_binder.sql). binder.layout
-    // arriva già valorizzato da bindersQueryTutti (select('*')).
     _binderLayout = BINDER_LAYOUTS[binder.layout] ? binder.layout : '3x3';
 
     const titoloEl = document.getElementById('binderDettaglioTitolo');
@@ -308,33 +239,13 @@ async function apriBinderDettaglio(binderId) {
     await _caricaCarteBinderAttivo(binder);
     renderBinderContenuto();
     _binderSincronizzaTesta();
-    await caricaDesignBinderAttivo(); // copertina + sleeve del binder appena aperto
+    await caricaDesignBinderAttivo();
 }
 
-// Rinomina: solo tipo 'extra'. Pubblicazione libera (2026-08-25): solo
-// location diverse da SCAMBIO, e 'extra' — Wishlist/Scambio sono sempre
-// pubblici (forzato dal trigger DB), il controllo lì sarebbe fuorviante.
-// Condivisione: mostrata SOLO se il binder è pubblico E ha una pagina
-// pubblica reale (Wishlist, Scambio — vedi _paginaPubblicaBinderAttivo in
-// ui/navigation.ui.js). Per gli altri tipi non esiste ancora una pagina
-// pubblica generica: mostrare i bottoni produrrebbe un link rotto, si
-// mostra invece una nota. Fattorizzata qui perché va rieseguita anche
-// subito dopo il toggle pubblicazione, non solo all'apertura del binder.
 function _aggiornaControlliRinominaPubblicazioneCondivisione(binder) {
     const rinominaWrap = document.getElementById('binderRinominaWrap');
-    // TEMPORANEO (Claudio, 26/08/2026): bypass disattivato, consolidato su
-    // approvazione admin per QUALUNQUE tipo di binder (era doppio
-    // meccanismo, mai unificato — vedi compilato). rinominaBinderExtraCorrente()
-    // e binderExtraRinomina() (data/binder.repository.js) restano definite
-    // e intatte, solo irraggiungibili dall'UI — rollback a una riga se
-    // serve. Bloccato anche lato DB, non solo qui: vedi trigger
-    // trg_binders_blocca_rinomina_diretta in 26_binder_nome_blocco_diretto.sql.
     if (rinominaWrap) rinominaWrap.style.display = 'none';
 
-    // Fase 3, Step 2 (2026-09-12): 'location'+SCAMBIO non esiste più (sql/45b
-    // l'ha migrato a tipo='scambio') — condizione aggiornata di conseguenza.
-    // Il ramo location='SCAMBIO' resta per pura difesa, nel caso sfuggisse
-    // qualcosa (stesso spirito del trigger DB, vedi sql/45b).
     const eGiaPubblicoFisso = binder.tipo === 'wishlist' || binder.tipo === 'scambio' || (binder.tipo === 'location' && binder.location_valore === 'SCAMBIO');
     const pubblicazioneWrap = document.getElementById('binderPubblicazioneWrap');
     if (pubblicazioneWrap) {
@@ -343,20 +254,16 @@ function _aggiornaControlliRinominaPubblicazioneCondivisione(binder) {
         if (checkbox) checkbox.checked = binder.stato_pubblicazione === 'pubblico';
     }
 
-    const haPaginaPubblica = true; // Multi-Binder + 22_binder_pubblico_generico.sql: ogni tipo ha ormai una pagina (dedicata o generica)
+    const haPaginaPubblica = true;
     const ePubblico = binder.stato_pubblicazione === 'pubblico';
 
     const condivisioneWrap = document.getElementById('binderCondivisioneWrap');
     if (condivisioneWrap) condivisioneWrap.style.display = (ePubblico && haPaginaPubblica) ? 'flex' : 'none';
 
     const condivisioneNonDisponibileWrap = document.getElementById('binderCondivisioneNonDisponibileWrap');
-    if (condivisioneNonDisponibileWrap) condivisioneNonDisponibileWrap.style.display = 'none'; // non serve più, ogni binder pubblico è condivisibile
+    if (condivisioneNonDisponibileWrap) condivisioneNonDisponibileWrap.style.display = 'none';
 }
 
-// sql/95 — "Escludi dal valore della collezione". Nascosto per la Wishlist
-// (non e' mai nel valore). Scrive la colonna e ricarica le carte: il flag
-// esclusoValore viene ricalcolato in caricaCarteReali() e tutti i widget si
-// ridisegnano da soli.
 function _binderEscludiValoreSincronizza(binder) {
     const riga = document.getElementById('binderEscludiValoreRiga');
     const check = document.getElementById('binderEscludiValoreCollezioneCheckbox');
@@ -376,7 +283,7 @@ async function impostaEscludiValoreBinderAttivo(escludi) {
     const { error } = await binderImpostaEscludiValore(userId, binder.id, escludi);
     if (error) {
         console.error('impostaEscludiValoreBinderAttivo:', error.message);
-        if (check) check.checked = !escludi; // rollback visivo
+        if (check) check.checked = !escludi;
         if (msg) msg.textContent = 'Non sono riuscito a salvare (la colonna sul database potrebbe non esistere ancora).';
         return;
     }
@@ -385,11 +292,6 @@ async function impostaEscludiValoreBinderAttivo(escludi) {
     if (typeof caricaCarteReali === 'function') await caricaCarteReali();
 }
 
-// Pubblicazione libera (2026-08-25) — nessuna approvazione admin, vedi
-// 19_binder_pubblicazione_libera.sql. Il trigger DB ignora comunque questo
-// update per wishlist/SCAMBIO (sempre pubblici), ma la UI non mostra il
-// controllo su quei due tipi (vedi sopra), quindi in pratica questa
-// funzione viene chiamata solo dove ha davvero effetto.
 async function impostaPubblicazioneBinderAttivo(pubblico) {
     const binder = _bindersElenco.find(b => String(b.id) === String(_binderAttivo));
     if (!binder) return;
@@ -401,7 +303,7 @@ async function impostaPubblicazioneBinderAttivo(pubblico) {
     if (error) {
         console.error('impostaPubblicazioneBinderAttivo:', error.message);
         const checkbox = document.getElementById('binderPubblicazioneCheckbox');
-        if (checkbox) checkbox.checked = !pubblico; // rollback visivo se la scrittura fallisce
+        if (checkbox) checkbox.checked = !pubblico;
         return;
     }
     binder.stato_pubblicazione = pubblico ? 'pubblico' : 'privato';
@@ -411,33 +313,14 @@ async function impostaPubblicazioneBinderAttivo(pubblico) {
 
 function tornaAllaGrigliaBinders() {
     _binderAttivo = null;
-    chiudiImpostazioniBinderAttivo(); // difensivo: se il modale era rimasto aperto
-    _libroSmonta(); // OPUS 2026-08-25: libera ResizeObserver e handler del libro
+    chiudiImpostazioniBinderAttivo();
+    _libroSmonta();
     document.getElementById('binder')?.classList.remove('binder-dettaglio-attivo');
     const wrapDettaglio = document.getElementById('binderDettaglioWrap');
     if (wrapDettaglio) wrapDettaglio.style.display = 'none';
     document.getElementById('bindersContenitoriGrid').style.display = '';
 }
 
-// ── Modale impostazioni per-binder (Claudio, 2026-09-18) ─────────────────
-// Rinomina/pubblicazione/condivisione/toggle Immagini-Elenco/Design/layout
-// — prima tutte visibili sopra la griglia carte in #binderDettaglioWrap,
-// ora raccolte in #binderImpostazioniModal (markup in index.html, vicino
-// agli altri modali del sito) aperto da un'icona ingranaggio nell'header:
-// "ogni binder ha le sue impostazioni". Nessuna logica toccata — gli id
-// interni (#binderRinominaWrap, #binderPubblicazioneWrap, ecc.) sono
-// identici a prima e continuano a essere popolati/nascosti dalle stesse
-// funzioni di sempre (_aggiornaControlliRinominaPubblicazioneCondivisione,
-// renderBinderContenuto, caricaDesignBinderAttivo) — solo il contenitore
-// che li ospita è cambiato, getElementById non dipende da dove sta il nodo.
-// AGGIORNATO 2026-09-18 (Claudio: "è bene che si espanda per tutto lo
-// schermo rimanendo dentro la cornice, così è tutto visibile") — il modale
-// non è più un box centrato piccolo: viene riposizionato/ridimensionato sul
-// rettangolo VERO di #phoneScreen con _rettangoloSchermoCornice() (stessa
-// funzione già usata da _posizionaContainerNelloSchermo() per .container in
-// ui/paginainiziale-drag-resize.ui.js — nessuna logica di misura duplicata).
-// Un listener su resize lo tiene allineato mentre è aperto (rotazione
-// schermo, ridimensionamento finestra desktop), rimosso alla chiusura.
 let _binderImpostazioniResizeHandler = null;
 
 function _binderImpostazioniPosiziona() {
@@ -462,17 +345,11 @@ function apriImpostazioniBinderAttivo() {
         _binderImpostazioniResizeHandler = () => _binderImpostazioniPosiziona();
         window.addEventListener('resize', _binderImpostazioniResizeHandler);
     }
-    // Sempre da capo su Generali con editor sleeve chiuso (redesign
-    // 2026-09-18) — evita di riaprire il modale nello stato in cui era
-    // rimasto l'ultima volta (es. editor sleeve ancora aperto). Chiude
-    // anche l'editor da sola (vedi sotto: tab !== 'design').
     _binderImpostazioniTab('generali');
     _binderColoreDisegnaScelte();
     _binderEscludiValoreSincronizza(_bindersElenco.find(b => String(b.id) === String(_binderAttivo)));
 }
 
-// RESTYLE BINDEX FASE 8a — scelta del colore copertina. Le tinte sono quelle
-// della tavolozza automatica (_BALL_TAVOLOZZA), più "Automatico" (= null).
 function _binderColoreDisegnaScelte() {
     const box = document.getElementById('binderColoreScelte');
     if (!box) return;
@@ -499,7 +376,7 @@ async function binderSceltaColore(colore) {
     binder.colore = colore || null;
     if (msg) msg.textContent = '';
     _binderColoreDisegnaScelte();
-    if (typeof _widgetBinderCache !== 'undefined') _widgetBinderCache = null; // la tessera Binders rilegge i colori
+    if (typeof _widgetBinderCache !== 'undefined') _widgetBinderCache = null;
     if (typeof renderGrigliaBinders === 'function') renderGrigliaBinders();
 }
 
@@ -512,13 +389,6 @@ function chiudiImpostazioniBinderAttivo() {
     }
 }
 
-// ── Tab Generali/Design (Claudio, 2026-09-18: "raggruppa in tab") ────────
-// Stesso pattern .binder-modalita-toggle/.binder-modalita-btn già usato
-// altrove nel sito (Achievement, Immagini/Elenco) — solo lo stato di quale
-// tab è attiva, nessuna logica di caricamento dati qui (i dati di Nome/
-// Copertina/Sleeve sono già stati caricati una volta sola all'apertura del
-// binder da caricaDesignBinderAttivo(), indipendentemente da quale tab è
-// visibile — cambiare tab mostra/nasconde soltanto).
 function _binderImpostazioniTab(tab) {
     document.querySelectorAll('#binderImpostazioniTabs .binder-modalita-btn').forEach(el => {
         el.classList.toggle('active', el.dataset.itab === tab);
@@ -527,20 +397,9 @@ function _binderImpostazioniTab(tab) {
     const design = document.getElementById('binderImpostazioniTabDesign');
     if (generali) generali.style.display = tab === 'generali' ? '' : 'none';
     if (design) design.style.display = tab === 'design' ? '' : 'none';
-    // Difensivo: se si cambia tab mentre l'editor sleeve è aperto, lo
-    // richiude — evita lo stato incoerente "editor visibile ma tab Design
-    // non selezionata".
     if (tab !== 'design') _binderSleeveChiudiEditor();
 }
 
-// ── Editor sleeve immersivo (Claudio, 2026-09-18: "va bene che si nasconda
-// [il resto] prendendo tutto lo spazio") — #binderSleeveEditorZona
-// sostituisce interamente #binderDesignContenutoNormale (Nome/Copertina/
-// anteprima Sleeve) e la barra dei tab finché non si torna indietro.
-// _cardBackRescale() richiamato esplicitamente all'apertura per lo stesso
-// motivo del fix precedente sul vecchio <details>: l'area del canvas ha
-// clientWidth 0 finché è display:none, e aprire questa zona non genera da
-// solo un evento resize.
 function _binderSleeveApriEditor() {
     const zona = document.getElementById('binderSleeveEditorZona');
     const normale = document.getElementById('binderDesignContenutoNormale');
@@ -561,9 +420,6 @@ function _binderSleeveChiudiEditor() {
     if (tabs) tabs.style.display = '';
 }
 
-// Popola _carteBinderAttivoCache con le carte del binder aperto, forma
-// unificata {id, name, immagine, qty, createdAt} qualunque sia il tipo —
-// stessa forma già usata dal vecchio renderBinder().
 let _carteBinderAttivoCache = [];
 
 async function _caricaCarteBinderAttivo(binder) {
@@ -583,10 +439,6 @@ async function _caricaCarteBinderAttivo(binder) {
         return;
     }
 
-    // Fase 3, Step 2 (2026-09-12): il binder Scambio usa la stessa
-    // binder_carte di 'extra', ma serve anche quantita_offerta — query
-    // gemella con quella colonna in più, stesso motivo di
-    // binderCarteQueryConQuantita in data/binder.repository.js.
     const usaQuantita = binder.tipo === 'scambio';
     const { data: righe, error } = usaQuantita
         ? await binderCarteQueryConQuantita(userId, binder.id)
@@ -610,18 +462,6 @@ function renderBinderContenuto() {
         if (forzaElenco) avvisoEl.textContent = `Questo binder ha più di ${SOGLIA_BINDER_SOLO_ELENCO} carte: solo la modalità elenco è disponibile qui dentro.`;
     }
 
-    // Il selettore layout (2×2/3×3/4×3/4×4) ha senso solo in modalità
-    // immagini — il libro lo usa ancora per decidere quante tasche per
-    // pagina (scelta di Opus), l'elenco non ha nessuna paginazione a
-    // griglia. Nascosto qui, non serve toccare ogni singolo bottone.
-    //
-    // 2026-10-10 (Claudio: "Impostazioni: visualizzazione assente, non si puo'
-    // modificare la griglia"): il selettore sta nel modale Impostazioni del
-    // binder, dove in modalita' elenco restava una scheda "Visualizzazione"
-    // VUOTA (selettore nascosto + toggle Libro|Elenco nascosto da CSS). La
-    // griglia e' una scelta salvata per binder, valida per la vista Libro:
-    // si puo' cambiare sempre. Resta solo una nota quando si e' in elenco, e
-    // i pulsanti attivi (modalita' e griglia) sono sempre allineati.
     const layoutSwitcher = document.querySelector('.binder-layout-switcher');
     if (layoutSwitcher) layoutSwitcher.style.display = 'flex';
     const notaGriglia = document.getElementById('binderLayoutNota');
@@ -636,17 +476,10 @@ function renderBinderContenuto() {
     if (modalitaEffettiva === 'elenco') {
         renderBinderElenco();
     } else {
-        // OPUS 2026-08-25: la modalità immagini ora è il libro sfogliabile.
-        // renderBinderGrigliaImmagini() resta più sotto, intatta ma non più
-        // referenziata: è il rollback a una riga se il libro va tolto in
-        // fretta (si rimette qui il vecchio nome e non serve altro).
         renderBinderLibro();
     }
 }
 
-// RESTYLE BINDEX FASE 4b: sottotitolo "N carte · valore · globo", scheda
-// Libro|Elenco evidenziata e Condividi solo sui pubblici. Legge solo la
-// cache già caricata, nessuna query.
 function _binderSincronizzaTesta() {
     const binder = _bindersElenco.find(b => String(b.id) === String(_binderAttivo));
     const sotto = document.getElementById('binderDettaglioSotto');
@@ -672,22 +505,6 @@ async function impostaModalitaBinder(modalita) {
     if (_binderAttivo) { renderBinderContenuto(); _binderSincronizzaTesta(); }
 }
 
-// Adattata dal vecchio renderBinder(): stessa paginazione/layout, ma legge
-// da _carteBinderAttivoCache (già filtrato per il binder aperto, qualunque
-// tipo) invece che da _idsNelBinder globale. Il bottone "rimuovi" (✕) ha
-// senso SOLO per il binder 'extra' (associazione manuale) — per
-// location/wishlist rimuovere qui non avrebbe un'azione univoca (andrebbe
-// cambiata la location della carta, o cancellata dalla wishlist: azioni
-// che vivono già altrove nel sito), quindi resta nascosto per quei due tipi.
-// renderBinderGrigliaImmagini() RIMOSSA (audit 2026-09-25): non più chiamata
-// da nessun punto del sito (sostituita dalle viste Elenco/Libro).
-
-// ── Aggiungi/Rimuovi dal binder extra (bottoni già esistenti in
-// Visualizzazione/Wishlist, ui/cards.ui.js) ─────────────────────────────
-// Portate dal vecchio binder.ui.js (era il binder singolo, ora è
-// specificamente il binder 'extra') — stesso comportamento: azione
-// leggera, aggiorna solo _idsNelBinder + i pulsanti a schermo, non
-// ricarica tutta la collezione.
 async function toggleBinderMembership(id) {
     const card = carteReali.find(c => String(c.id) === String(id));
     if (!card || card.tabella !== 'carte' || card.stato !== 'collezione') return;
@@ -713,10 +530,6 @@ async function toggleBinderMembership(id) {
 
     _aggiornaBottoniBinderToggle(id);
 
-    // Se in questo momento è aperto proprio il binder extra nel widget
-    // Binders, la lista in memoria (_carteBinderAttivoCache) è ora
-    // disallineata — la ricarico solo in quel caso specifico, non ad ogni
-    // toggle (che parte quasi sempre da Visualizzazione, non da qui).
     const binderAperto = _bindersElenco.find(b => String(b.id) === String(_binderAttivo));
     if (binderAperto && binderAperto.tipo === 'extra') {
         await _caricaCarteBinderAttivo(binderAperto);
@@ -728,9 +541,6 @@ function _aggiornaBottoniBinderToggle(id) {
     const idAttr = String(id);
     const nelBinder = _idsNelBinder.has(idAttr);
 
-    // Nome vero del binder extra se già noto in questa sessione (il widget
-    // Binders potrebbe non essere mai stato aperto — _bindersElenco resta
-    // vuoto in quel caso, e va bene così, si usa il testo generico).
     const binderExtra = Array.isArray(_bindersElenco) ? _bindersElenco.find(b => String(b.id) === String(_binderExtraId)) : null;
     const nomeBinder = binderExtra && binderExtra.nome ? escapeHtml(binderExtra.nome) : 'Binder';
 
@@ -745,18 +555,10 @@ function _aggiornaBottoniBinderToggle(id) {
     });
 }
 
-// Rimozione diretta dallo slot pieno nella griglia immagini del binder
-// extra (bottone ✕ su ogni slot, vedi renderBinderGrigliaImmagini).
 async function rimuoviDalBinderExtra(cartaId) {
     await toggleBinderMembership(cartaId);
 }
 
-// ── Modale quantità offerta — binder Scambio (Fase 3, Step 2, 2026-09-12) ──
-// A differenza del binder 'extra' (toggleBinderMembership, sì/no), qui
-// serve un NUMERO — da qui il modale dedicato invece di un semplice toggle.
-// Un solo modale, richiamabile sia dal bottone "Offri in Scambio" in
-// Visualizzazione (ui/cards.ui.js) sia dalla griglia del binder Scambio
-// aperto (renderBinderGrigliaImmagini sotto).
 let _scambioModaleCartaId = null;
 
 function apriModaleQuantitaScambio(cartaId) {
@@ -796,24 +598,6 @@ async function rimuoviDaScambio() {
     chiudiModaleQuantitaScambio();
 }
 
-// Un solo punto per scrivere la quantità, riusato da conferma/rimuovi sopra
-// e da rimuoviDaScambioGriglia sotto (griglia del binder Scambio aperto).
-// Quantità 0: elimina la riga invece di scrivere 0 — coerente con "offerta
-// a 0 = non ancora messa in vendita" già usato lato RPC pubblica (sql/45b),
-// e con lo stesso schema di toggleBinderMembership per l'extra (che elimina
-// del tutto, non lascia una riga "spenta").
-//
-// UNIFICATO (sessione widget Doppioni, 2026-09-18): il ramo "quantità > 0"
-// prima limitava se stesso a un tag sulla riga condivisa (mai spostava
-// davvero nulla) — stesso identico bug segnalato da Claudio su Doppioni
-// ("sposto 2 su 7, ma resta comunque 7"), qui semplicemente mai notato
-// perché la tabella Visualizzazione non mostra un "totale per identità".
-// Ora fa split reale, stesso motore di _doppioniSplitCarta/
-// _doppioniApplicaDestinazioneCarta in ui/widget-doppioni.ui.js —
-// DUPLICATO qui apposta (Regola d'Oro #1: niente refactoring cross-file
-// senza approvazione esplicita; qui approvata da Claudio, ma la
-// duplicazione resta comunque la scelta più sicura rispetto a far
-// dipendere binder.ui.js, file condiviso, da un widget specifico).
 async function _applicaQuantitaScambio(cartaId, quantita) {
     const userId = await authGetUserId();
     if (!userId || !_binderScambioId) return;
@@ -833,17 +617,10 @@ async function _applicaQuantitaScambio(cartaId, quantita) {
         const { error } = await _scambioSplitCartaVerso(cartaId, qtyOriginale, N, userId);
         if (error) { mostraAvviso('❌ Errore nell\'aggiornare la quantità offerta: ' + error.message); return; }
 
-        // Split reale può aver creato una riga NUOVA (id diverso da
-        // cartaId) — ricarico tutto invece di aggiornare a mano Set/
-        // dizionari/DOM su un id che, dopo uno split, potrebbe non essere
-        // più quello giusto (a differenza del vecchio tag, che restava
-        // sempre sulla stessa riga).
         await caricaCarteReali();
         filterTable();
     }
 
-    // Stesso motivo di toggleBinderMembership: se il binder Scambio è
-    // aperto proprio ora nel widget Binders, la cache locale è disallineata.
     const binderAperto = _bindersElenco.find(b => String(b.id) === String(_binderAttivo));
     if (binderAperto && binderAperto.tipo === 'scambio') {
         await _caricaCarteBinderAttivo(binderAperto);
@@ -851,16 +628,6 @@ async function _applicaQuantitaScambio(cartaId, quantita) {
     }
 }
 
-// Motore di split verso Scambio — se N copre l'intera riga, nessuna riga
-// nuova (tag diretto, come il vecchio comportamento). Altrimenti split
-// reale: riga nuova con qty=N (cardsSelectById/cardsInsertNellaCollezione,
-// stesse funzioni di data/cards.repository.js usate da Doppioni),
-// decremento sull'originale, tag SOLO sulla riga nuova. ASSUNZIONE non
-// verificata esplicitamente: cardsSelectById/cardsInsertNellaCollezione/
-// cardsUpdateCampo sono definite in data/cards.repository.js, che per
-// l'architettura del progetto (data/* caricato prima di ui/*) dovrebbe
-// essere già disponibile qui — mai controllato l'ordine reale degli
-// script in index.html per questo file specifico.
 async function _scambioSplitCartaVerso(cartaId, qtyOriginale, N, userId) {
     if (N >= qtyOriginale) {
         const { error } = await binderCarteImpostaQuantitaScambio(userId, _binderScambioId, cartaId, qtyOriginale);
@@ -904,22 +671,6 @@ function _aggiornaBottoniScambioToggle(id) {
     });
 }
 
-// rimuoviDaScambioGriglia() RIMOSSA (audit 2026-09-25): era usata solo
-// dalla griglia renderBinderGrigliaImmagini, anch'essa rimossa.
-
-
-// ── Modalità elenco (parallela a renderViewTable di Visualizzazione, non
-// la stessa funzione — vedi nota) ────────────────────────────────────────
-// renderViewTable() in ui/cards.ui.js scrive dentro id fissi della pagina
-// Visualizzazione (#viewTableBody, #tableHeaderRow, #stat-count...) — sono
-// GLI STESSI elementi della tab Visualizzazione, non se ne possono avere
-// due copie nel DOM con lo stesso id. Richiamarla da qui scriverebbe nella
-// tabella di Visualizzazione, non in quella del Binder. Questa è quindi
-// un'implementazione parallela con lo STESSO stile visivo della vista
-// compatta (_rigaCompattaHtml), su un contenitore proprio del Binder
-// (#binderElencoBody) — stessi campi, stessa occhiata, DOM separato.
-// Se in futuro renderViewTable() viene generalizzata per accettare un
-// contenitore target, questa funzione può sparire in favore di quella.
 let _binderElencoFiltro = '';
 function _binderElencoImpostaFiltro(testo) {
     _binderElencoFiltro = String(testo || '');
@@ -933,7 +684,7 @@ function renderBinderElenco() {
     const binderGridEl = document.getElementById('binderGrid');
     if (!contenitore) { console.error('renderBinderElenco: manca #binderElencoBody in index.html'); return; }
     if (binderGridEl) binderGridEl.style.display = 'none';
-    _libroSmonta(); // OPUS 2026-08-25: elenco e libro non convivono mai
+    _libroSmonta();
     contenitore.style.display = '';
 
     const binder = _bindersElenco.find(b => String(b.id) === String(_binderAttivo));
@@ -945,10 +696,6 @@ function renderBinderElenco() {
         return;
     }
 
-    // RESTYLE BINDEX FASE 4b: ricerca + righe con miniatura (lente), nome,
-    // "codice · lingua · condizione · ×N" e prezzo. Tocco su riga o miniatura
-    // = carta a tutto schermo con flip (imperativo del restyle), sempre con
-    // la sleeve di QUESTO binder.
     const testo = (_binderElencoFiltro || '').toLowerCase();
     const carte = _carteBinderAttivoCache
         .filter(c => !testo || String(c.name || '').toLowerCase().includes(testo) || String(c.code || '').toLowerCase().includes(testo))
@@ -977,10 +724,6 @@ function renderBinderElenco() {
     document.getElementById('binderEmptyMsg').style.display = 'none';
 }
 
-// OPUS 2026-08-25: le due frecce esistenti (#binderPrevBtn/#binderNextBtn in
-// index.html) ora pilotano il giro ANIMATO quando il libro è a schermo,
-// invece di ridisegnare tutto di colpo. Senza libro montato il comportamento
-// resta identico a prima, riga per riga.
 function binderPaginaAvanti() {
     if (_libro) { _libroGira(1); return; }
     _binderPagina++;
@@ -991,12 +734,6 @@ function binderPaginaIndietro() {
     _binderPagina--;
     renderBinderContenuto();
 }
-// Fix 26/08/2026: il layout è ora per-binder, salvato su DB (vedi
-// 25_binder_layout_per_binder.sql) — non più prefBinderLayoutSet
-// (localStorage globale per dispositivo). Update ottimistico: la UI si
-// ridisegna subito, un eventuale errore di rete viene solo loggato (stesso
-// pattern soft-fail già usato per la copertina) — non vale la pena
-// bloccare l'utente per un fallimento di scrittura su un cambio di layout.
 async function cambiaLayoutBinder(layout) {
     if (!BINDER_LAYOUTS[layout]) return;
     _binderLayout = layout;
@@ -1007,59 +744,16 @@ async function cambiaLayoutBinder(layout) {
     if (error) console.error('Errore nel salvare il layout del binder:', error.message);
 }
 
-
-// ── RINOMINA, COPERTINA, CARD-BACK, SLEEVE, GALLERIA SFONDI — SPOSTATO
-// (piano di taglio 2026-09-11) in ui/binder-design.ui.js. Conteneva:
-// rinominaBinderExtraCorrente, caricaDesignBinderAttivo,
-// caricaNomeBinderAttivoStato/proponiNomeBinderAttivo, tutto l'editor
-// copertina + card-back, tutto l'editor sleeve, _caricaGalleriaDefault.
-//
-// apriBinderDettaglio() qui sopra chiama caricaDesignBinderAttivo() in
-// ui/binder-design.ui.js quando apri il dettaglio di un binder (cross-file,
-// vedi nota in quel file).
-
-// ══════════════════════════════════════════════════════════════════════════
-// LIBRO SFOGLIABILE — sessione Opus, 2026-08-25
-// ══════════════════════════════════════════════════════════════════════════
-// Sostituisce renderBinderGrigliaImmagini() come modalità "immagini" (quella
-// resta sopra, intatta e non referenziata: rollback a una riga).
-//
-// MODELLO — un libro vero è fatto di FOGLI, non di pagine: ogni foglio ha una
-// faccia davanti e una dietro, e girandolo si vedono le carte SUCCESSIVE, non
-// il retro delle stesse carte. Qui:
-//   faccia 0         = copertina del binder
-//   faccia 1         = risguardo (interno copertina, vuoto) — SOLO in modalità
-//                      doppia, dove serve a far cadere pagina 1 a destra come
-//                      in un libro vero
-//   facce successive = pagine di carte, cols×rows tasche ciascuna
-//
-//   modalità singola (schermo stretto): foglio j = {fronte: F[j], retro: F[j+1]}
-//     fogli "virtuali" sovrapposti — legittimo perché non si vedono mai le due
-//     facce dello stesso foglio insieme. _libro.k = indice della faccia a video.
-//   modalità doppia (>= LIBRO_SOGLIA_DOPPIA_PX): foglio j = {F[2j], F[2j+1]}
-//     _libro.k = numero di fogli già girati; sinistra = F[2k-1], destra = F[2k].
-//
-// ANIMAZIONE — cerniera 3D rigida (rotateY attorno al dorso) con ombra che
-// segue l'angolo: è quello che fanno anyflip/turn.js in HTML. La curvatura
-// della carta è SIMULATA con la luce, non con la geometria: una piega
-// davvero deformabile richiede canvas/WebGL.
-//
-// La sleeve NON compare qui dentro: si vede solo cliccando una carta, che la
-// porta in primo piano e la gira col meccanismo già esistente
-// (apriFlipCardHome) — decisione di Claudio, 2026-08-25.
-
-const LIBRO_SOGLIA_DOPPIA_PX = 620;   // sotto questa larghezza: una facciata alla volta
-const LIBRO_DURATA_GIRO_MS = 620;     // deve combaciare con la transition in index.html
-const LIBRO_SOGLIA_DRAG_PX = 8;       // oltre questa distanza è un trascinamento, non un tap
+const LIBRO_SOGLIA_DOPPIA_PX = 620;
+const LIBRO_DURATA_GIRO_MS = 620;
+const LIBRO_SOGLIA_DRAG_PX = 8;
 const LIBRO_PAD_PAGINA = 10;
 const LIBRO_GAP_TASCHE = 6;
 const LIBRO_ALTEZZA_NUMERO = 16;
 
-let _libro = null;          // stato del libro montato (null = nessun libro)
-let _libroObserver = null;  // ResizeObserver sul wrap
+let _libro = null;
+let _libroObserver = null;
 
-
-// ── Montaggio / smontaggio ──────────────────────────────────────────────
 function renderBinderLibro() {
     const wrap = document.getElementById('binderLibroWrap');
     if (!wrap) { console.error('renderBinderLibro: manca #binderLibroWrap in index.html'); return; }
@@ -1068,22 +762,17 @@ function renderBinderLibro() {
     const elenco = document.getElementById('binderElencoBody');
     if (griglia) griglia.style.display = 'none';
     if (elenco) elenco.style.display = 'none';
-    wrap.style.display = 'flex'; // AGGIORNATO 2026-09-18: era 'block' — flex per centrare la scena e ancorare le frecce laterali (vedi CSS #binder.binder-dettaglio-attivo #binderLibroWrap)
+    wrap.style.display = 'flex';
 
     const binder = _bindersElenco.find(b => String(b.id) === String(_binderAttivo));
     const layout = BINDER_LAYOUTS[_binderLayout] || BINDER_LAYOUTS['3x3'];
 
-    // Stesso ordinamento della griglia di prima (per data di inserimento).
     const carte = _carteBinderAttivoCache.slice().sort((a, b) => {
         const da = a.createdAt ? new Date(a.createdAt).getTime() : 0;
         const db = b.createdAt ? new Date(b.createdAt).getTime() : 0;
         return da - db;
     });
 
-    // Se si sta ridisegnando lo STESSO binder (es. dopo una rimozione dal
-    // binder extra, o un cambio di layout) la copertina è già risolta e la
-    // pagina corrente va conservata. Se invece è un binder appena aperto, il
-    // libro parte SEMPRE dalla copertina, chiuso.
     const stessoBinder = !!(_libro && String(_libro.binderId) === String(_binderAttivo));
     const copertinaPrecedente = stessoBinder ? _libro.copertinaUrl : null;
 
@@ -1091,15 +780,6 @@ function renderBinderLibro() {
         binderId: _binderAttivo,
         binder,
         permettiRimozione: !!(binder && binder.tipo === 'extra'),
-        // FIX (sessione widget Doppioni, 2026-09-18): mancava del tutto qui
-        // — la vecchia renderBinderGrigliaImmagini() (mai più referenziata,
-        // vedi commento sopra renderBinderContenuto) calcolava eScambio al
-        // volo e lo usava sia per il badge (Offerte: N invece di ×qty) sia
-        // per l'onclick (apriModaleQuantitaScambio invece del flip). Quando
-        // il libro sfogliabile l'ha sostituita, questo pezzo non è stato
-        // portato: risultato, nel binder Scambio si vedeva sempre la qty
-        // totale della carta invece della quantità offerta, e cliccare la
-        // carta apriva il flip invece di poter correggere la quantità.
         eScambio: !!(binder && binder.tipo === 'scambio'),
         carte,
         cols: layout.cols,
@@ -1121,28 +801,24 @@ function renderBinderLibro() {
         btn.classList.toggle('active', btn.dataset.layout === _binderLayout);
     });
 
-    _libroMisura();                        // decide modo (singola/doppia) e dimensioni
+    _libroMisura();
     _libro.facce = _libroCostruisciFacce();
-    _libro.k = stessoBinder ? _libroKDaPagina(_binderPagina) : 0; // binder nuovo → copertina
+    _libro.k = stessoBinder ? _libroKDaPagina(_binderPagina) : 0;
     _libroDisegnaStatico();
     _libroInitGesti();
     _libroOsservaResize();
 
-    // La copertina arriva da una signed URL: risolta a parte, senza bloccare
-    // il disegno del libro (che è già a schermo). _risolviCopertinaBinder ha
-    // già la sua cache, quindi dalla seconda apertura in poi è immediata.
     if (binder && !_libro.copertinaUrl) {
         authGetUserId()
             .then(userId => userId ? _risolviCopertinaBinder(userId, binder) : null)
             .then(url => {
-                if (!url || !_libro || String(_libro.binderId) !== String(binder.id)) return; // binder cambiato nel frattempo
+                if (!url || !_libro || String(_libro.binderId) !== String(binder.id)) return;
                 _libro.copertinaUrl = url;
                 if (!_libro.animando) _libroDisegnaStatico();
             })
             .catch(e => console.error('renderBinderLibro (copertina):', e));
     }
 }
-
 
 function _libroSmonta() {
     if (_libroObserver) { _libroObserver.disconnect(); _libroObserver = null; }
@@ -1151,31 +827,16 @@ function _libroSmonta() {
     if (wrap) wrap.style.display = 'none';
 }
 
-
 function _libroOsservaResize() {
     if (_libroObserver || typeof ResizeObserver === 'undefined') return;
     const wrap = document.getElementById('binderLibroWrap');
     if (!wrap) return;
-    // La cornice del telefono riposiziona .container in px al resize/rotazione
-    // (_posizionaContainerNelloSchermo in ui/phone.ui.js): osservare il wrap
-    // intercetta sia quello sia qualunque altro cambio di larghezza, senza
-    // dipendere da phone.ui.js né da @media sulla finestra.
     _libroObserver = new ResizeObserver(() => {
-        // AGGIUNTO 2026-09-18 (difensivo, Claudio: "hai rotto il flip"):
-        // mancava _libro.drag qui — solo _libro.animando (l'animazione di
-        // scatto finale) bloccava il ridisegno, non il trascinamento LIVE.
-        // Un resize durante un drag attivo (anche minimo, es. un reflow
-        // innescato da qualunque cosa nella pagina) faceva ripartire
-        // _libroDisegnaStatico(), che rimette .libro-foglio a display:none
-        // e ridisegna da _libro.k pre-drag — cancellando visivamente il
-        // trascinamento in corso.
         if (!_libro || _libro.animando || _libro.drag) return;
         const modoPrima = _libro.modo;
         const paginaCorrente = _libroPaginaCorrente();
         _libroMisura();
         if (_libro.modo !== modoPrima) {
-            // Cambiando impaginazione cambia anche l'indicizzazione delle
-            // facce: si ricostruisce e si torna sulla stessa pagina di carte.
             _libro.facce = _libroCostruisciFacce();
             _libro.k = _libroKDaPagina(paginaCorrente);
         }
@@ -1184,8 +845,6 @@ function _libroOsservaResize() {
     _libroObserver.observe(wrap);
 }
 
-
-// ── Geometria ───────────────────────────────────────────────────────────
 function _libroMisura() {
     const wrap = document.getElementById('binderLibroWrap');
     const disponibile = (wrap && wrap.clientWidth) ? wrap.clientWidth : 320;
@@ -1194,9 +853,6 @@ function _libroMisura() {
     const cols = _libro.cols, rows = _libro.rows;
     let pw = _libro.modo === 'doppia' ? Math.floor(disponibile / 2) : disponibile;
 
-    // Altezza derivata dalle tasche (63/88, stesso rapporto di .binder-slot),
-    // non da un aspect-ratio inventato: così le carte non vengono mai
-    // schiacciate né restano bande vuote in fondo alla pagina.
     const altezzaDaLarghezza = (larghezza) => {
         const slotW = (larghezza - 2 * LIBRO_PAD_PAGINA - (cols - 1) * LIBRO_GAP_TASCHE) / cols;
         const slotH = slotW * 88 / 63;
@@ -1205,16 +861,6 @@ function _libroMisura() {
 
     let ph = altezzaDaLarghezza(pw);
 
-    // AGGIORNATO (Claudio, 2026-09-18: "binder a schermo intero, il minimo
-    // indispensabile di margine") — #binderLibroWrap è ora esso stesso
-    // l'area piena rimasta dopo l'header (flex:1 dentro #binderDettaglioWrap
-    // a schermo intero, vedi CSS #binder.binder-dettaglio-attivo in
-    // index.html, vicino a .binder-page-btn): si legge la SUA altezza vera,
-    // stesso principio già usato sopra per la larghezza, al posto del
-    // vecchio tetto indovinato (62% di .container, pensato per un libro
-    // incorporato in una pagina normale, non per uno a schermo intero). Il
-    // fallback sotto resta solo per un frame eventuale in cui il layout non
-    // si sia ancora assestato (clientHeight ancora a 0).
     const altezzaWrap = wrap ? wrap.clientHeight : 0;
     let maxH;
     if (altezzaWrap > 0) {
@@ -1236,16 +882,10 @@ function _libroMisura() {
     _libro.ph = Math.max(160, Math.round(ph));
 }
 
-
-// ── Facce e fogli ───────────────────────────────────────────────────────
 function _libroCostruisciFacce() {
     const facce = [{ t: 'copertina' }];
-    // Il risguardo esiste solo in modalità doppia: serve a far finire pagina 1
-    // a DESTRA appena si apre la copertina, come in un libro vero. In modalità
-    // singola sarebbe solo una schermata vuota da saltare.
     if (_libro.modo === 'doppia') facce.push({ t: 'risguardo' });
     for (let i = 0; i < _libro.totalePagine; i++) facce.push({ t: 'pagina', i });
-    // In doppia i fogli sono coppie di facce: ne serve un numero pari.
     if (_libro.modo === 'doppia' && facce.length % 2 !== 0) facce.push({ t: 'risguardo' });
     return facce;
 }
@@ -1280,9 +920,6 @@ function _libroPuoIndietro() {
     return _libro.k > 0;
 }
 
-// Indice della pagina di carte attualmente in vista — serve a tenere allineato
-// _binderPagina, che è stato condiviso col resto del sito (lo legge anche
-// vaiAllaCartaNelBinder in ui/home.ui.js).
 function _libroPaginaCorrente() {
     const destra = _libroFacciaDestraPer(_libro.k);
     if (destra && destra.t === 'pagina') return destra.i;
@@ -1291,15 +928,12 @@ function _libroPaginaCorrente() {
     return 0;
 }
 
-// Inverso: da indice di pagina a numero di fogli girati.
 function _libroKDaPagina(pagina) {
     const p = Math.max(0, Math.min(Number(pagina) || 0, _libro.totalePagine - 1));
     const k = _libro.modo === 'doppia' ? Math.ceil((p + 2) / 2) : p + 1;
     return Math.max(0, Math.min(k, _libroNumFogli()));
 }
 
-
-// ── Disegno ─────────────────────────────────────────────────────────────
 function _libroDisegnaStatico() {
     const scena = document.getElementById('binderLibroScena');
     const sx = document.getElementById('binderLibroSx');
@@ -1330,7 +964,6 @@ function _libroDisegnaStatico() {
     _libroSincronizzaEtichette();
 }
 
-
 function _libroSincronizzaEtichette() {
     const label = document.getElementById('binderPaginaLabel');
     const prev = document.getElementById('binderPrevBtn');
@@ -1354,12 +987,9 @@ function _libroSincronizzaEtichette() {
     }
     if (prev) prev.disabled = !_libroPuoIndietro();
     if (next) next.disabled = !_libroPuoAvanti();
-    // Il libro mostra già le tasche vuote e scrive "Binder vuoto"
-    // nell'etichetta: il messaggio separato sarebbe ridondante.
     if (vuoto) vuoto.style.display = 'none';
     if (paginazione) paginazione.style.display = 'flex';
 }
-
 
 function _libroHtmlFaccia(faccia) {
     if (!faccia) return '';
@@ -1367,7 +997,6 @@ function _libroHtmlFaccia(faccia) {
     if (faccia.t === 'pagina') return _libroHtmlPagina(faccia.i);
     return '<div class="libro-risguardo"></div>';
 }
-
 
 function _libroHtmlCopertina() {
     const binder = _libro.binder;
@@ -1383,7 +1012,6 @@ function _libroHtmlCopertina() {
         </div>`;
 }
 
-
 function _libroHtmlPagina(indicePagina) {
     const inizio = indicePagina * _libro.perPagina;
     const carteQuestaPagina = _libro.carte.slice(inizio, inizio + _libro.perPagina);
@@ -1396,7 +1024,7 @@ function _libroHtmlPagina(indicePagina) {
             continue;
         }
         const idAttr = String(card.id).replace(/'/g, "\\'");
-        const nomeAttr = escapeHtml(card.name || '').replace(/"/g, '&quot;'); // SICUREZZA 2026-09-01: escapeHtml PRIMA, vedi nota sotto
+        const nomeAttr = escapeHtml(card.name || '').replace(/"/g, '&quot;');
         const immagineSrc = _urlImmagineVisualizzabile(card.immagine, 300);
         tasche += `
             <div class="binder-slot binder-slot-filled" onclick="_libroClickCarta('${idAttr}')" title="${nomeAttr}">
@@ -1414,33 +1042,11 @@ function _libroHtmlPagina(indicePagina) {
         <div class="libro-pagina-numero">${indicePagina + 1}</div>`;
 }
 
-
-// Click su una carta: stesso flip-modal del resto del sito, ma con il binder
-// corrente (per la sleeve giusta sul retro) e senza il bottone "Vai al
-// binder" — sei già dentro il binder. Ignora il click se l'utente stava in
-// realtà trascinando per girare pagina.
 function _libroClickCarta(id) {
     if (_libro && _libro.dragMosso) { _libro.dragMosso = false; return; }
-    // FIX (sessione widget Doppioni, 2026-09-18): stesso branch che aveva
-    // la vecchia renderBinderGrigliaImmagini (eScambio ? apriModaleQuantita
-    // Scambio : apriImmagineIngrandita) — mai portato qui quando il libro
-    // sfogliabile l'ha sostituita. Senza questo, dentro il binder Scambio
-    // aperto non c'era modo di correggere la quantità offerta cliccando la
-    // carta (si apriva solo il flip, che non ha alcun controllo quantità).
-    // RESTYLE BINDEX FASE 4c (2026-10-01): nel binder Scambio il tocco sulla
-    // carta apre il flip come ovunque (imperativo "ogni carta a tutto
-    // schermo"); la quantità offerta si cambia dal bollino ⇄ N sulla tasca
-    // (vedi _libroHtmlPagina), che chiama apriModaleQuantitaScambio.
     apriFlipCardHome(id, { binderId: _binderAttivo, nascondiVaiAlBinder: true });
 }
 
-
-// ── Giro pagina: animazione e trascinamento ─────────────────────────────
-// Il foglio ruota attorno al dorso (transform-origin sul lato sinistro): in
-// avanti 0° → -180°, all'indietro -180° → 0°. La faccia "retro" è già ruotata
-// di 180° in CSS, quindi a fine giro si legge dritta e atterra esattamente
-// sulla pagina di sinistra (in modalità singola esce dal riquadro e viene
-// tagliata: è il comportamento voluto, si vede la pagina entrare dal bordo).
 function _libroPreparaFoglio(j, direzione) {
     const foglio = document.getElementById('binderLibroFoglio');
     const fronte = document.getElementById('binderLibroFronte');
@@ -1452,8 +1058,6 @@ function _libroPreparaFoglio(j, direzione) {
     fronte.innerHTML = _libroHtmlFaccia(_libroFronteFoglio(j));
     retro.innerHTML = _libroHtmlFaccia(_libroRetroFoglio(j));
 
-    // La pagina che verrà scoperta va disegnata SOTTO il foglio già adesso,
-    // altrimenti a metà rotazione si vedrebbe il vuoto.
     if (direzione > 0) {
         const nuovaDestra = _libroFacciaDestraPer(_libro.k + 1);
         dx.innerHTML = _libroHtmlFaccia(nuovaDestra);
@@ -1468,10 +1072,9 @@ function _libroPreparaFoglio(j, direzione) {
     foglio.style.transition = 'none';
     foglio.style.transform = `rotateY(${direzione > 0 ? 0 : -180}deg)`;
     foglio.style.setProperty('--libro-ombra', '0');
-    void foglio.offsetWidth; // forza il ricalcolo prima di riattivare la transizione
+    void foglio.offsetWidth;
     foglio.style.transition = '';
 }
-
 
 function _libroGira(direzione) {
     if (!_libro || _libro.animando) return;
@@ -1488,9 +1091,6 @@ function _libroGira(direzione) {
         foglio.style.transform = `rotateY(${direzione > 0 ? -180 : 0}deg)`;
     });
 
-    // Chiusura a tempo invece che su transitionend: se la transizione viene
-    // interrotta (scheda in background, riapertura rapida) l'evento può non
-    // arrivare mai e il libro resterebbe bloccato a metà giro.
     setTimeout(() => {
         foglio.classList.remove('girando');
         _libro.k += direzione;
@@ -1498,7 +1098,6 @@ function _libroGira(direzione) {
         _libroDisegnaStatico();
     }, LIBRO_DURATA_GIRO_MS + 40);
 }
-
 
 function _libroInitGesti() {
     const scena = document.getElementById('binderLibroScena');
@@ -1510,13 +1109,11 @@ function _libroInitGesti() {
     scena.addEventListener('pointercancel', _libroPointerUp);
 }
 
-
 function _libroPointerDown(e) {
     if (!_libro || _libro.animando) return;
     _libro.dragMosso = false;
     _libro.drag = { x0: e.clientX, y0: e.clientY, deciso: false, direzione: 0, progresso: 0 };
 }
-
 
 function _libroPointerMove(e) {
     if (!_libro || !_libro.drag || _libro.animando) return;
@@ -1525,8 +1122,6 @@ function _libroPointerMove(e) {
     const dy = e.clientY - d.y0;
 
     if (!d.deciso) {
-        // Verticale = scroll della pagina (dentro la cornice telefono c'è lo
-        // scroll-snap tra Home e widget): non lo rubiamo mai.
         if (Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > LIBRO_SOGLIA_DRAG_PX) { _libro.drag = null; return; }
         if (Math.abs(dx) < LIBRO_SOGLIA_DRAG_PX) return;
 
@@ -1536,13 +1131,11 @@ function _libroPointerMove(e) {
 
         d.deciso = true;
         d.direzione = direzione;
-        _libro.dragMosso = true; // il click sulla carta che arriverà dopo va ignorato
+        _libro.dragMosso = true;
         _libroPreparaFoglio(direzione > 0 ? _libro.k : _libro.k - 1, direzione);
         const foglioNuovo = document.getElementById('binderLibroFoglio');
         foglioNuovo.classList.add('in-trascinamento');
-        // Alcuni browser rifiutano la cattura se il pointer non è partito su
-        // questo elemento: è innocuo, il gesto continua a funzionare via scena.
-        try { foglioNuovo.setPointerCapture(e.pointerId); } catch (_) { /* ignorato di proposito */ }
+        try { foglioNuovo.setPointerCapture(e.pointerId); } catch (_) {   }
     }
 
     const progresso = Math.max(0, Math.min(1, Math.abs(dx) / _libro.pw));
@@ -1550,11 +1143,9 @@ function _libroPointerMove(e) {
     const angolo = d.direzione > 0 ? -180 * progresso : -180 * (1 - progresso);
     const foglio = document.getElementById('binderLibroFoglio');
     foglio.style.transform = `rotateY(${angolo}deg)`;
-    // Ombra massima a metà giro, come la luce reale su una pagina piegata.
     foglio.style.setProperty('--libro-ombra', String(Math.sin(progresso * Math.PI) * 0.55));
     e.preventDefault();
 }
-
 
 function _libroPointerUp() {
     if (!_libro || !_libro.drag) return;
@@ -1579,14 +1170,11 @@ function _libroPointerUp() {
     }, LIBRO_DURATA_GIRO_MS + 40);
 }
 
-// RESTYLE BINDEX: dal pannello di anteprima (PC) apre la pagina Condividi già
-// posizionata su questo binder — da lì Copia link, QR e Condividi… (flusso
-// già esistente, nessuna logica di link duplicata qui).
 async function bindersApriCondividi(binderId) {
     if (typeof apriDettaglioWidget !== 'function') return;
     apriDettaglioWidget('condividi', null);
     const key = 'b:' + binderId;
-    for (let i = 0; i < 30; i++) { // fino a ~3 s: renderPaginaCondividi è asincrona
+    for (let i = 0; i < 30; i++) {
         if (typeof _condividiElementi !== 'undefined' && Array.isArray(_condividiElementi) && _condividiElementi.find(e => e.key === key)) {
             if (typeof _condividiScegli === 'function') _condividiScegli(key);
             return;

@@ -1,50 +1,5 @@
-// ═══════════════════════════════════════════════════════════════════════
-// WIDGET-PREZZI.UI.JS — tessere "Prezzi" + "Prezzi aggiornati" (CardSync
-// Pro)
-// ═══════════════════════════════════════════════════════════════════════
-// STEP 16 della ristrutturazione file widget home (vedi
-// Roadmap_Ristrutturazione_Widget_Home_2026-09-11.md). Estratto da
-// ui/phone.ui.js il 2026-09-11. NESSUNA riscrittura del codice esistente:
-// solo spostamento, zero cambi di comportamento per l'utente finale.
-//
-// CATEGORIA C per entrambe le tessere: nessuna pagina propria — 'prezzi'
-// apre la tab "Prezzi" già esistente (una delle 5 fisse del sito, l'id
-// coincide col nome della tab quindi non serve nemmeno il campo 'tab' nel
-// catalogo), 'prezzi_recenti' pure ('tab': 'prezzi', stessa destinazione).
-//
-// CONSOLIDAMENTO FATTO IN QUESTO STEP (richiesto dalla roadmap, §6):
-// l'alert "prezzo obiettivo raggiunto" (_alertPrezzoVisti,
-// _segnaAlertPrezzoVisti, _cardeConAllertaPrezzo, _contaAlertPrezzoNonVisti)
-// viveva dentro ui/queue.ui.js insieme al match automatico, ma è
-// concettualmente del dominio Prezzi/Wishlist-prezzo, non "coda
-// correzioni carte". Spostate qui le 4 funzioni (verificato: usate SOLO
-// dentro queue.ui.js, nessun altro file le chiama). NON spostata la
-// LOGICA che le usa (aggiornaBadgeMatch()/caricaMatch() restano in
-// queue.ui.js: calcolano insieme match E alert prezzo per un unico badge
-// combinato sulla tab Wishlist — separarle avrebbe richiesto riscrivere
-// quella logica, fuori scope per un semplice spostamento file). Le
-// chiamate da queue.ui.js a queste 4 funzioni ora sono cross-file: stesso
-// meccanismo già usato ovunque in questa ristrutturazione (scope globale
-// condiviso, invocate solo a runtime dopo che tutti gli script sono
-// caricati — mai a tempo di parsing).
-//
-// COSA RESTA FUORI (non spostato qui, invariato):
-// - aggiornaBadgeMatch(), caricaMatch(), tutto il resto di
-//   ui/queue.ui.js — non toccato se non per la rimozione delle 4
-//   funzioni spostate sopra.
-// - _elencoPrezziScaduti, caricaAvvisiHome(), avviaPollingWidgetHome()
-//   (ui/paginainiziale.ui.js) — motore home, non toccato.
-// - _ultimiPrezziAggiornati (ui/home.ui.js): esterna, non toccata.
-// - _ballCORPI.prezzi / _ballCORPI.prezzi_recenti / _ballASPETTO.* /
-//   _ballTITOLI_BREVI.* (ui/widget-render-condiviso.ui.js) — motore
-//   visivo, non toccato.
-// ───────────────────────────────────────────────────────────────────────
+// Widget Prezzi e Prezzi aggiornati.
 
-// ── ALERT PREZZO OBIETTIVO — spostate da ui/queue.ui.js (STEP 16) ───────
-// ── ALLERTA PREZZO WISHLIST — stesso sistema letto/non letto ──────────────
-// Una carta in wishlist "scatta" quando il prezzo attuale scende al
-// di sotto (o è uguale) al prezzo obiettivo che hai impostato —
-// stesso calcolo già usato per il badge "🎯 obiettivo!" nelle righe.
 function _alertPrezzoVisti() {
     return prefAlertPrezzoVistiGet();
 }
@@ -63,38 +18,20 @@ function _contaAlertPrezzoNonVisti() {
     const visti = _alertPrezzoVisti();
     const conCard = _cardeConAllertaPrezzo();
     const nonVisti = conCard.filter(c => !visti.has(String(c.id)));
-    // AGGIUNTO (2026-09-01): nonVistiCarte espone le carte vere, non
-    // solo il conteggio — serve alle notifiche di sistema per dire
-    // QUALE carta ha raggiunto il prezzo obiettivo. Additivo, non
-    // rompe i due punti di chiamata esistenti (che leggono solo
-    // count/chiavi).
     return { count: nonVisti.length, chiavi: conCard.map(c => String(c.id)), nonVistiCarte: nonVisti };
 }
 
-// ── VOCE DI CATALOGO "PREZZI" ────────────────────────────────────────
 CATALOGO_WIDGET.prezzi = {
-        // Restyle FASE 2 (2026-09-30): "Controllo prezzi" (id invariato);
-        // le carte da aggiornare sono l'azione → badge rosso ('azioni').
         titolo: 'Controllo prezzi', icona: 'fa-chart-line',
-        // _elencoPrezziScaduti è popolato da caricaAvvisiHome() (già
-        // richiamata a intervalli da avviaPollingWidgetHome più sotto) —
-        // qui lo leggiamo soltanto. Forma confermata in home.ui.js:
-        // {name, code, ultimoTesto} — la prima riga come seconda riga del
-        // widget, non un dato nuovo.
         preview: () => {
             const lista = (typeof _elencoPrezziScaduti !== 'undefined' && _elencoPrezziScaduti) ? _elencoPrezziScaduti : [];
-            // Totale su cui calcolare la quota di aggiornati: le carte in
-            // collezione con un prezzo. Nessuna query nuova, solo carteReali.
             const inCollezione = carteReali.filter(c => c.stato === 'collezione');
             const conPrezzo = inCollezione.filter(c => c.price != null).length;
-            // Valore complessivo: prezzo per quantità, dati già in memoria.
             const valore = inCollezione.reduce((tot, c) => tot + (Number(c.price) || 0) * (Number(c.qty) || 1), 0);
             const dati = {
                 scaduti: lista.length,
                 totale: Math.max(conPrezzo, lista.length),
                 valore,
-                // 'ultimoTesto' è la forma confermata di _elencoPrezziScaduti
-                // (vedi apriModalePrezziScaduti in ui/prices.ui.js r.212).
                 lista: lista.slice(0, 3).map(v => ({ nome: v.name || '—', quando: v.ultimoTesto || '' }))
             };
             if (lista.length === 0) return { righe: ['tutti aggiornati'], stato: 'ok', dati };
@@ -102,25 +39,19 @@ CATALOGO_WIDGET.prezzi = {
         },
 };
 
-// ── VOCE DI CATALOGO "PREZZI AGGIORNATI" ─────────────────────────────
 CATALOGO_WIDGET.prezzi_recenti = {
         titolo: 'Prezzi aggiornati', icona: 'fa-clock-rotate-left',
-        tagliaDefault: '6x5', // cinque righe di elenco, senza miniature
-        // UNICO dei tre che costa una query (storico_prezzi, via
-        // _ultimiPrezziAggiornati in ui/home.ui.js, a blocchi da 500 id).
-        // renderWidgetHome gira anche dal polling: senza freno questa
-        // query partirebbe a ogni giro. Da qui la cache a tempo qui
-        // sotto — stessa lezione delle 47 query di valutaEAssegna.
+        tagliaDefault: '6x5',
         preview: async () => {
             const righeCache = await _prezziRecentiConCache();
             if (!righeCache.length) return { righe: ['Nessun controllo ancora'], dati: { lista: [] } };
             return {
                 righe: righeCache.slice(0, 3).map(r => `${r.nome} · ${r.quando}`),
-                badge: false, // sarebbe il giorno dell'ultimo controllo, non un conteggio
+                badge: false,
                 dati: { lista: righeCache },
             };
         },
-        tab: 'prezziagg', // RESTYLE FASE 3h: pagina propria "Prezzi aggiornati" (prima apriva Controllo prezzi)
+        tab: 'prezziagg',
 };
 
 const TTL_PREZZI_RECENTI_MS = 5 * 60 * 1000;
@@ -128,15 +59,13 @@ let _cachePrezziRecenti = { quando: 0, righe: [] };
 
 async function _prezziRecentiConCache() {
     if (Date.now() - _cachePrezziRecenti.quando < TTL_PREZZI_RECENTI_MS) return _cachePrezziRecenti.righe;
-    // Se la funzione non c'e' (ordine di caricamento, file non presente)
-    // il widget mostra "nessun controllo" invece di rompere il render.
     if (typeof _ultimiPrezziAggiornati !== 'function' || typeof carteReali === 'undefined') return [];
     try {
         const collezione = carteReali.filter(c => c.stato === 'collezione');
         const eventi = await _ultimiPrezziAggiornati(collezione.map(c => c.id), 5);
         const righe = eventi
             .map(ev => ({ ev, card: collezione.find(c => String(c.id) === String(ev.carta_id)) }))
-            .filter(x => x.card) // la carta potrebbe essere stata eliminata nel frattempo
+            .filter(x => x.card)
             .map(({ ev, card }) => ({
                 id: card.id,
                 nome: card.name || '—',
@@ -145,12 +74,6 @@ async function _prezziRecentiConCache() {
                 immagine: card.immagine,
                 rarita: card.rarita,
             }));
-        // MAI mettere in cache un risultato vuoto. Il primo giro puo'
-        // capitare prima che carteReali sia popolato, o mentre la rete e'
-        // ancora giu': memorizzare quel vuoto significava mostrare "nessun
-        // controllo ancora" per cinque minuti su un widget che i dati ce li
-        // aveva. Difetto visto in uno screenshot di Claudio il 2026-09-03,
-        // dopo che lo stesso widget aveva funzionato poco prima.
         if (righe.length) _cachePrezziRecenti = { quando: Date.now(), righe };
         return righe;
     } catch (e) {
@@ -159,19 +82,8 @@ async function _prezziRecentiConCache() {
     }
 }
 
-
-// ── PAGINA "PREZZI AGGIORNATI" ───────────────────────────────────────────
-// RESTYLE BINDEX FASE 3h (2026-10-01, tavola "Prezzi aggiornati · cosa è
-// cambiato"): pagina separata da "Controllo prezzi". Periodo Oggi / 7 / 30
-// giorni; per ogni carta della collezione il cui prezzo è cambiato nel
-// periodo, il confronto è col prezzo che aveva all'inizio (RPC
-// leggi_variazioni_da, la stessa di "In primo piano" e "Variazione", solo
-// lettura). Salite e Scese in due gruppi. Il tocco sulla carta apre la carta
-// a tutto schermo.
-// NON mostrato: il numero esatto di carte "controllate" (non è una lettura
-// esistente): il riquadro conta le carte il cui prezzo è CAMBIATO.
-let _pagPeriodo = 'oggi';     // 'oggi' | '7' | '30'
-let _pagCache = {};           // periodo -> { righe } (mappa oggetto_id -> prezzo_base)
+let _pagPeriodo = 'oggi';
+let _pagCache = {};
 let _pagUltimoControllo = null;
 
 function _pagDaISO(periodo) {
@@ -230,11 +142,6 @@ function _pagQuando(iso) {
     return d.toLocaleDateString('it-IT', { day: 'numeric', month: 'short' }) + ` alle ${ora}`;
 }
 
-// RESTYLE (tavole PC "Prezzi aggiornati"): riquadri controllate / salite /
-// scese / invariate / effetto sul valore; su PC Salite e Scese con il
-// "prima → ora" e, cliccando una carta, il suo prezzo nel tempo a destra
-// (storico_prezzi, solo lettura). Sul telefono il tocco apre la carta.
-// "Controllate" = carte della collezione con ultimo controllo nel periodo.
 let _pagSelId = null;
 let _pagInvariateAperte = false;
 
@@ -290,7 +197,7 @@ async function _pagDettaglio() {
         const { data } = await storicoPrezziGrafico(r.id, 'carte');
         righe = data || [];
     } catch (e) { console.error('[prezzi aggiornati] storico carta:', e); }
-    if (String(_pagSelId) !== String(idRichiesto)) return; // nel frattempo è stata scelta un'altra carta
+    if (String(_pagSelId) !== String(idRichiesto)) return;
     const da = Date.now() - 30 * 86400000;
     const ultimi = righe.filter(x => new Date(x.registrato_il).getTime() >= da);
     const serie = ultimi.length >= 2 ? ultimi : righe.slice(-30);
@@ -412,13 +319,6 @@ function _pagDisegna() {
     _pagDettaglio();
 }
 
-
-// ── CONTROLLO PREZZI: UN pulsante per i riquadri spuntati ────────────────
-// RESTYLE FASE 3h: riusa i tre controlli esistenti (ui/prices.ui.js), che
-// creano ciascuno il proprio ordine e mostrano l'avanzamento nel testo del
-// riquadro. Nessuna logica di ordini nuova. Il riepilogo unico "controlli
-// partiti insieme" e l'elenco degli ordini recenti richiedono una lettura
-// in più (FASE 8e): non sono qui.
 async function prezziAvviaSelezionati() {
     const coll = document.getElementById('pzCollezione')?.checked;
     const wish = document.getElementById('pzWishlist')?.checked;
@@ -448,10 +348,6 @@ async function prezziAvviaSelezionati() {
     }
 }
 
-
-// ═══════════════════════════════════════════════════════════════════════
-// RESTYLE BINDEX FASE 8e — elenco "Controlli" (ultimi 7 giorni) con Riprova
-// ═══════════════════════════════════════════════════════════════════════
 const _PZ_TIPI_CONTROLLO = {
     controlla_prezzi: ['Collezione', 'fa-layer-group'],
     controlla_prezzi_wishlist: ['Wishlist', 'fa-bookmark'],
@@ -465,8 +361,6 @@ const _PZ_STATI_CONTROLLO = {
 };
 let _pzControlliRighe = [];
 
-// RESTYLE (tavole "Controlla prezzi"): righe con stato a icona, "Tipo · N"
-// e orario a destra; prima i controlli in corso.
 function _pzQuandoBreve(iso) {
     const d = new Date(iso);
     const oggi = new Date(); const ieri = new Date(); ieri.setDate(oggi.getDate() - 1);
@@ -500,8 +394,6 @@ async function prezziCaricaControlli() {
         const [, classe] = _PZ_STATI_CONTROLLO[o.stato] || ['In attesa', 'att'];
         const sotto = (sottoStato[o.stato] || (() => 'in attesa che un dispositivo lo prenda'))(o);
         const ico = iconaStato[o.stato] || 'fa-hourglass-half';
-        // sql/115: "Annulla" sugli ordini non ancora chiusi, "Riprova" su
-        // quelli finiti male o annullati.
         const riprova = (o.stato === 'pending' || o.stato === 'in_corso')
             ? `<button type="button" class="pz-riprova" onclick="prezziAnnullaControllo('${o.id}')">Annulla</button>`
             : (o.stato === 'errore' || o.stato === 'annullato')
@@ -510,7 +402,6 @@ async function prezziCaricaControlli() {
     }).join('');
 }
 
-// ── Scelta: conteggi, chip, "Di chi", pulsante "Controlla N carte" ──────
 function _pzCarteColl() { return carteReali.filter(c => c.tabella === 'carte' && c.stato === 'collezione'); }
 
 function prezziAggiornaScelta() {
@@ -555,17 +446,11 @@ function prezziScaffaliTutti() {
     document.querySelectorAll('.checkboxScaffalePrezziSealed').forEach(cb => { cb.checked = false; });
     prezziAggiornaScelta();
 }
-// "Di chi": una sola scelta per Collezione e Sealed, fatta una volta sola in
-// Impostazioni (prefAmbitoPrezziSet, 2026-10-09). Qui la pagina mostra solo
-// la scelta attuale.
 function prezziMostraDiChi() {
     const el = document.getElementById('pzDiChiTesto');
     if (el) el.textContent = _ambitoControlloPrezzi === 'gruppo' ? 'tutto il gruppo' : 'solo le tue carte';
 }
 
-// Riquadri in alto: ultimo controllo (con salite/scese da allora), carte da
-// aggiornare (mai controllate o più vecchie di 7 giorni) e se qualcuno del
-// gruppo sta controllando adesso (solo presenza, mai un conteggio).
 async function prezziRiepilogo() {
     const box = document.getElementById('pzStat');
     if (!box) return;
@@ -606,12 +491,6 @@ async function prezziRiepilogo() {
     disegna(ultimoTxt, frecce, attivi);
 }
 
-// ── "Prezzo non trovato" (sql/111) ─────────────────────────────────────
-// Carte di cui l'ultimo controllo prezzi non ha trovato il prezzo
-// (carte.esito_controllo, scritto dall'estensione, mai nelle note). Avviso
-// sotto i riquadri + elenco con "Sistema" (modifica carta). L'esito sparisce
-// da solo quando un controllo trova il prezzo, o salvando la carta con
-// lingua/condizione cambiate (salvaModificaCarta).
 function _pzCarteConEsito(carte) {
     return (carte || _pzCarteColl()).filter(c => c.esitoControllo)
         .sort((a, b) => (a.name || '').localeCompare(b.name || '', 'it'));
@@ -662,10 +541,6 @@ function prezziSistemaCarta(id) {
     apriModificaCarta(id);
 }
 
-// Annulla (sql/115): ferma un proprio controllo in attesa o in corso. Se un
-// PC lo sta già eseguendo, dall'estensione 5.22 la sessione (carte, sealed o
-// wishlist) se ne accorge entro 5 s, finisce la carta attuale e si ferma;
-// l'ordine resta annullato.
 async function prezziAnnullaControllo(ordineId) {
     const o = _pzControlliRighe.find(x => String(x.id) === String(ordineId));
     if (!o) return;
@@ -683,7 +558,6 @@ async function prezziAnnullaControllo(ordineId) {
     prezziCaricaControlli();
 }
 
-// Riprova = nuovo ordine con lo stesso tipo e gli stessi parametri.
 async function prezziRiprovaControllo(ordineId) {
     const o = _pzControlliRighe.find(x => String(x.id) === String(ordineId));
     if (!o) return;
@@ -692,11 +566,6 @@ async function prezziRiprovaControllo(ordineId) {
     const esito = document.getElementById('pzEsito');
     let error = null;
     if (o.tipo === 'controlla_prezzi') {
-        // Punto 26 (2026-10-15): le location stanno nella tabella privata
-        // (sql/108), non in o.parametri — si rileggono da lì e l'ordine si
-        // ricrea con la stessa funzione sul DB dell'avvio normale. Ordini
-        // vecchi senza riga privata: si usano le location rimaste nei
-        // parametri, se ci sono.
         const { data: priv, error: errPriv } = await ordiniLocationPrivateLeggi(o.id);
         if (errPriv) {
             if (esito) esito.textContent = 'Non sono riuscito a riprovare: ' + errPriv.message;

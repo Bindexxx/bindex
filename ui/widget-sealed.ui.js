@@ -1,30 +1,5 @@
-// ═══════════════════════════════════════════════════════════════════════
-// WIDGET-SEALED.UI.JS — tessera + pagina "Sealed" (CardSync Pro)
-// ═══════════════════════════════════════════════════════════════════════
-// RISCRITTO in Fase 1 (2026-09-12, roadmap operativa): il vecchio
-// meccanismo carte.tipo='sealed' è stato ritirato (mai popolato in
-// produzione, zero righe — vedi audit Fase 0 e Compilato_2026-09-12).
-// Il widget ora legge dalla tabella dedicata prodotti_sealed tramite un
-// array in-memory parallelo a carteReali (prodottiSealedReali, dichiarato
-// in state/cards.state.js), popolato da caricaProdottiSealedReali() qui
-// sotto — stesso pattern di caricaCarteReali() in ui/cards.ui.js, ma
-// tenuto separato per non toccare quella funzione molto condivisa
-// (Regola d'Oro #1: duplicazione preferita a un'astrazione condivisa
-// rischiosa).
-//
-// Click su una riga apre apriModificaSealed(id) (nuovo, sotto) invece di
-// apriModificaCarta — i campi sono diversi (integrità packaging invece di
-// condizione, niente reverse/prima edizione).
-//
-// NOTA: il modale di modifica (HTML) non è stato ancora aggiunto a
-// index.html in questa sessione — apriModificaSealed() logga un avviso e
-// non fa nulla finché quel pezzo non viene consegnato. Il resto del
-// widget (preview, pagina, ricerca, ordinamento) è già funzionante.
-// ───────────────────────────────────────────────────────────────────────
+// Widget e pagina Sealed.
 
-// ── CARICAMENTO DATI ──────────────────────────────────────────────────
-// (Q1, 2026-10-12) true se l'ultima lettura è fallita: la tessera scrive "—"
-// invece di "Nessun prodotto" finché non arriva una lettura riuscita.
 let _sealedLetturaFallita = false;
 
 async function caricaProdottiSealedReali() {
@@ -56,13 +31,11 @@ async function caricaProdottiSealedReali() {
     }));
 }
 
-
-// ── VOCE DI CATALOGO ──────────────────────────────────────────────────
 CATALOGO_WIDGET.sealed = {
         titolo: 'Sealed', icona: 'fa-box-archive',
         preview: () => {
             const prodotti = prodottiSealedReali;
-            if (prodotti.length === 0 && _sealedLetturaFallita) return { righe: ['—'] }; // (Q1) lettura fallita, non "vuoto"
+            if (prodotti.length === 0 && _sealedLetturaFallita) return { righe: ['—'] };
             if (prodotti.length === 0) return { righe: ['Nessun prodotto'], dati: { totale: 0, valore: 0, lista: [] } };
             const perValore = prodotti.slice().sort((a, b) => (b.price || 0) - (a.price || 0));
             const inEvidenza = perValore[0];
@@ -78,21 +51,12 @@ CATALOGO_WIDGET.sealed = {
         tab: 'sealed',
 };
 
-// ── PAGINA "SEALED" ──────────────────────────────────────────────────
-// RESTYLE BINDEX FASE 3g (2026-10-01, tavole "Sealed"): tre riquadri
-// (prodotti, valore, scaffali), ricerca, ordini, una riga per prodotto con
-// "codice · ×N · in Scambio" e lo scaffale dove sta; il tocco apre i
-// DETTAGLI (prima apriva direttamente la modifica). "Aggiungi" porta
-// all'Inserimento già sulla scheda Sealed.
 let _sealedProdottiComputati = [];
 let _sealedOrdinamento = 'valore';
 let _sealedRicercaTesto = '';
-let _sealedAssoc = [];        // scaffale_prodotti dell'utente
+let _sealedAssoc = [];
 let _sealedDettaglioId = null;
 
-// Scaffali e associazioni: stesse letture della pagina Scaffali, servono
-// per "dove si trova" e "in Scambio". Aggiorna anche le cache globali che
-// usa la finestra della quantità offerta (ui/scaffali.ui.js).
 async function _sealedCaricaContesto(userId) {
     const [rs, ra] = await Promise.all([scaffaliList(userId), scaffaleProdottiTuttiUtente(userId)]);
     if (rs.error) console.error('[sealed] scaffali:', rs.error.message);
@@ -142,17 +106,14 @@ async function renderPaginaSealed() {
     if (!container) return;
     _sealedDettaglioId = null;
 
-    // Ricarica sempre all'apertura pagina — coerente col fatto che
-    // l'inserimento (ui/entry.ui.js) scrive direttamente in prodotti_sealed
-    // senza passare da caricaProdottiSealedReali() in automatico.
     await caricaProdottiSealedReali();
     const userId = await authGetUserId();
     if (userId) await _sealedCaricaContesto(userId);
 
-    _sealedOrdinamento = prefFiltroPaginaScegli('sealed', 'ordine', ['valore', 'quantita', 'alfabetico'], 'valore'); // (Q5)
+    _sealedOrdinamento = prefFiltroPaginaScegli('sealed', 'ordine', ['valore', 'quantita', 'alfabetico'], 'valore');
     _sealedRicercaTesto = '';
     const { totale, valore } = _sealedCalcola();
-    const eur = (v) => formattaEuro(v); // formato unico "12.345,00 €" (decisione Claudio 2026-09-25)
+    const eur = (v) => formattaEuro(v);
     const testa = `
         <div class="page-header sl-testa">
             <span class="page-title">Sealed</span>
@@ -187,7 +148,6 @@ async function renderPaginaSealed() {
         </div>
     `;
     _sealedRenderElenco();
-    // RESTYLE (tavola "Sealed PC"): su PC elenco e dettagli affiancati.
     if (_sealedEPC() && _sealedProdottiComputati.length) {
         const primo = [..._sealedProdottiComputati].sort((a, b) => b.valoreTotale - a.valoreTotale)[0];
         _sealedApriDettaglio(primo.id);
@@ -198,7 +158,7 @@ function _sealedEPC() { const s = document.getElementById('sealed'); return !!s 
 
 function _sealedImpostaOrdinamento(ordine) {
     _sealedOrdinamento = ordine;
-    prefFiltroPaginaSet('sealed', 'ordine', ordine); // (Q5)
+    prefFiltroPaginaSet('sealed', 'ordine', ordine);
     document.querySelectorAll('#sealed .sl-chip').forEach(el => {
         el.classList.toggle('attivo', el.dataset.ord === ordine);
     });
@@ -219,7 +179,7 @@ function _sealedRenderElenco() {
     const elenco = document.getElementById('sealedElenco');
     if (!elenco) return;
 
-    const eur = (v) => formattaEuro(v); // formato unico "12.345,00 €" (decisione Claudio 2026-09-25)
+    const eur = (v) => formattaEuro(v);
 
     let righe = [..._sealedProdottiComputati];
     if (_sealedRicercaTesto) righe = righe.filter(r => r.nome.toLowerCase().includes(_sealedRicercaTesto));
@@ -245,7 +205,6 @@ function _sealedRenderElenco() {
     }).join('');
 }
 
-// ── Dettagli del prodotto ────────────────────────────────────────────
 function _sealedDataLunga(iso) {
     if (!iso) return null;
     const d = new Date(iso);
@@ -288,7 +247,6 @@ function _sealedRenderDettaglio() {
     const lingue = { IT: 'Italiano', EN: 'Inglese', JP: 'Giapponese', DE: 'Tedesco', FR: 'Francese', ES: 'Spagnolo' };
     const sopra = [p.setEspansione || p.codice, lingue[p.lingua] || p.lingua, integrita].filter(Boolean).join(' · ');
 
-    // Guadagno sull'acquisto: SOLO se c'è il prezzo d'acquisto.
     let guadagno = '';
     if (p.prezzoAcquisto != null && p.prezzoAcquisto > 0 && p.price) {
         const diff = (p.price - p.prezzoAcquisto) * qty;
@@ -343,8 +301,6 @@ function _sealedRenderDettaglio() {
         </div>`;
 }
 
-// "Offri in Scambio": stessa finestra della quantità usata dagli Scaffali.
-// Se lo scaffale Scambio non esiste ancora lo crea (scaffaleScambioGarantisci).
 async function _sealedOffriInScambio() {
     if (!_sealedDettaglioId) return;
     if (!_scaffaleScambioId) {
@@ -357,18 +313,14 @@ async function _sealedOffriInScambio() {
 }
 
 function _sealedVaiAScaffale(scaffaleId) {
-    // (2026-10-14) Niente attesa fissa di 600 ms: la pagina Scaffali apre lo
-    // scaffale indicato appena ha finito di caricare (stesso meccanismo della ricerca).
     if (typeof _scaffaleDaAprire !== 'undefined') _scaffaleDaAprire = scaffaleId;
     apriDettaglioWidget('scaffali', null);
 }
 
-// Dopo una modifica (scheda sealed o quantità offerta): ricalcola e, se il
-// dettaglio è aperto, lo ridisegna.
 async function _sealedRinfrescaDopoModifica() {
     if (!document.getElementById('sealedVistaElenco')) {
         if (document.getElementById('sealedContenuto')) renderPaginaSealed();
-        else { // 2026-10-09: modifica fatta dalla lista Collezione
+        else {
             await caricaProdottiSealedReali();
             if (typeof filterTable === 'function') filterTable();
         }
@@ -384,8 +336,6 @@ async function _sealedRinfrescaDopoModifica() {
     else if (aperto) _sealedChiudiDettaglio();
 }
 
-
-// ── MODIFICA / ELIMINAZIONE ─────────────────────────────────────────────
 let _sealedInModifica = null;
 
 async function apriModificaSealed(id) {
@@ -404,9 +354,6 @@ async function apriModificaSealed(id) {
     document.getElementById('editSealedDataAcquisizione').value = prodotto.dataAcquisizione || '';
     document.getElementById('editSealedNote').value = prodotto.note || '';
 
-    // Elenco integrità: STESSA fonte unica di ui/entry.ui.js
-    // (INTEGRITA_PACKAGING_OPZIONI, nessun CHECK a database — decisione
-    // Fase 1, deve restare facile aggiungerne di nuove).
     const selIntegrita = document.getElementById('editSealedIntegrita');
     selIntegrita.innerHTML = INTEGRITA_PACKAGING_OPZIONI.map(o =>
         `<option value="${o.value}" ${prodotto.integrita === o.value ? 'selected' : ''}>${o.label}</option>`
@@ -414,11 +361,6 @@ async function apriModificaSealed(id) {
 
     document.getElementById('editSealedModal').style.display = 'flex';
 
-    // Fase 3, Step 3 (2026-09-12): etichetta iniziale del bottone "Offri in
-    // Scambio" — _quantitaOfferteScambioSealed è precaricata da
-    // apriPaginaScaffali() in ui/scaffali.ui.js (potrebbe non esserlo se
-    // l'utente non ha mai aperto la pagina Scaffali in questa sessione,
-    // da qui il controllo di esistenza prima di leggerla).
     const btnScambio = document.getElementById('btnOffriScambioSealed');
     if (btnScambio) {
         const quantita = (typeof _quantitaOfferteScambioSealed !== 'undefined') ? (_quantitaOfferteScambioSealed[String(id)] ?? 0) : 0;
@@ -428,12 +370,10 @@ async function apriModificaSealed(id) {
     }
 }
 
-
 function chiudiModificaSealed() {
     document.getElementById('editSealedModal').style.display = 'none';
     _sealedInModifica = null;
 }
-
 
 async function salvaModificaSealed() {
     if (!_sealedInModifica) return;
@@ -472,11 +412,6 @@ async function salvaModificaSealed() {
         return;
     }
 
-    // Fase 8, Step 2 (2026-09-13): stessa logica di modificaCampoInline
-    // (ui/cards-modifica.ui.js) per le carte — qui in un colpo solo perché
-    // il modale sealed salva tutti i campi insieme, non riga per riga.
-    // _sealedInModifica è lo stato PRIMA di questa modifica (catturato da
-    // apriModificaSealed). Fire-and-forget, mai bloccante.
     (async () => {
         const movimenti = [];
         const prezzoCambiato = Number(aggiornamento.prezzo) !== Number(_sealedInModifica.price || 0)
@@ -517,7 +452,6 @@ async function salvaModificaSealed() {
     await _sealedRinfrescaDopoModifica();
 }
 
-
 async function eliminaSealedDaModale() {
     if (!_sealedInModifica) return;
     const id = _sealedInModifica.id;
@@ -525,13 +459,8 @@ async function eliminaSealedDaModale() {
     await eliminaSealed(id);
 }
 
-
 async function eliminaSealed(id) {
-    // Fase 8, Step 2 (2026-09-13): snapshot PRIMA della delete — l'oggetto
-    // non esisterà più per rileggerlo dopo.
     const prodotto = prodottiSealedReali.find(p => String(p.id) === String(id));
-    // (Q2/Q3) finestra del sito; il prodotto va nel cestino (sql/98) e dopo
-    // l'eliminazione c'è "Annulla".
     const nelCestino = typeof cestinoAttivo === 'function' && await cestinoAttivo();
     const sicuro = await chiediConferma({
         titolo: 'Eliminare il prodotto?',

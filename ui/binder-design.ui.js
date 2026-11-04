@@ -1,39 +1,5 @@
-// ═══════════════════════════════════════════════════════════════════════
-// BINDER-DESIGN.UI.JS — rinomina e copertina (+ editor card-back) per
-// binder — CardSync Pro
-// ═══════════════════════════════════════════════════════════════════════
-// STEP separato dal piano "riduzione accoppiamento" concordato con Claudio
-// il 2026-09-11 (secondo giro di taglio, dopo l'estrazione da
-// ui/binder.ui.js). NESSUNA riscrittura del codice esistente: solo
-// spostamento, zero cambi di comportamento per l'utente finale.
-//
-// Contiene: rinominaBinderExtraCorrente, caricaDesignBinderAttivo (carica
-// nome+copertina+sleeve insieme — chiama caricaSleeveBinderAttivoStato
-// cross-file, vedi ui/binder-sleeve.ui.js), caricaNomeBinderAttivoStato/
-// proponiNomeBinderAttivo, tutto l'editor copertina
-// (_convertiImmagineCopertina, caricaCopertinaBinderAttivoStato,
-// gestisciUploadCopertinaBinderAttivo, _salvaCopertinaBinderAttivo,
-// galleria default copertina) + editor posizionamento card-back
-// (_convertiImmagineCardBack, applyCardBackFieldState,
-// _cardBack*Scale/ClampIntoStage/Rescale, _initCardBackDragHandlers).
-//
-// L'editor sleeve e _caricaGalleriaDefault (helper condiviso dalle due
-// gallerie sfondi, usato anche qui per la galleria copertina) sono stati
-// spostati in ui/binder-sleeve.ui.js.
-//
-// ⚠ IL MOTORE FLIPBOOK (_libro*, in fondo a ui/binder.ui.js) resta
-// invariato lì — non toccato da nessuno dei due giri di taglio.
-//
-// Cross-file: apriBinderDettaglio() in ui/binder.ui.js chiama
-// caricaDesignBinderAttivo() qui sotto; _salvaCopertinaBinderAttivo() e
-// selezionaDefaultCopertinaBinderAttivo() qui sotto chiamano
-// renderGrigliaBinders() in ui/binder.ui.js. Nessuna istruzione qui gira a
-// tempo di caricamento script — l'ordine tra i tre file (binder.ui.js,
-// binder-design.ui.js, binder-sleeve.ui.js) è indifferente, purché tutti
-// carichino prima che l'utente apra un dettaglio binder.
-// ───────────────────────────────────────────────────────────────────────
+// Binder: nome, copertina, editor del retro carta.
 
-// ── Rinomina binder extra ────────────────────────────────────────────────
 async function rinominaBinderExtraCorrente(nuovoNome) {
     const binder = _bindersElenco.find(b => String(b.id) === String(_binderAttivo));
     if (!binder || binder.tipo !== 'extra' || !nuovoNome || !nuovoNome.trim()) return;
@@ -45,30 +11,16 @@ async function rinominaBinderExtraCorrente(nuovoNome) {
     if (titoloEl) titoloEl.textContent = binder.nome;
 }
 
-
-
-
-// ── "Design" — copertina e sleeve personalizzate, PER BINDER ────────────
-// Porta completa del vecchio meccanismo (era unico per utente, ora è per
-// binder — path, slot e metadata sempre agganciati a _binderAttivo).
-// Stesso identico comportamento di conversione/upload/moderazione/galleria
-// default, stesso editor drag/resize per i 4 campi della sleeve.
-
 async function caricaDesignBinderAttivo() {
     await caricaNomeBinderAttivoStato();
     await caricaCopertinaBinderAttivoStato();
     await caricaSleeveBinderAttivoStato();
 }
 
-// ── Nome (con approvazione admin) ────────────────────────────────────
-// Stessa metodologia di copertina/sleeve — vedi 21_binder_nome_con_
-// approvazione.sql. Il nome VISIBILE (binder.nome, già mostrato nel titolo
-// e nella griglia contenitori) non cambia finché admin_process_pending_
-// request non approva nome_proposto.
 async function caricaNomeBinderAttivoStato() {
     const statoEl = document.getElementById('binderNomeStato');
     const inputEl = document.getElementById('binderNomeInput');
-    if (!statoEl || !inputEl) return; // pannello Design non ancora nel DOM
+    if (!statoEl || !inputEl) return;
     document.getElementById('binderNomeError').style.display = 'none';
 
     const binder = _bindersElenco.find(b => String(b.id) === String(_binderAttivo));
@@ -112,7 +64,6 @@ async function proponiNomeBinderAttivo() {
     await caricaNomeBinderAttivoStato();
 }
 
-// ── Copertina ─────────────────────────────────────────────────────────
 function _convertiImmagineCopertina(file) {
     return new Promise((resolve, reject) => {
         const url = URL.createObjectURL(file);
@@ -143,7 +94,7 @@ async function caricaCopertinaBinderAttivoStato() {
     const statoEl = document.getElementById('binderCoverStato');
     const previewEl = document.getElementById('binderCoverPreview');
     const errEl = document.getElementById('binderCoverError');
-    if (!statoEl || !previewEl) return; // pannello Design non ancora nel DOM
+    if (!statoEl || !previewEl) return;
     errEl.style.display = 'none';
 
     const userId = await authGetUserId();
@@ -205,10 +156,9 @@ async function gestisciUploadCopertinaBinderAttivo(event) {
 
     event.target.value = '';
     await caricaCopertinaBinderAttivoStato();
-    await renderGrigliaBinders(); // aggiorna anche la miniatura nella griglia contenitori
+    await renderGrigliaBinders();
 }
 
-// Upload + registrazione (path per-binder) + richiesta di moderazione.
 async function _salvaCopertinaBinderAttivo(pngBlob) {
     const userId = await authGetUserId();
     if (!userId || !_binderAttivo) return { error: new Error('Nessun binder aperto') };
@@ -269,5 +219,3 @@ async function selezionaDefaultCopertinaBinderAttivo(filename) {
     await caricaCopertinaBinderAttivoStato();
     await renderGrigliaBinders();
 }
-
-

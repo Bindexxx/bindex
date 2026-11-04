@@ -1,23 +1,6 @@
-// ═══════════════════════════════════════════════════════════════════════
-// WIDGET-RICHIESTE.UI.JS — tessera "Richieste" (CardSync Pro)
-// ═══════════════════════════════════════════════════════════════════════
-// Fase 4, Step 3 (2026-09-13). Mirror di widget-scaffali.ui.js: nessuna
-// pagina propria qui dentro — apre ui/richieste-scambio.ui.js
-// (apriPaginaRichieste()), chiamata da apriDettaglioWidget() in
-// ui/paginainiziale-dettaglio.ui.js, ramo "if (tabId === 'richieste')" —
-// stesso schema di sealed/wishlist/scaffali, MAI switchTab().
-//
-// RESTYLE BINDEX FASE 2 (2026-09-30, tavola "Richieste = chi/cosa +
-// Gestisci"): oltre al conteggio servono COSA è stato chiesto (miniature e
-// valore) e quante sono già riservate (accettate, da concludere). Si legge
-// quindi l'elenco delle ricevute (richiesteScambioRicevuteList, la stessa
-// della pagina Richieste) invece del solo conteggio, con una cache di 60s:
-// il render della home gira ogni 15s e questo preview lo chiama anche il
-// Centro operativo. dati.totale resta "da gestire" (in_attesa), come prima:
-// il Centro operativo lo legge.
-// Il nome di chi chiede NON c'è ancora: la pagina Richieste stessa non lo
-// mostra (arriva con la FASE 3, nickname).
-let _widgetRichiesteCache = null; // { quando, righe }
+// Widget Richieste.
+
+let _widgetRichiesteCache = null;
 
 CATALOGO_WIDGET.richieste = {
     titolo: 'Richieste', icona: 'fa-handshake',
@@ -26,15 +9,10 @@ CATALOGO_WIDGET.richieste = {
         if (!userId) return { righe: ['—'], dati: { totale: 0 } };
         if (!_widgetRichiesteCache || Date.now() - _widgetRichiesteCache.quando > 60000) {
             const { data, error } = await richiesteScambioRicevuteList(userId);
-            // (Audit tessere 2026-10-11) dati: null e non { totale: 0 }: con la lettura fallita la
-            // tessera grande scriveva "0 da gestire" (falso: le richieste potrebbero esserci).
-            // Con null ricade sul testo "—", come Contributi.
             if (error) { console.error('[widget-richieste] preview:', error.message); return { righe: ['—'], dati: null }; }
             _widgetRichiesteCache = { quando: Date.now(), righe: data || [] };
         }
         const righe = _widgetRichiesteCache.righe;
-        // Da gestire = righe ricevute in attesa di una MIA decisione (le
-        // inviate non richiedono un'azione mia, solo pazienza).
         const inAttesa = righe.filter(r => r.stato_riga === 'in_attesa');
         const riservate = righe.filter(r => r.stato_riga === 'accettata').length;
         const totale = inAttesa.length;
@@ -43,13 +21,9 @@ CATALOGO_WIDGET.richieste = {
         return {
             righe: [totale > 0 ? `${totale} da gestire` : (riservate ? `${riservate} riservat${riservate === 1 ? 'a' : 'e'}` : 'Nessuna in attesa')],
             azioni: totale,
-            // righeInAttesa (FASE 3a): le stesse righe già lette, per la
-            // scheda del Centro operativo ("Irene ti ha chiesto 2 oggetti").
             dati: { totale, riservate, valore, immagini, oggetti: inAttesa.length, righeInAttesa: inAttesa },
         };
     },
 };
 
-// Dopo un'azione sulla pagina Richieste la tessera deve aggiornarsi
-// subito, non dopo un minuto: chi modifica le richieste chiama questa.
 function _widgetRichiesteSvuotaCache() { _widgetRichiesteCache = null; }

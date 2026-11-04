@@ -1,11 +1,4 @@
-// ── data/user-settings.repository.js ─────────────────────────────────────
-// Tabella 'preferenze_utente' — impostazioni account salvate lato server
-// (notifiche, privacy match, tab predefinita), sincronizzate tra
-// dispositivi. Da NON confondere con data/preferences.repository.js, che
-// gestisce le preferenze locali per-dispositivo in localStorage (dark
-// mode, layout Binder, ecc. — quelle non sincronizzano tra dispositivi).
-//
-// Dipende da: supabaseClient.
+// Impostazioni dell'account sul server (preferenze_utente), uguali su tutti i dispositivi.
 
 async function userSettingsGet(userId) {
     return supabaseClient.from('preferenze_utente').select('*').eq('owner_id', userId).maybeSingle();
@@ -32,20 +25,12 @@ async function userSettingsUpsertNotifiche(userId, { email, notificaChangelog, n
     });
 }
 
-// Multi-Binder (2026-08-25): 'immagini' o 'elenco', globale per utente —
-// vedi 18_preferenza_binder_modalita.sql. Sincronizzata tra dispositivi,
-// per questo vive qui e non in data/preferences.repository.js.
 async function userSettingsUpsertBinderModalita(userId, modalita) {
     return supabaseClient.from('preferenze_utente').upsert({
         owner_id: userId, binder_modalita_visualizzazione: modalita, aggiornato_il: new Date().toISOString(),
     });
 }
 
-// Aggiunta 2026-08-28 (pagina Match, "nascondi persistente" per-utente —
-// vedi migration 30_preferenze_match_nascosti.sql). match_nascosti è
-// TEXT, non JSONB (stessa scelta di colonna delle altre in questo file):
-// qui il client serializza l'array di chiavi con JSON.stringify, chi
-// legge (userSettingsGet) lo riceve grezzo e lo fa JSON.parse da sé.
 async function userSettingsUpsertMatchNascosti(userId, chiaviNascoste) {
     return supabaseClient.from('preferenze_utente').upsert({
         owner_id: userId,
@@ -54,10 +39,6 @@ async function userSettingsUpsertMatchNascosti(userId, chiaviNascoste) {
     });
 }
 
-// Aggiunta 2026-08-28 (pagina "Da fare", storico 24h — vedi migration
-// 31_preferenze_dafare_risolti.sql). Stesso pattern di
-// userSettingsUpsertMatchNascosti qui sopra: TEXT con JSON serializzato
-// dal client, letto grezzo da userSettingsGet.
 async function userSettingsUpsertDaFareRisolti(userId, mappaRisolti) {
     return supabaseClient.from('preferenze_utente').upsert({
         owner_id: userId,
@@ -66,10 +47,6 @@ async function userSettingsUpsertDaFareRisolti(userId, mappaRisolti) {
     });
 }
 
-// Fase 9 (2026-09-13, migration 60). Stesso pattern di
-// userSettingsUpsertMatchNascosti sopra — TEXT con array JSON, max 16
-// elementi (un 4×4 pieno) applicato lato UI (ui/widget-achievement.ui.js),
-// non qui.
 async function userSettingsUpsertAchievementVetrina(userId, ids) {
     return supabaseClient.from('preferenze_utente').upsert({
         owner_id: userId,
@@ -78,10 +55,6 @@ async function userSettingsUpsertAchievementVetrina(userId, ids) {
     });
 }
 
-// Spostata qui da ui/impostazioni.ui.js (pannello Connessioni) (audit 2026-09-25, B8): regola del progetto,
-// nessuna chiamata a supabaseClient fuori da data/*.repository.js.
-// Query minima (HEAD, nessuna riga scaricata) solo per verificare che
-// DB+auth rispondano.
 async function preferenzeUtentePing() {
     return supabaseClient.from('preferenze_utente').select('owner_id', { count: 'exact', head: true });
 }

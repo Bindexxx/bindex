@@ -1,33 +1,12 @@
-// ── ui/scaffali-pubblico.ui.js ────────────────────────────────────────────
-// Logica UI di scaffali-pubblico.html — Fase 1.3, Step 5c (2026-09-12),
-// esteso in Fase 3, Step 4 (stesso giorno) con selezione/quantità/riepilogo
-// per tipo='scambio' — mirror di ui/binder-pubblico.ui.js (copiaRiepilogo,
-// toggleSelezione/modificaQty/aggiornaTotale da utils/shared-public.js).
-//
-// Vetrina di sola lettura per tipo='libero'/'vetrina' (griglia semplice,
-// invariata dallo Step 5c). Per tipo='scambio': righe stile card-row con
-// checkbox+stepper quantità, barra totale in fondo, copia riepilogo — MAI
-// flip-card/sleeve/libro sfogliabile (Scaffali non li ha, Step 5a).
-//
-// NOTA SUI NOMI: toggleSelezione/modificaQty/aggiornaTotale (utils/
-// shared-public.js) sono scritte per un array globale chiamato
-// letteralmente `carte` — qui contiene prodotti sealed, non carte, ma il
-// nome resta quello per riuso diretto delle funzioni condivise (stessa
-// scelta già fatta da sealed.html, che usa lo stesso file per un dominio
-// diverso dalle carte).
-//
-// Dipende da: data/scaffali-pubblico.repository.js,
-// utils/shared-public.js (applicaTemaCondiviso, _urlImmagineVisualizzabile,
-// escapeHtml, formattaEuro, toggleSelezione, modificaQty, aggiornaTotale).
+// Pagina pubblica degli scaffali (scaffali-pubblico.html).
 
 let _scaffaleId = null;
-let _scaffaleInfo = null; // { nome, tipo }
-let carte = []; // vedi nota sui nomi sopra
+let _scaffaleInfo = null;
+let carte = [];
 let selezioni = {};
-let _vistaScaffale = 'scaffale'; // RESTYLE BINDEX FASE 6c: 'scaffale' (piastrelle) | 'elenco' (righe), solo per Scambio
+let _vistaScaffale = 'scaffale';
 let _prodottoIdAperto = null;
 
-// RESTYLE BINDEX FASE 6c: "N prodotti · N pz." nella barra in fondo.
 function _testoConteggioSelezione(distinte, pezzi) {
     return `${distinte} prodott${distinte === 1 ? 'o' : 'i'} · ${pezzi} pz.`;
 }
@@ -39,8 +18,6 @@ function impostaVistaScaffale(vista) {
     renderLista();
 }
 
-// Overlay della piastrella: bollino prezzo + tondino "+" / "− N +" (stesse
-// classi di utils/cornice-pubblica.css usate dalle tasche del binder).
 function _prodottoOverlayHtml(p) {
     const idAttr = String(p.id).replace(/'/g, "\\'");
     const prezzo = p.price > 0 ? `<span class="bx-slot-prezzo">${formattaEuro(p.price)}</span>` : '';
@@ -92,9 +69,6 @@ async function caricaCatalogo() {
     }
 
     _scaffaleInfo = info[0];
-    // Fase 4, Step 4 (2026-09-13): dice al bottone "Richiedi" condiviso
-    // (utils/shared-public.js) che qui gli oggetti sono prodotti sealed,
-    // non carte.
     _tipoOggettoRichiesta = 'sealed';
     const nomeScaffale = _scaffaleInfo.nome || (_scaffaleInfo.tipo === 'scambio' ? 'Scambio' : 'Scaffale');
     document.title = 'Bindex — ' + nomeScaffale;
@@ -102,26 +76,17 @@ async function caricaCatalogo() {
     const elProprietario = document.getElementById('proprietarioScaffale');
     if (elProprietario && _scaffaleInfo.nickname) { elProprietario.textContent = 'di ' + _scaffaleInfo.nickname; elProprietario.style.display = ''; }
 
-    // Fase 3, Step 4: barra totale/selezione SOLO per tipo='scambio' — le
-    // altre viste (libero/vetrina) restano una vetrina di sola lettura,
-    // stesso principio di _binderPubblicoESelezionabile() in
-    // ui/binder-pubblico.ui.js.
     const eScambio = _scaffaleInfo.tipo === 'scambio';
     document.body.classList.toggle('scaffale-pubblico-selezionabile', eScambio);
-    // FASE 8b: "Hai un codice richiesta? Controlla" (ui/richiesta-ospite.ui.js)
     if (eScambio && typeof ospiteMostraControllo === 'function') ospiteMostraControllo();
     const barraTotale = document.getElementById('barraTotale');
     if (barraTotale) barraTotale.style.display = eScambio ? 'flex' : 'none';
-    // RESTYLE BINDEX FASE 6c: in Scambio niente "Vetrina pubblica — sola lettura"
-    // (la pagina è interattiva) e compare il toggle Scaffale/Elenco.
     const sottotitolo = document.getElementById('sottotitoloScaffale');
     if (sottotitolo && eScambio) sottotitolo.textContent = 'Seleziona i prodotti che ti interessano — il totale si aggiorna da solo.';
     const toggleVista = document.getElementById('vistaScaffaleToggle');
     if (toggleVista) toggleVista.style.display = eScambio ? 'flex' : 'none';
 
-    // Fire-and-forget, non deve mai bloccare il caricamento per il
-    // visitatore — la RPC stessa rivalida che lo scaffale sia pubblico.
-    scaffaliPubblicoRegistraApertura(scaffaleId).catch(() => { /* silenzioso */ });
+    scaffaliPubblicoRegistraApertura(scaffaleId).catch(() => {   });
 
     const { data, error } = await scaffaliPubblicoLeggiProdotti(scaffaleId);
     if (error) {
@@ -129,14 +94,6 @@ async function caricaCatalogo() {
         return;
     }
 
-    // qty qui è quantita_offerta per tipo='scambio' (la RPC sql/51 lo
-    // riusa nello stesso slot — corregge sql/46, mai andato live, vedi
-    // header del file sql), qty posseduta per gli altri tipi — vedi
-    // qtyDisponibile sotto, stesso nome campo di binder-pubblico.ui.js
-    // (contratto richiesto da modificaQty in utils/shared-public.js).
-    // FASE 5 (2026-09-13): qtyDisponibile è ora il NETTO reale (offerto −
-    // già riservato da richieste accettate); riservato tenuto a parte per
-    // il badge — stessa logica di ui/binder-pubblico.ui.js.
     carte = (data || []).map(r => ({
         id: r.id,
         name: r.nome || '',
@@ -166,7 +123,6 @@ async function caricaCatalogo() {
     renderLista();
     if (eScambio) aggiornaTotale();
 }
-
 
 function renderLista() {
     const container = document.getElementById('listaContainer');
@@ -201,13 +157,8 @@ function renderLista() {
     }
 
     if (eScambio) {
-        // Righe stile card-row (checkbox + stepper quantità), mirror di
-        // ui/binder-pubblico.ui.js quando _binderPubblicoESelezionabile().
         container.innerHTML = filtrati.map(p => {
             const immagineSrc = _urlImmagineVisualizzabile(p.immagine);
-            // FASE 5 (2026-09-13): stessa logica "riservato ma visibile,
-            // non selezionabile" di ui/binder-pubblico.ui.js — vedi i
-            // commenti lì per il dettaglio.
             const bloccata = p.qtyDisponibile <= 0;
             const selezionata = !bloccata && selezioni[p.id] > 0;
             const qtyAttuale = bloccata ? 0 : (selezioni[p.id] || 0);
@@ -239,8 +190,6 @@ function renderLista() {
         return;
     }
 
-    // Vetrina di sola lettura (libero/vetrina) — griglia invariata dallo
-    // Step 5c.
     container.innerHTML = `<div class="prodotti-grid">${filtrati.map(p => {
         const immagineSrc = _urlImmagineVisualizzabile(p.immagine);
         return `
@@ -254,10 +203,6 @@ function renderLista() {
     }).join('')}</div>`;
 }
 
-
-// Mirror di copiaRiepilogo() in ui/binder-pubblico.ui.js — stesso
-// comportamento (clipboard + fallback alert), testo adattato ai prodotti
-// sealed invece delle carte.
 function copiaRiepilogo() {
     const righe = [];
     let totale = 0;
@@ -278,14 +223,10 @@ function copiaRiepilogo() {
         btn.innerHTML = '<i class="fa-solid fa-check"></i> Copiato!';
         setTimeout(() => { btn.innerHTML = originale; }, 1800);
     }).catch(() => {
-        alert(testo); // fallback se il clipboard non è disponibile (es. http non sicuro)
+        alert(testo);
     });
 }
 
-
-// Vetrina di sola lettura: nessuna selezione/prenotazione qui dentro (la
-// selezione vera è nella riga, non nell'immagine ingrandita) — solo
-// un'immagine ingrandita con i dettagli testuali sotto.
 function apriImmagineIngrandita(id) {
     const p = carte.find(x => String(x.id) === String(id));
     if (!p) return;

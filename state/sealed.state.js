@@ -1,13 +1,8 @@
-// ── state/sealed.state.js ────────────────────────────────────────────────
-// Stato di sealed.html. Stessi valori iniziali del codice originale.
+// Stato di sealed.html.
 
 let carte = [];
-const selezioni = {}; // { [id]: quantitaSelezionata }
+const selezioni = {};
 
-// A16: stato dei filtri — Lingua è selezione MULTIPLA (Set vuoto = nessun
-// filtro attivo, mostra tutte le lingue). Prezzo è un range [min, max]
-// calcolato DINAMICAMENTE dai prodotti realmente disponibili al
-// caricamento, non un range fisso.
 const filtriStato = {
     lingue: new Set(),
     prezzoMin: 0,

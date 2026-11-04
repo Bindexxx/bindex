@@ -1,75 +1,11 @@
-// ═══════════════════════════════════════════════════════════════════════
-// WIDGET-RENDER-TESSERE-GRANDI.UI.JS — componenti visivi condivisi delle
-// tessere grandi (2x1/1x2/2x2) — CardSync Pro
-// ═══════════════════════════════════════════════════════════════════════
-// STEP separato dal piano "riduzione accoppiamento" concordato con Claudio
-// il 2026-09-11 (secondo giro di taglio su questo file, dopo l'estrazione
-// da ui/widget-render-condiviso.ui.js). NESSUNA riscrittura del codice
-// esistente: solo spostamento, zero cambi di comportamento per l'utente
-// finale.
-//
-// Contiene: miniatura di una carta, componenti visivi condivisi
-// (_ballRiga/_ballPill/_ballSparkline/_ballMiniCarta/_ballPulsante ecc.) —
-// i "mattoncini" riusati da qualunque corpo di widget.
-//
-// _ballCORPI (il corpo grafico di ogni singolo widget) e _ballCorpoWidget
-// sono stati spostati in ui/widget-render-corpi.ui.js — chiamano questi
-// componenti cross-file, stesso meccanismo di sempre.
-//
-// La grafica della sfera in modalità icona (palette, disegno sfera,
-// animazione di cattura, semaforo) resta in
-// ui/widget-render-condiviso.ui.js. Nessuna istruzione qui gira a tempo di
-// caricamento script — l'ordine tra i tre file widget-render-*.ui.js è
-// indifferente.
-// ───────────────────────────────────────────────────────────────────────
+// Componenti comuni delle tessere grandi.
 
-// ═══════════════════════════════════════════════════════════════════════
-// CONTENUTI DELLE TESSERE GRANDI (sessione 2026-08-27, seconda parte)
-// ═══════════════════════════════════════════════════════════════════════
-// Su 1x1 la tessera è la sola sfera col titolo inciso. Sulle taglie grandi
-// (2x1, 1x2, 2x2) c'era finora lo stesso identico contenuto della 1x1 —
-// titolo e una riga di testo — quindi il quadruplo dello spazio non diceva
-// niente di più. Qui ogni widget disegna il proprio contenuto.
-//
-// DUE SLOT, come nella demo di Opus:
-//   inline → accanto alla sfera, riga superiore. C'è su tutte le taglie
-//            grandi, deve stare stretto (su 2x1 è l'unico spazio).
-//   blocco → sotto, per intero. Solo dove c'è altezza: 1x2 e 2x2.
-//
-// Scelta (Claudio: "come secondo te è meglio"): sulle taglie grandi la
-// grafica SOSTITUISCE le righe di testo. Ripetere "7 da aggiornare" sotto
-// una barra che dice già quello è la stessa informazione due volte, e ruba
-// lo spazio che serve alla grafica. Il titolo resta.
-//
-// PER ORA solo quattro widget (Claudio: "facciamone 4 per volta"): Prezzi,
-// Visualizzazione, Location, Match. Tutti gli altri ricadono su _ballCorpoGenerico,
-// che mostra le righe di testo di sempre: nessuna regressione.
-//
-// ZERO QUERY NUOVE: tutto ciò che serve è già in memoria (carteReali,
-// _elencoPrezziScaduti, _numNuoviMatch*). I preview() sono stati estesi con
-// un campo 'dati' AGGIUNTIVO — le 'righe' restano identiche, così le
-// tessere piccole e il semaforo continuano a funzionare come prima.
-
-// Righe cliccabili dentro la tessera (Claudio: "lo voglio").
-// Attenzione a tre cose, tutte gestite qui:
-//   - stopPropagation, o il tocco farebbe partire ANCHE la cattura da 2,6s
-//     e l'apertura del widget;
-//   - in modalità modifica non deve fare nulla: lì si trascina e si ridimensiona;
-//   - le azioni chiamano solo funzioni VERIFICATE nei file reali:
-//       apriFlipCardHome(id)          → ui/home.ui.js
-//       apriModalePrezziScaduti()     → ui/prices.ui.js r.212
-//       filterTable() + #filterLocation → ui/cards.ui.js r.803-833
-//     ognuna protetta da un typeof: se un domani sparisse, la riga smette
-//     di funzionare ma non butta giù la home.
 function _ballAzioneRiga(evt, tipo, valore, origine) {
     if (evt) evt.stopPropagation();
     if (_editModeWidget) return;
     _vibraSeSupportato(8);
     switch (tipo) {
         case 'carta':
-            // Missioni #39/#83 (2026-08-30): origine propagata per distinguere
-            // "apertura da lista top-valore" (valore_collezione) da qualunque
-            // altra apertura — vedi ui/home.ui.js:apriFlipCardHome().
             if (typeof apriFlipCardHome === 'function') apriFlipCardHome(valore, origine ? { origine } : {});
             break;
 
@@ -77,17 +13,6 @@ function _ballAzioneRiga(evt, tipo, valore, origine) {
             apriDettaglioWidget(valore, evt);
             break;
 
-        // AGGIUNTO (2026-09-24, giro di migliorie widget Chat): apre
-        // l'inbox (stessa animazione/container di ogni altro widget con
-        // pagina propria) E POI la conversazione specifica sopra, invece
-        // di fermarsi alla sola lista. 'valore' = ownerAltro,
-        // 'origine' (già esistente nella firma, riusato qui per il
-        // nome/nickname) = label da mostrare nel titolo del modale.
-        // Stesso identico pattern già verificato in
-        // onNotificationClick (ui/paginainiziale-polling-avvio.ui.js):
-        // il ritardo aspetta la fine dell'animazione "a Pokéball"
-        // (DURATA_ANIMAZIONE_DETTAGLIO_MS, ui/paginainiziale-
-        // dettaglio.ui.js) prima di aprire il modale sopra.
         case 'chat-conversazione':
             apriDettaglioWidget('chat', evt);
             if (typeof apriChat === 'function' && typeof DURATA_ANIMAZIONE_DETTAGLIO_MS !== 'undefined') {
@@ -95,29 +20,16 @@ function _ballAzioneRiga(evt, tipo, valore, origine) {
             }
             break;
 
-        // Elenco completo delle carte con prezzo da aggiornare: esiste già
-        // come modale nel sito, con nomi, codici e data dell'ultimo
-        // controllo. Non apriamo la sezione Prezzi: la modale dice di più
-        // ed è esattamente ciò che serve dopo aver toccato quella riga.
         case 'prezzi-scaduti':
             if (typeof apriModalePrezziScaduti === 'function') apriModalePrezziScaduti();
             else apriDettaglioWidget('prezzi', evt);
             break;
 
-        // Location: apre Visualizzazione GIÀ FILTRATA su quella posizione.
-        // filterTable() legge il valore dalla tendina #filterLocation
-        // (popolata da caricaCarteReali con le location realmente presenti),
-        // quindi il filtro si imposta scrivendo lì e richiamandola.
-        // Il filtro va applicato DOPO l'apertura: switchTab ridisegna la
-        // sezione, e farlo prima verrebbe sovrascritto.
         case 'location':
             apriDettaglioWidget('visualizzazione', evt);
             setTimeout(() => {
                 const select = document.getElementById('filterLocation');
                 if (!select || typeof filterTable !== 'function') return;
-                // Se quella location non è tra le opzioni (dato cambiato nel
-                // frattempo), meglio non filtrare che filtrare a vuoto
-                // lasciando una tabella misteriosamente deserta.
                 const esiste = Array.from(select.options).some(o => o.value === valore);
                 if (!esiste) return;
                 select.value = valore;
@@ -127,19 +39,6 @@ function _ballAzioneRiga(evt, tipo, valore, origine) {
     }
 }
 
-// ── MINIATURA DI UNA CARTA ───────────────────────────────────────────────
-// Ricalcata su miniCarta() del mockup (cardsync.js r.516): rettangolo con
-// gradiente, una barra chiara in alto al posto dell'illustrazione e una
-// sottile in basso al posto del testo, angoli morbidi e ombra leggera.
-//
-// DIFFERENZA VOLUTA dal mockup: lì le carte erano finte, qui esistono
-// davvero. Quando c'è l'immagine la mostriamo — vale più di un rettangolo
-// colorato — e il disegno di Opus resta come RIPIEGO per le carte senza
-// immagine, dove finora c'era un'icona grigia.
-//
-// Il colore del ripiego non è casuale ad ogni render: è derivato dal nome
-// della carta, così la stessa carta ha sempre la sua tinta e la striscia
-// non "sfarfalla" ad ogni giro di polling.
 function _ballTintaDaNome(nome) {
     let h = 0;
     const t = String(nome || '');
@@ -152,19 +51,12 @@ function _ballMiniCarta(c, badge, origine) {
     const clic = `onclick="_ballAzioneRiga(event,'carta','${c.id}','${origine || ''}')"`;
     const badgeHtml = badge ? `<b class="ball-mini-badge">${badge}</b>` : '';
 
-    // Rarità (2026-10-14): c.rarita è un livello (comune, non_comune, rara,
-    // ultra_rara, secret) ricavato dal catalogo dei set da ui/rarita.ui.js —
-    // la colonna nella tabella carte non esiste. Anello colorato per rara,
-    // ultra rara e secret (nessun anello per comune/non comune, niente rumore)
-    // e riflesso scorrevole solo per ultra rara e secret.
     const speciale = c.rarita && /ultra|secret/i.test(String(c.rarita));
     const anello = (c.rarita === 'rara' || c.rarita === 'ultra_rara' || c.rarita === 'secret') ? ' r-' + c.rarita : '';
     const classi = 'ball-mini' + anello + (speciale ? ' holo' : '');
 
     if (c.immagine) {
         const url = _urlImmagineVisualizzabile(c.immagine, 96) || '';
-        // Se l'immagine non carica, resta visibile il ripiego disegnato che
-        // sta sotto: nessun buco grigio.
         return `<span class="${classi}" style="background:linear-gradient(150deg, ${_ballTintaDaNome(c.nome)}, rgba(0,0,0,.35))" title="${titolo}" ${clic}>
                     <i></i><u></u>
                     <img src="${url}" alt="" onerror="this.remove();">
@@ -174,17 +66,6 @@ function _ballMiniCarta(c, badge, origine) {
     return `<span class="${classi}" style="background:linear-gradient(150deg, ${_ballTintaDaNome(c.nome)}, rgba(0,0,0,.35))" title="${titolo}" ${clic}><i></i><u></u>${badgeHtml}</span>`;
 }
 
-// ── COMPONENTI VISIVI, ricalcati dal mockup ──────────────────────────────
-// Tipografia e componenti vengono da cardsync.css: k-tit (titolo), k-big
-// (dato principale, 25px), k-mid, k-lab (etichetta piccola), pill, barra,
-// riga, sparkline, stat-griglia, pulsante azione.
-//
-// NOMI PREFISSATI: nel mockup si chiamano .riga, .nome, .dato, .pill,
-// .stat, .azione — nomi generici che nel CSS globale del sito sono GIÀ
-// usati 17 volte. Prefissati con ball- mantenendo proprietà identiche.
-
-// Sparkline SVG, identica a sparkline() del mockup (cardsync.js r.522):
-// area sfumata sotto e linea sopra, tracciato normalizzato su min/max.
 function _ballSparkline(serie, colore) {
     if (!serie || serie.length < 2) return '';
     const min = Math.min(...serie), max = Math.max(...serie);
@@ -201,7 +82,6 @@ function _ballSparkline(serie, colore) {
     </svg>`;
 }
 
-// Riga con barra di avanzamento (come il corpo 'set' del mockup).
 function _ballRigaBarra(nome, dato, percento, azione) {
     const p = Math.max(0, Math.min(100, percento));
     const clic = azione ? ` onclick="${azione}" class="ball-riga-set ball-clic"` : ' class="ball-riga-set"';
@@ -211,7 +91,6 @@ function _ballRigaBarra(nome, dato, percento, azione) {
     </div>`;
 }
 
-// Riga semplice nome + valore/i.
 function _ballRiga(nome, ...dati) {
     return `<div class="ball-riga">
         <span class="ball-nome">${nome}</span>
@@ -219,10 +98,6 @@ function _ballRiga(nome, ...dati) {
     </div>`;
 }
 
-// Corpo dei widget non ancora collegati (gacha): niente numeri finti, solo
-// una riga che dice cosa arriverà. Ricalcato sullo stato "vuoto" del
-// mockup, che trattava il primo giorno come un momento importante invece
-// che come un errore.
 function _ballCorpoSegnaposto(titolo, d) {
     return {
         inline:
@@ -233,10 +108,6 @@ function _ballCorpoSegnaposto(titolo, d) {
     };
 }
 
-// ── RESTYLE BINDEX FASE 2 (2026-09-30): mattoncini nuovi delle tavole ───
-// Colore fisso da una tavolozza di 8 tinte ben distinte, scelto dalla
-// chiave (nome o id): con _ballTintaDaNome nomi simili davano tinte quasi
-// uguali (copertine tutte rosse, scatole tutte viola).
 const _BALL_TAVOLOZZA = ['#7c4dff', '#e0457b', '#1f88c9', '#e6a100', '#2f8f6b', '#9a5a2a', '#5aa8d8', '#8a8f98'];
 function _ballColoreDaChiave(k) {
     let h = 0;
@@ -244,23 +115,13 @@ function _ballColoreDaChiave(k) {
     for (let i = 0; i < t.length; i++) h = (h * 31 + t.charCodeAt(i)) >>> 0;
     return _BALL_TAVOLOZZA[h % _BALL_TAVOLOZZA.length];
 }
-// RESTYLE BINDEX FASE 8a: colore scelto dall'utente se valido, altrimenti
-// la tinta automatica dal nome. Accetta solo '#rrggbb' (stessa regola del CHECK sul DB).
 function _binderColore(binder) {
     const c = binder && binder.colore;
     if (typeof c === 'string' && /^#[0-9a-fA-F]{6}$/.test(c)) return c;
     return _ballColoreDaChiave((binder && (binder.nome || binder.tipo)) || '');
 }
-// Copertine di binder/contenitori come piccoli binder veri (dorso scuro a
-// sinistra, globo sui pubblici). voci: [{ nome, pubblico }]. Colore dalla
-// tinta fissa del nome (_ballTintaDaNome, sopra) finché non esiste il
-// colore scelto dall'utente. Il CSS (.ball-cov) ne mostra quante ci
-// stanno in una riga, le altre si nascondono.
 function _ballCopertine(voci, riempi) {
     const esc = (t) => (typeof escapeHtml === 'function' ? escapeHtml(t) : String(t));
-    // 2026-10-09: con riempi=true (tessera Binders) ogni copertina ha il nome
-    // sotto e il gruppo occupa tutto lo spazio della tessera (.ball-cov-fill,
-    // index.css); senza, resta la riga piccola di sempre (Condividi).
     if (riempi) {
         return '<div class="ball-cov ball-cov-fill">' + voci.map(v =>
             `<span class="ball-cov-v"><i style="background:${(v.colore && /^#[0-9a-fA-F]{6}$/.test(v.colore)) ? v.colore : _ballColoreDaChiave(v.nome)}" title="${esc(v.nome)}">${v.icona ? `<em class="fa-solid ${v.icona}"></em>` : ''}${v.pubblico ? '<b class="fa-solid fa-globe"></b>' : ''}</i><small>${esc(v.nome)}</small></span>`
@@ -271,20 +132,17 @@ function _ballCopertine(voci, riempi) {
     ).join('') + '</div>';
 }
 
-// Ripiano con i prodotti come scatole colorate (tessera Scaffali). n =
-// quanti prodotti in totale; se ne disegnano al massimo 7.
 function _ballRipiano(n, chiavi) {
     const quante = Math.min(7, n || 0);
     const altezze = [26, 20, 24, 18, 26, 22, 20];
     let scatole = '';
     for (let i = 0; i < quante; i++) {
-        const tinta = _BALL_TAVOLOZZA[i % _BALL_TAVOLOZZA.length]; // una tinta diversa per scatola
+        const tinta = _BALL_TAVOLOZZA[i % _BALL_TAVOLOZZA.length];
         scatole += `<b style="left:${10 + i * 26}px;height:${altezze[i]}px;background:${tinta}"></b>`;
     }
     return `<div class="ball-ripiano">${scatole}</div>`;
 }
 
-// Data breve e umana per le tessere: "oggi", "ieri", "mer 23 set".
 function _ballQuando(iso) {
     const d = new Date(iso);
     if (isNaN(d)) return '';
@@ -304,53 +162,16 @@ function _ballPulsante(testo, azione) {
     return `<button type="button" class="ball-azione" onclick="${azione}">${testo}</button>`;
 }
 
-
-// ── CORPO "FOTO CARTA" — blocco grande con la foto reale a piena larghezza ──
-// AGGIUNTO (Claudio, sessione bugfix widget Vetrina — vedi chat). Riusabile
-// per qualunque widget con foto nel blocco grande: oggi solo 'ultima_carta'
-// (Vetrina, vedi ui/widget-render-corpi.ui.js), pensata fin da subito per
-// un eventuale futuro "Carta del giorno" — gemello citato nei commenti di
-// ui/widget-vetrina.ui.js — senza dover duplicare questo markup.
-//
-// Stile INLINE, NESSUNA classe CSS nuova in index.html: stesso approccio
-// già usato da _ballMiniCarta qui sopra per il suo gradiente di ripiego —
-// sfondo e testo sono dati per-carta/dinamici, non temabili da CSS
-// statico. La classe '.ball-foto-carta' sul contenitore esiste solo per
-// farla riconoscere da _potaContenutoFuoriTessera()
-// (ui/paginainiziale-render.ui.js, aggiornata nella stessa sessione), non
-// ha nessuna regola CSS propria.
-//
-// d: { nome, codice, prezzo, variazione, variazioneNumerica, immagine, id }
-// — formato prodotto da CATALOGO_WIDGET.ultima_carta.preview() dentro
-// ui/widget-vetrina.ui.js, letto da carteReali senza query nuove.
-// Ritorna '' se manca l'immagine: chi chiama (_ballCORPI.ultima_carta)
-// ricade cosi' sul corpo generico, stesso comportamento di sempre per una
-// carta scelta ma senza foto (resta la ball, non un blocco foto rotto).
-//
-// NESSUN onclick qui dentro: il tap sull'intera tessera apre gia' la carta
-// (CATALOGO_WIDGET.ultima_carta.azione, chiamata da _eseguiAzioneWidget) —
-// aggiungerne uno duplicherebbe l'apertura, diverso dal caso di
-// _ballAzioneRiga usato da _ballMiniCarta/_ballElencoRighe per righe
-// cliccabili DIVERSE dall'azione di default della tessera.
 function _ballCorpoFotoCarta(d) {
     if (!d || !d.immagine) return '';
     const url = _urlImmagineVisualizzabile(d.immagine, 300) || '';
     if (!url) return '';
 
     const esc = (t) => (typeof escapeHtml === 'function' ? escapeHtml(t) : String(t));
-    const eur = (v) => formattaEuro(v); // formato unico, audit 2026-09-25 C2
+    const eur = (v) => formattaEuro(v);
     const coloreVar = d.variazioneNumerica > 0 ? 'var(--success)'
         : (d.variazioneNumerica < 0 ? 'var(--danger)' : 'var(--text-muted)');
 
-    // PROPORZIONE DELLA CARTA (Claudio, 2026-10-07): prima la foto riempiva
-    // tutto il riquadro (object-fit:contain dentro un box largo quanto la
-    // tessera, con il velo scuro e le scritte stese su tutta la larghezza) e,
-    // nella forma "larga e bassa", spariva del tutto. Ora il contenitore
-    // (.ball-foto-carta) e' solo lo spazio disponibile — container-type:size —
-    // e la carta e' un riquadro 63:88 centrato, grande quanto ci sta in
-    // altezza O in larghezza (min fra i due, in unita' del contenitore).
-    // Velo e scritte stanno DENTRO la carta e scalano con la sua larghezza
-    // (cqw), cosi' restano leggibili e proporzionate a qualunque taglia.
     const ombra = 'text-shadow:0 1px 3px rgba(0,0,0,.6);';
     return `
         <div class="ball-foto-carta" style="position:relative; width:100%; flex:1 1 0; min-height:0; container-type:size;">

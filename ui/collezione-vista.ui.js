@@ -1,26 +1,10 @@
-// ── ui/collezione-vista.ui.js ────────────────────────────────────────────
-// RESTYLE BINDEX — pagina Collezione (tavole OK-vis_lista-l, OK-vis_griglia-l,
-// PC-coll-l, PC-coll-griglia, PC-coll-tutti-l). Vale SOLO per la tab
-// 'visualizzazione': Scambio/Wishlist/Sealed, che condividono la stessa
-// sezione, restano col render di sempre (renderViewTable in ui/cards.ui.js).
-//
-// Gancio unico: in testa a renderViewTable(), se currentMode è
-// 'visualizzazione', si chiama collezioneRender(data) e si esce.
-// Il filtro (ricerca, location, lingua, tipi) resta quello di filterTable():
-// i comandi nuovi scrivono nei campi vecchi (#searchInput, #filterLocation,
-// #filterLang) e richiamano filterTable(). Nessuna chiamata a Supabase qui:
-// le modifiche passano dalle funzioni esistenti (modificaCampoInline,
-// modificaLocationInline, apriModificaCarta, eliminaCarta...).
-//
-// Regole: la miniatura (con la lente) apre SEMPRE la carta a tutto schermo;
-// in griglia si apre toccando la carta. Telefono: tocco sulla riga = azioni
-// sotto la riga. PC: clic sulla riga = pannello dettagli a destra.
+// Pagina Collezione (scheda visualizzazione): lista, griglia, tabella su PC.
 
 let _collVista = 'lista';
-try { if (localStorage.getItem('bindex_coll_vista') === 'griglia') _collVista = 'griglia'; } catch (_) { /* niente */ }
-let _collSelId = null;          // riga aperta nel pannello dettagli (PC)
-let _collAzioniId = null;       // riga con le azioni aperte (telefono)
-let _collOrdine = 'prezzo_giu'; // vedi _COLL_ORDINI
+try { if (localStorage.getItem('bindex_coll_vista') === 'griglia') _collVista = 'griglia'; } catch (_) {   }
+let _collSelId = null;
+let _collAzioniId = null;
+let _collOrdine = 'prezzo_giu';
 let _collUltimiDati = [];
 
 const _COLL_ORDINI = {
@@ -33,7 +17,6 @@ const _COLL_ORDINI = {
     qty: { etichetta: 'quantità ↓', chiave: c => Number(c.qty) || 0, giu: true },
 };
 const _COLL_CICLO = ['prezzo_giu', 'prezzo_su', 'nome', 'recenti'];
-// (Q5) Ordine, Location, lingua e tipi di riga ricordati su questo dispositivo.
 _collOrdine = prefFiltroPaginaScegli('collezione', 'ordine', Object.keys(_COLL_ORDINI), _collOrdine);
 (function _collRipristinaFiltri() {
     const lang = document.getElementById('filterLang');
@@ -46,8 +29,6 @@ _collOrdine = prefFiltroPaginaScegli('collezione', 'ordine', Object.keys(_COLL_O
         document.getElementById('toggleTipo' + tipo.charAt(0).toUpperCase() + tipo.slice(1))?.classList.toggle('active', v);
     });
 })();
-// switchTab azzera la Location a ogni apertura (tendina condivisa con le altre
-// tab): apriDettaglioWidget rimette qui quella scelta l'ultima volta, se c'è ancora.
 function collRipristinaLocation() {
     const s = document.getElementById('filterLocation');
     const salvata = prefFiltroPaginaGet('collezione', 'location');
@@ -79,22 +60,20 @@ function _collOrdina(data) {
 function collCambiaOrdine() {
     const i = _COLL_CICLO.indexOf(_collOrdine);
     _collOrdine = _COLL_CICLO[(i + 1) % _COLL_CICLO.length];
-    prefFiltroPaginaSet('collezione', 'ordine', _collOrdine); // (Q5)
+    prefFiltroPaginaSet('collezione', 'ordine', _collOrdine);
     filterTable();
 }
 
-// Intestazioni della tabella PC: clic = ordina per quella colonna
-// (secondo clic sulla stessa colonna inverte prezzo).
 function collOrdinaColonna(chiave) {
     if (chiave === 'prezzo') _collOrdine = _collOrdine === 'prezzo_giu' ? 'prezzo_su' : 'prezzo_giu';
     else _collOrdine = chiave;
-    prefFiltroPaginaSet('collezione', 'ordine', _collOrdine); // (Q5)
+    prefFiltroPaginaSet('collezione', 'ordine', _collOrdine);
     filterTable();
 }
 
 function collImpostaVista(v) {
     _collVista = v === 'griglia' ? 'griglia' : 'lista';
-    try { localStorage.setItem('bindex_coll_vista', _collVista); } catch (_) { /* niente */ }
+    try { localStorage.setItem('bindex_coll_vista', _collVista); } catch (_) {   }
     filterTable();
 }
 
@@ -105,11 +84,9 @@ function collCerca(valore) {
 }
 
 function collToggleTipo(tipo) {
-    toggleFiltroTipo(tipo); // aggiorna _filtriTipo, i bottoni vecchi e rifà il filtro
+    toggleFiltroTipo(tipo);
 }
 
-// Pannello "Filtri": copia le opzioni dalle tendine vecchie (che restano la
-// fonte letta da filterTable) e ne rispecchia il valore.
 function collApriFiltri() {
     const box = document.getElementById('collFiltri');
     if (!box) return;
@@ -127,7 +104,7 @@ function collApriFiltri() {
 function collCambiaFiltro(idVecchio, valore) {
     const s = document.getElementById(idVecchio);
     if (s) s.value = valore;
-    _collSalvaFiltri(); // (Q5)
+    _collSalvaFiltri();
     filterTable();
 }
 
@@ -135,18 +112,12 @@ function collAzzeraFiltri() {
     ['filterLocation', 'filterLang', 'collFiltroLoc', 'collFiltroLang'].forEach(id => {
         const s = document.getElementById(id); if (s) s.value = '';
     });
-    _collSalvaFiltri(); // (Q5)
+    _collSalvaFiltri();
     filterTable();
 }
 
-// ── helper di riga ──────────────────────────────────────────────────────
 function _collAttr(v) { return escapeJsAttr(String(v == null ? '' : v)); }
 
-// 2026-10-09: i prodotti sealed vivono in prodotti_sealed (non in carteReali).
-// Per mostrarli in Collezione si costruiscono righe "finte" con tabella
-// 'sealed', SOLO per la vista (carteReali non viene toccato, quindi statistiche,
-// Binder, Doppioni ecc. restano come prima). Azioni limitate: Modifica
-// (modale sealed), Cardmarket, Elimina.
 function _collRigheSealed() {
     if (typeof prodottiSealedReali === 'undefined' || !Array.isArray(prodottiSealedReali)) return [];
     return prodottiSealedReali.map(p => ({
@@ -220,9 +191,6 @@ async function collEliminaSealed(id) {
     filterTable();
 }
 
-// ── TELEFONO: lista ─────────────────────────────────────────────────────
-// (V3 velocità) Una riga alla volta, così la lista si può disegnare a blocchi
-// (vedi _collDisegnaABlocchi). HTML identico a prima.
 function _collRigaTelefonoHtml(card) {
     const id = _collAttr(card.id);
     const aperta = String(_collAzioniId) === String(card.id);
@@ -248,11 +216,6 @@ function _collListaTelefono(data) {
     return data.map(_collRigaTelefonoHtml).join('');
 }
 
-// (V3 velocità, 2026-10-12) Il tocco su una riga cambia SOLO le righe
-// coinvolte (quella che si chiude e quella che si apre) e, su PC, il pannello
-// dettagli: prima ridisegnava e riordinava l'intera lista a ogni tocco (oltre
-// 1 s sul telefono con 1000+ carte). Se qualcosa non torna (riga non trovata,
-// vista griglia) si ripiega sul render completo di sempre.
 function _collRigaDom(corpo, id) {
     if (id == null) return null;
     const sel = '[data-coll-id="' + (window.CSS && CSS.escape ? CSS.escape(String(id)) : String(id).replace(/"/g, '\\"')) + '"]';
@@ -303,10 +266,6 @@ function collToccaRiga(id) {
     collezioneRender(_collUltimiDati);
 }
 
-// (Q4, 2026-10-12) Dalla ricerca globale: apre la riga della carta (azioni
-// sul telefono, pannello dettagli su PC) e la porta in vista. La pagina è
-// già aperta e filtrata sul nome dal chiamante (ui/navigation-ricerca.ui.js).
-// In griglia non ci sono righe da aprire: resta la griglia filtrata sul nome.
 function collVaiACarta(id) {
     if (_collEPC()) _collSelId = id; else _collAzioniId = id;
     _collUltimaFirma = null;
@@ -315,7 +274,6 @@ function collVaiACarta(id) {
     if (riga) riga.scrollIntoView({ block: 'center', behavior: 'smooth' });
 }
 
-// ── GRIGLIA (telefono e PC) ─────────────────────────────────────────────
 function _collTesseraHtml(card) {
     const id = _collAttr(card.id);
     const src = _urlImmagineVisualizzabile(card.immagine);
@@ -331,12 +289,6 @@ function _collGriglia(data) {
     return `<div class="coll-griglia">${data.map(_collTesseraHtml).join('')}</div>`;
 }
 
-// (V3 velocità, 2026-10-12) Lista e griglia a blocchi: le prime 80 voci
-// subito (la parte che si vede), il resto a blocchi da 200 subito dopo, senza
-// bloccare la pagina (prima: 1000+ voci in un colpo solo, ~1 s fermo sul
-// telefono all'apertura). Un nuovo render ferma i blocchi del precedente.
-// La tabella PC resta in un colpo solo: "seleziona tutte" deve trovare tutte
-// le righe subito, e sul PC il costo è basso.
 const _COLL_PRIMO_BLOCCO = 80;
 const _COLL_BLOCCO = 200;
 let _collGiroBlocchi = 0;
@@ -365,7 +317,6 @@ function _collDisegnaABlocchi(corpo, dati, rigaHtml, apri, chiudi, selContenitor
     _collTimerBlocchi = setTimeout(passo, 0);
 }
 
-// ── PC: tabella + pannello dettagli ─────────────────────────────────────
 function _collTh(etichetta, chiave, classe) {
     const attiva = chiave && (_collOrdine === chiave || (chiave === 'prezzo' && _collOrdine.startsWith('prezzo')));
     const freccia = !chiave ? '' : (attiva ? (chiave === 'prezzo' && _collOrdine === 'prezzo_su' ? ' ↑' : ' ↓') : ' <span class="coll-th-pigro">↕</span>');
@@ -448,12 +399,11 @@ function _collDettaglioHtml(data) {
         <div class="coll-azioni coll-azioni-pc">${_collAzioniHtml(card)}</div>`;
 }
 
-// ── testata: conteggi e bottoni ─────────────────────────────────────────
 function _collAggiornaTesta(data) {
     let oggetti = 0, valore = 0;
     const location = new Set();
     data.forEach(c => {
-        if (c.tabella === 'wishlist') return; // la wishlist non entra nel valore
+        if (c.tabella === 'wishlist') return;
         const q = Number(c.qty) || 0;
         oggetti += q; valore += (Number(c.price) || 0) * q;
         if (c.location) location.add(c.location);
@@ -462,7 +412,6 @@ function _collAggiornaTesta(data) {
     set('collNumOggetti', oggetti.toLocaleString('it-IT'));
     set('collNumValore', formattaEuro(valore));
     set('collNumLocation', location.size);
-    // Le statistiche vecchie restano allineate (qualcuno potrebbe leggerle).
     set('stat-count', oggetti); set('stat-value', formattaEuro(valore)); set('stat-locations', location.size);
     const nota = document.getElementById('collNotaWishlist');
     if (nota) nota.style.display = _filtriTipo.wishlist ? '' : 'none';
@@ -478,7 +427,6 @@ function _collAggiornaTesta(data) {
     if (bf) { bf.textContent = nFiltri; bf.style.display = nFiltri ? '' : 'none'; }
     const cerca = document.getElementById('collCercaInput'), vecchio = document.getElementById('searchInput');
     if (cerca && vecchio && document.activeElement !== cerca && cerca.value !== vecchio.value) cerca.value = vecchio.value;
-    // Copie degli stessi numeri (versione telefono / versione PC).
     document.querySelectorAll('#collTesta [data-specchio]').forEach(el => {
         const src = document.getElementById(el.dataset.specchio);
         if (!src) return;
@@ -488,13 +436,6 @@ function _collAggiornaTesta(data) {
     });
 }
 
-// ── punto d'ingresso, chiamato da renderViewTable ───────────────────────
-// (V1 velocità, 2026-10-12) Con la pagina chiusa (home) niente DOM: i dati
-// si tengono e il disegno parte da collezioneRiallinea(), che
-// apriDettaglioWidget chiama appena il pannello è visibile — una volta sola
-// e con la misura giusta. Prima: render anche a pagina chiusa (a ogni
-// ricarica realtime) e, su PC, due render all'apertura ("telefono" a
-// pannello nascosto, poi quello vero).
 let _collRenderInSospeso = false;
 let _collUltimaFirma = null;
 function _collFirma(data, pc) {
@@ -502,7 +443,7 @@ function _collFirma(data, pc) {
         : [_idsNelBinder.has(String(id)), _idsInScambio.has(String(id)), _quantitaOfferteScambio[String(id)] ?? null];
     try {
         return JSON.stringify([_collVista, pc, _collOrdine, _collSelId, _collAzioniId, statoRiga(_collSelId), statoRiga(_collAzioniId), data]);
-    } catch (_) { return null; } // in caso di dubbio si ridisegna
+    } catch (_) { return null; }
 }
 function collezioneRender(data) {
     _collUltimiDati = data;
@@ -514,14 +455,11 @@ function collezioneRender(data) {
     if (pannelloTabella) pannelloTabella.style.display = 'none';
     if (compatto) { compatto.style.display = 'none'; compatto.innerHTML = ''; }
     const tbody = document.getElementById('viewTableBody');
-    if (tbody) tbody.innerHTML = ''; // niente checkbox doppie nella tabella vecchia nascosta
+    if (tbody) tbody.innerHTML = '';
 
     const pc = _collEPC();
     _collUltimoPC = pc;
     const corpo = document.getElementById('collCorpo');
-    // (V3 velocità) Stessi dati e stesso stato della lista già disegnata (es.
-    // la rilettura dei sealed che switchTab fa subito dopo l'apertura): niente
-    // da ridisegnare. La firma copre anche Binder/Scambio della riga aperta.
     const firma = _collFirma(data, pc);
     if (corpo && firma !== null && firma === _collUltimaFirma && corpo.firstChild) {
         _collAggiornaTesta(data);
@@ -541,9 +479,6 @@ function collezioneRender(data) {
     _aggiornaBarraSelezioneMultipla();
 }
 
-// La sezione viene disegnata mentre il pannello è ancora nascosto (larghezza
-// 0 = "telefono"): appena il pannello è visibile si rifà il render se la
-// misura vera dice PC. Chiamata da apriDettaglioWidget.
 let _collUltimoPC = null;
 function collezioneRiallinea() {
     if (_collRenderInSospeso) { collezioneRender(_collUltimiDati); return; }
@@ -551,8 +486,6 @@ function collezioneRiallinea() {
     if (_collEPC() !== _collUltimoPC) collezioneRender(_collUltimiDati);
 }
 
-// Uscendo dalla tab Collezione la classe va tolta, altrimenti le altre tab
-// (stessa sezione) resterebbero con i comandi vecchi nascosti.
 function collezioneDisattiva() {
     _collRenderInSospeso = false;
     _collUltimaFirma = null;
@@ -562,7 +495,6 @@ function collezioneDisattiva() {
     if (corpo) corpo.innerHTML = '';
 }
 
-// Telefono ↔ PC (rotazione, finestra ridimensionata): rifà il render.
 (function () {
     let t = null, eraPC = null;
     window.addEventListener('resize', () => {

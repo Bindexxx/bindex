@@ -1,49 +1,13 @@
-// ═══════════════════════════════════════════════════════════════════════
-// WIDGET-SET.UI.JS — voce di catalogo + pagina "Set" (CardSync Pro)
-// ═══════════════════════════════════════════════════════════════════════
-// RISCRITTO (2026-09-20, restyle widget SET + masterset). Prima: elenco dei
-// soli set di cui si possedeva una carta, ordinato per %, sola
-// consultazione. Ora:
-//   - TUTTE le espansioni esistenti, ordinate per carte mancanti
-//     (crescente), divise in quattro schede: In corso (default) /
-//     Completati / Non iniziati / Nascosti.
-//   - Modalità "Modifica": si nascondono/mostrano i set. I nascosti
-//     notificano solo al 99% e al 100%.
-//   - Dettaglio di un set: tutte le carte del catalogo (una per variante),
-//     quelle che mancano in scala di grigi + segnalino "Manca", quelle
-//     possedute con "C'è". In modalità "Ignora carte" si escludono a mano
-//     le carte che non si vogliono nel masterset (es. promo Pokémon Center).
-//   - Pallina in home: set più vicino al completamento; quando scatta una
-//     soglia (25/50/75/90/99/100%) mostra quella notifica finché non si
-//     apre la pagina o ne arriva una più recente.
-//
-// DOVE STA LA LOGICA: calcolo, catalogo, soglie e notifiche sono in
-// ui/set-motore.ui.js (nessun DOM). Qui solo voce di catalogo e pagina.
-// Dati: data/sets.repository.js. Parser sigle: ui/set-libreria-sigle.ui.js.
-//
-// COSA RESTA FUORI (invariato):
-// - apriDettaglioWidget (ui/paginainiziale-dettaglio.ui.js) chiama
-//   renderPaginaSet() per tabId === 'set'.
-// - _ballCORPI.set_completamento (ui/widget-render-corpi.ui.js): aggiornato
-//   solo il corpo di questo widget, con gli stessi mattoni di sempre
-//   (_ballRigaBarra/_ballPill). _ballASPETTO/_ballTITOLI_BREVI invariati.
-// - Nessun collegamento con il widget Match.
-// ───────────────────────────────────────────────────────────────────────
+// Widget e pagina Set.
 
-// Percentuale con UN decimale ("2,4%"), mai arrotondata per difetto a 0
-// quando c'è almeno una carta (con set da 200+ carte Math.floor dava "0%").
 function setPercentuale(p) {
     return (Number(p) || 0).toLocaleString('it-IT', { maximumFractionDigits: 1 }) + '%';
 }
 
-// ── VOCE DI CATALOGO ──────────────────────────────────────────────────
 CATALOGO_WIDGET.set_completamento = {
     titolo: 'Set', icona: 'fa-layer-group',
     preview: () => {
         const r = setMCalcolaTutti();
-        // Set con catalogo di cui servono le righe per contare bene: si
-        // caricano in background e la Home si ridisegna SOLO se sono
-        // davvero arrivate (altrimenti loop preview → ridisegno → preview).
         if (r.daCaricare.length) {
             setMCaricaRighe(r.daCaricare)
                 .then(caricate => { if (caricate) setMRidisegnaHome(); })
@@ -51,11 +15,6 @@ CATALOGO_WIDGET.set_completamento = {
         }
 
         const g = setMSuddividi(r.voci);
-        // RESTYLE BINDEX FASE 2 (2026-09-30, "Set = il set più avanti,
-        // percentuale con un decimale"): la tessera mostra i set in corso
-        // con la percentuale PIÙ ALTA (prima: i meno mancanti in assoluto,
-        // che premiava i set piccoli). La pagina Set resta ordinata come
-        // prima (per mancanti), questa è solo la vista della tessera.
         const perAvanzamento = g.inCorso.slice().sort((a, b) => (b.perc || 0) - (a.perc || 0) || a.mancanti - b.mancanti);
         const prima = perAvanzamento[0] || null;
         const nv = setMNotificaNonVista();
@@ -67,9 +26,6 @@ CATALOGO_WIDGET.set_completamento = {
 
         return {
             righe: [riga],
-            // Nessun badge: il set non è un'azione da fare (regola "badge
-            // rosso solo per le azioni"). La soglia appena raggiunta resta
-            // segnalata dalla pill "nuova soglia" nel corpo della tessera.
             dati: {
                 prima,
                 top: perAvanzamento.slice(0, 4),
@@ -86,7 +42,6 @@ CATALOGO_WIDGET.set_completamento = {
     tab: 'set',
 };
 
-// ── PAGINA "SET" ─────────────────────────────────────────────────────────
 const _SET_SCHEDE = [
     { id: 'incorso',     etichetta: 'In corso',     chiave: 'inCorso',     vuoto: 'Nessun set in corso: aggiungi una carta di un set per iniziare.' },
     { id: 'completati',  etichetta: 'Completati',   chiave: 'completati',  vuoto: 'Nessun set completato, per ora.' },
@@ -96,19 +51,16 @@ const _SET_SCHEDE = [
 
 const _setUi = {
     tab: 'incorso',
-    modifica: false,        // elenco: nascondi/mostra set
-    dett: null,             // sigla del set aperto, null = elenco
-    filtro: 'tutte',        // dettaglio: tutte | mancano | ce_l_ho
-    modificaDett: false,    // dettaglio: ignora/riattiva carte
-    classifica: false,      // schermata "carte X da classificare"
+    modifica: false,
+    dett: null,
+    filtro: 'tutte',
+    modificaDett: false,
+    classifica: false,
     msg: '',
-    cerca: '',              // elenco: testo della ricerca (nome o sigla)
+    cerca: '',
     token: 0
 };
 
-// Pagina larga (PC, tavola PC-set): elenco a sinistra e dettaglio del set
-// scelto a destra, nella stessa schermata. Stessa soglia (780px) della
-// container query su #set in index.css.
 function _setEPC() {
     const el = document.getElementById('set');
     return !!el && el.clientWidth >= 780;
@@ -133,20 +85,14 @@ async function renderPaginaSet() {
     _setUi.cerca = '';
     _setUi.dett = null;
 
-    // Se c'è una notifica non vista, la pagina si apre direttamente sul set
-    // giusto (vale sia dal clic sulla notifica in tendina sia dalla pallina).
     let nv = null;
     try { nv = setMNotificaNonVista(); } catch (_) { nv = null; }
     if (nv) _setUi.dett = nv.sigla;
 
     await _setUiRender();
 
-    // Aperta la pagina = vista. La pallina si aggiorna alla chiusura (la
-    // Home si ridisegna da sola).
     if (nv) await setMSegnaViste();
 
-    // Stato non ancora letto (pagina aperta appena dopo l'avvio): un
-    // tentativo e ridisegno.
     if (!_setM.baseOk && !_setM.occupato) {
         await setMotoreAggiorna({ render: false });
         await _setUiRender();
@@ -165,8 +111,6 @@ async function _setUiRender() {
     try {
         if (_setUi.classifica) _setUiRenderClassifica(container);
         else if (_setEPC()) {
-            // PC: elenco + dettaglio affiancati. Senza un set scelto si apre
-            // il primo della scheda corrente (come Location/Sealed su PC).
             const elenco = _setUiRenderLista(container);
             if (!_setUi.dett && elenco && elenco.length) _setUi.dett = elenco[0].sigla;
             _setUiSegnaSelezione();
@@ -182,7 +126,6 @@ async function _setUiRender() {
     }
 }
 
-// ── ELENCO ───────────────────────────────────────────────────────────────
 function _setUiRigaHtml(v) {
     const perc = v.completo ? 100 : Math.floor(v.perc);
     const sub = (v.completo ? 'Completo' : `${v.mancanti} ${v.mancanti === 1 ? 'mancante' : 'mancanti'}`)
@@ -231,8 +174,6 @@ function _setUiRenderLista(container) {
         ? '<div class="set-nota">Tocca un set per nasconderlo o farlo tornare visibile. I set nascosti notificano solo al 99% e al 100%.</div>'
         : '';
 
-    // Tre riquadri della tavola OK-set: set in corso, completati e la
-    // percentuale del set più avanti (fra quelli in corso).
     const piuAvanti = g.inCorso.reduce((m, v) => Math.max(m, Math.floor(v.perc || 0)), 0);
     const stat = `
         <div class="set-stat">
@@ -282,8 +223,6 @@ function _setUiElencoHtml(elenco, scheda) {
     return `<p style="text-align:center; color:var(--text-muted); font-size:0.85rem; padding:1.5rem 0;">${_setUiAttr(testo)}</p>`;
 }
 
-// Ricerca: ridisegna solo l'elenco (non tutta la pagina) così il campo
-// non perde il fuoco mentre si scrive.
 function _setUiCerca(testo) {
     _setUi.cerca = testo || '';
     const el = document.getElementById('setElenco');
@@ -294,8 +233,6 @@ function _setUiCerca(testo) {
     _setUiSegnaSelezione();
 }
 
-// Riga del set aperto evidenziata nell'elenco (solo PC, dove si vedono
-// insieme).
 function _setUiSegnaSelezione() {
     document.querySelectorAll('#setElenco .set-riga').forEach(r => {
         r.classList.toggle('sel', !!_setUi.dett && r.dataset.sigla === _setUi.dett);
@@ -305,7 +242,7 @@ function _setUiSegnaSelezione() {
 function _setUiImpostaScheda(id) {
     _setUi.tab = id;
     _setUi.msg = '';
-    if (_setEPC()) _setUi.dett = null;   // su PC si apre il primo della nuova scheda
+    if (_setEPC()) _setUi.dett = null;
     _setUiRender();
 }
 
@@ -340,7 +277,6 @@ async function _setUiToggleNascosto(sigla) {
     setMotoreAggiorna({ render: false });
 }
 
-// ── DETTAGLIO DI UN SET ──────────────────────────────────────────────────
 function _setUiApriDettaglio(sigla) {
     _setUi.dett = sigla;
     _setUi.filtro = 'tutte';
@@ -352,9 +288,6 @@ function _setUiApriDettaglio(sigla) {
     if (cont && typeof cont.scrollTo === 'function') cont.scrollTo(0, 0);
 }
 
-// Su PC, se elenco e pannello sono già a schermo, ridisegna solo il
-// pannello destro (l'elenco tiene scorrimento e ricerca). Ritorna false
-// sul telefono: lì il chiamante ridisegna la pagina intera come prima.
 function _setUiRenderSoloDettaglio() {
     const destra = document.getElementById('setDettPc');
     if (!destra || !_setEPC() || !_setUi.dett || _setUi.classifica) return false;
@@ -388,8 +321,6 @@ async function _setUiRenderDettaglio(container, inline) {
     const lib = (typeof _ballLIBRERIA_SET !== 'undefined' && _ballLIBRERIA_SET) ? _ballLIBRERIA_SET : {};
     const nome = (lib[sigla] && lib[sigla].nome) || sigla;
 
-    // inline = pannello destro su PC: niente "indietro", nome piccolo sopra
-    // la percentuale e "Ignora carte" a destra (tavola PC-set).
     const intestazione = (azione) => inline ? `
         <div class="set-dett-testa">
             <span class="set-dett-nome">${_setUiAttr(nome)}${nome !== sigla ? ' · ' + _setUiAttr(sigla) : ''}</span>
@@ -406,7 +337,7 @@ async function _setUiRenderDettaglio(container, inline) {
         container.innerHTML = intestazione('') +
             '<p style="text-align:center; color:var(--text-muted); font-size:0.85rem; padding:2rem 0;">Caricamento…</p>';
         await setMCaricaRighe([sigla]);
-        if (token !== _setUi.token || _setUi.dett !== sigla || !container.isConnected) return;   // nel frattempo l'utente ha cambiato schermata
+        if (token !== _setUi.token || _setUi.dett !== sigla || !container.isConnected) return;
         dati = setMVociSet(sigla);
         if (!dati) {
             container.innerHTML = intestazione('') +
@@ -494,17 +425,9 @@ async function _setUiToggleIgnora(numero, variante) {
         _setUiRender();
         return;
     }
-    // Ignorare/riattivare una carta cambia la percentuale: rivaluta le soglie.
     setMotoreAggiorna({ render: false });
 }
 
-
-// ── CLASSIFICAZIONE DELLE CARTE X ────────────────────────────────────────
-// Le carte X (reverse a motivo) non dicono da sole QUALE motivo hanno. Qui
-// si assegna la variante (colonna carte.variante): il sito propone quella
-// ricavata dal link Cardmarket (regola in setMDaClassificare) e si conferma
-// tutto insieme, oppure si sceglie a mano riga per riga. Ogni scelta vale
-// subito nel masterset e si può correggere in seguito da qui.
 function _setUiApriClassifica() {
     _setUi.classifica = true;
     _setUi.msg = '';
@@ -518,8 +441,6 @@ function _setUiChiudiClassifica() {
 }
 
 function _setUiRenderClassifica(container) {
-    // Le righe del catalogo servono per proporre: se mancano (pagina aperta
-    // subito dopo l'avvio) si caricano e si ridisegna.
     const r = setMCalcolaTutti();
     if (r.daCaricare.length) {
         setMCaricaRighe(r.daCaricare)
@@ -571,8 +492,6 @@ async function _setUiConfermaProposte() {
     await _setUiSalvaVarianti(voci);
 }
 
-// Salva le varianti raggruppate per valore: una chiamata per variante, non
-// una per carta. Optimistic: se un gruppo fallisce si annulla SOLO quello.
 async function _setUiSalvaVarianti(voci) {
     if (!voci.length) return;
     const gruppi = new Map();
@@ -594,6 +513,5 @@ async function _setUiSalvaVarianti(voci) {
         }
     }
     _setUiRender();
-    // Il masterset è cambiato: rivaluta le soglie.
     setMotoreAggiorna({ render: false });
 }

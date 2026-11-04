@@ -1,77 +1,16 @@
-// ═══════════════════════════════════════════════════════════════════════
-// PAGINAINIZIALE-DETTAGLIO.UI.JS — apertura/chiusura dettaglio widget
-// (animazione "a Pokéball") — CardSync Pro
-// ═══════════════════════════════════════════════════════════════════════
-// STEP 1 del piano di taglio di ui/paginainiziale.ui.js (concordato con
-// Claudio il 2026-09-11, sessione "restructuring struttura file / riduzione
-// accoppiamento"). Estratto da ui/paginainiziale.ui.js. NESSUNA riscrittura
-// del codice esistente: solo spostamento, zero cambi di comportamento per
-// l'utente finale.
-//
-// Contiene: apertura/chiusura del dettaglio widget con l'animazione a
-// cerchio che si espande dal punto toccato (DURATA_ANIMAZIONE_DETTAGLIO_MS,
-// _impostaOrigineAnimazione, apriDettaglioWidget, chiudiDettaglioWidget).
-//
-// Dipende da (rimasti in ui/paginainiziale.ui.js o in altri file già
-// caricati): _rettangoloSchermoCornice/_posizionaContainerNelloSchermo
-// (drag-resize), _beep, _aggiornaTastoFisico, renderWidgetHome, e le
-// funzioni di apertura dei singoli widget con pagina propria
-// (apriWidgetBinders, ecc.) chiamate dentro apriDettaglioWidget. Nessuna
-// istruzione qui gira a tempo di caricamento script — tutto è dichiarato e
-// invocato solo più tardi, quindi l'ordine di questo <script> rispetto
-// agli altri file paginainiziale-*.ui.js è indifferente, purché tutti
-// carichino prima della chiamata a initPhoneShell() in fondo a index.html.
-// ───────────────────────────────────────────────────────────────────────
+// Home: apertura e chiusura del dettaglio di un widget.
 
-// ── APERTURA/CHIUSURA — animazione "a Pokéball" ──────────────────────────
-// Claudio ha approvato l'idea di un'apertura che richiami il tema
-// Pokéball: un cerchio che si espande dal punto esatto in cui hai
-// toccato/cliccato il widget (CSS clip-path, nessun asset nuovo). La
-// transizione è dichiarata SEMPRE in CSS (.container.container-visibile,
-// vedi index.html) — qui ci limitiamo a impostare l'origine del cerchio
-// (variabili CSS --pokeball-x/-y) e a spostare le classi, MAI a
-// toccare transition/clip-path a mano: è quello il pattern fragile che
-// causava il blocco a metà (vedi commento CSS per i dettagli).
 const DURATA_ANIMAZIONE_DETTAGLIO_MS = 300;
 let _chiusuraDettaglioTimeout = null;
 
 function _impostaOrigineAnimazione(container, evt) {
-    // RESTYLE FASE 3a (2026-10-01): stesso rettangolo di .container, che ora
-    // parte sotto la barra di stato (_rettangoloPaginaSottoBarra).
     const rect = _rettangoloPaginaSottoBarra() || { left: 0, top: 0, width: window.innerWidth, height: window.innerHeight };
-    // FIX 2026-09-10 (bug: "schermata nera con una transizione che entra
-    // da destra verso sinistra", segnalato su bustina ma riguarda OGNI
-    // widget): --pokeball-x/-y alimentano clip-path: circle(... at
-    // var(--pokeball-x) var(--pokeball-y)) su .container — per specifica
-    // CSS quella posizione è relativa al reference box di .container
-    // STESSO (il suo angolo in alto a sinistra), MAI al viewport. Prima
-    // funzionava per coincidenza: .container, aperto a tutta la finestra
-    // (decisione 30/08, annullata oggi per "cornice pokedex"), partiva
-    // sempre da (0,0) nel viewport — le coordinate assolute del click
-    // (evt.clientX/Y) coincidevano già con quelle locali. Ora che
-    // .container è agganciato al rettangolo di #phoneScreen (quasi mai a
-    // 0,0 nel viewport), la stessa origine assoluta finiva calcolata
-    // rispetto al punto sbagliato: il cerchio nasceva ben fuori dal box
-    // visibile (a destra) e "spazzava" verso sinistra crescendo fino al
-    // 150% — esattamente l'effetto segnalato. Si sottrae qui
-    // rect.left/rect.top (lo STESSO rettangolo che
-    // _posizionaContainerNelloSchermo userà un istante dopo per il
-    // top/left di .container, vedi _rettangoloSchermoCornice) per
-    // riportare l'origine relativa al box giusto.
     const x = (evt && evt.clientX ? evt.clientX : rect.left + rect.width / 2) - rect.left;
     const y = (evt && evt.clientY ? evt.clientY : rect.top + rect.height / 2) - rect.top;
     container.style.setProperty('--pokeball-x', x + 'px');
     container.style.setProperty('--pokeball-y', y + 'px');
 }
 
-// CSBar (barra, tendina, velo, banner) e la pallina della tendina stanno dentro
-// #phoneShell (stacking z-index 10), quindi con una pagina aperta (.container,
-// z-index 11) resterebbero coperti — la stessa trappola del tasto fisico qui
-// sotto: la tendina scesa finiva SOTTO la pagina, che per questo veniva
-// nascosta. Finche' il dettaglio e' aperto spostiamo tutto in #csbHeadsFuori,
-// un livello su <body> sovrapposto esattamente a #phoneScreen; alla chiusura
-// tutto torna al suo posto. I nodi sono gli stessi: riferimenti e handler di
-// CSBar continuano a funzionare, e la pagina resta visibile sotto la tendina.
 function _csbSopraPagina(sopra) {
     const radice = document.querySelector('.csb-root:not(#csbHeadsFuori)');
     const pallina = document.getElementById('pallinaTendinaVisibile');
@@ -104,48 +43,29 @@ window.addEventListener('resize', () => {
 });
 
 async function apriDettaglioWidget(tabId, evt) {
-    clearTimeout(_chiusuraDettaglioTimeout); // annulla un'eventuale chiusura ancora in corso (riapertura rapida)
+    clearTimeout(_chiusuraDettaglioTimeout);
 
-    // FASE 11 (2026-09-13): Work in Progress — un solo controllo qui copre
-    // sia 'widget' sia 'pagina' (stesso tabId in entrambi i casi). Vedi
-    // ui/wip.ui.js per lo scope dichiarato (non copre ancora binder
-    // speciali/funzioni singole).
     const wip = (typeof _wipVerifica === 'function') ? (_wipVerifica('widget', tabId) || _wipVerifica('pagina', tabId)) : null;
     if (wip) {
         const ehAdmin = (typeof _impostazioniControllaAdmin === 'function') ? await _impostazioniControllaAdmin() : false;
         const procedi = await _wipMostraBlocco(wip, ehAdmin);
-        if (!procedi) return; // utente normale bloccato, o admin che ha scelto di non entrare
+        if (!procedi) return;
     }
 
     const container = document.querySelector('.container');
-    // AGGIUNTO 'chat' (2026-09-24, estrazione widget Chat): inbox della
-    // chat in-app (renderPaginaChat, ui/widget-chat.ui.js), scoperta
-    // durante quella sessione — senza questa voce nella whitelist la
-    // pagina non si apre mai, né dal tap sulla tessera né dal click
-    // sulla notifica CSBar (vedi ui/widget-chat.ui.js per il dettaglio).
     if (tabId === 'dafare' || tabId === 'match' || tabId === 'chat' || tabId === 'condividi' || tabId === 'missioni' || tabId === 'valore' || tabId === 'variazione' || tabId === 'wishlist' || tabId === 'location' || tabId === 'doppioni' || tabId === 'sealed' || tabId === 'set' || tabId === 'bustina' || tabId === 'scaffali' || tabId === 'richieste' || tabId === 'achievement' || tabId === 'primopiano' || tabId === 'contributi' || tabId === 'prezziagg' || tabId === 'foto' || tabId === 'shop') {
-        // MAI switchTab() qui: quella funzione ha una whitelist fissa di 5
-        // tab (navigation.ui.js r.199) ed è segnata nella memoria di
-        // progetto come "deve restare stabile e intoccata" — un bug reale
-        // c'è già stato lì in passato. Repliochiamo solo il minimo che
-        // switchTab farebbe per una tab in whitelist (nascondi tutte le
-        // view-section, mostra la mia), concordato con Claudio 2026-08-28
-        // (dafare) e riusato identico per 'match', 'condividi', 'missioni'
-        // e ora 'valore' (2026-08-30, pagina dedicata Valore collezione).
-        // 'scaffali' aggiunto in Fase 1.3 Step 5a (2026-09-12), stesso
-        // schema esatto — widget Home dedicato, pagina propria.
         document.querySelectorAll('.view-section').forEach(sec => sec.classList.remove('active'));
         document.getElementById(tabId)?.classList.add('active');
         if (tabId === 'dafare') renderPaginaDaFare();
         if (tabId === 'match') renderPaginaMatch();
-        if (tabId === 'chat') renderPaginaChat(); // 2026-09-24, ui/widget-chat.ui.js (estrazione da widget-match.ui.js)
+        if (tabId === 'chat') renderPaginaChat();
         if (tabId === 'condividi') renderPaginaCondividi();
         if (tabId === 'missioni') renderPaginaMissioni();
         if (tabId === 'valore') renderPaginaValoreCollezione();
         if (tabId === 'variazione') renderPaginaVariazioneValore();
         if (tabId === 'achievement') renderPaginaAchievement();
-        if (tabId === 'contributi') renderPaginaContributi(); // sessione 2026-09-24, ui/widget-contributi.ui.js
-        if (tabId === 'primopiano') renderPaginaPrimoPiano(); // 2026-09-19, widget In primo piano: pagina top 10 (ui/widget-in-primo-piano.ui.js)
+        if (tabId === 'contributi') renderPaginaContributi();
+        if (tabId === 'primopiano') renderPaginaPrimoPiano();
         if (tabId === 'wishlist') renderPaginaWishlist();
         if (tabId === 'location') renderPaginaLocation();
         if (tabId === 'doppioni') renderPaginaDoppioni();
@@ -154,32 +74,17 @@ async function apriDettaglioWidget(tabId, evt) {
         if (tabId === 'bustina') renderPaginaBustina();
         if (tabId === 'scaffali') apriPaginaScaffali();
         if (tabId === 'richieste') apriPaginaRichieste();
-        if (tabId === 'prezziagg') renderPaginaPrezziAggiornati(); // RESTYLE FASE 3h, ui/widget-prezzi.ui.js
-        if (tabId === 'foto') renderPaginaFoto(); // RESTYLE FASE 8c, ui/widget-foto.ui.js
-        if (tabId === 'shop') renderPaginaShop(); // RESTYLE FASE 9, ui/shop.ui.js
+        if (tabId === 'prezziagg') renderPaginaPrezziAggiornati();
+        if (tabId === 'foto') renderPaginaFoto();
+        if (tabId === 'shop') renderPaginaShop();
     } else {
         switchTab(tabId, null);
-        // (Q5) Collezione: la Location scelta l'ultima volta (switchTab la azzera).
         if (tabId === 'visualizzazione' && typeof collRipristinaLocation === 'function' && collRipristinaLocation()) filterTable();
-        // Fase 10 (2026-09-13): riparti sempre dall'hub Impostazioni, mai
-        // da una sotto-pagina rimasta aperta dall'ultima visita — wrapper
-        // qui, MAI dentro switchTab() stessa (vedi commento sopra).
         if (tabId === 'impostazioni' && typeof _impostazioniTornaHub === 'function') _impostazioniTornaHub();
     }
     document.body.classList.add('phone-detail-open');
     _csbSopraPagina(true);
 
-    // FIX (2026-08-30, "non c'è modo di tornare indietro"): #btnFisicoTelefono
-    // vive dentro #phoneFrameBox → #phoneShell, e #phoneShell è un
-    // CONTESTO DI STACKING a sé (position:fixed + z-index:10). Per una
-    // regola del CSS, lo z-index di un discendente non può MAI farlo
-    // emergere sopra un fratello di un ANTENATO che ha stacking context
-    // proprio — l'intero sotto-albero di #phoneShell (bottone incluso)
-    // resta sempre sotto .container (z-index:11), qualunque z-index dia
-    // al bottone stesso. L'unico modo reale: spostarlo temporaneamente
-    // fuori da quel sotto-albero, direttamente dentro <body>, mentre il
-    // dettaglio è aperto — riportato al suo posto in chiudiDettaglioWidget
-    // qui sotto, a fine animazione di chiusura.
     const _btnFisico = document.getElementById('btnFisicoTelefono');
     if (_btnFisico && _btnFisico.parentElement !== document.body) {
         document.body.appendChild(_btnFisico);
@@ -188,29 +93,17 @@ async function apriDettaglioWidget(tabId, evt) {
 
     if (container) {
         _impostaOrigineAnimazione(container, evt);
-        container.classList.add('container-visibile'); // display: normale, cerchio a 0% (stato di partenza dichiarato in CSS)
+        container.classList.add('container-visibile');
         _posizionaContainerNelloSchermo();
-        // Collezione: disegnata a pannello ancora nascosto, va rimisurata.
         if (tabId === 'visualizzazione' && typeof collezioneRiallinea === 'function') collezioneRiallinea();
-        if (tabId === 'wishlist' && typeof _wishlistRenderElenco === 'function') _wishlistRenderElenco(); // elenco (telefono) o tabella (PC)
-        if (tabId === 'set' && typeof _setUiRender === 'function') _setUiRender(); // elenco (telefono) o elenco + dettaglio (PC)
-        if (tabId === 'impostazioni' && typeof _impostazioniTornaHub === 'function') _impostazioniTornaHub(); // elenco (telefono) o menu + gruppo (PC), misurato ora che è visibile
-        // Un frame di distacco tra "cerchio a 0%" e "aggiungi la classe che
-        // lo porta a 150%": necessario perché il browser faccia partire
-        // davvero la transizione invece di saltare subito allo stato finale.
+        if (tabId === 'wishlist' && typeof _wishlistRenderElenco === 'function') _wishlistRenderElenco();
+        if (tabId === 'set' && typeof _setUiRender === 'function') _setUiRender();
+        if (tabId === 'impostazioni' && typeof _impostazioniTornaHub === 'function') _impostazioniTornaHub();
         requestAnimationFrame(() => container.classList.add('container-aperto'));
     }
     _beep(880, 70);
     _aggiornaTastoFisico();
 
-    // Multi-Binder (2026-08-25): il caricamento dati va SEMPRE dopo
-    // l'apertura visiva, mai prima — un bug introdotto in un fix precedente
-    // metteva questo await PRIMA del blocco container sopra: un qualunque
-    // errore in apriWidgetBinders() interrompeva la funzione lì, il
-    // container non si apriva mai e da fuori sembrava che il click non
-    // facesse nulla (bug segnalato da Claudio). Ora è dopo, e in try/catch:
-    // un errore nel caricamento non deve mai impedire l'apertura della
-    // sezione, al massimo la mostra vuota.
     if (tabId === 'binder') {
         try {
             await apriWidgetBinders();
@@ -220,13 +113,7 @@ async function apriDettaglioWidget(tabId, evt) {
     }
 }
 
-// L'ingranaggio della barra e' un interruttore: se Impostazioni e' gia'
-// aperta, un secondo tocco la chiude (il cerchio si richiude verso
-// l'ingranaggio, perche' l'origine dell'animazione e' il suo click).
-// Se e' aperto un altro dettaglio, porta alle Impostazioni come prima.
 function toggleImpostazioniBarra(evt) {
-    // Dalla status bar CSBar il callback non porta l'evento: l'origine del
-    // cerchio e' il centro del tasto ingranaggio.
     if (!evt) {
         const g = document.querySelector('[data-csb="settings"]');
         if (g) { const r = g.getBoundingClientRect(); evt = { clientX: r.left + r.width / 2, clientY: r.top + r.height / 2 }; }
@@ -244,17 +131,14 @@ function toggleImpostazioniBarra(evt) {
 
 function chiudiDettaglioWidget() {
     const container = document.querySelector('.container');
-    if (container) container.classList.remove('container-aperto'); // la transizione CSS dichiarata fa il resto (150%→0%)
+    if (container) container.classList.remove('container-aperto');
     _beep(440, 70);
-    document.body.classList.remove('phone-detail-open'); // subito: il bottone deve reagire al tap, non aspettare l'animazione
+    document.body.classList.remove('phone-detail-open');
     _aggiornaTastoFisico();
 
     clearTimeout(_chiusuraDettaglioTimeout);
     _chiusuraDettaglioTimeout = setTimeout(() => {
-        if (container) container.classList.remove('container-visibile'); // SOLO ora, a transizione finita, torna display:none
-        // Simmetrico al reparent fatto in apriDettaglioWidget: il bottone
-        // torna dentro #phoneFrameBox, ripristinando la posizione
-        // percentuale calibrata sull'immagine cornice.
+        if (container) container.classList.remove('container-visibile');
         const btnFisico = document.getElementById('btnFisicoTelefono');
         const frameBox = document.getElementById('phoneFrameBox');
         if (btnFisico && frameBox && btnFisico.parentElement !== frameBox) {

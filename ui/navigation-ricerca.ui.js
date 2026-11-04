@@ -1,28 +1,8 @@
-// ═══════════════════════════════════════════════════════════════════════
-// NAVIGATION-RICERCA.UI.JS — ricerca globale (CardSync Pro)
-// ═══════════════════════════════════════════════════════════════════════
-// STEP separato dal piano "riduzione accoppiamento" concordato con Claudio
-// il 2026-09-11. Estratto da ui/navigation.ui.js.
-//
-// (Q4 quality of life, 2026-10-12) Cerca ovunque:
-//  - carte (collezione/Scambio), wishlist, sealed, binder e scaffali (prima
-//    solo nome/codice delle carte, max 40 senza gruppi);
-//  - senza accenti né maiuscole ("pokemon" trova "Pokémon"); più parole =
-//    tutte devono comparire (es. "pikachu 25", "charizard ita");
-//  - frecce ↑/↓ e Invio nell'elenco; su PC il tasto "/" apre la ricerca;
-//  - il risultato si apre dove vive davvero: prima switchTab() attivava una
-//    sezione della vecchia tabella nascosta e dalla home non succedeva nulla.
-//    Carte e wishlist → pagina Collezione filtrata sul nome con la riga
-//    aperta; sealed, binder e scaffali → la loro pagina, già sull'oggetto.
-// Binder e scaffali si leggono una volta all'apertura (cache 1 minuto).
-//
-// Contiene: apriRicercaGlobale, chiudiRicercaGlobale, eseguiRicercaGlobale,
-// vaiARisultatoRicerca (+ helper _ricerca*).
-// ───────────────────────────────────────────────────────────────────────
+// Ricerca globale.
 
-        let _ricercaContenitori = { quando: 0, binder: [], scaffali: [] };
-        let _ricercaRisultati = [];   // risultati mostrati, nell'ordine dell'elenco
-        let _ricercaEvidenziato = 0;  // indice scelto con le frecce
+let _ricercaContenitori = { quando: 0, binder: [], scaffali: [] };
+        let _ricercaRisultati = [];
+        let _ricercaEvidenziato = 0;
 
         function _ricercaNormalizza(testo) {
             return String(testo == null ? '' : testo).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
@@ -42,7 +22,6 @@
             } catch (e) {
                 console.error('[ricerca] binder/scaffali:', e);
             }
-            // Arrivati mentre l'utente scriveva: si ricalcola l'elenco.
             const input = document.getElementById('ricercaGlobaleInput');
             const modale = document.getElementById('ricercaGlobaleModal');
             if (input && modale && modale.style.display === 'flex' && input.value.trim().length >= 2) eseguiRicercaGlobale(input.value);
@@ -55,7 +34,7 @@
         }
 
         function apriRicercaGlobale() {
-            closeDrawer(); // stesso pattern di switchTab(): su mobile il drawer si richiude dopo la scelta
+            closeDrawer();
             document.getElementById('ricercaGlobaleModal').style.display = 'flex';
             document.getElementById('ricercaGlobaleInput').value = '';
             _ricercaMessaggio('Carte, wishlist, sealed, binder e scaffali: scrivi almeno 2 lettere.');
@@ -63,15 +42,10 @@
             _ricercaCaricaContenitori();
         }
 
-
         function chiudiRicercaGlobale() {
             document.getElementById('ricercaGlobaleModal').style.display = 'none';
         }
 
-
-        // Etichetta e colori della pill: wishlist, sealed, Scambio, collezione,
-        // binder, scaffale. Fase 3, Step 2 (2026-09-12): appartenenza allo
-        // Scambio via _idsInScambio (location 'SCAMBIO' ritirata, sql/45b).
         function _etichettaSezione(card) {
             if (card.tabella === 'wishlist') return { testo: 'Wishlist', bg: 'var(--bg-success)', colore: 'var(--success)' };
             if (card.tipo === 'sealed') return { testo: 'Sealed', bg: 'var(--primary-light)', colore: 'var(--primary)' };
@@ -85,8 +59,6 @@
             scaffale: { testo: 'Scaffale', bg: 'var(--bg-color)', colore: 'var(--text-muted)' },
         };
 
-        // Ogni parola cercata deve comparire nel testo dell'oggetto. Punteggio:
-        // 0 = il nome inizia con la ricerca, 1 = il nome la contiene, 2 = altrove.
         function _ricercaPunteggio(parole, frase, nome, resto) {
             const n = _ricercaNormalizza(nome);
             const tutto = n + ' ' + _ricercaNormalizza(resto);
@@ -168,8 +140,6 @@
             });
         }
 
-        // Frecce e Invio nel campo di ricerca; Esc chiude. (Gli script sono in
-        // fondo alla pagina: il campo esiste già.)
         document.getElementById('ricercaGlobaleInput')?.addEventListener('keydown', (e) => {
             if (e.key === 'ArrowDown') { e.preventDefault(); _ricercaEvidenzia(_ricercaEvidenziato + 1, true); }
             else if (e.key === 'ArrowUp') { e.preventDefault(); _ricercaEvidenzia(_ricercaEvidenziato - 1, true); }
@@ -177,7 +147,6 @@
             else if (e.key === 'Escape') { e.preventDefault(); chiudiRicercaGlobale(); }
         });
 
-        // PC: "/" apre la ricerca (non mentre si scrive, né con una finestra aperta).
         document.addEventListener('keydown', (e) => {
             if (e.key !== '/' || e.ctrlKey || e.metaKey || e.altKey) return;
             const el = document.activeElement;
@@ -190,11 +159,9 @@
             apriRicercaGlobale();
         });
 
-
-        // Aspetta (al massimo ~3 s) che una pagina appena aperta abbia i dati.
         async function _ricercaAspetta(condizione) {
             for (let i = 0; i < 30; i++) {
-                try { if (condizione()) return true; } catch (_) { /* non ancora */ }
+                try { if (condizione()) return true; } catch (_) {   }
                 await new Promise(r => setTimeout(r, 100));
             }
             return false;
@@ -205,9 +172,6 @@
             if (!v) return;
             chiudiRicercaGlobale();
 
-            // Missioni/Traguardi Fase 2 — ricerche eseguite (2026-08-29).
-            // Fire-and-forget: un fallimento qui non deve mai bloccare la
-            // navigazione al risultato.
             (async () => {
                 try {
                     const userId = await authGetUserId();
@@ -218,8 +182,6 @@
             if (v.tipo === 'carta' || v.tipo === 'wishlist') {
                 const card = carteReali.find(c => String(c.id) === String(v.id));
                 if (!card) return;
-                // Pagina Collezione filtrata sul nome: niente filtri di location
-                // o lingua che possano nasconderla, il suo tipo di riga acceso.
                 const cerca = document.getElementById('searchInput');
                 if (cerca) cerca.value = card.name || '';
                 const azzeraFiltri = () => ['filterLocation', 'filterLang', 'collFiltroLoc', 'collFiltroLang'].forEach(id => { const s = document.getElementById(id); if (s) s.value = ''; });
@@ -230,7 +192,7 @@
                     document.getElementById('toggleTipo' + tipoRiga.charAt(0).toUpperCase() + tipoRiga.slice(1))?.classList.add('active');
                 }
                 await apriDettaglioWidget('visualizzazione', null);
-                azzeraFiltri(); // anche la Location ricordata che l'apertura rimette (Q5): qui conta la carta
+                azzeraFiltri();
                 filterTable();
                 if (typeof collVaiACarta === 'function') setTimeout(() => collVaiACarta(card.id), 120);
                 return;
@@ -245,14 +207,12 @@
             }
 
             if (v.tipo === 'binder') {
-                await apriDettaglioWidget('binder', null); // aspetta già il caricamento dei binder
+                await apriDettaglioWidget('binder', null);
                 if (await _ricercaAspetta(() => _bindersElenco.some(b => String(b.id) === String(v.id)))) apriBinderDettaglio(v.id);
                 return;
             }
 
             if (v.tipo === 'scaffale') {
-                // apriPaginaScaffali (chiamata da apriDettaglioWidget) lo apre
-                // da sé a fine caricamento, al posto del primo scaffale.
                 _scaffaleDaAprire = v.id;
                 await apriDettaglioWidget('scaffali', null);
             }

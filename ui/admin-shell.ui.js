@@ -1,16 +1,9 @@
-// ── ui/admin-shell.ui.js ───────────────────────────────────────────────
-// Guscio dell'app admin: login/logout, controllo ruolo all'avvio, tab
-// navigation, messaggio di stato condiviso da tutti i pannelli.
-
-
+// Guscio della pagina admin: accesso, controllo del ruolo, schede.
 
 function mostraSolo(el) {
   [loginScreen, deniedScreen, dash, mfaScreen].forEach(e => { if (e) e.style.display = 'none'; });
   el.style.display = (el === dash) ? 'block' : 'flex';
 }
-
-
-// ── LOGIN ──────────────────────────────────────────────────────
 
 async function tentaLogin() {
   const inputUtente = elUser.value.trim();
@@ -20,8 +13,9 @@ async function tentaLogin() {
     elErr.style.display = 'block';
     return;
   }
-  // AMBIENTE DI TEST (2026-10-15): account di test @test.local — in
-  // produzione tornare a '@cardsyncpro.local' (vedi ui/auth.ui.js).
+  // AMBIENTE DI TEST: il nome da solo si completa con @test.local. In produzione
+  // '@cardsyncpro.local', insieme agli altri punti marcati così (sito ed estensione)
+  // e a sql/110_..._ROLLBACK.sql.
   const email = inputUtente.includes('@') ? inputUtente : inputUtente.toLowerCase() + '@test.local';
   elSubmit.disabled = true;
   elSubmit.textContent = 'Accesso in corso…';
@@ -41,7 +35,6 @@ async function tentaLogin() {
 elSubmit.addEventListener('click', tentaLogin);
 [elUser, elPass].forEach(el => el.addEventListener('keydown', e => { if (e.key === 'Enter') tentaLogin(); }));
 
-
 async function logout() {
   await adminAuthLogout();
   location.reload();
@@ -49,8 +42,6 @@ async function logout() {
 document.getElementById('logout-btn').addEventListener('click', logout);
 document.getElementById('denied-logout').addEventListener('click', logout);
 
-
-// ── CONTROLLO RUOLO ADMIN ─────────────────────────────────────
 async function controllaRuoloEAvvia() {
   const sessione = await adminAuthGetSession();
   if (!sessione) { mostraSolo(loginScreen); return; }
@@ -64,17 +55,11 @@ async function controllaRuoloEAvvia() {
 
   const bannatoAdesso = profilo.banned_until && new Date(profilo.banned_until) > new Date();
   if (profilo.deleted_at || bannatoAdesso) {
-    // Auth Hooks non disponibile sul piano attuale (vedi sez.9 stato):
-    // il blocco vero e proprio del login lo facciamo qui, subito dopo
-    // il login riuscito — non impedisce l'accesso via chiamata diretta
-    // alle API, ma copre l'uso normale della dashboard.
     await adminAuthLogout();
     mostraSolo(deniedScreen);
     return;
   }
 
-  // (S6) Codice da app: senza, niente dashboard (e con sql/99 il database
-  // non riconosce i poteri admin a una sessione senza codice).
   if (!(await _adminMfaVerificata())) return;
 
   document.getElementById('who-label').textContent =
@@ -84,20 +69,10 @@ async function controllaRuoloEAvvia() {
   caricaUtenti();
   caricaLogAdmin();
   if (typeof caricaWip === 'function') caricaWip();
-  if (typeof caricaShopAdmin === 'function') caricaShopAdmin(); // RESTYLE FASE 9, ui/admin-shop.ui.js
+  if (typeof caricaShopAdmin === 'function') caricaShopAdmin();
 }
 
-// ── CODICE DA APP / SECONDO FATTORE (S6, 2026-10-12) ───────────
-// Dopo la password la sessione è "aal1"; con sql/99 is_admin() vale solo
-// per le sessioni "aal2", cioè dopo il codice a 6 cifre di un'app di
-// autenticazione (Google/Microsoft Authenticator, Authy, 1Password…).
-//   - nessun dispositivo attivo → iscrizione: QR + chiave, poi primo codice;
-//   - dispositivo già attivo    → solo il codice.
-// Il codice va confermato una volta per sessione: Supabase mantiene "aal2"
-// anche quando rinnova il token, finché non si preme Esci.
-// Ritorna true se la sessione è già verificata (si prosegue con la
-// dashboard), false se resta sulla schermata del codice.
-let _mfaModo = null; // 'caricamento' | 'iscrizione' | 'accesso' | 'errore'
+let _mfaModo = null;
 
 async function _adminMfaVerificata() {
   try {
@@ -127,12 +102,9 @@ async function _adminMfaVerificataOra() {
     return false;
   }
 
-  // Nessun dispositivo attivo: toglie eventuali iscrizioni lasciate a metà
-  // (QR mostrato ma codice mai confermato), poi ne crea una nuova. Il nome
-  // ha data e ora perché Supabase rifiuta due dispositivi con lo stesso nome.
   for (const f of tutti) {
     if (f.factor_type === 'totp' && f.status !== 'verified') {
-      try { await adminMfaTogli(f.id); } catch (_) { /* resta: il nome nuovo è comunque diverso */ }
+      try { await adminMfaTogli(f.id); } catch (_) {   }
     }
   }
   const nome = 'Bindex admin ' + new Date().toISOString().slice(0, 16).replace('T', ' ');
@@ -146,8 +118,6 @@ async function _adminMfaVerificataOra() {
   return false;
 }
 
-// Il QR arriva come SVG dentro un data URL non codificato: lo ricodifica,
-// così un eventuale "#" nell'SVG non tronca l'immagine.
 function _mfaQrSrc(qr) {
   if (!qr || typeof qr !== 'string') return '';
   const virgola = qr.indexOf(',');
@@ -223,7 +193,7 @@ async function _mfaConferma() {
   const campo = document.getElementById('mfa-codice');
   const errore = document.getElementById('mfa-errore');
   const conferma = document.getElementById('mfa-conferma');
-  if (conferma.disabled) return; // verifica già in corso (Invio ripetuto)
+  if (conferma.disabled) return;
   if (_mfaModo === 'errore') { await controllaRuoloEAvvia(); return; }
   const codice = (campo.value || '').replace(/\D/g, '');
   const mostraErrore = (msg) => { errore.textContent = msg; errore.style.display = 'block'; };
@@ -248,7 +218,7 @@ async function _mfaConferma() {
     return;
   }
   _mfaFattoreInCorso = null;
-  _mfaMostra('caricamento'); // toglie QR e chiave dalla pagina
+  _mfaMostra('caricamento');
   await controllaRuoloEAvvia();
 }
 
@@ -256,7 +226,6 @@ document.getElementById('mfa-conferma').addEventListener('click', _mfaConferma);
 document.getElementById('mfa-codice').addEventListener('keydown', e => { if (e.key === 'Enter') _mfaConferma(); });
 document.getElementById('mfa-esci').addEventListener('click', logout);
 
-// ── TABS ───────────────────────────────────────────────────────
 document.querySelectorAll('.tab-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -266,7 +235,6 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
   });
 });
 
-
 function mostraStatus(msg, ok) {
   const el = document.getElementById('status-msg');
   el.textContent = msg;
@@ -275,15 +243,6 @@ function mostraStatus(msg, ok) {
   mostraStatus._t = setTimeout(() => { el.className = 'status-msg'; }, 4500);
 }
 
-
-// ═══════════════════════════════════════════════════════════════════════
-// RESTYLE BINDEX FASE 7 — dialogo interno al posto di confirm()/prompt()
-// ═══════════════════════════════════════════════════════════════════════
-// adminDialog({ titolo, testo, conferma, pericolo, motivi, conNota, scriviPerConfermare })
-// → Promise: null se annullato; altrimenti { motivo, nota }.
-// motivi: elenco di scelte (radio) — la prima è preselezionata.
-// scriviPerConfermare: testo da digitare per abilitare "Conferma"
-// (sostituisce il prompt() dell'hard delete).
 function adminDialog(opz) {
   return new Promise(resolve => {
     const bg = document.getElementById('adm-dialog-bg');
@@ -334,7 +293,6 @@ function adminDialog(opz) {
   });
 }
 
-// Etichette italiane degli stati richiesta.
 function _etichettaStatoRichiesta(s) {
   return ({ pending: 'da approvare', approved: 'approvata', rejected: 'rifiutata' })[s] || s;
 }

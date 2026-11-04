@@ -1,32 +1,7 @@
-// ── ui/avvisi.ui.js ──────────────────────────────────────────────────────
-// (Q2 quality of life, 2026-10-12) Avvisi e finestre del sito al posto di
-// alert(), confirm() e prompt() del browser: stessa grafica del sito (tema
-// chiaro/scuro), la pagina non si blocca, il testo entra sempre come TESTO
-// (textContent), mai come HTML.
-//
-//   mostraAvviso(testo)           messaggio breve in basso (scompare da solo);
-//                                 se lungo o su più righe, finestra con OK.
-//                                 Sostituisce alert(): non blocca, quindi il
-//                                 codice dopo continua subito.
-//   avvisoBreve(testo, opz)       messaggio in basso. opz: { tipo: 'ok' |
-//                                 'errore' | 'info', durata (ms), azione:
-//                                 { etichetta, fn } } — es. "Annulla" (Q3).
-//   chiediConferma(opz)           → Promise<boolean>. opz: { titolo, testo,
-//                                 conferma, annulla, pericolo }.
-//   chiediTesto(opz)              → Promise<string|null> (null = Annulla,
-//                                 come prompt()). opz: { titolo, testo,
-//                                 valore, segnaposto, conferma, tipo,
-//                                 maxLength, opzioni (suggerimenti),
-//                                 multiriga (testo lungo da copiare) }.
-//   avvisoFisso(id, testo, opz)   barra che resta finché avvisoFissoTogli(id)
-//   avvisoFissoTogli(id)          (Q1: collezione non caricata + Riprova).
-//
-// Le finestre si aprono una alla volta (le altre aspettano in fila); Esc =
-// Annulla, Invio = Conferma. Nessuna dipendenza: si può caricare ovunque
-// prima del primo clic dell'utente.
+// Avvisi e conferme con la grafica del sito, al posto di alert/confirm/prompt.
 
 const _AVVISI_ICONE = { ok: 'fa-circle-check', errore: 'fa-triangle-exclamation', info: 'fa-circle-info' };
-let _avvisiFila = Promise.resolve(); // finestre: una alla volta
+let _avvisiFila = Promise.resolve();
 
 function _avvisiPila() {
     let pila = document.getElementById('avvisiPila');
@@ -40,7 +15,6 @@ function _avvisiPila() {
     return pila;
 }
 
-// Testi che arrivano dai vecchi alert(): l'emoji iniziale diceva il tipo.
 function _avvisoTipoDaTesto(testo) {
     const t = String(testo || '').trim();
     if (/^(❌|⚠️|⚠|⛔|🚫)/.test(t) || /^(errore|impossibile|non riesco|non è stato possibile)/i.test(t)) return 'errore';
@@ -48,7 +22,6 @@ function _avvisoTipoDaTesto(testo) {
     return 'info';
 }
 
-// L'icona dice già il tipo: via il simbolo iniziale dei vecchi alert().
 function _avvisoPulisci(testo) {
     return String(testo == null ? '' : testo).replace(/^\s*(❌|⚠️|⚠|✅|✓|✔️|✔)\s*/u, '');
 }
@@ -104,19 +77,16 @@ function avvisoBreve(testo, opz) {
     const pila = _avvisiPila();
     const bolla = _avvisoCreaBolla(testo, opz);
     pila.appendChild(bolla);
-    // Al massimo 4 messaggi a schermo: i più vecchi lasciano il posto.
     const bolle = [...pila.querySelectorAll('.avviso-bolla:not(.avviso-fisso)')].filter(b => !b._chiusa);
     bolle.slice(0, Math.max(0, bolle.length - 4)).forEach(_avvisoChiudiBolla);
     const tipo = opz.tipo || _avvisoTipoDaTesto(testo);
     const durata = opz.durata || (opz.azione ? 6000 : (tipo === 'errore' ? 6500 : 3800));
     bolla._timer = setTimeout(() => _avvisoChiudiBolla(bolla), durata);
-    // Il tempo si ferma mentre ci si passa sopra / lo si tocca.
     bolla.addEventListener('pointerenter', () => clearTimeout(bolla._timer));
     bolla.addEventListener('pointerleave', () => { if (!bolla._chiusa) bolla._timer = setTimeout(() => _avvisoChiudiBolla(bolla), 2500); });
     return { chiudi: () => _avvisoChiudiBolla(bolla) };
 }
 
-// Al posto di alert(): breve → in basso; lungo o su più righe → finestra.
 function mostraAvviso(testo, opz) {
     const t = String(testo == null ? '' : testo);
     if (t.length > 110 || t.includes('\n')) return mostraMessaggio({ testo: _avvisoPulisci(t), tipo: (opz && opz.tipo) || _avvisoTipoDaTesto(t) });
@@ -124,7 +94,6 @@ function mostraAvviso(testo, opz) {
     return Promise.resolve();
 }
 
-// ── Barre fisse (restano finché non si tolgono) ─────────────────────────
 function avvisoFisso(id, testo, opz) {
     opz = Object.assign({}, opz || {}, { fisso: true });
     const pila = _avvisiPila();
@@ -143,8 +112,6 @@ function avvisoFissoTogli(id) {
     if (bolla) _avvisoChiudiBolla(bolla);
 }
 
-// ── Finestre ─────────────────────────────────────────────────────────────
-// Costruisce la finestra e risolve con il valore scelto. Una alla volta.
 function _avvisoFinestra(costruisci) {
     const turno = _avvisiFila.then(() => new Promise(resolve => {
         const fondo = document.createElement('div');
@@ -162,13 +129,12 @@ function _avvisoFinestra(costruisci) {
             document.removeEventListener('keydown', tasti, true);
             fondo.classList.add('avviso-esce');
             setTimeout(() => fondo.remove(), 180);
-            try { if (giaAttivo && giaAttivo.focus) giaAttivo.focus({ preventScroll: true }); } catch (_) { /* elemento sparito */ }
+            try { if (giaAttivo && giaAttivo.focus) giaAttivo.focus({ preventScroll: true }); } catch (_) {   }
             resolve(valore);
         };
         const ctl = costruisci(box, chiudi);
         const tasti = (e) => {
             if (e.key === 'Tab') {
-                // Il fuoco resta dentro la finestra (niente clic "alla cieca" sotto).
                 const voci = [...box.querySelectorAll('button, input, select, textarea')].filter(el => !el.disabled);
                 if (!voci.length) return;
                 const i = voci.indexOf(document.activeElement);
@@ -179,7 +145,6 @@ function _avvisoFinestra(costruisci) {
             }
             if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); chiudi(ctl.annulla()); }
             else if (e.key === 'Enter' && !e.shiftKey && !(e.target && e.target.tagName === 'TEXTAREA')) {
-                // Invio sul bottone Annulla lo preme (comportamento normale del bottone).
                 if (e.target && e.target.classList && e.target.classList.contains('avviso-annulla')) return;
                 e.preventDefault(); e.stopPropagation(); chiudi(ctl.conferma());
             }
@@ -187,7 +152,7 @@ function _avvisoFinestra(costruisci) {
         document.addEventListener('keydown', tasti, true);
         fondo.addEventListener('click', (e) => { if (e.target === fondo) chiudi(ctl.annulla()); });
         document.body.appendChild(fondo);
-        setTimeout(() => { try { (ctl.fuoco || box).focus({ preventScroll: true }); } catch (_) { /* nessun fuoco */ } }, 0);
+        setTimeout(() => { try { (ctl.fuoco || box).focus({ preventScroll: true }); } catch (_) {   } }, 0);
     }));
     _avvisiFila = turno.catch(() => {});
     return turno;
@@ -261,7 +226,6 @@ function chiediTesto(opz) {
     return _avvisoFinestra((box, chiudi) => {
         _avvisoTitolo(box, opz.titolo || 'Scrivi', null);
         _avvisoParagrafo(box, opz.testo);
-        // multiriga: testi lunghi da copiare (un <input> toglierebbe gli a capo)
         const campo = document.createElement(opz.multiriga ? 'textarea' : 'input');
         if (opz.multiriga) campo.rows = 7; else campo.type = opz.tipo || 'text';
         campo.className = 'avviso-campo';
@@ -282,7 +246,7 @@ function chiediTesto(opz) {
             { etichetta: opz.annulla || 'Annulla', classe: 'btn-secondary avviso-annulla', fn: () => chiudi(null) },
             { etichetta: opz.conferma || 'OK', classe: 'btn-main', fn: () => chiudi(campo.value) },
         ]);
-        setTimeout(() => { try { campo.select(); } catch (_) { /* campo numerico */ } }, 0);
+        setTimeout(() => { try { campo.select(); } catch (_) {   } }, 0);
         return { conferma: () => campo.value, annulla: () => null, fuoco: campo };
     });
 }

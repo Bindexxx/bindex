@@ -1,40 +1,17 @@
-// ═══════════════════════════════════════════════════════════════════════
-// WIDGET-FOTO.UI.JS — tessera + pagina "Foto carte" (Bindex)
-// ═══════════════════════════════════════════════════════════════════════
-// RESTYLE BINDEX FASE 8c (2026-10-01, tavole "Foto carte"). Foto REALI delle
-// proprie carte: fronte, retro e fino a 4 difetti con etichetta (sql/89).
-// Decisioni di Claudio (2026-10-01): fotocamera dentro la pagina (sagoma,
-// scatto ritagliato sulla sagoma, Galleria, torcia se c'è); solo carte;
-// visibili al proprietario e, per gli altri, solo se la carta sta in un
-// binder pubblico; nulla di obbligatorio (una carta è "fatta" con almeno
-// una foto); missione "fotografa N carte" rimandata.
-//
-// Parti:
-//  - CATALOGO_WIDGET.foto (tessera) — corpo grande in widget-render-corpi;
-//  - renderPaginaFoto() → #fotoContenuto (view-section #foto in index.html):
-//    riepilogo, filtri, elenco; su PC pannello a destra (Fronte/Retro/
-//    Difetti con trascina-o-scegli, Salta/Prossima carta, QR per il telefono);
-//  - sessione fotocamera (#ftSessione, creata al volo): passi Fronte → Retro
-//    → Difetti, revisione Rifai/Va bene, Salta, chiudi.
-//  - pulizia dei file delle carte cancellate (foto_carte_da_pulire, sql/89).
-//
-// Dipende da: carteReali/_idsInScambio (ui/cards.ui.js), authGetUserId,
-// data/photos.repository.js, utils/foto-reali.js, escapeHtml/formattaEuro/
-// _urlImmagineVisualizzabile (utils), apriDettaglioWidget, QRCode (CDN).
+// Widget e pagina Foto carte.
 
-let _fotoCache = { quando: 0, userId: null, perCarta: null }; // Map carta_id → {fronte, retro, difetti[]}
-let _fotoFiltro = 'dafare'; // (Q5) il valore ricordato si legge dopo _FOTO_FILTRI, qui sotto
-let _fotoSelId = null;           // PC: carta nel pannello
-let _fotoEtichettaPC = null;     // PC: etichetta scelta per il prossimo difetto
-let _fotoSessione = null;        // stato della fotocamera
+let _fotoCache = { quando: 0, userId: null, perCarta: null };
+let _fotoFiltro = 'dafare';
+let _fotoSelId = null;
+let _fotoEtichettaPC = null;
+let _fotoSessione = null;
 
 const _FOTO_FILTRI = [
     ['dafare', 'Da fare'], ['scambio', 'In Scambio'], ['preziose', 'Più preziose'],
     ['senzaretro', 'Senza retro'], ['fatte', 'Fatte'],
 ];
-_fotoFiltro = prefFiltroPaginaScegli('foto', 'filtro', _FOTO_FILTRI.map(f => f[0]).concat('tutte'), _fotoFiltro); // (Q5)
+_fotoFiltro = prefFiltroPaginaScegli('foto', 'filtro', _FOTO_FILTRI.map(f => f[0]).concat('tutte'), _fotoFiltro);
 
-// ── DATI ─────────────────────────────────────────────────────────────────
 function _fotoCarteMie() {
     return (typeof carteReali !== 'undefined' ? carteReali : [])
         .filter(c => c.tabella === 'carte' && c.stato === 'collezione');
@@ -66,7 +43,6 @@ function _fotoDi(id) {
 }
 function _fotoFatta(id) { const f = _fotoDi(id); return !!(f.fronte || f.retro || f.difetti.length); }
 
-// Ordine di lavoro: prima quelle in Scambio, poi le più preziose.
 function _fotoOrdinaLavoro(lista) {
     return lista.slice().sort((a, b) => (_fotoInScambio(b) - _fotoInScambio(a)) || ((b.price || 0) - (a.price || 0)) || String(a.name).localeCompare(String(b.name), 'it'));
 }
@@ -82,7 +58,6 @@ function _fotoFiltra(filtro) {
     return tutte;
 }
 
-// Pulizia dei file di carte cancellate (fire-and-forget).
 async function _fotoPulisciOrfane() {
     try {
         const { data, error } = await fotoDaPulireList();
@@ -93,7 +68,6 @@ async function _fotoPulisciOrfane() {
     } catch (e) { console.warn('[foto] pulizia file:', e); }
 }
 
-// ── TESSERA ──────────────────────────────────────────────────────────────
 CATALOGO_WIDGET.foto = {
     titolo: 'Foto carte', icona: 'fa-camera',
     tab: 'foto',
@@ -117,7 +91,6 @@ CATALOGO_WIDGET.foto = {
     },
 };
 
-// Dalla tessera: apre la pagina e (telefono) la sessione.
 function fotoAvviaSessioneDaTessera(evt) {
     if (evt) evt.stopPropagation();
     if (typeof _editModeWidget !== 'undefined' && _editModeWidget) return;
@@ -125,16 +98,14 @@ function fotoAvviaSessioneDaTessera(evt) {
     setTimeout(() => fotoAvviaSessione(), (typeof DURATA_ANIMAZIONE_DETTAGLIO_MS !== 'undefined' ? DURATA_ANIMAZIONE_DETTAGLIO_MS : 400) + 80);
 }
 
-// Link dal QR "Più comodo col telefono": ?apri=foto (chiamata a fine avvio).
 function fotoApriDaLinkSeRichiesto() {
     let p;
     try { p = new URLSearchParams(window.location.search); } catch (_) { return; }
     if (p.get('apri') !== 'foto') return;
-    try { const u = new URL(window.location.href); u.searchParams.delete('apri'); history.replaceState(null, '', u.href); } catch (_) { /* niente */ }
+    try { const u = new URL(window.location.href); u.searchParams.delete('apri'); history.replaceState(null, '', u.href); } catch (_) {   }
     setTimeout(() => { if (typeof apriDettaglioWidget === 'function') apriDettaglioWidget('foto', null); }, 600);
 }
 
-// ── PAGINA ───────────────────────────────────────────────────────────────
 function _fotoEPC() {
     const pg = document.getElementById('foto');
     return !!pg && pg.clientWidth >= 780;
@@ -206,15 +177,13 @@ function _fotoDisegnaPagina() {
     if (pc) _fotoDisegnaQr();
 }
 
-function _fotoImpostaFiltro(k) { _fotoFiltro = k; prefFiltroPaginaSet('foto', 'filtro', k); _fotoSelId = null; _fotoDisegnaPagina(); } // (Q5) ricordato
+function _fotoImpostaFiltro(k) { _fotoFiltro = k; prefFiltroPaginaSet('foto', 'filtro', k); _fotoSelId = null; _fotoDisegnaPagina(); }
 
 function _fotoApriRiga(id) {
     if (_fotoEPC()) { _fotoSelId = id; _fotoEtichettaPC = null; _fotoDisegnaPagina(); return; }
     fotoAvviaSessione([id]);
 }
 
-// Dal sito (carta in Collezione, vecchio bottone "Foto dettaglio"): apre la
-// pagina posizionata sulla carta (PC) o la fotocamera su quella carta (telefono).
 function fotoApriCarta(id) {
     apriDettaglioWidget('foto', null);
     setTimeout(async () => {
@@ -224,7 +193,6 @@ function fotoApriCarta(id) {
     }, (typeof DURATA_ANIMAZIONE_DETTAGLIO_MS !== 'undefined' ? DURATA_ANIMAZIONE_DETTAGLIO_MS : 400) + 80);
 }
 
-// ── PANNELLO PC ──────────────────────────────────────────────────────────
 function _fotoSlotHtml(foto, tipo, etichetta) {
     if (foto) {
         const url = fotoRealeUrl(foto.storage_path);
@@ -315,9 +283,6 @@ async function _fotoCaricaDaPannello(file, tipo) {
     _fotoDisegnaPagina();
 }
 
-// ── SALVATAGGIO ──────────────────────────────────────────────────────────
-// Fronte/retro: una sola per carta (indice unico) → la vecchia si toglie
-// DOPO aver caricato il file nuovo, così un errore non lascia la carta senza.
 async function _fotoSalva(cartaId, tipo, etichetta, blob) {
     const userId = await authGetUserId();
     if (!userId) throw new Error('Accesso scaduto, rientra');
@@ -348,8 +313,6 @@ async function _fotoElimina(fotoId) {
     _fotoDisegnaPagina();
 }
 
-// ── SESSIONE FOTOCAMERA ──────────────────────────────────────────────────
-// coda: id delle carte da fotografare (default: tutte le "da fare").
 async function fotoAvviaSessione(coda) {
     await _fotoCarica(false);
     const ids = (coda && coda.length) ? coda : _fotoDaFare().map(c => c.id);
@@ -429,7 +392,7 @@ async function _fotoSessioneCamera() {
             if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) throw new Error('nessuna fotocamera');
             s.stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false });
         }
-        if (!_fotoSessione) { _fotoFermaCamera(s); return; } // chiusa nel frattempo
+        if (!_fotoSessione) { _fotoFermaCamera(s); return; }
         video.srcObject = s.stream;
         await video.play().catch(() => {});
         const traccia = s.stream.getVideoTracks()[0];
@@ -455,8 +418,6 @@ async function _fotoTorcia() {
     } catch (e) { console.warn('[foto] torcia:', e); }
 }
 
-// Scatto: ritaglia il fotogramma sul rettangolo della sagoma (stessa
-// trasformazione di object-fit: cover usata per mostrare il video).
 async function _fotoScatta() {
     const video = document.getElementById('ftVideo');
     const sagoma = document.getElementById('ftSagoma');
@@ -535,7 +496,6 @@ async function _fotoSessioneVaBene() {
     _fotoSessioneDifetti();
 }
 
-// Schermata "Difetti": scegli cosa mostrare (max 4) oppure passa alla prossima.
 function _fotoSessioneDifetti() {
     const s = _fotoSessione, el = document.getElementById('ftSessione');
     if (!s || !el) return;
@@ -571,7 +531,7 @@ function _fotoSessioneSalta() {
 }
 
 function _fotoFermaCamera(s) {
-    if (s && s.stream) { s.stream.getTracks().forEach(t => { try { t.stop(); } catch (_) { /* niente */ } }); s.stream = null; }
+    if (s && s.stream) { s.stream.getTracks().forEach(t => { try { t.stop(); } catch (_) {   } }); s.stream = null; }
 }
 
 function fotoChiudiSessione() {
@@ -586,8 +546,6 @@ function fotoChiudiSessione() {
     if (document.getElementById('foto') && document.getElementById('foto').classList.contains('active')) _fotoDisegnaPagina();
 }
 
-// ── CARTA A TUTTO SCHERMO (sito privato) ─────────────────────────────────
-// Riempie #flipCardFotoReali con le foto della carta aperta (solo le mie).
 async function fotoRealiInFlipCard(card) {
     const box = document.getElementById('flipCardFotoReali');
     if (!box) return;

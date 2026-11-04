@@ -1,36 +1,15 @@
-/* ==========================================================================
-   CardSync Pocket — Barra di stato + tendina notifiche
-   File: statusbar.css   —   versione 5.3
 
-   COERENZA CON I WIDGET
-   La barra non ha più una sua tavolozza: legge le stesse variabili che
-   il tuo progetto definisce su body[data-tema], cioè
-       --sfondo --tile --tile-bordo --testo --testo-2
-       --pannello --linea --incasso
-   Quindi cambiando tema con il tuo tasto "Tema" cambia anche la barra,
-   senza che tu debba fare niente. I valori dopo la virgola dentro var()
-   sono solo una rete di sicurezza se la barra viene usata da sola.
-
-   Tutte le classi hanno prefisso .csb- : nessuna collisione con .pkdx-tile,
-   .btn, .pill, .coda o gli altri pezzi del progetto.
-   ========================================================================== */
-
-/* Le misure stanno su :root perché servono anche fuori dalla barra:
-   al <body> per lo spazio in alto, e alle tue pagine a schermo intero.
-   I colori invece stanno su .csb-root, così seguono il tema. */
 :root {
   --csb-h: 34px;
   --csb-top: env(safe-area-inset-top, 0px);
 }
 
 .csb-root {
-  /* misure di forma, solo interne alla barra */
-  --csb-raggio: 22px;      /* schede: come le tile piccole, un filo meno */
+  --csb-raggio: 22px;
   --csb-raggio-sm: 14px;
   --csb-raggio-pill: 999px;
   --csb-vetro: blur(18px) saturate(1.35);
 
-  /* colori presi dal tema del progetto */
   --csb-pannello: var(--pannello, #ffffff);
   --csb-tile: var(--tile, rgba(252, 252, 250, 0.74));
   --csb-tile-bordo: var(--tile-bordo, transparent);
@@ -39,23 +18,20 @@
   --csb-linea: var(--linea, #e2e2df);
   --csb-incasso: var(--incasso, rgba(0, 0, 0, 0.045));
 
-  /* accenti della barra */
-  --csb-accento: #3b7dd8;          /* lo stesso blu di .btn.attivo */
+  --csb-accento: #3b7dd8;
   --csb-accento-rgb: 59, 125, 216;
-  --csb-attesa: #c8892b;           /* lo stesso ambra di .coda */
-  --csb-ball: #e0403a;             /* la pokeball resta una pokeball */
+  --csb-attesa: #c8892b;
+  --csb-ball: #e0403a;
 
   font-family: inherit;
   -webkit-font-smoothing: antialiased;
 }
 
-/* --- tema scuro: il vetro deve schiarire, non scurire --- */
 body[data-tema="scuro"] .csb-root {
   --csb-accento: #5a95e4;
   --csb-accento-rgb: 90, 149, 228;
 }
 
-/* --- tema retro: niente vetro, angoli vivi, ombre piene --- */
 body[data-tema="retro"] .csb-root {
   --csb-accento: #9bbc0f;
   --csb-accento-rgb: 155, 188, 15;
@@ -66,7 +42,6 @@ body[data-tema="retro"] .csb-root {
   --csb-vetro: none;
 }
 
-/* il progetto può spegnere il vetro ovunque */
 body.senza-vetro .csb-root { --csb-vetro: none; }
 body.senza-vetro[data-tema="chiaro"] .csb-root { --csb-tile: #f4f4f2; }
 body.senza-vetro[data-tema="scuro"] .csb-root { --csb-tile: #24242a; }
@@ -75,13 +50,10 @@ body.senza-vetro[data-tema="scuro"] .csb-root { --csb-tile: #24242a; }
   .csb-root { --csb-vetro: none; }
 }
 
-/* Spinge il contenuto del sito sotto la barra.
-   La classe viene aggiunta automaticamente da statusbar.js. */
 html.csb-has-bar body {
   padding-top: calc(var(--csb-h) + var(--csb-top));
 }
 
-/* Blocco scorrimento compatibile con Safari iOS. */
 body.csb-locked {
   position: fixed;
   left: 0;
@@ -108,10 +80,6 @@ body.csb-locked {
   white-space: nowrap;
   border: 0;
 }
-
-/* --------------------------------------------------------------------------
-   Barra
-   -------------------------------------------------------------------------- */
 
 .csb-bar {
   position: fixed;
@@ -144,9 +112,6 @@ body[data-tema="retro"] .csb-bar {
   box-shadow: 0 3px 0 rgba(0, 0, 0, 0.4);
 }
 
-/* Con la tendina scesa la barra perde lo sfondo e diventa parte della
-   tendina: altrimenti la fascia e il suo bordo tagliano in due il
-   contenuto che le passa sotto. */
 .csb-bar.is-shade-open {
   background: transparent;
   -webkit-backdrop-filter: none;
@@ -180,8 +145,6 @@ body[data-tema="retro"] .csb-bar.is-shade-open {
   height: 100%;
 }
 
-/* Orario ------------------------------------------------------------------ */
-
 .csb-clock {
   font-size: 13px;
   font-weight: 600;
@@ -191,8 +154,6 @@ body[data-tema="retro"] .csb-bar.is-shade-open {
 }
 
 body[data-tema="retro"] .csb-clock { letter-spacing: 0.06em; }
-
-/* Pokeball ---------------------------------------------------------------- */
 
 .csb-ball-wrap {
   position: relative;
@@ -261,8 +222,6 @@ body[data-tema="retro"] .csb-clock { letter-spacing: 0.06em; }
   50% { box-shadow: 0 0 0 4px rgba(224, 64, 58, 0.2); }
 }
 
-/* Pannellino diagnostica della pokeball ----------------------------------- */
-
 .csb-pop {
   position: absolute;
   top: calc(100% + 10px);
@@ -303,8 +262,6 @@ body[data-tema="retro"] .csb-pop {
   font-weight: 600;
   text-align: right;
 }
-
-/* Centro: ticker + contatore --------------------------------------------- */
 
 .csb-center-btn {
   appearance: none;
@@ -353,8 +310,6 @@ body[data-tema="retro"] .csb-pop {
   flex: 0 0 auto;
 }
 
-/* Pillole di destra: presenza, coda e risorsa ------------------------------ */
-
 .csb-presence,
 .csb-sync,
 .csb-currency {
@@ -371,7 +326,6 @@ body[data-tema="retro"] .csb-pop {
 .csb-sync.is-visible,
 .csb-currency.is-visible { display: inline-flex; }
 
-/* Quante persone stanno aiutando il gruppo in questo momento */
 .csb-presence {
   background: var(--csb-incasso);
   color: var(--csb-testo-2);
@@ -392,14 +346,12 @@ body[data-tema="retro"] .csb-pop {
   flex: 0 0 auto;
 }
 
-/* quando entra qualcuno, la pillola si accende un istante */
 .csb-presence.is-up {
   background: var(--csb-accento);
   color: #fff;
   font-weight: 600;
 }
 
-/* stessa identica pillola di .coda nel tuo header */
 .csb-sync {
   background: var(--csb-attesa);
   color: #fff;
@@ -422,8 +374,6 @@ body[data-tema="retro"] .csb-pop {
   color: #fff;
   font-weight: 600;
 }
-
-/* Tasti a destra ---------------------------------------------------------- */
 
 .csb-icon {
   appearance: none;
@@ -450,8 +400,6 @@ body[data-tema="retro"] .csb-pop {
 
 .csb-icon svg { width: 16px; height: 16px; display: block; transition: transform 0.45s ease; }
 
-/* Pagina aperta dal tasto (es. Impostazioni): acceso e ruotato, per far
-   capire che toccarlo di nuovo la chiude. */
 .csb-icon.is-attivo { color: #fff; background: var(--csb-accento); }
 .csb-icon.is-attivo svg { transform: rotate(180deg); }
 
@@ -477,10 +425,6 @@ body[data-tema="retro"] .csb-pop {
 .csb-profile { width: 27px; height: 27px; }
 
 body[data-tema="retro"] .csb-avatar { border-radius: 3px; }
-
-/* --------------------------------------------------------------------------
-   Banner "heads-up" — stessa scheda dei widget, ma appoggiata in alto
-   -------------------------------------------------------------------------- */
 
 .csb-heads {
   position: fixed;
@@ -565,10 +509,6 @@ body[data-tema="retro"] .csb-heads-btn {
   margin: 7px auto 0;
 }
 
-/* --------------------------------------------------------------------------
-   Tendina
-   -------------------------------------------------------------------------- */
-
 .csb-backdrop {
   position: fixed;
   inset: 0;
@@ -619,9 +559,6 @@ body[data-tema="retro"] .csb-shade {
   transition: transform 0.28s cubic-bezier(0.3, 0.8, 0.35, 1);
 }
 
-/* Scorre tutto il contenuto della tendina, non solo l'elenco: così se un
-   giorno ci sarà più roba di quanta ne entra, si raggiunge scorrendo
-   invece di sparire sotto il bordo. */
 .csb-shade-inner {
   display: flex;
   flex-direction: column;
@@ -632,8 +569,6 @@ body[data-tema="retro"] .csb-shade {
   -webkit-overflow-scrolling: touch;
   padding: 16px 16px 0;
 }
-
-/* Countdown bustina ------------------------------------------------------- */
 
 .csb-count {
   border-radius: var(--csb-raggio);
@@ -673,7 +608,6 @@ body[data-tema="retro"] .csb-count {
   font-variant-numeric: tabular-nums;
 }
 
-/* barra identica a .barra-out / .barra-in dei widget */
 .csb-count-track {
   display: block;
   height: 6px;
@@ -723,8 +657,6 @@ body[data-tema="retro"] .csb-count-fill {
 
 .csb-count-action[hidden] { display: none; }
 .csb-count-action:active { opacity: 0.7; }
-
-/* Righe proposta e coda --------------------------------------------------- */
 
 .csb-cta,
 .csb-pending {
@@ -804,8 +736,6 @@ body[data-tema="retro"] .csb-count-fill {
 
 .csb-cta-close:active { opacity: 0.4; }
 
-/* Tasti rapidi — quattro tile in miniatura -------------------------------- */
-
 .csb-quick {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -864,8 +794,6 @@ body[data-tema="retro"] .csb-quick-btn:active {
 }
 
 .csb-quick-label { text-align: center; line-height: 1.2; }
-
-/* Riga preferenze: tema e suono ------------------------------------------- */
 
 .csb-prefs {
   display: flex;
@@ -927,8 +855,6 @@ body[data-tema="retro"] .csb-sound-btn {
   letter-spacing: 0.07em;
 }
 
-/* Elenco notifiche -------------------------------------------------------- */
-
 .csb-notif-head {
   display: flex;
   align-items: center;
@@ -959,7 +885,6 @@ body[data-tema="retro"] .csb-notif-head {
 .csb-clear:active { opacity: 0.6; }
 .csb-clear[hidden] { display: none; }
 
-/* Riga di suggerimento del tutorial, mostrata una volta sola */
 .csb-tip {
   font-size: 11.5px;
   line-height: 1.4;
@@ -997,7 +922,6 @@ body[data-tema="retro"] .csb-notif-head {
 
 body[data-tema="retro"] .csb-tip { text-transform: uppercase; letter-spacing: .05em; }
 
-/* la mano che dimostra il gesto */
 @keyframes csb-mostra-gesto {
   0% { transform: translateX(0); }
   22% { transform: translateX(-84px); }
@@ -1018,7 +942,6 @@ body[data-tema="retro"] .csb-tip { text-transform: uppercase; letter-spacing: .0
   min-height: 0;
 }
 
-/* Involucro: tiene il tasto Cancella nascosto sotto la notifica */
 .csb-notif-wrap {
   position: relative;
   border-radius: var(--csb-raggio-sm);
@@ -1033,8 +956,6 @@ body[data-tema="retro"] .csb-tip { text-transform: uppercase; letter-spacing: .0
   opacity: 0;
 }
 
-/* Indizio di eliminazione: non esiste finché non trascini, e non è
-   rosso. È l'incasso del tema con una crocetta, come una pill spenta. */
 .csb-notif-hint {
   position: absolute;
   top: 0;
@@ -1055,7 +976,6 @@ body[data-tema="retro"] .csb-tip { text-transform: uppercase; letter-spacing: .0
 
 .csb-notif-wrap.is-swiping .csb-notif-hint { opacity: 1; }
 
-/* superata la soglia, l'indizio si fa deciso: stai per eliminare */
 .csb-notif-wrap.is-armed .csb-notif-hint {
   color: var(--csb-testo);
   transform: scale(1.18);
@@ -1070,8 +990,6 @@ body[data-tema="retro"] .csb-tip { text-transform: uppercase; letter-spacing: .0
   text-align: left;
   border: 1px solid var(--csb-tile-bordo);
   border-radius: var(--csb-raggio-sm);
-  /* due strati: la tinta della tile SOPRA il pannello pieno. Il colore
-     resta identico a quello delle tile, ma niente traspare da sotto. */
   background: linear-gradient(var(--csb-tile), var(--csb-tile)), var(--csb-pannello);
   padding: 12px 13px;
   display: flex;
@@ -1114,7 +1032,6 @@ body[data-tema="retro"] .csb-notif {
   gap: 7px;
 }
 
-/* pallino "da leggere", nella lingua delle vostre pill */
 .csb-notif.is-new .csb-notif-title::before {
   content: "";
   width: 7px;
@@ -1158,9 +1075,6 @@ body[data-tema="retro"] .csb-notif {
   padding: 30px 16px 34px;
 }
 
-/* ---- notifiche che richiedono un intervento manuale ---- */
-
-/* intestazione della sezione in cima all'elenco */
 .csb-sez {
   font-size: 11px;
   font-weight: 600;
@@ -1185,7 +1099,6 @@ body[data-tema="retro"] .csb-notif.is-intervento {
   border-color: var(--csb-attesa);
 }
 
-/* niente pallino blu: qui il segnale è l'etichetta */
 .csb-notif.is-intervento.is-new .csb-notif-title::before { display: none; }
 
 .csb-tag {
@@ -1200,7 +1113,6 @@ body[data-tema="retro"] .csb-notif.is-intervento {
   text-transform: none;
 }
 
-/* queste non si eliminano con il gesto: rimbalzano indietro */
 .csb-notif-wrap.is-bloccata .csb-notif-hint {
   background: transparent;
   color: var(--csb-attesa);
@@ -1210,8 +1122,6 @@ body[data-tema="retro"] .csb-notif.is-intervento {
 .csb-notif.is-settling {
   transition: transform 0.26s cubic-bezier(0.3, 0.8, 0.35, 1), opacity 0.18s ease;
 }
-
-/* Maniglia ---------------------------------------------------------------- */
 
 .csb-handle {
   flex: 0 0 auto;
@@ -1235,10 +1145,6 @@ body[data-tema="retro"] .csb-notif.is-intervento {
 
 body[data-tema="retro"] .csb-handle i { border-radius: 0; height: 6px; }
 
-/* --------------------------------------------------------------------------
-   Animazioni ridotte
-   -------------------------------------------------------------------------- */
-
 @media (prefers-reduced-motion: reduce) {
   .csb-ball,
   .csb-ball[data-state="online"],
@@ -1250,9 +1156,7 @@ body[data-tema="retro"] .csb-handle i { border-radius: 0; height: 6px; }
   .csb-shade.is-animating,
   .csb-heads,
   .csb-count-fill,
-  /* ---- notifiche che richiedono un intervento manuale ---- */
 
-/* intestazione della sezione in cima all'elenco */
 .csb-sez {
   font-size: 11px;
   font-weight: 600;
@@ -1277,7 +1181,6 @@ body[data-tema="retro"] .csb-notif.is-intervento {
   border-color: var(--csb-attesa);
 }
 
-/* niente pallino blu: qui il segnale è l'etichetta */
 .csb-notif.is-intervento.is-new .csb-notif-title::before { display: none; }
 
 .csb-tag {
@@ -1292,7 +1195,6 @@ body[data-tema="retro"] .csb-notif.is-intervento {
   text-transform: none;
 }
 
-/* queste non si eliminano con il gesto: rimbalzano indietro */
 .csb-notif-wrap.is-bloccata .csb-notif-hint {
   background: transparent;
   color: var(--csb-attesa);
@@ -1305,51 +1207,17 @@ body[data-tema="retro"] .csb-notif.is-intervento {
   .csb-center-btn { transition: opacity 0.01s; }
 }
 
-/* ==========================================================================
-   INNESTI SUL PROGETTO
-   Poche regole che riguardano elementi TUOI, non della barra. Servono
-   perché la barra sta sopra tutto e non deve coprire le cose sbagliate.
-   Se un giorno togli la barra, puoi cancellare questo blocco intero.
-   ========================================================================== */
-
-/* La testata delle pagine a schermo intero finirebbe sotto la barra. */
 html.csb-has-bar #pageOverlay .page-header {
   padding-top: calc(18px + var(--csb-h) + env(safe-area-inset-top, 0px));
 }
 
-/* I momenti immersivi devono coprire la barra, come su un telefono
-   quando parte un video: sbusto, scanner, sbircia, annulla. */
 html.csb-has-bar #scanner { z-index: 9200; }
 html.csb-has-bar #sbusto { z-index: 9210; }
 html.csb-has-bar #sbircia { z-index: 9220; }
 html.csb-has-bar #annulla { z-index: 9230; }
 
-/* Nel tema retro le righe di scansione devono passare anche sulla barra,
-   altrimenti la barra sembra incollata sopra allo schermo invece che
-   dentro. */
 html.csb-has-bar #crt { z-index: 9300; }
 
-
-/* ==========================================================================
-   CardSync Pro — integrazione nel mockup del telefono (2026-09-01)
-   Nessuna riga sopra questo blocco è stata toccata: tutto quello che serve
-   per il progetto reale vive qui, in coda, così resta ovvio cosa è
-   originale della libreria (v5.3) e cosa è stato aggiunto per l'integrazione.
-   Se un giorno si aggiorna statusbar.css a una versione nuova, questo
-   blocco si può copiare in fondo al nuovo file senza modifiche.
-
-   Montata dentro #phoneScreen (non sul body): la barra deve restare nel
-   mockup del telefono, non coprire l'intero browser desktop — vedi
-   opts.container in statusbar.js, passato da CSBar.init() in
-   ui/phone.ui.js.
-   ========================================================================== */
-
-/* --- Variabili: dal vocabolario della libreria (--sfondo, --tile, ecc.)
-   alle variabili reali del tema del sito (--bg-color, --card-bg, ecc.,
-   definite in index.html per :root/.theme-verde/.theme-pokemon/.dark-mode
-   e le loro combinazioni). Bastano queste per far seguire alla barra
-   qualunque tema/combinazione già esistente, via normale cascata CSS —
-   nessun JavaScript di sincronizzazione tema necessario. */
 #phoneScreen,
 #csbHeadsFuori {
   --sfondo: var(--bg-color);
@@ -1361,18 +1229,10 @@ html.csb-has-bar #crt { z-index: 9300; }
   --linea: var(--border-color);
   --incasso: var(--primary-light);
 
-  /* Altezza barra allineata a --phone-barra-stato-h (già usata da
-     #phonePagineWrap per lo spazio del contenuto sotto la vecchia barra,
-     vedi index.html) — così non serve toccare quel layout. Nessun notch
-     dentro un mockup ridimensionato: safe-area-inset non ha senso qui. */
   --csb-h: var(--phone-barra-stato-h, 2.5rem);
   --csb-top: 0px;
 }
 
-/* --- Posizionamento: da "rispetto al viewport" a "rispetto allo schermo
-   del telefono" (#phoneScreen è già position:relative via il proprio
-   position:absolute, fa da riferimento per i figli). Stessi 4 elementi
-   della libreria che usano position:fixed, nessun altro toccato. */
 #phoneScreen .csb-bar,
 #phoneScreen .csb-heads,
 #phoneScreen .csb-backdrop,
@@ -1384,30 +1244,16 @@ html.csb-has-bar #crt { z-index: 9300; }
   position: absolute;
 }
 
-/* --- Selettore tema interno della tendina (chiaro/scuro/retro) nascosto:
-   il tema si cambia da Impostazioni, che già esiste nel sito — un secondo
-   selettore qui sarebbe un doppione, e per di più non funzionante (scrive
-   data-tema, che il sito reale non legge). */
 #phoneScreen .csb-swatches,
 #csbHeadsFuori .csb-swatches {
   display: none;
 }
 
-/* --- Pulsante profilo di CSBar nascosto: al suo posto viene spostato via
-   JS il vero #profiloContainer del sito (menu completo: nome, email,
-   cambio username, logout — già esistente e testato), non ricostruito da
-   zero. Vedi initPhoneShell() in ui/phone.ui.js. */
 #phoneScreen .csb-profile,
 #csbHeadsFuori .csb-profile {
   display: none;
 }
 
-/* --- Leggero adattamento tono accento in dark mode, stesso spirito della
-   variante "scuro" originale della libreria (che però leggeva data-tema,
-   qui leggiamo la classe reale del sito). */
-/* RESTYLE BINDEX FASE 1 (2026-09-30): tendina e scorciatoie col colore
-   del tema scelto dall'utente (--primary), in chiaro e in scuro. Prima era
-   il blu fisso della libreria (#3b7dd8 / #5a95e4 in scuro). */
 #phoneScreen .csb-root,
 body.dark-mode #phoneScreen .csb-root,
 #csbHeadsFuori .csb-root,
@@ -1415,24 +1261,10 @@ body.dark-mode #csbHeadsFuori .csb-root {
   --csb-accento: var(--primary, #3b7dd8);
 }
 
-/* --- Vecchia barra di stato (#phoneBarraStato, index.html) nascosta per
-   intero: orologio, pallino sync, ingranaggio Impostazioni sostituiti
-   dalla nuova barra; suoni/densità/matita spostati fra i "quickActions"
-   della tendina (vedi initPhoneShell in ui/phone.ui.js). L'unico pezzo
-   ancora vivo, #profiloContainer (menu profilo completo), viene spostato
-   via JS dentro la nuova barra PRIMA che l'utente veda qualcosa — nessun
-   markup duplicato o riscritto, lo stesso nodo DOM di sempre. */
 #phoneBarraStato {
   display: none;
 }
 
-/* ==========================================================================
-   RESTYLE BINDEX FASE 1 (2026-09-30) — barra come nelle tavole approvate
-   ========================================================================== */
-
-/* Centro della barra ("N notifiche nuove") sostituito dal contatore rosso
-   accanto all'ora (.csb-nbadge, vedi statusbar.js). Il bottone resta nel
-   DOM (invisibile): la barra intera continua ad aprire la tendina. */
 #phoneScreen .csb-center-btn,
 #csbHeadsFuori .csb-center-btn { visibility: hidden; }
 
@@ -1452,19 +1284,12 @@ body.dark-mode #csbHeadsFuori .csb-root {
 }
 .csb-nbadge[hidden] { display: none; }
 
-/* Pokéball di stato: rossa = Supabase + estensione attiva (regola
-   "online" della libreria, invariata), verde = solo Supabase (estensione
-   non rilevata su questo computer), grigia = offline (default libreria).
-   La classe la mette _aggiornaPokeballStatoEstensione()
-   (ui/paginainiziale-cornice-statusbar.ui.js). */
 .csb-solo-supabase .csb-ball[data-state="online"] {
   background: linear-gradient(180deg, #2e9d4a 0 47%, #f7f8fa 47% 100%);
   box-shadow: 0 0 0 3px rgba(46, 157, 74, 0.18);
   animation: none;
 }
 
-/* Bindex (2026-10-01, tavola OK-tendina): "Scegli le scorciatoie" sotto
-   la griglia delle scorciatoie. */
 .csb-quick-edit {
   grid-column: 1 / -1;
   justify-self: end;
@@ -1479,11 +1304,6 @@ body.dark-mode #csbHeadsFuori .csb-root {
   cursor: pointer;
 }
 
-/* Bindex (2026-10-05): con una pagina aperta (.container, z-index 11) il
-   banner dentro #phoneShell (z-index 10) restava coperto dalla pagina. Mentre
-   il dettaglio e' aperto il banner vive in questo strato sopra la pagina,
-   sovrapposto esattamente a #phoneScreen (posizione/dimensione da JS, vedi
-   _csbBannerSopraPagina in ui/paginainiziale-dettaglio.ui.js). */
 #csbHeadsFuori {
   position: fixed;
   z-index: 9100;
@@ -1496,18 +1316,10 @@ body.dark-mode #csbHeadsFuori .csb-root {
 #csbHeadsFuori .csb-shade,
 #csbHeadsFuori .pokedex-ball-tendina { pointer-events: auto; }
 
-/* Tendina: tutto il pannello e' afferrabile col dito (prima solo la barra e
-   la pallina: da telefono, per richiuderla, bisognava centrare quelle).
-   touch-action:none sul pannello impedisce al browser di rubare il gesto
-   (pointercancel) mentre si trascina; se il contenuto e' piu' alto del
-   pannello (.csb-scrolla, messa da statusbar.js) si torna a pan-y, cosi' si
-   puo' scorrere l'elenco. La pallina in fondo trascina sempre. */
 .csb-shade,
 .csb-shade-inner { touch-action: none; }
 .csb-shade.csb-scrolla .csb-shade-inner { touch-action: pan-y; }
 
-/* Bindex (2026-10-01, tavola PC-banner-bd): banner in basso a destra sugli
-   schermi larghi, se scelto in Impostazioni → Notifiche e suoni. */
 @media (min-width: 900px) {
   body.banner-basso #phoneScreen .csb-heads,
   body.banner-basso #csbHeadsFuori .csb-heads {

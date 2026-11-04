@@ -1,138 +1,5 @@
-// ═══════════════════════════════════════════════════════════════════════
-// WIDGET-CHAT.UI.JS — tessera + inbox della chat in-app (CardSync Pro)
-// ═══════════════════════════════════════════════════════════════════════
-// ESTRATTO (2026-09-24, sessione successiva a quella che ha creato la
-// chat) da ui/widget-match.ui.js — vedi "nuovo+widget-chat.txt" per il
-// piano completo. La chat era nata dentro widget-match.ui.js per
-// necessità della sessione in cui è stata scritta (Claudio: "DEVE DARE
-// LA POSSIBILITA DI CONTATTARE L'ALTRO UTENTE, SENZA DOXARLO"); questo
-// violava il pattern "un widget = un file" e aveva una conseguenza
-// funzionale reale, non solo estetica: prima di questo file, l'unico
-// modo di aprire una chat era dalla riga di un match ancora attivo — se
-// il match spariva (carta tolta dallo Scambio, richiesta conclusa,
-// nascosta) la conversazione restava nel DB ma nessuna UI permetteva di
-// riaprirla. Questo file aggiunge anche l'INBOX (renderPaginaChat, sotto)
-// che risolve il problema: elenca TUTTE le conversazioni dell'utente,
-// non solo quelle con un match ancora visibile.
-//
-// TAGLIA/INCOLLA, non riscrittura, per: variabili di stato,
-// apriChat/chiudiChat, _chatAvviaPolling/_chatFermaPolling,
-// _chatMessaggioHtml/_chatRenderMessaggi, _chatInviaMessaggioClick,
-// _chatBloccaUtenteClick/_chatSegnalaClick, badge non letti, funzioni
-// nickname. RINOMINATE in blocco (erano con suffisso "Match", non più
-// corretto una volta isolate — vedi nuovo+widget-chat.txt):
-//   _chatMatchConversazioneId  -> _chatConversazioneId
-//   _chatMatchAltroId          -> _chatAltroId
-//   _chatMatchUserId           -> _chatUserId
-//   _chatMatchPollingHandle    -> _chatPollingHandle
-//   apriChatMatch              -> apriChat
-//   chiudiChatMatch            -> chiudiChat
-//   _numChatNonLettiMatch      -> _numChatNonLetti
-//   _aggiornaBadgeChatMatch    -> _aggiornaBadgeChat
-//   _nicknameMatchCaricaSeVuoto -> _nicknameCaricaSeVuoto
-//   salvaNicknameMatch          -> salvaNickname
-// Ogni chiamante esterno aggiornato di conseguenza: _contattaPersonaMatch
-// (widget-match.ui.js) ora chiama apriChat(); index.html (modale, campo
-// nickname) aggiornato con gli id/onclick nuovi — vedi consegna.
-//
-// NICKNAME (imposta_nickname/ottieni_nicknames, sql/71): spostate qui
-// per decisione di Claudio (2026-09-24, sessione di estrazione), con
-// riserva esplicita di spostarle in un futuro file "impostazioni utente"
-// se mai ne nascerà uno — oggi non esiste, e le RPC vivono già in
-// data/chat.repository.js (nato per la chat), quindi restano dove sono
-// concettualmente più a casa.
-//
-// TESSERA NUOVA (id catalogo 'chat', mai esistita prima — nessun
-// precedente da copiare): Opzione B del mockup approvato da Claudio
-// (2026-09-24) — totale non letti in grande + le ultime 3 conversazioni
-// con messaggi non letti nel blocco esteso (2x2/1x2), righe cliccabili.
-// Corpo grafico in ui/widget-render-corpi.ui.js (_ballCORPI.chat).
-//
-// ═══════════════════════════════════════════════════════════════════════
-// DIPENDENZE — file toccati per far funzionare questo widget (segnalato
-// per Regola d'Oro #1, ogni modifica è isolata/additiva):
-// - ui/widget-render-corpi.ui.js: _ballCORPI.chat (nuovo), _ballCORPI.match
-//   ripulito (tolta la parte aggiunta per la chat, torna a prima).
-// - ui/widget-render-condiviso.ui.js: _ballChiedeAttenzione, nuovo caso
-//   per id === 'chat' (senza, la tessera non si anima mai anche con
-//   badge visibile — la funzione non gestisce widget non elencati).
-// - ui/paginainiziale-dettaglio.ui.js: apriDettaglioWidget, 'chat'
-//   aggiunta alla whitelist hardcoded + riga
-//   `if (tabId === 'chat') renderPaginaChat();` — SENZA questo,
-//   l'inbox non si apre mai (né dal tap sulla tessera, né dal click
-//   sulla notifica, né dalla riga "Messaggi non letti"). Scoperta
-//   durante questa sessione, non prevista dalla spec originale,
-//   segnalata e approvata da Claudio prima di procedere.
-// - ui/paginainiziale-polling-avvio.ui.js: chiamata rinominata
-//   (_aggiornaBadgeChatMatch -> _aggiornaBadgeChat), target della
-//   notifica 'chat-messaggio' aggiornato da '#match' a '#chat'.
-//   AGGIORNATO (2026-09-24, giro di migliorie): onNotificationClick ora
-//   apre anche la conversazione specifica, non solo l'inbox — letto
-//   statusbar.js per intero per farlo bene (n.data esiste davvero ma
-//   NON sopravvive a un refresh, e un 'group' condiviso tra
-//   conversazioni diverse avrebbe agganciato 'data' alla persona
-//   sbagliata — vedi i commenti puntuali in _aggiornaBadgeChat sotto e
-//   in paginainiziale-polling-avvio.ui.js).
-// - data/chat.repository.js: due aggiunte additive, nessuna funzione
-//   esistente cambiata nel comportamento — chatMessaggiNonLettiList ora
-//   seleziona anche 'creato_il' (serve per ordinare le conversazioni
-//   per recency nella tessera), e una funzione nuova
-//   chatUltimiMessaggiPerConversazioni() per l'anteprima ultimo
-//   messaggio nell'inbox. NON era previsto dalla spec ("già generico,
-//   non serve toccarlo") — deviazione minima, segnalata qui.
-// - index.html: script tag, sezione #chat (inbox, nuova), modale
-//   rinominato da #chatMatchModal a #chatModal (con i suoi id interni),
-//   campo nickname aggiornato con gli onclick/onfocus nuovi. RISTRUTTURATO
-//   ULTERIORMENTE (2026-09-24, restyle WhatsApp/Messenger): markup interno
-//   di #chatModal riscritto (header avatar+menu ⋮, corpo .chat-body,
-//   input .chat-input-bar) + ~140 righe di CSS dedicate aggiunte in cima
-//   al file, SCOPED a #chatModal/.chat-* — zero modifiche a
-//   .modal-content/.modal-overlay condivisi da ogni altro modale del
-//   sito (verificato prima di scrivere, stesso pattern già in uso per
-//   #ricercaGlobaleModal).
-//
-// PUNTI ANCORA APERTI (aggiornato — vedi anche i commenti puntuali sopra
-// per quelli risolti in questo giro di migliorie, 2026-09-24): rate
-// limit chat mai testati sotto stress; _aggiornaBadgeChat fa 2-3
-// query/60s per utente attivo, accettabile a 5 persone. Il click sulla
-// riga della tessera (_ballAzioneRiga, caso 'chat-conversazione' in
-// ui/widget-render-tessere-grandi.ui.js) e quello sulla notifica CSBar
-// aprono entrambi ora la conversazione specifica — risolto in questo
-// giro.
-//
-// GIRO SUCCESSIVO STESSO GIORNO (2026-09-24, "va ricontrollato tutto, va
-// visto il lato server" — sql/72_chat_restrizioni_e_moderazione.sql):
-// tutte e tre le restrizioni sotto (minorenni, parolacce, link esterni)
-// sono ora ANCHE applicate dentro invia_messaggio/
-// ottieni_o_crea_conversazione sul DB — non più scavalcabili chiamando
-// le RPC direttamente. Il flag minorenne non è più un array hardcoded
-// qui: vive in chat_restrizioni_utente (sql/72), scritto SOLO dall'admin
-// via ui/admin-users.ui.js (checkbox nella modale utente) +
-// data/admin.repository.js (adminChatRestrizioneGet/
-// adminChatImpostaMinorenne). Le liste parolacce/link restano duplicate
-// tra qui e sql/72 per scelta esplicita (Regola d'Oro #1) — vanno
-// allineate A MANO se Claudio amplia una delle due, nessun meccanismo le
-// sincronizza.
-// ───────────────────────────────────────────────────────────────────────
+// Widget Chat: tessera e messaggi.
 
-// ═══════════════════════════════════════════════════════════════════════
-// RESTRIZIONI D'USO (2026-09-24, richiesta esplicita di Claudio) — DOPO
-// sql/72 (2026-09-24, stesso giorno, giro successivo: "va ricontrollato
-// tutto, va visto il lato server") la barriera VERA è dentro le RPC
-// invia_messaggio/ottieni_o_crea_conversazione sul DB. Quanto sotto resta
-// solo un primo avviso lato client (UX: non far scoprire il blocco solo
-// dopo il tentativo di invio) — chiunque chiami le RPC direttamente
-// (console del browser, Postman) trova comunque il controllo server-side,
-// non più scavalcabile.
-// ═══════════════════════════════════════════════════════════════════════
-
-// ── 1) ACCESSO VIETATO AI MINORENNI — flag letto da chat_restrizioni_utente
-// (sql/72), marcato manualmente dall'admin nel pannello utenti
-// (ui/admin-users.ui.js, checkbox "Utente minorenne") — non più un array
-// hardcoded qui: da questo giro il flag vive sul DB, scrittura riservata
-// agli admin via RLS (verificata dal vivo prima di sql/72). Wrapper in
-// data/chat.repository.js (chatRestrizioneUtente), mai supabaseClient
-// diretto qui — pattern del progetto (UI -> repository).
 let _chatUtenteVietato = false;
 
 async function _chatVerificaAccessoConsentito() {
@@ -144,38 +11,12 @@ async function _chatVerificaAccessoConsentito() {
         _chatUtenteVietato = !!(data && data.minorenne);
     } catch (e) {
         console.error('_chatVerificaAccessoConsentito: errore lettura restrizione:', e);
-        // In dubbio NON blocca lato client: un errore di rete/sessione
-        // qui non nega l'accesso a chi ha diritto di usarlo — resta
-        // comunque coperto dal controllo server-side in sql/72 se il
-        // flag fosse davvero true.
         _chatUtenteVietato = false;
     }
     return _chatUtenteVietato;
 }
-// Fire-and-forget al caricamento dello script, così il flag è già
-// popolato (quando possibile) prima del primo render della tessera —
-// stesso principio "tutto già in cache" usato da _aggiornaBadgeChat più
-// sotto. Ricontrollato comunque ad ogni giro di quella funzione e ad
-// ogni apertura della chat/inbox, quindi un mancato aggiornamento qui
-// (sessione non ancora pronta a tempo di caricamento script) si
-// autocorregge al primo giro utile.
-// FIX (audit 2026-09-25, A4): prima era chiamata direttamente qui, al
-// caricamento di questo file — ma supabaseClient nasceva solo nell'ultimo
-// <script> di index.html (oggi nasce in config/supabase.js, prima di tutti
-// gli script: il problema non si ripresenterebbe, ma 'load' resta il
-// momento giusto perché la sessione sia già pronta), quindi ad OGNI caricamento pagina partiva un
-// "ReferenceError: supabaseClient is not defined" (ingoiato dal catch,
-// ma finito nel log diagnostico). All'evento 'load' tutti gli script,
-// incluso quello che crea supabaseClient, sono già stati eseguiti.
-// REGOLA per il futuro: nessun codice eseguito al caricamento di un file
-// deve chiamare (anche indirettamente) il DB.
 window.addEventListener('load', () => { _chatVerificaAccessoConsentito(); });
 
-// ── 2) FILTRO PAROLACCE — lista non esaustiva, pensata per un gruppo di
-// amici/famiglia, non per moderazione professionale: meglio accettare
-// qualche falso negativo che bloccare frasi innocue per un falso
-// positivo. \b per non colpire sottostringhe dentro parole innocue.
-// Claudio può ampliare l'elenco liberamente.
 const _CHAT_PAROLE_VIETATE = [
     'cazzo', 'cazzata', 'cazzone', 'stronzo', 'stronza', 'puttana', 'troia',
     'merda', 'merdoso', 'vaffanculo', 'bastardo', 'bastarda', 'coglione',
@@ -190,18 +31,6 @@ function _chatContieneParolacce(testo) {
     });
 }
 
-// ── 3) SOLO LINK INTERNI A BINDEX — qualunque URL (http/https/www.) è
-// bloccato a meno che non contenga il dominio del sito. Regex volutamente
-// permissiva nel riconoscere "è un link" (meglio bloccare un falso
-// positivo raro che lasciar passare un link vero non riconosciuto),
-// rigida sul dominio consentito.
-// CORRETTO (2026-09-26, sql/80): prima bastava che "bindexxx.github.io"
-// comparisse DA QUALCHE PARTE nel link (includes) — passavano
-// "https://sito-esterno.com/bindexxx.github.io" o
-// "http://bindexxx.github.io:pw@sito-esterno.com". Ora il dominio di OGNI
-// link deve essere esattamente bindexxx.github.io (con o senza www.).
-// Regola IDENTICA a _chat_ha_link_esterno sul DB (sql/80), provata sugli
-// stessi 18 casi: se si cambia una, va cambiata anche l'altra.
 const _CHAT_RE_URL = /(?:https?:\/\/|www\.)\S+/gi;
 const _CHAT_RE_URL_INTERNO = /^(?:https?:\/\/)?(?:www\.)?bindexxx\.github\.io(?:$|[\/?#)\],;!]|\.(?:$|[^a-z0-9\-]))/i;
 
@@ -211,32 +40,19 @@ function _chatContieneLinkEsterno(testo) {
     return trovati.some(url => !_CHAT_RE_URL_INTERNO.test(url));
 }
 
-// ── VOCE DI CATALOGO ──────────────────────────────────────────────────
 CATALOGO_WIDGET.chat = {
     titolo: 'Chat', icona: 'fa-comment',
     preview: () => {
-        // AGGIUNTO (2026-09-24): tessera "spenta" per chi è nella lista
-        // vietati — niente conteggi/anteprime, anche se ci fossero
-        // messaggi non letti davvero.
         if (_chatUtenteVietato) return { righe: ['Non disponibile'], dati: { totale: 0, conversazioni: [], vietato: true } };
         const totale = _numChatNonLetti || 0;
         const conversazioni = _chatUltimeConversazioni || [];
         const dati = { totale, conversazioni };
         if (totale === 0) return { righe: [_chatLetturaFallita ? '—' : 'Nessun messaggio'], dati };
-        // _ballChiedeAttenzione('chat', ...) in
-        // ui/widget-render-condiviso.ui.js legge righe[0] per decidere se
-        // far "scuotere" la tessera: deve contenere una cifra.
-        // Restyle FASE 2: messaggi da leggere = azione → badge rosso.
         return { righe: [`${totale} messagg${totale === 1 ? 'io' : 'i'} nuov${totale === 1 ? 'o' : 'i'}`], stato: 'ok', azioni: totale, dati };
     },
     azione: (dati, evt) => { apriDettaglioWidget('chat', evt); },
 };
 
-// ── INBOX — pagina dedicata (id sezione 'chat', vedi index.html) ───────
-// Elenca TUTTE le conversazioni dell'utente (non solo quelle con
-// messaggi non letti), ordinate per messaggio più recente. Risolve il
-// problema che ha motivato l'estrazione: prima, una chat era
-// raggiungibile SOLO dalla riga di un match ancora attivo.
 async function renderPaginaChat() {
     const container = document.getElementById('chatInboxLista');
     if (!container) return;
@@ -245,9 +61,6 @@ async function renderPaginaChat() {
     const userId = await authGetUserId();
     if (!userId) { container.innerHTML = ''; return; }
 
-    // AGGIUNTO (2026-09-24): ricontrollato ad ogni apertura, non solo
-    // dalla cache popolata al caricamento script — vedi nota in cima al
-    // file.
     if (await _chatVerificaAccessoConsentito()) {
         container.innerHTML = '<p style="text-align:center; color:var(--text-muted); font-size:0.9rem; padding:2rem 1rem;">La chat non è disponibile per questo account.</p>';
         return;
@@ -259,26 +72,12 @@ async function renderPaginaChat() {
         return;
     }
 
-    // AGGIUNTO (2026-09-24, giro di migliorie post-estrazione): letto UNA
-    // volta qui, condiviso da _chatRendiSezioneBloccati (sotto) E dalle
-    // righe delle conversazioni (badge "Bloccato" più giù) — una sola
-    // query invece di due. sql/70: blocchi_chat NON richiede una
-    // conversazione esistente, quindi va letta anche quando
-    // 'conversazioni' è vuoto (utente che ha bloccato qualcuno prima di
-    // scrivergli mai). Per questo il caso "nessuna conversazione" qui
-    // sotto non fa più return immediato: costruisce comunque la sezione
-    // bloccati, se c'è qualcosa da mostrare.
     const { data: bloccati, error: errB } = await chatBlocchiSet(userId);
     if (errB) console.error('renderPaginaChat: errore lettura bloccati:', errB.message);
     const idsBloccatiSet = new Set((bloccati || []).map(b => b.bloccato_id));
     const bloccatiHtml = await _chatRendiSezioneBloccati(bloccati || []);
 
     if (!conversazioni || conversazioni.length === 0) {
-        // AGGIORNATO (2026-09-24, giro di migliorie): l'inbox da sola non
-        // ha un modo di avviare una conversazione con qualcuno di nuovo —
-        // si parte sempre dal bottone "Contatta" su una riga di Match.
-        // Il messaggio lo dice esplicitamente invece di lasciare una
-        // pagina vuota senza indicazioni.
         container.innerHTML = '<p style="text-align:center; color:var(--text-muted); font-size:0.9rem; padding:2rem 1rem;">Nessuna conversazione ancora.<br>Scrivi a qualcuno dal bottone "Contatta" su una corrispondenza in Match.</p>' + bloccatiHtml;
         return;
     }
@@ -291,16 +90,12 @@ async function renderPaginaChat() {
     if (errMsg) console.error('renderPaginaChat: errore lettura ultimi messaggi:', errMsg.message);
     if (errNL) console.error('renderPaginaChat: errore lettura non letti:', errNL.message);
 
-    // Ultimo messaggio per conversazione: la query è già ordinata desc,
-    // basta prendere il primo che si incontra per ogni conversazione_id.
     const ultimoPerConv = {};
     (messaggi || []).forEach(m => { if (!ultimoPerConv[m.conversazione_id]) ultimoPerConv[m.conversazione_id] = m; });
 
     const nonLettiPerConv = {};
     (nonLetti || []).forEach(m => { nonLettiPerConv[m.conversazione_id] = (nonLettiPerConv[m.conversazione_id] || 0) + 1; });
 
-    // Nickname in batch per tutti gli "altri" owner distinti — stesso
-    // pattern di renderPaginaMatch (widget-match.ui.js).
     const idsAltrui = [...new Set(conversazioni.map(c => (c.owner_a === userId) ? c.owner_b : c.owner_a).filter(Boolean))];
     const nicknameMap = {};
     if (idsAltrui.length > 0) {
@@ -328,22 +123,11 @@ async function renderPaginaChat() {
     }).sort((a, b) => String(b.ultimoQuando).localeCompare(String(a.ultimoQuando)));
 
     container.innerHTML = '<div class="pg-elenco">' + righe.map(r => {
-        // escapeJsAttr (audit 2026-09-25, M2): il nome dell'altro utente
-        // finisce dentro onclick — gestisce anche " e a-capo.
         const labelSafe = escapeJsAttr(r.label);
         const anteprima = r.ultimoTesto
             ? `${r.ultimoMio ? 'Tu: ' : ''}${escapeHtml(r.ultimoTesto).slice(0, 60)}${r.ultimoTesto.length > 60 ? '…' : ''}`
             : 'Nessun messaggio ancora — scrivi il primo.';
-        // AGGIUNTO (2026-09-24): una conversazione con un utente bloccato
-        // resta nella lista (la RLS della RPC blocca comunque l'invio, non
-        // la lettura dello storico) ma senza click che riapre il modale —
-        // "Bloccato" al posto del bottone non letti, coerente con
-        // l'assenza di "sblocca" qui: si sblocca dalla sezione dedicata
-        // sotto.
         const rigaAttrs = r.bloccato ? '' : 'data-tocca onclick="apriChat(\'' + r.ownerAltro + '\', \'' + labelSafe + '\')"';
-        // AGGIUNTO (2026-09-24, restyle): stesso avatar circolare
-        // dell'header della conversazione (iniziale del nome) — coerenza
-        // visiva tra inbox e chat aperta.
         const iniziale = (r.label || '?').trim().charAt(0).toUpperCase() || '?';
         return `
         <div class="pg-riga" ${rigaAttrs} style="${r.bloccato ? 'opacity:.6;' : ''}">
@@ -357,16 +141,9 @@ async function renderPaginaChat() {
             </div>
         </div>`;
     }).join('') + '</div>' + bloccatiHtml;
-    if (typeof fotoProfiloApplica === 'function') fotoProfiloApplica(container); // foto profilo (sql/90)
+    if (typeof fotoProfiloApplica === 'function') fotoProfiloApplica(container);
 }
 
-// Sezione "Utenti bloccati" dell'inbox — SOLO sblocco (bloccare resta nel
-// modale della conversazione, _chatBloccaUtenteClick sotto). Ritorna
-// stringa vuota se l'utente non ha bloccato nessuno: niente sezione
-// vuota a ingombrare la pagina. chatBlocchiSet/chatSbloccaUtente erano
-// già pronte in data/chat.repository.js (sql/70) — mai collegate a
-// nessuna UI fino a questo giro di migliorie. Riceve 'bloccati' già
-// letto da renderPaginaChat (una sola query condivisa, vedi sopra).
 async function _chatRendiSezioneBloccati(bloccati) {
     if (!bloccati || bloccati.length === 0) return '';
 
@@ -391,10 +168,6 @@ async function _chatRendiSezioneBloccati(bloccati) {
         </div>`;
 }
 
-// Chiamata dal bottone "Sblocca" sopra. Ridisegna l'intera inbox al
-// termine (stesso principio di _chatBloccaUtenteClick/chiudiChat: dopo
-// un'azione che cambia lo stato di blocco, la vista si aggiorna subito
-// invece di aspettare il prossimo giro di polling).
 async function _chatSbloccaClick(bloccatoId) {
     if (!bloccatoId) return;
     if (!(await chiediConferma({ titolo: 'Sbloccare questo utente?', testo: 'Potrete tornare a scrivervi in chat.', conferma: 'Sblocca' }))) return;
@@ -403,25 +176,11 @@ async function _chatSbloccaClick(bloccatoId) {
     await renderPaginaChat();
 }
 
-// ═══════════════════════════════════════════════════════════════════════
-// CHAT — MODALE DELLA SINGOLA CONVERSAZIONE (ESTRATTO 2026-09-24 da
-// widget-match.ui.js, dove è nato il 2026-09-24 nella sessione
-// precedente — sql/70_chat_match.sql, sql/71 per il nickname,
-// data/chat.repository.js per le RPC). Modale #chatModal (index.html,
-// rinominato qui da #chatMatchModal), apertura/chiusura via
-// style.display come TUTTI gli altri modali del sito. Polling 6s SOLO
-// mentre il modale è aperto (si ferma alla chiusura), niente
-// subscription realtime — scelta invariata dalla sessione originale.
-// ═══════════════════════════════════════════════════════════════════════
-
 let _chatConversazioneId = null;
 let _chatAltroId = null;
 let _chatUserId = null;
 let _chatPollingHandle = null;
 
-// RESTYLE BINDEX FASE 8e (sql/83): "Scrivi a …" dalla pagina Richieste allega
-// al PRIMO messaggio l'etichetta della richiesta ({ id, altro }); si azzera
-// all'invio riuscito o alla chiusura della chat.
 let _chatRichiestaAllegata = null;
 function apriChatPerRichiesta(ownerAltro, personaLabel, richiestaId) {
     _chatRichiestaAllegata = richiestaId ? { id: richiestaId, altro: ownerAltro } : null;
@@ -433,8 +192,6 @@ async function apriChat(ownerAltro, personaLabel) {
     _chatUserId = await authGetUserId();
     if (!_chatUserId) return;
 
-    // AGGIUNTO (2026-09-24): blocco prima ancora di aprire il modale —
-    // vedi nota in cima al file (ora anche server-side, sql/72).
     if (await _chatVerificaAccessoConsentito()) {
         mostraAvviso('La chat non è disponibile per questo account.');
         return;
@@ -444,35 +201,21 @@ async function apriChat(ownerAltro, personaLabel) {
     const titolo = document.getElementById('chatTitolo');
     const avatar = document.getElementById('chatAvatar');
     const box = document.getElementById('chatMessaggi');
-    if (!modal || !box) return; // markup non ancora presente in index.html
+    if (!modal || !box) return;
 
     _chatAltroId = ownerAltro;
     const label = personaLabel || 'Utente';
     if (titolo) titolo.textContent = label;
-    // AGGIUNTO (2026-09-24, restyle): iniziale del nome nell'avatar
-    // circolare dell'header — stesso trattamento visivo delle righe
-    // dell'inbox (_chatRigaAvatarHtml sotto).
     if (avatar) {
         avatar.textContent = label.trim().charAt(0).toUpperCase() || '?';
         avatar.style.backgroundImage = ''; avatar.classList.remove('con-foto');
         avatar.dataset.avatarUtente = ownerAltro;
         if (typeof fotoProfiloApplica === 'function') fotoProfiloApplica(avatar.parentNode);
     }
-    // Nuova conversazione aperta: azzera la cache dei messaggi già
-    // renderizzati, altrimenti un id di un'altra conversazione potrebbe
-    // (per pura coincidenza di UUID, praticamente impossibile ma comunque
-    // scorretto concettualmente) sopprimere l'animazione "nuovo messaggio"
-    // del primo giro qui.
     _chatMessaggiRenderatiIds = new Set();
-    // Chiude il menu ⋮ se era rimasto aperto da una chat precedente.
     _chatChiudiMenuFuori();
     box.innerHTML = '<p style="text-align:center; color:var(--text-muted); font-size:0.85rem; padding-top:1.5rem;"><i class="fa-solid fa-spinner fa-spin"></i> Apro la chat…</p>';
     modal.style.display = 'flex';
-    // AGGIUNTO (2026-09-24, giro di migliorie): svuota l'input e
-    // ridisabilita il bottone invio ad ogni apertura — senza questo, un
-    // testo digitato ma non inviato in una conversazione precedente
-    // resterebbe nel campo alla riapertura su UN'ALTRA persona, rischio
-    // concreto di inviarlo al destinatario sbagliato per errore.
     const inputApertura = document.getElementById('chatInput');
     if (inputApertura) inputApertura.value = '';
     _chatSuInputCambiato();
@@ -496,9 +239,6 @@ function chiudiChat() {
     _chatConversazioneId = null;
     _chatAltroId = null;
     _chatRichiestaAllegata = null;
-    // La chat aperta potrebbe aver segnato letti dei messaggi contati nel
-    // badge/inbox: se si torna all'inbox o alla home, meglio un
-    // aggiornamento subito invece di aspettare i 60s del polling lento.
     if (typeof _aggiornaBadgeChat === 'function') _aggiornaBadgeChat();
 }
 
@@ -506,18 +246,10 @@ function _chatAvviaPolling() {
     _chatFermaPolling();
     _chatPollingHandle = setInterval(async () => {
         if (!_chatConversazioneId) return;
-        // AGGIUNTO (2026-09-24, giro di migliorie): niente giri sprecati
-        // se la tab/app è in background (schermo spento, altra app in
-        // primo piano su mobile) — document.hidden è vero in quel caso.
-        // Risparmia rete/batteria senza cambiare il comportamento quando
-        // la chat è davvero visibile.
         if (document.hidden) return;
         await _chatRenderMessaggi();
         await chatSegnaLetti(_chatConversazioneId);
     }, 6000);
-    // Al ritorno in primo piano con la chat ancora aperta, aggiorna
-    // subito invece di aspettare fino a 6s del prossimo giro — l'utente
-    // potrebbe aver perso messaggi arrivati mentre era in background.
     document.addEventListener('visibilitychange', _chatSuVisibilitaCambiata);
 }
 
@@ -532,21 +264,6 @@ async function _chatSuVisibilitaCambiata() {
     await chatSegnaLetti(_chatConversazioneId);
 }
 
-// ── RENDER MESSAGGI — restyle 2026-09-24 (stile WhatsApp/Messenger):
-// orario per messaggio, separatori di data, raggruppamento visivo dei
-// messaggi consecutivi dello stesso mittente (corner-radius variabile),
-// spunte di lettura sui messaggi propri, link interni Bindex cliccabili,
-// animazione di ingresso SOLO per i messaggi davvero nuovi. Sostituisce
-// _chatMessaggioHtml (bolla singola senza contesto) di prima di questo
-// giro.
-// ═══════════════════════════════════════════════════════════════════════
-
-// Id dei messaggi già disegnati nel giro precedente — usata per capire
-// quali sono "nuovi" (animazione d'ingresso) senza dover tenere un diff
-// vero del DOM: ad ogni _chatRenderMessaggi() il box viene comunque
-// ricostruito per intero (stesso approccio di prima, invariato), quindi
-// qui serve solo per decidere QUALI elementi meritano data-nuovo.
-// Azzerata ad ogni apertura di una nuova conversazione (apriChat sopra).
 let _chatMessaggiRenderatiIds = new Set();
 
 function _chatFormattaOra(iso) {
@@ -565,15 +282,6 @@ function _chatEtichettaGiorno(iso) {
     return d.toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: d.getFullYear() !== oggi.getFullYear() ? 'numeric' : undefined });
 }
 
-// Rende cliccabili i link interni Bindex — gli UNICI che possono comparire
-// in un messaggio salvato: sql/72 (server) e il filtro sopra (client)
-// bloccano qualunque altro link prima dell'invio. Opera SEMPRE su testo
-// già passato da escapeHtml(): il pattern non può mai "vedere" un tag,
-// perché il testo escapato non ne contiene — nessun rischio di iniezione
-// HTML riaperto da questa funzione.
-// 2026-09-26: cliccabile SOLO un link che passa la stessa regola del
-// filtro d'invio (_CHAT_RE_URL_INTERNO); prima bastava che contenesse il
-// dominio in un punto qualsiasi. Gli altri restano testo semplice.
 function _chatLinkifyTesto(testoEscaped) {
     return testoEscaped.replace(/(?:https?:\/\/|www\.)[^\s<]+/gi, (url) => {
         if (!_CHAT_RE_URL_INTERNO.test(url)) return url;
@@ -582,32 +290,20 @@ function _chatLinkifyTesto(testoEscaped) {
     });
 }
 
-// Spunta di lettura — SOLO sui messaggi propri (su quelli dell'altro non
-// avrebbe senso, non è WhatsApp con doppia riga per entrambi i lati).
-// Riusa 'letto_il' già selezionato da chatMessaggiList ('select *') e già
-// scritto da chatSegnaLetti — nessuna query/colonna nuova.
 function _chatSpuntaHtml(m) {
     if (m.mittente_id !== _chatUserId) return '';
     const letto = !!m.letto_il;
     return `<span class="chat-spunta ${letto ? 'letto' : ''}" title="${letto ? 'Letto' : 'Inviato'}"><i class="fa-solid ${letto ? 'fa-check-double' : 'fa-check'}"></i></span>`;
 }
 
-// Una singola bolla. isPrimo/isUltimo si riferiscono alla posizione
-// dentro il gruppo di messaggi consecutivi dello stesso mittente (stesso
-// giorno) — determinano quale angolo "esterno" resta arrotondato pieno
-// (16px, agli estremi del gruppo) e quale è appiattito (4px, dove il
-// gruppo si "salda" al messaggio successivo/precedente): stesso algoritmo
-// usato da WhatsApp/Messenger. Il lato esterno è destro per i messaggi
-// propri, sinistro per quelli dell'altro (coerente con l'allineamento
-// .chat-bubble-wrap.mio/.altro in CSS).
 function _chatBubbleHtml(m, isPrimo, isUltimo, isNuovo) {
     const mio = m.mittente_id === _chatUserId;
     const lato = mio ? 'mio' : 'altro';
     const rEsternoAlto = isPrimo ? '16px' : '4px';
     const rEsternoBasso = isUltimo ? '16px' : '4px';
     const radius = mio
-        ? `16px ${rEsternoAlto} ${rEsternoBasso} 16px`   // tl tr br bl — esterno = destra (tr, br)
-        : `${rEsternoAlto} 16px 16px ${rEsternoBasso}`;  // tl tr br bl — esterno = sinistra (tl, bl)
+        ? `16px ${rEsternoAlto} ${rEsternoBasso} 16px`
+        : `${rEsternoAlto} 16px 16px ${rEsternoBasso}`;
     const margine = isPrimo ? '8px' : '2px';
     const testoHtml = _chatLinkifyTesto(escapeHtml(m.testo));
     return `
@@ -636,12 +332,6 @@ async function _chatRenderMessaggi() {
         return;
     }
 
-    // "Vicino al fondo"? Se sì, lo scroll segue i nuovi messaggi come in
-    // ogni vera chat; se l'utente ha scorso in alto a rileggere lo
-    // storico, un arrivo durante il polling (ogni 6s) non gli strappa via
-    // la lettura sotto i piedi. 60px di margine = tollera un po' di
-    // rimbalzo/inerzia dello scroll touch senza perdere lo stato "in
-    // fondo".
     const eraVicinoAlFondo = (box.scrollTop + box.clientHeight) >= (box.scrollHeight - 60);
     const primaApertura = _chatMessaggiRenderatiIds.size === 0;
 
@@ -666,11 +356,6 @@ async function _chatRenderMessaggi() {
     if (primaApertura || eraVicinoAlFondo) box.scrollTop = box.scrollHeight;
 }
 
-// ── Menu azioni (⋮) — sostituisce i due bottoni Segnala/Blocca sempre
-// visibili in header (restyle 2026-09-24, richiesto). Un solo listener
-// "click fuori" alla volta, aggiunto SOLO quando il menu si apre e
-// rimosso automaticamente al primo click ({ once: true }) — mai lasciato
-// appeso quando il menu è già chiuso.
 function _chatToggleMenu(evt) {
     if (evt) evt.stopPropagation();
     const dd = document.getElementById('chatMenuDropdown');
@@ -691,11 +376,6 @@ async function _chatInviaMessaggioClick() {
     const testo = input.value.trim();
     if (!testo) return;
 
-    // AGGIUNTO (2026-09-24): filtri di moderazione — vedi nota in cima al
-    // file, solo lato client per ora. Il messaggio NON viene inviato e
-    // resta nel campo (l'utente può correggerlo), a differenza degli
-    // errori RPC sotto che invece svuotano il campo perché il tentativo
-    // di invio è già partito.
     if (_chatContieneParolacce(testo)) {
         if (avviso) { avviso.textContent = 'Messaggio non inviato: contiene linguaggio non consentito.'; avviso.style.display = 'block'; }
         return;
@@ -707,7 +387,7 @@ async function _chatInviaMessaggioClick() {
     if (avviso) avviso.style.display = 'none';
 
     input.value = '';
-    _chatSuInputCambiato(); // ridisabilita il bottone/svuota il contatore subito, non aspetta il prossimo input dell'utente
+    _chatSuInputCambiato();
     const allegata = (_chatRichiestaAllegata && _chatRichiestaAllegata.altro === _chatAltroId) ? _chatRichiestaAllegata.id : null;
     const { error } = await chatInviaMessaggio(_chatConversazioneId, testo, allegata);
     if (error) { mostraAvviso('Errore invio: ' + error.message); return; }
@@ -715,8 +395,6 @@ async function _chatInviaMessaggioClick() {
     await _chatRenderMessaggi();
 }
 
-// RESTYLE BINDEX FASE 3i: frase pronta = riempie il campo e invia con lo
-// stesso percorso di un messaggio scritto a mano (filtri compresi).
 function _chatInviaFrase(testo) {
     const input = document.getElementById('chatInput');
     if (!input) return;
@@ -725,13 +403,6 @@ function _chatInviaFrase(testo) {
     _chatInviaMessaggioClick();
 }
 
-// Bottone invio disabilitato a campo vuoto (evita l'invio di un
-// messaggio bianco per doppio tap accidentale) + contatore caratteri,
-// visibile solo avvicinandosi al limite (maxlength 2000 in index.html) —
-// sotto quella soglia resterebbe solo rumore visivo per un messaggio
-// normale. Chiamata da oninput sull'input (index.html), da apriChat()
-// per partire nello stato corretto, e da _chatInviaMessaggioClick() dopo
-// l'invio.
 function _chatSuInputCambiato() {
     const input = document.getElementById('chatInput');
     const btn = document.getElementById('chatInviaBtn');
@@ -744,15 +415,9 @@ function _chatSuInputCambiato() {
         contatore.textContent = lunghezza >= 1800 ? `${lunghezza}/2000` : '';
         contatore.style.color = lunghezza >= 1950 ? 'var(--danger)' : 'var(--text-muted)';
     }
-    // Nasconde l'avviso di un blocco precedente (parolacce/link) appena
-    // l'utente ricomincia a modificare il testo — non deve restare lì a
-    // ingombrare dopo che ha corretto il messaggio.
     if (avviso && avviso.style.display !== 'none') avviso.style.display = 'none';
 }
 
-// Blocco preventivo (sql/70: blocchi_chat non richiede una conversazione
-// già esistente) — dopo il blocco chiude la chat, coerente con "non
-// potrete più scrivervi" mostrato nella conferma.
 async function _chatBloccaUtenteClick() {
     _chatChiudiMenuFuori();
     if (!_chatAltroId) return;
@@ -762,25 +427,16 @@ async function _chatBloccaUtenteClick() {
     chiudiChat();
 }
 
-// La segnalazione è ciò che sblocca la visibilità admin sullo storico
-// della conversazione (RLS di sql/70) — non è solo un log, è un evento
-// con effetto reale sui permessi.
 async function _chatSegnalaClick() {
     _chatChiudiMenuFuori();
     if (!_chatConversazioneId) return;
     const scritto = await chiediTesto({ titolo: 'Segnala la conversazione', testo: 'Motivo della segnalazione (facoltativo):', conferma: 'Segnala', maxLength: 500 });
-    if (scritto === null) return; // annullato (prima: Annulla inviava comunque la segnalazione senza motivo)
+    if (scritto === null) return;
     const motivo = scritto.trim() || null;
     const { error } = await chatSegnalaConversazione(_chatConversazioneId, motivo);
     if (error) { mostraAvviso('Errore: ' + error.message); return; }
     mostraAvviso('Segnalazione inviata.');
 }
-
-// ── Nickname (impostazioni, sql/71) ───────────────────────────────────
-// Chiamata da index.html, sezione "Dati e Privacy" (#impostazioniPagina-
-// dati). Caricamento pigro al primo focus (onfocus), non agganciato al
-// lifecycle di apertura della pagina impostazioni (vedi nota ereditata
-// dalla sessione originale — quel file non è mai stato letto).
 
 let _nicknameCaricato = false;
 
@@ -807,36 +463,15 @@ async function salvaNickname() {
     mostraAvviso('Nome salvato.');
 }
 
-// ═══════════════════════════════════════════════════════════════════════
-// BADGE "MESSAGGI NON LETTI" + ANTEPRIMA TESSERA (2026-09-24) — un giro
-// ogni 60s (agganciato allo stesso ciclo lento di aggiornaBadgeMatch,
-// vedi ui/paginainiziale-polling-avvio.ui.js), non ad ogni apertura
-// tessera. Aggiorna due cache lette da CATALOGO_WIDGET.chat.preview()
-// sopra — zero query nel preview() stesso, stesso principio "tutto già
-// in memoria" usato da tutti gli altri widget con tessera grande.
-// CSBar.avvisa('chat-messaggio', ...) per l'avviso — tipo registrato in
-// notificationTypes dentro CSBar.init() (ui/paginainiziale-polling-
-// avvio.ui.js), target aggiornato da '#match' a '#chat' in questa
-// sessione (ora che esiste una pagina dedicata).
-// ═══════════════════════════════════════════════════════════════════════
 let _numChatNonLetti = 0;
-// [{ ownerAltro, label, count }] — le prime 3 conversazioni con
-// messaggi non letti, più recenti prima. Letta dal blocco esteso della
-// tessera (Opzione B del mockup, _ballCORPI.chat in
-// ui/widget-render-corpi.ui.js).
 let _chatUltimeConversazioni = [];
-let _chatLetturaFallita = false; // (2026-10-14) ultima lettura andata in errore: la tessera mostra "—", non "Nessun messaggio"
+let _chatLetturaFallita = false;
 const _chatGiaNotificati = new Set();
 
 async function _aggiornaBadgeChat() {
     const userId = await authGetUserId();
     if (!userId) return;
 
-    // AGGIUNTO (2026-09-24): tiene aggiornato il flag letto da
-    // CATALOGO_WIDGET.chat.preview() (sincrona, non può controllare da
-    // sola) — stesso principio "tutto già in cache" del resto di questa
-    // funzione. Se è vietato, azzera anche i contatori: niente numeri
-    // residui sulla tessera per chi non può comunque aprirla.
     if (await _chatVerificaAccessoConsentito()) { _numChatNonLetti = 0; _chatUltimeConversazioni = []; return; }
 
     const { data: conversazioni, error: errC } = await chatConversazioniList(userId);
@@ -850,9 +485,6 @@ async function _aggiornaBadgeChat() {
     _chatLetturaFallita = false;
     _numChatNonLetti = (nonLetti || []).length;
 
-    // Raggruppa i non letti per conversazione (conteggio + data del più
-    // recente) per l'anteprima nel blocco esteso della tessera — solo le
-    // prime 3, ordinate per messaggio più recente.
     const perConversazione = {};
     (nonLetti || []).forEach(m => {
         const voce = (perConversazione[m.conversazione_id] ||= { count: 0, ultimo: '' });
@@ -893,26 +525,9 @@ async function _aggiornaBadgeChat() {
     if (nuovi.length === 0) return;
     nuovi.forEach(m => _chatGiaNotificati.add(m.id));
 
-    // AGGIORNATO (2026-09-24, giro di migliorie): una notifica PER
-    // CONVERSAZIONE con messaggi davvero nuovi, non più una sola
-    // cumulativa — necessario per aprire la conversazione giusta al
-    // click (vedi onNotificationClick, ui/paginainiziale-polling-
-    // avvio.ui.js). 'group' è per-conversazione (chat-msg-<id>): letto
-    // in statusbar.js che quando due notifiche condividono lo stesso
-    // group, il ramo di raggruppamento aggiorna testo/target della
-    // notifica esistente ma MAI il campo 'data' — con un group
-    // condiviso tra conversazioni diverse, il click su una notifica
-    // aggiornata avrebbe riaperto la conversazione della PRIMA persona
-    // che aveva scritto, non dell'ultima. Con un group per conversazione
-    // il problema non si pone: 'data' è identico ad ogni aggiornamento
-    // della stessa conversazione.
     const perConvNuovi = {};
     nuovi.forEach(m => { (perConvNuovi[m.conversazione_id] ||= []).push(m); });
 
-    // Serve owner/nickname anche per conversazioni FUORI dalle prime 3
-    // mostrate sulla tessera (_chatUltimeConversazioni sopra si ferma a
-    // 3): chi scrive per quarto non deve restare senza notifica
-    // cliccabile.
     const convIdsNuovi = Object.keys(perConvNuovi);
     const proprietarioPerConvNuovi = {};
     conversazioni.forEach(c => { if (convIdsNuovi.includes(String(c.id))) proprietarioPerConvNuovi[c.id] = (c.owner_a === userId) ? c.owner_b : c.owner_a; });
@@ -928,8 +543,6 @@ async function _aggiornaBadgeChat() {
         }
     }
 
-    // (Q6, 2026-10-12) Messaggi nuovi in 3 o più conversazioni insieme (tipico
-    // all'avvio): un solo avviso che apre l'elenco delle chat.
     if (convIdsNuovi.length >= 3) {
         const nomi = [...new Set(convIdsNuovi.map(id => nicknameMapNuovi[proprietarioPerConvNuovi[id]] || 'Utente'))];
         const chi = nomi.length <= 2 ? nomi.join(' e ') : nomi.slice(0, 2).join(', ') + ` e ${nomi.length - 2 === 1 ? 'un altro' : 'altri ' + (nomi.length - 2)}`;
@@ -944,14 +557,6 @@ async function _aggiornaBadgeChat() {
         CSBar.avvisa('chat-messaggio', {
             text: numero === 1 ? `${label}: nuovo messaggio` : `${label}: ${numero} nuovi messaggi`,
             group: 'chat-msg-' + convId,
-            // Letto da onNotificationClick (ui/paginainiziale-polling-
-            // avvio.ui.js) per aprire direttamente questa conversazione
-            // invece della sola inbox. NOTA: CSBar persiste le notifiche
-            // in localStorage (persist:true) ma NON il campo 'data'
-            // (verificato in statusbar.js, writeNow() non lo
-            // serializza) — dopo un refresh/riapertura la notifica resta
-            // cliccabile ma degrada ad aprire solo la lista, mai un
-            // errore.
             data: { conversazioneId: convId, ownerAltro, label },
         });
     });

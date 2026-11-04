@@ -1,10 +1,5 @@
-// ── data/preferences.repository.js ───────────────────────────────────────
-// Preferenze locali PER-DISPOSITIVO, salvate in localStorage — non
-// sincronizzano tra dispositivi (per quelle vedi data/user-settings.
-// repository.js, tabella 'preferenze_utente'). Stesse identiche chiavi e
-// stessi identici valori del codice originale: nessuna chiave rinominata,
-// nessun valore cambiato, solo le ~28 chiamate sparse localStorage.getItem/
-// setItem/removeItem raccolte in un solo punto con nomi leggibili.
+// Preferenze di questo dispositivo, in localStorage (quelle dell'account sono in
+// user-settings.repository.js).
 
 function prefMantieniAccessoGet() { return localStorage.getItem('cardsyncMantieniAccesso'); }
 function prefMantieniAccessoSet(valore) { localStorage.setItem('cardsyncMantieniAccesso', valore); }
@@ -12,26 +7,11 @@ function prefMantieniAccessoSet(valore) { localStorage.setItem('cardsyncMantieni
 function prefSiteThemeGet() { return localStorage.getItem('siteTheme'); }
 function prefSiteThemeSet(nome) { localStorage.setItem('siteTheme', nome); }
 
-// ── TEMA A 2 COLORI LIBERI (STEP 1 restyle "cornice Pokédex",
-// 2026-09-17) — sostituisce i 3 preset fissi sopra (prefSiteThemeGet/Set
-// restano definite per rollback, ma setSiteTheme() non è più chiamata da
-// nessuna parte dopo questo step). Per-dispositivo come tutte le altre
-// preferenze qui: ogni utente su ogni device sceglie i propri colori.
-// null = non ancora scelto, usa il default (vedi TEMA_COLORE_*_DEFAULT
-// in utils/theme-colori.js).
 function prefColorePrincipaleGet() { return localStorage.getItem('cardsyncColorePrincipale'); }
 function prefColorePrincipaleSet(hex) { localStorage.setItem('cardsyncColorePrincipale', hex); }
 function prefColoreSecondarioGet() { return localStorage.getItem('cardsyncColoreSecondario'); }
 function prefColoreSecondarioSet(hex) { localStorage.setItem('cardsyncColoreSecondario', hex); }
 
-// ── DIAMETRO WIDGET (STEP 3 restyle "cornice Pokédex", 2026-09-17) ──────
-// Sostituisce --ball-misura fissa a 90px con un valore scelto dall'utente
-// (slider Impostazioni > Tema, 80-220px) — "1 unità" di resize (vedi
-// COLONNE_GRIGLIA_WIDGET/griglia in ui/paginainiziale.ui.js + CSS
-// .widget-griglia) è ora il diametro scelto, non più un numero fisso.
-// Per-dispositivo come le altre preferenze qui: ogni schermo ha la sua
-// dimensione comoda. null = non ancora scelto, usa il default (vedi
-// DIAMETRO_WIDGET_DEFAULT in ui/navigation-tema.ui.js).
 function prefDiametroWidgetGet() { const v = parseInt(localStorage.getItem('cardsyncDiametroWidget'), 10); return Number.isFinite(v) ? v : null; }
 function prefDiametroWidgetSet(px) { localStorage.setItem('cardsyncDiametroWidget', String(px)); }
 
@@ -40,10 +20,6 @@ function prefDarkModeSet(isDark) { localStorage.setItem('darkMode', isDark); }
 
 function prefActiveTabGet() { return localStorage.getItem('activeTab'); }
 function prefActiveTabSet(tabId) { localStorage.setItem('activeTab', tabId); }
-// Aggiunta 26/08/2026: usata dal logout per non far ritrovare al prossimo
-// che accede su questo dispositivo (condiviso tra il gruppo) la stessa
-// schermata di chi ha appena fatto logout. Stesso idioma di
-// prefEntryDraftClear() qui sotto.
 function prefActiveTabClear() { localStorage.removeItem('activeTab'); }
 
 function prefEntryDraftGet() { return localStorage.getItem('cardsync_entry_draft'); }
@@ -60,16 +36,9 @@ function prefAlertPrezzoVistiGet() {
 }
 function prefAlertPrezzoVistiSet(visti) { localStorage.setItem('alertPrezzoVisti', JSON.stringify([...visti])); }
 
-// Le chiavi qui sotto (CHIAVE_BINDER_LAYOUT, CHIAVE_APRI_SEMPRE_APP,
-// CHIAVE_SIDEBAR_COMPRESSA, CHIAVE_RIDUCI_ANIMAZIONI) sono costanti definite
-// negli state/*.js — usate qui solo dentro corpi di funzione, quindi
-// l'ordine di caricamento tra questo file e gli state/*.js non è
-// vincolante (risolte al momento della chiamata, non della definizione).
 function prefBinderLayoutGet() { return localStorage.getItem(CHIAVE_BINDER_LAYOUT); }
 function prefBinderLayoutSet(layout) { localStorage.setItem(CHIAVE_BINDER_LAYOUT, layout); }
 
-// Controllo prezzi — "di chi" (2026-10-09): scelta fatta una volta sola in
-// Impostazioni, per dispositivo ('soloMie' | 'gruppo'; default 'soloMie').
 function prefAmbitoPrezziGet() { return localStorage.getItem('cardsyncAmbitoPrezzi') === 'gruppo' ? 'gruppo' : 'soloMie'; }
 function prefAmbitoPrezziSet(ambito) { localStorage.setItem('cardsyncAmbitoPrezzi', ambito === 'gruppo' ? 'gruppo' : 'soloMie'); }
 
@@ -82,77 +51,28 @@ function prefSidebarCompressaSet(compressa) { localStorage.setItem(CHIAVE_SIDEBA
 function prefRiduciAnimazioniGet() { return localStorage.getItem(CHIAVE_RIDUCI_ANIMAZIONI) === 'true'; }
 function prefRiduciAnimazioniSet(ridotte) { localStorage.setItem(CHIAVE_RIDUCI_ANIMAZIONI, ridotte ? 'true' : 'false'); }
 
-// Layout della home a widget (cornice "smartphone", sessione 2026-08-23):
-// ordine + visibilità dei widget, per-dispositivo come le altre preferenze
-// qui sopra — NON sincronizzato tra dispositivi. Valore: JSON di
-// [{id, visibile}]. Vedi ui/phone.ui.js per lettura/scrittura.
-//
-// AGGIORNATO 2026-09-10 (Claudio): la chiave ora include lo userId — prima
-// era fissa ('cardsyncWidgetLayout'), quindi due utenti diversi sullo
-// stesso PC/browser si sovrascrivevano a vicenda il layout. Resta
-// localStorage puro (opzione A scelta da Claudio: non appesantire
-// Supabase) — quindi resta ANCHE per-dispositivo come prima, per natura
-// (ogni device ha il suo localStorage separato): un utente che accede da
-// PC e da cellulare ha due layout indipendenti, uno per device, ciascuno
-// legato a lui e non all'altro utente che magari usa lo stesso PC.
-// La vecchia chiave unica 'cardsyncWidgetLayout' resta orfana sul
-// localStorage di chi l'aveva già (non letta né cancellata qui): al primo
-// caricamento post-update ogni utente riparte dal layout di default su
-// ogni device, invece di ereditare un layout che non si sa a chi
-// appartenesse davvero — scelta deliberata, vedi ui/phone.ui.js.
 function prefWidgetLayoutGet(userId) { return localStorage.getItem('cardsyncWidgetLayout_' + userId); }
 function prefWidgetLayoutSet(userId, layoutJson) { localStorage.setItem('cardsyncWidgetLayout_' + userId, layoutJson); }
-// RESTYLE BINDEX: "Ripristina disposizione della home" — toglie il layout salvato su questo dispositivo.
 function prefWidgetLayoutRemove(userId) { localStorage.removeItem('cardsyncWidgetLayout_' + userId); }
 
-// Suoni retro leggeri della home a widget (apertura/chiusura dettaglio,
-// notifiche push) — per-dispositivo come le altre, default attivi ma
-// disattivabili con un tap (bottone altoparlante in home).
 function prefSuoniWidgetGet() { const v = localStorage.getItem('cardsyncSuoniWidget'); return v === null ? true : v === 'true'; }
 function prefSuoniWidgetSet(attivi) { localStorage.setItem('cardsyncSuoniWidget', attivi ? 'true' : 'false'); }
 
-// ── GRAFICA POKÉ BALL DEI WIDGET (sessione 2026-08-27) ───────────────────
-// Quattro preferenze per-dispositivo, chiavi letterali qui dentro come
-// 'cardsyncWidgetLayout'/'cardsyncSuoniWidget' qui sopra — di proposito NON
-// usano costanti da state/*.js, così questo file resta l'unico da toccare.
-//
-// NOTA: esiste già prefRiduciAnimazioni() qui sopra, ma governa un'altra
-// cosa (il flash colorato sul prezzo quando lo modifichi — vedi il commento
-// sul toggle in index.html, riga ~3353). Le due cose sono tenute separate
-// apposta: chi vuole i prezzi senza flash non è detto voglia anche i widget
-// immobili. Se un giorno le vorrai unificate, basta far leggere a queste
-// la stessa chiave.
-
-// Spegne TUTTE le animazioni dei widget: cattura, semaforo (scosse e punti
-// esclamativi), cascata d'ingresso. Default: animazioni attive.
 function prefAnimWidgetGet() { const v = localStorage.getItem('cardsyncAnimWidget'); return v === null ? true : v === 'true'; }
 function prefAnimWidgetSet(attive) { localStorage.setItem('cardsyncAnimWidget', attive ? 'true' : 'false'); }
 
-// Spegne SOLO l'animazione di cattura (~2,6s all'apertura di un widget),
-// lasciando vivo il semaforo. Default: cattura attiva.
 function prefAnimCatturaGet() { const v = localStorage.getItem('cardsyncAnimCattura'); return v === null ? true : v === 'true'; }
 function prefAnimCatturaSet(attiva) { localStorage.setItem('cardsyncAnimCattura', attiva ? 'true' : 'false'); }
 
-// Scritte incise sulla pancia della ball (solo widget 1x1). Spente, restano
-// le ball nude: il titolo si legge comunque nella pagina che si apre.
 function prefScritteBallGet() { const v = localStorage.getItem('cardsyncScritteBall'); return v === null ? true : v === 'true'; }
 function prefScritteBallSet(attive) { localStorage.setItem('cardsyncScritteBall', attive ? 'true' : 'false'); }
 
-// Badge numerico in alto a destra sulla tessera. Su 1x1 ripete il dato già
-// inciso nella pancia, quindi qualcuno lo vorrà spento.
 function prefBadgeWidgetGet() { const v = localStorage.getItem('cardsyncBadgeWidget'); return v === null ? true : v === 'true'; }
 function prefBadgeWidgetSet(attivo) { localStorage.setItem('cardsyncBadgeWidget', attivo ? 'true' : 'false'); }
 
-// ── RESTYLE TAVOLE IMPOSTAZIONI (2026-10-01) — preferenze di questo
-// dispositivo per le voci nuove (localStorage, come le altre qui sopra).
-
-// Badge sulle sfere: 'numero' (il conteggio, come prima) o 'pallino' (solo
-// un punto). Spento resta prefBadgeWidgetGet() === false.
 function prefBadgeStileGet() { return localStorage.getItem('cardsyncBadgeStile') === 'pallino' ? 'pallino' : 'numero'; }
 function prefBadgeStileSet(stile) { localStorage.setItem('cardsyncBadgeStile', stile === 'pallino' ? 'pallino' : 'numero'); }
 
-// Scorciatoie della tendina: elenco ordinato di id (vedi _SCORCIATOIE_TENDINA
-// in ui/paginainiziale-polling-avvio.ui.js). Default = le due di prima.
 const _PREF_SCORCIATOIE_DEFAULT = ['suoni', 'modifica-home'];
 function prefScorciatoieGet() {
     try {
@@ -162,20 +82,12 @@ function prefScorciatoieGet() {
 }
 function prefScorciatoieSet(ids) { localStorage.setItem('cardsyncScorciatoie', JSON.stringify(ids || [])); }
 
-// Banner in alto: 'tutti' (ogni avviso), 'azioni' (solo quelli che
-// chiedono di fare qualcosa — il comportamento di prima), 'nessuno'.
 function prefBannerGet() { const v = localStorage.getItem('cardsyncBanner'); return ['tutti', 'azioni', 'nessuno'].includes(v) ? v : 'azioni'; }
 function prefBannerSet(modo) { localStorage.setItem('cardsyncBanner', modo); }
 
-// Posizione del banner su PC: 'alto' (in alto al centro, come prima) o
-// 'basso' (in basso a destra).
 function prefBannerPosGet() { return localStorage.getItem('cardsyncBannerPos') === 'basso' ? 'basso' : 'alto'; }
 function prefBannerPosSet(pos) { localStorage.setItem('cardsyncBannerPos', pos === 'basso' ? 'basso' : 'alto'); }
 
-// (Q5 quality of life, 2026-10-12) Ordinamento e filtri scelti in ogni
-// pagina (Collezione, Wishlist, Sealed, Location, Doppioni, Scaffali, Foto),
-// ricordati su QUESTO dispositivo. Un solo oggetto { pagina: { chiave: valore } }.
-// Chi legge controlla che il valore sia ancora valido (elenchi propri).
 const CHIAVE_FILTRI_PAGINE = 'bindexFiltriPagine';
 function prefFiltroPaginaGet(pagina, chiave) {
     try {
@@ -190,18 +102,13 @@ function prefFiltroPaginaSet(pagina, chiave, valore) {
         if (!tutti[pagina] || typeof tutti[pagina] !== 'object') tutti[pagina] = {};
         tutti[pagina][chiave] = valore;
         localStorage.setItem(CHIAVE_FILTRI_PAGINE, JSON.stringify(tutti));
-    } catch (_) { /* storage pieno o bloccato: si ricomincia dai valori di sempre */ }
+    } catch (_) {   }
 }
-// Valore salvato se è tra quelli ammessi, altrimenti il predefinito.
 function prefFiltroPaginaScegli(pagina, chiave, ammessi, predefinito) {
     const v = prefFiltroPaginaGet(pagina, chiave);
     return ammessi.includes(v) ? v : predefinito;
 }
 
-// ── Rarità delle carte (2026-10-14) ──────────────────────────────────────
-// Cache su QUESTO dispositivo della rarità del catalogo, per sigla:
-// { SIGLA: { t: epoch ms, r: { numero: livello } } }. È un dato pubblico del
-// catalogo, non legato all'utente: resta anche dopo il logout.
 const CHIAVE_RARITA_CARTE = 'bindexRaritaCarte';
 function prefRaritaCacheGet() {
     try {
@@ -211,5 +118,5 @@ function prefRaritaCacheGet() {
 }
 function prefRaritaCacheSet(obj) {
     try { localStorage.setItem(CHIAVE_RARITA_CARTE, JSON.stringify(obj)); }
-    catch (_) { /* storage pieno o bloccato: al prossimo avvio si rilegge */ }
+    catch (_) {   }
 }

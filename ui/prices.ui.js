@@ -1,14 +1,6 @@
-// ── ui/prices.ui.js ────────────────────────────────────────────────────
-// Controllo prezzi (collezione e wishlist) via estensione: elenco location,
-// creazione ordine, polling stato, grafico andamento prezzo di una carta.
+// Controllo prezzi tramite l'estensione: location, ordini, stato, grafico del prezzo.
 
-
-        // ── ELENCO LOCATION (checkbox) — sezione Prezzi ──────────────────────────
-        // Stessa tabella 'location' che l'estensione usa per la tendina Location
-        // (azione 'elencaLocationTab' in supabase_adapter.js) — qui la leggiamo
-        // direttamente, dato che il sito ha già il proprio client Supabase.
-
-        async function caricaListaLocationCheckbox() {
+async function caricaListaLocationCheckbox() {
             const userId = await authGetUserId();
             const wrap = document.getElementById('listaLocationCheckbox');
             if (!userId) { wrap.innerHTML = '<p style="font-size:0.78rem; color:var(--text-muted); margin:0;">Accedi per vedere le tue location.</p>'; return; }
@@ -25,7 +17,6 @@
             }
             wrap.innerHTML = '';
             location.forEach(nome => {
-                // RESTYLE: ogni location è un chip "Nome · N carte" (la casella resta, nascosta)
                 const label = document.createElement('label');
                 label.className = 'pz-chip';
                 const cb = document.createElement('input');
@@ -41,7 +32,6 @@
             if (typeof prezziAggiornaScelta === 'function') prezziAggiornaScelta();
         }
 
-
         function toggleTutteLocation() {
             const checkboxes = document.querySelectorAll('.checkboxLocationPrezzi');
             const tutteSpuntate = [...checkboxes].every(cb => cb.checked);
@@ -49,25 +39,15 @@
             document.getElementById('btnToggleTutteLocation').textContent = tutteSpuntate ? 'Seleziona tutte' : 'Deseleziona tutte';
         }
 
-
         function _locationSelezionate() {
             return [...document.querySelectorAll('.checkboxLocationPrezzi:checked')].map(cb => cb.value);
         }
 
-
-        // "Solo le mie" (default, più prevedibile per chi crea la
-        // richiesta) oppure "tutto il gruppo" — prima questo era deciso a
-        // caso dalla casella locale del dispositivo che eseguiva l'ordine,
-        // non da chi lo creava. Ora la scelta fatta qui viaggia CON
-        // l'ordine ed è quella che conta.
         function _impostaAmbitoControlloPrezzi(ambito) {
             _ambitoControlloPrezzi = ambito;
             document.getElementById('btnAmbitoSoloMie')?.classList.toggle('active', ambito === 'soloMie');
             document.getElementById('btnAmbitoGruppo')?.classList.toggle('active', ambito === 'gruppo');
         }
-
-
-        // ── CONTROLLO PREZZI — collegato agli ordini reali ───────────────────────
 
         async function triggerExtensionPriceCheck() {
             const userId = await authGetUserId();
@@ -83,9 +63,6 @@
 
             const locations = _locationSelezionate();
 
-            // Punto 26 (2026-10-15): le location non vanno più in
-            // ordini.parametri (leggibile da tutto il gruppo) ma in una
-            // tabella privata, scritta dalla funzione sul DB insieme all'ordine.
             const { data: ordineId, error } = await ordiniCreaControlloPrezzi(locations, _ambitoControlloPrezzi === 'gruppo');
             const ordine = ordineId ? { id: ordineId } : null;
 
@@ -99,10 +76,6 @@
             btn.innerHTML = '<i class="fa-solid fa-hourglass-half"></i> In attesa che un dispositivo lo prenda in carico...';
             sub.textContent = 'L\'ordine è stato creato — un dispositivo con l\'estensione aperta lo eseguirà a breve.';
 
-            // Missione #90 "Collega il mondo" (2026-08-30): usare una
-            // funzione reale attraverso l'estensione (qui: avviare il
-            // controllo prezzi). Fire-and-forget, stesso pattern degli
-            // altri hook missioni.
             (async () => {
                 try {
                     await missioniEstensioneFunzioneUsataRegistra(userId);
@@ -112,17 +85,12 @@
             _pollOrdine(ordine.id, btn, sub);
         }
 
-
         function _pollOrdine(ordineId, btn, sub) {
             if (_pollOrdineInterval) clearInterval(_pollOrdineInterval);
             const INTERVALLO_MS = 3000;
-            const MAX_TENTATIVI = 200; // ~10 minuti
+            const MAX_TENTATIVI = 200;
             let tentativi = 0;
 
-            // Audit 2026-09-25 (M6): guardia "richiesta già in volo" (con rete
-            // lenta le letture ogni 3s si accavallavano) + try/catch (un
-            // errore di rete lanciato da ordiniLeggiStato diventava una
-            // promise rifiutata non gestita a ogni giro).
             let inVolo = false;
             _pollOrdineInterval = setInterval(async () => {
                 if (inVolo) return;
@@ -139,9 +107,6 @@
                     }
 
                     if (!data) {
-                        // Ordine sparito (cancellato o non più leggibile): prima
-                        // "data.stato" lanciava un TypeError ogni 3 secondi fino
-                        // al limite dei tentativi.
                         clearInterval(_pollOrdineInterval);
                         _resetBottonePrezzi(btn, sub);
                         sub.textContent = '❌ Ordine non trovato: riprova ad avviare il controllo.';
@@ -157,7 +122,6 @@
                         _resetBottonePrezzi(btn, sub);
                         sub.innerHTML = `✅ Fatto! <span style="color:var(--success)">▲ ${r.salite ?? 0}</span> · <span style="color:var(--danger)">▼ ${r.scese ?? 0}</span> · ➖ ${r.invariate ?? 0} invariate`;
                     } else if (data.stato === 'annullato') {
-                        // sql/115: annullato dal pannello "Controlla prezzi".
                         clearInterval(_pollOrdineInterval);
                         _resetBottonePrezzi(btn, sub);
                         sub.textContent = 'Controllo annullato.';
@@ -180,14 +144,10 @@
             }, INTERVALLO_MS);
         }
 
-
         function _resetBottonePrezzi(btn, sub, testoDefault = '<i class="fa-solid fa-paper-plane"></i> Avvia Controllo Prezzi') {
             btn.disabled = false;
             btn.innerHTML = testoDefault;
         }
-
-
-        // ── CONTROLLO PREZZI WISHLIST — stesso schema, ordine dedicato ───────────
 
         async function triggerExtensionPriceCheckWishlist() {
             const userId = await authGetUserId();
@@ -213,9 +173,6 @@
             btn.innerHTML = '<i class="fa-solid fa-hourglass-half"></i> In attesa che un dispositivo lo prenda in carico...';
             sub.textContent = 'L\'ordine è stato creato — un dispositivo con l\'estensione aperta lo eseguirà a breve.';
 
-            // Missione #90 "Collega il mondo" (2026-08-30): stesso hook di
-            // triggerExtensionPriceCheck() sopra — stessa funzione, stesso
-            // concetto ("usa una funzione dell'estensione").
             (async () => {
                 try {
                     await missioniEstensioneFunzioneUsataRegistra(userId);
@@ -224,13 +181,9 @@
 
             if (_pollOrdineWishlistInterval) clearInterval(_pollOrdineWishlistInterval);
             const INTERVALLO_MS = 3000;
-            const MAX_TENTATIVI = 200; // ~10 minuti
+            const MAX_TENTATIVI = 200;
             let tentativi = 0;
 
-            // Audit 2026-09-25 (M6): guardia "richiesta già in volo" (con rete
-            // lenta le letture ogni 3s si accavallavano) + try/catch (un
-            // errore di rete lanciato da ordiniLeggiStato diventava una
-            // promise rifiutata non gestita a ogni giro).
             let inVolo = false;
             _pollOrdineWishlistInterval = setInterval(async () => {
                 if (inVolo) return;
@@ -247,9 +200,6 @@
                     }
 
                     if (!data) {
-                        // Ordine sparito (cancellato o non più leggibile): prima
-                        // "data.stato" lanciava un TypeError ogni 3 secondi fino
-                        // al limite dei tentativi.
                         clearInterval(_pollOrdineWishlistInterval);
                         _resetBottonePrezzi(btn, sub, testoDefault);
                         sub.textContent = '❌ Ordine non trovato: riprova ad avviare il controllo.';
@@ -265,7 +215,6 @@
                         _resetBottonePrezzi(btn, sub, testoDefault);
                         sub.textContent = `✅ Fatto! ${r.aggiornate ?? 0} su ${r.totale ?? 0} carte aggiornate.`;
                     } else if (data.stato === 'annullato') {
-                        // sql/115: annullato dal pannello "Controlla prezzi".
                         clearInterval(_pollOrdineWishlistInterval);
                         _resetBottonePrezzi(btn, sub, testoDefault);
                         sub.textContent = 'Controllo annullato.';
@@ -288,10 +237,6 @@
             }, INTERVALLO_MS);
         }
 
-
-        // Elenco dettagliato (non solo il numero) delle carte con prezzo da
-        // aggiornare, usato dal modale cliccabile.
-
         function apriModalePrezziScaduti() {
             document.getElementById('prezziScadutiSottotitolo').textContent = `Mai controllate o con ultimo controllo più vecchio di ${SOGLIA_GIORNI_PREZZO_SCADUTO} giorni.`;
             const lista = document.getElementById('prezziScadutiLista');
@@ -307,18 +252,10 @@
             document.getElementById('prezziScadutiModal').style.display = 'flex';
         }
 
-
         function chiudiModalePrezziScaduti() {
             document.getElementById('prezziScadutiModal').style.display = 'none';
         }
 
-
-        // ── A10 (Dashboard/Home) — "Ultima sincronizzazione" ────────────────────
-        // Ultimo ordine con tipo='controlla_prezzi' e stato='completato',
-        // filtrato su creato_da (solo i controlli avviati da questo
-        // account, coerente con l'ownership usata in tutto il resto
-        // dell'app) — SOLO collezione, esclusi i controlli sulla wishlist
-        // (decisione confermata da Claudio).
         async function caricaUltimaSincronizzazioneHome() {
             const el = document.getElementById('ultimaSincronizzazioneHome');
             if (!el) return;
@@ -341,16 +278,6 @@
             el.innerHTML = `Ultimo controllo prezzi completato il <strong>${dataFmt}</strong> — <span style="color:var(--success);">▲ ${esito.salite ?? 0}</span> · <span style="color:var(--danger);">▼ ${esito.scese ?? 0}</span> · ➖ ${esito.invariate ?? 0} invariate`;
         }
 
-
-
-        // Chart.js caricato SOLO quando serve (audit 2026-09-25, E1/E3): prima
-        // index.html scaricava ~200 KB di chart.js@4 (versione non fissata)
-        // ad ogni apertura del sito, anche se l'unico grafico è questo.
-        // Versione ESATTA fissata: un aggiornamento della libreria non può
-        // più cambiare il sito da solo. Una sola richiesta anche con più
-        // click ravvicinati (promise condivisa); se il download fallisce la
-        // promise si azzera e il click successivo ritenta.
-        // (S4, 2026-10-12) stessa versione, copiata nel repo: vendor/LEGGIMI.txt
         const CHART_JS_URL = 'vendor/chart-js-4.5.1.umd.min.js';
         let _chartJsPromise = null;
         function _caricaChartJs() {
@@ -416,21 +343,10 @@
             });
         }
 
-
         function chiudiGraficoPrezzo() {
             document.getElementById('graficoModal').style.display = 'none';
             if (_graficoPrezzoChart) { _graficoPrezzoChart.destroy(); _graficoPrezzoChart = null; }
         }
-
-
-        // ── CONTROLLO PREZZI SEALED — Fase 1.2 (2026-09-12), stesso schema
-        // del pannello carte sopra (location + ambito), ordine dedicato
-        // tipo='controlla_prezzi_sealed'. Scaffali sostituisce location per i
-        // sealed (Fase 1.3, sql/41/42 — stesso giorno) — filtro per
-        // scaffale_id (uuid) invece che per nome location. Variabili di
-        // stato (_scaffaliSealedCaricati/_ambitoControlloPrezziSealed/
-        // _pollOrdineSealedInterval) dichiarate in state/cards.state.js,
-        // stessa convenzione delle equivalenti carte.
 
         async function caricaListaScaffaliCheckboxSealed() {
             const userId = await authGetUserId();
@@ -450,7 +366,7 @@
             wrap.innerHTML = '';
             scaffali.forEach(s => {
                 const label = document.createElement('label');
-                label.className = 'pz-chip'; // RESTYLE: chip, casella nascosta
+                label.className = 'pz-chip';
                 const cb = document.createElement('input');
                 cb.type = 'checkbox';
                 cb.value = s.id;
@@ -463,7 +379,6 @@
             if (typeof prezziAggiornaScelta === 'function') prezziAggiornaScelta();
         }
 
-
         function toggleTutteScaffaliSealed() {
             const checkboxes = document.querySelectorAll('.checkboxScaffalePrezziSealed');
             const tutteSpuntate = [...checkboxes].every(cb => cb.checked);
@@ -471,18 +386,15 @@
             document.getElementById('btnToggleTutteScaffaliSealed').textContent = tutteSpuntate ? 'Seleziona tutti' : 'Deseleziona tutti';
         }
 
-
         function _scaffaliSelezionatiSealed() {
             return [...document.querySelectorAll('.checkboxScaffalePrezziSealed:checked')].map(cb => cb.value);
         }
-
 
         function _impostaAmbitoControlloPrezziSealed(ambito) {
             _ambitoControlloPrezziSealed = ambito;
             document.getElementById('btnAmbitoSoloMieSealed')?.classList.toggle('active', ambito === 'soloMie');
             document.getElementById('btnAmbitoGruppoSealed')?.classList.toggle('active', ambito === 'gruppo');
         }
-
 
         async function triggerExtensionPriceCheckSealed() {
             const userId = await authGetUserId();
@@ -510,25 +422,17 @@
             btn.innerHTML = '<i class="fa-solid fa-hourglass-half"></i> In attesa che un dispositivo lo prenda in carico...';
             sub.textContent = 'L\'ordine è stato creato — un dispositivo con l\'estensione aperta lo eseguirà a breve.';
 
-            // Stesso hook missione #90 degli altri due trigger sopra.
             (async () => {
                 try {
                     await missioniEstensioneFunzioneUsataRegistra(userId);
                 } catch (e) { console.error('[missioni] registrazione uso estensione:', e); }
             })();
 
-            // Poll dedicato (non _pollOrdine, che ha il testo di default
-            // fisso su "carte") — stesso schema di
-            // triggerExtensionPriceCheckWishlist() sopra.
             if (_pollOrdineSealedInterval) clearInterval(_pollOrdineSealedInterval);
             const INTERVALLO_MS = 3000;
-            const MAX_TENTATIVI = 200; // ~10 minuti
+            const MAX_TENTATIVI = 200;
             let tentativi = 0;
 
-            // Audit 2026-09-25 (M6): guardia "richiesta già in volo" (con rete
-            // lenta le letture ogni 3s si accavallavano) + try/catch (un
-            // errore di rete lanciato da ordiniLeggiStato diventava una
-            // promise rifiutata non gestita a ogni giro).
             let inVolo = false;
             _pollOrdineSealedInterval = setInterval(async () => {
                 if (inVolo) return;
@@ -545,9 +449,6 @@
                     }
 
                     if (!data) {
-                        // Ordine sparito (cancellato o non più leggibile): prima
-                        // "data.stato" lanciava un TypeError ogni 3 secondi fino
-                        // al limite dei tentativi.
                         clearInterval(_pollOrdineSealedInterval);
                         _resetBottonePrezzi(btn, sub, testoDefault);
                         sub.textContent = '❌ Ordine non trovato: riprova ad avviare il controllo.';
@@ -563,7 +464,6 @@
                         _resetBottonePrezzi(btn, sub, testoDefault);
                         sub.innerHTML = `✅ Fatto! <span style="color:var(--success)">▲ ${r.salite ?? 0}</span> · <span style="color:var(--danger)">▼ ${r.scese ?? 0}</span> · ➖ ${r.invariate ?? 0} invariati`;
                     } else if (data.stato === 'annullato') {
-                        // sql/115: annullato dal pannello "Controlla prezzi".
                         clearInterval(_pollOrdineSealedInterval);
                         _resetBottonePrezzi(btn, sub, testoDefault);
                         sub.textContent = 'Controllo annullato.';

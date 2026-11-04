@@ -1,53 +1,10 @@
-// ── data/binder.repository.js ────────────────────────────────────────────
-// Multi-Binder (sessione 2026-08-24/25, vedi 17_binders_multipli.sql per lo
-// schema). TUTTE le chiamate Supabase relative a Binder vivono qui, zero
-// eccezioni — pattern del progetto.
-//
-// Rispetto alla versione precedente (un Binder singolo per utente):
-// - binderCarteInsert/DeleteOne/DeleteBatch ora si aspettano righe che
-//   includono binder_id (usate SOLO dal binder tipo 'extra' — i
-//   binder-location non passano mai da binder_carte, si leggono in tempo
-//   reale da carte.location, vedi binderLocationLeggiCarte sotto).
-// - userMediaGet/Upsert* ora richiedono SEMPRE binder_id esplicito (prima
-//   erano un unico slot per utente, ora un slot per utente+binder — stesso
-//   vincolo (user_id, binder_id, slot) creato in 17_binders_multipli.sql).
-//   binder_id può essere null SOLO per compatibilità con vecchie righe
-//   orfane pre-migrazione: nessun codice nuovo deve mai chiamarle con null.
-//
-// Dipende da: supabaseClient.
-//
-// PULIZIA (26/08/2026): rimosse bindersLeggiPubblico/InfoPubblico/
-// MediaPubblico — wrapper delle stesse 3 RPC pubbliche già coperte da
-// data/binder-pubblico.repository.js (nomi diversi: binderPubblicoLeggiInfo/
-// Carte/Media). Verificato codice morto: nessun chiamante in binder.ui.js,
-// binder-pubblico.ui.js, binder-flipbook.ui.js — le pagine pubbliche
-// (binder-pubblico.html, scambio.html, wishlist.html) usano tutte e sole
-// le funzioni del repository dedicato. Se in futuro serve leggere l'RPC
-// pubblica dal sito privato, usare quelle di binder-pubblico.repository.js
-// invece di riscriverle qui.
+// Binder: tutte le chiamate a Supabase.
 
-// ── binders (nuova tabella) ──────────────────────────────────────────────
-
-// Tutti i binder dell'utente, di qualunque tipo — usata per popolare il
-// widget "Binders" (griglia dei contenitori).
 function bindersQueryTutti(userId) {
     return supabaseClient.from('binders').select('*').eq('owner_id', userId).order('tipo').order('nome');
 }
 
-// Materializza (o ritorna se già esiste) il binder-location per un valore
-// di carte.location — chiamata on-demand, es. subito dopo aver letto i
-// valori distinti di location dell'utente. Upsert idempotente: il vincolo
-// unico binders_owner_tipo_location_uniq regge qui perché location_valore
-// non è mai null per tipo='location' (vedi commento in
-// 17_binders_multipli.sql sul perché NON regge per wishlist/extra).
-// nome di default = lo stesso valore della location; personalizzabile in
-// futuro, non ancora esposto in UI.
 async function binderLocationMaterializza(userId, locationValore) {
-    // Upsert "normale" (DO UPDATE, non ignoreDuplicates/DO NOTHING): su
-    // conflitto riscrive lo stesso nome, innocuo, ma soprattutto la riga
-    // torna SEMPRE nella RETURNING — con DO NOTHING invece il caso più
-    // comune (binder già esistente) non restituirebbe nulla e .single()
-    // fallirebbe.
     return supabaseClient
         .from('binders')
         .upsert(
@@ -58,34 +15,15 @@ async function binderLocationMaterializza(userId, locationValore) {
         .single();
 }
 
-// Come binderLocationMaterializza ma per TUTTE le location in un colpo
-// solo — usata all'apertura del widget Binders per evitare N round-trip
-// (una per ogni valore di data/locations.repository.js:locationsList).
 async function binderLocationMaterializzaBatch(userId, nomiLocation) {
     if (!nomiLocation || nomiLocation.length === 0) return { data: [], error: null };
     const righe = nomiLocation.map(nome => ({ owner_id: userId, tipo: 'location', location_valore: nome, nome }));
-    // FIX 2026-09-20 (widget Location): ignoreDuplicates:true = ON CONFLICT
-    // DO NOTHING. Prima era DO UPDATE, che su un binder GIÀ esistente
-    // riscriveva `nome` con il nome della location: dopo sql/26 (trigger
-    // _binders_blocca_rinomina_diretta) questo lancia un'eccezione ogni
-    // volta che binders.nome è diverso da location_valore (nome
-    // personalizzato approvato, oppure location rinominata con nome binder
-    // in attesa di approvazione), e l'errore faceva fallire l'INTERO batch
-    // — nessun binder nuovo materializzato — loggato soltanto in
-    // _garantisciTuttiIBinder. Con DO NOTHING i binder esistenti non
-    // vengono più toccati (nome personalizzato al sicuro). .select()
-    // restituisce ora solo le righe NUOVE: l'unico chiamante
-    // (_garantisciTuttiIBinder, ui/binder.ui.js) legge solo `error`.
     return supabaseClient
         .from('binders')
         .upsert(righe, { onConflict: 'owner_id,tipo,location_valore', ignoreDuplicates: true })
         .select();
 }
 
-// Il binder wishlist è unico per utente ma il vincolo DB NON lo garantisce
-// (location_valore è null per questo tipo, NULL <> NULL in un vincolo
-// unique standard — vedi nota nel file SQL). Deduplica quindi qui, lato
-// applicazione: SELECT prima di INSERT, mai upsert diretto.
 async function binderWishlistGarantisci(userId) {
     const { data: esistente, error: errSelect } = await supabaseClient
         .from('binders').select('*').eq('owner_id', userId).eq('tipo', 'wishlist').maybeSingle();
@@ -99,9 +37,6 @@ async function binderWishlistGarantisci(userId) {
         .single();
 }
 
-// Stesso discorso del binder extra: oggi ne creiamo uno solo per utente,
-// ma è una scelta applicativa (vedi Da fare per multi-binder extra futuri),
-// non un vincolo DB — stessa deduplica SELECT-poi-INSERT del wishlist.
 async function binderExtraGarantisci(userId, nomeDefault) {
     const { data: esistente, error: errSelect } = await supabaseClient
         .from('binders').select('*').eq('owner_id', userId).eq('tipo', 'extra').limit(1).maybeSingle();
@@ -115,11 +50,6 @@ async function binderExtraGarantisci(userId, nomeDefault) {
         .single();
 }
 
-// Fase 3, Step 2 (2026-09-12) — mirror di binderWishlistGarantisci: un solo
-// binder Scambio per utente, nome fisso "Scambio", MAI rinominabile (stesso
-// trattamento di Wishlist, non 'extra' — vedi commento su
-// binderExtraRinomina sotto: elenco esplicito dei tipi rinominabili, va
-// tenuto invariato apposta).
 async function binderScambioGarantisci(userId) {
     const { data: esistente, error: errSelect } = await supabaseClient
         .from('binders').select('*').eq('owner_id', userId).eq('tipo', 'scambio').maybeSingle();
@@ -133,23 +63,11 @@ async function binderScambioGarantisci(userId) {
         .single();
 }
 
-// Imposta/aggiorna la quantità offerta per una carta nel binder Scambio —
-// upsert sulla stessa UNIQUE(owner_id,binder_id,carta_id) di sql/44, quindi
-// un solo giro copre sia "prima volta che la offro" sia "cambio quantità"
-// (a differenza di binderCarteInsert/binderCarteDeleteOne sotto, pensate
-// per il toggle sì/no del binder 'extra'). Quantità 0 non elimina la riga
-// da sola — il chiamante (ui/binder.ui.js) decide se cancellarla del tutto
-// quando l'utente azzera, per coerenza con "offerta a 0 = non ancora messa
-// in vendita" già usato lato RPC pubblica (sql/45b).
 async function binderCarteImpostaQuantitaScambio(userId, binderId, cartaId, quantita) {
     return supabaseClient.from('binder_carte')
         .upsert({ owner_id: userId, binder_id: binderId, carta_id: cartaId, quantita_offerta: quantita }, { onConflict: 'owner_id,binder_id,carta_id' });
 }
 
-// Rinomina — solo i binder tipo 'extra' sono rinominabili (per gli altri
-// tipi il trigger DB non blocca il nome, ma la UI non deve mai offrire
-// questa azione su location/wishlist: sarebbe fuorviante, il nome di un
-// binder-location deve restare agganciato al valore reale di location).
 async function binderExtraRinomina(userId, binderId, nuovoNome) {
     return supabaseClient
         .from('binders')
@@ -159,12 +77,6 @@ async function binderExtraRinomina(userId, binderId, nuovoNome) {
         .eq('tipo', 'extra');
 }
 
-// Pubblicazione libera (2026-08-25, vedi 19_binder_pubblicazione_libera.sql)
-// — nessuna approvazione admin, il proprietario decide da sé. Per i binder
-// wishlist/SCAMBIO il trigger DB ignora comunque questo update e forza
-// sempre 'pubblico' — questa funzione può essere chiamata anche su quei
-// binder senza effetto (non serve che la UI li escluda per sicurezza, ma è
-// comunque più chiaro non mostrare il controllo lì, vedi ui/binder.ui.js).
 async function binderImpostaPubblicazione(userId, binderId, pubblico) {
     return supabaseClient
         .from('binders')
@@ -173,12 +85,6 @@ async function binderImpostaPubblicazione(userId, binderId, pubblico) {
         .eq('owner_id', userId);
 }
 
-// Nome con approvazione admin (2026-08-25, vedi 21_binder_nome_con_
-// approvazione.sql) — stessa metodologia di copertina/sleeve: il nome
-// VISIBILE (colonna 'nome') non cambia finché admin_process_pending_request
-// non approva. Applicabile a QUALUNQUE tipo di binder (a differenza di
-// binderExtraRinomina sopra, che resta la rinomina immediata del solo
-// binder 'extra', invariata — le due convivono, vedi nota in chat).
 async function binderProponiNome(userId, binderId, nomeProposto) {
     return supabaseClient
         .from('binders')
@@ -187,18 +93,10 @@ async function binderProponiNome(userId, binderId, nomeProposto) {
         .eq('owner_id', userId);
 }
 
-// Carte di un binder-location: lettura diretta da 'carte', NON da
-// binder_carte — i binder-location non hanno righe di appartenenza, sono
-// sempre lo specchio in tempo reale di carte.location. Stessa colonna
-// 'stato' già filtrata altrove nel sito (solo 'collezione').
 function binderLocationQueryCarte(userId, locationValore) {
     return supabaseClient.from('carte').select('*').eq('owner_id', userId).eq('location', locationValore).eq('stato', 'collezione').order('nome');
 }
 
-// Layout della griglia (2x2/3x3/3x4/4x4) — ora per-binder (fix 26/08/2026,
-// vedi 25_binder_layout_per_binder.sql), non più una preferenza globale
-// per dispositivo. Nessun default applicativo qui: la colonna ha
-// DEFAULT '3x3' lato DB.
 async function binderAggiornaLayout(userId, binderId, layout) {
     return supabaseClient
         .from('binders')
@@ -207,9 +105,6 @@ async function binderAggiornaLayout(userId, binderId, layout) {
         .eq('owner_id', userId);
 }
 
-// RESTYLE BINDEX FASE 8a (sql/81): colore della copertina scelto dall'utente
-// ('#rrggbb' oppure null = tinta automatica). La colonna esiste solo dopo
-// aver eseguito sql/81_binder_colore.sql.
 async function binderImpostaColore(userId, binderId, colore) {
     return supabaseClient
         .from('binders')
@@ -218,8 +113,6 @@ async function binderImpostaColore(userId, binderId, colore) {
         .eq('owner_id', userId);
 }
 
-// sql/95: interruttore "Non aggiungere il valore di queste carte alla mia
-// collezione". La colonna esiste solo dopo aver eseguito sql/95.
 async function binderImpostaEscludiValore(userId, binderId, escludi) {
     return supabaseClient
         .from('binders')
@@ -228,23 +121,14 @@ async function binderImpostaEscludiValore(userId, binderId, escludi) {
         .eq('owner_id', userId);
 }
 
-// Appartenenze (binder_id, carta_id) di TUTTI i binder dell'utente
-// (extra + scambio): servono a decidere quali carte escludere dai totali
-// di valore (utils/valore-escluso.js).
 function binderCarteQueryTutteAppartenenze(userId) {
     return supabaseClient.from('binder_carte').select('binder_id, carta_id').eq('owner_id', userId);
 }
 
-// ── binder_carte (solo per binder tipo 'extra') ──────────────────────────
-// Le righe qui sotto devono sempre includere binder_id quando riferite al
-// nuovo sistema — { owner_id, carta_id, binder_id }.
 function binderCarteQuery(userId, binderId) {
     return supabaseClient.from('binder_carte').select('carta_id').eq('owner_id', userId).eq('binder_id', binderId);
 }
 
-// Gemella di binderCarteQuery, ma con quantita_offerta — serve al binder
-// Scambio (Fase 3, Step 2), dove non basta sapere SE una carta c'è, serve
-// anche QUANTA ne è offerta.
 function binderCarteQueryConQuantita(userId, binderId) {
     return supabaseClient.from('binder_carte').select('carta_id, quantita_offerta').eq('owner_id', userId).eq('binder_id', binderId);
 }
@@ -261,19 +145,14 @@ async function binderCarteDeleteBatch(userId, binderId, cartaIds) {
     return supabaseClient.from('binder_carte').delete().eq('owner_id', userId).eq('binder_id', binderId).in('carta_id', cartaIds);
 }
 
-// ── user_media (copertina Binder + retro carta, ora per-binder) ─────────
 async function userMediaGet(userId, binderId, slot) {
     return supabaseClient.from('user_media').select('*').eq('user_id', userId).eq('binder_id', binderId).eq('slot', slot).maybeSingle();
 }
 
-// Usata dagli upload (legge la riga appena scritta, serve l'id per
-// collegare la richiesta di moderazione).
 async function userMediaUpsertELeggi(payload) {
     return supabaseClient.from('user_media').upsert(payload, { onConflict: 'user_id,binder_id,slot' }).select().single();
 }
 
-// Usata dalla selezione di un default dalla galleria: il codice originale
-// non leggeva la riga risultante qui, quindi niente .select().single().
 async function userMediaUpsert(payload) {
     return supabaseClient.from('user_media').upsert(payload, { onConflict: 'user_id,binder_id,slot' });
 }
@@ -282,10 +161,6 @@ async function userMediaUpdateMetadata(userId, binderId, slot, metadata) {
     return supabaseClient.from('user_media').update({ metadata }).eq('user_id', userId).eq('binder_id', binderId).eq('slot', slot);
 }
 
-// ── Storage: bucket privato 'user-media' ──────────────────────────────
-// invariate, il path (che ora deve includere binderId per restare univoco
-// per binder, es. `${userId}/${binderId}/binder_cover`) si costruisce nella
-// UI come già faceva prima — nessuna logica di path qui.
 async function storageUploadUserMedia(path, blob) {
     return supabaseClient.storage.from('user-media').upload(path, blob, { upsert: true, contentType: 'image/png' });
 }
@@ -294,7 +169,6 @@ async function storageSignedUrlUserMedia(path) {
     return supabaseClient.storage.from('user-media').createSignedUrl(path, 3600);
 }
 
-// ── Storage: bucket pubblico 'default-assets' ────────────────────────
 function storageDefaultAssetPublicUrl(path) {
     return supabaseClient.storage.from('default-assets').getPublicUrl(path);
 }
@@ -303,7 +177,6 @@ async function storageListDefaultAssets(prefix) {
     return supabaseClient.storage.from('default-assets').list(prefix);
 }
 
-// ── FOTO PROFILO (sql/90) ───────────────────────────────────────────────
 async function fotoProfiloMia(userId) {
     return supabaseClient.from('user_media').select('*')
         .eq('user_id', userId).eq('slot', 'profilo').is('binder_id', null).is('scaffale_id', null).maybeSingle();
@@ -320,7 +193,6 @@ async function fotoProfiloUpload(path, blob) {
 async function fotoProfiloRimuoviFile(path) {
     return supabaseClient.storage.from('user-media').remove([path]);
 }
-// Percorsi delle foto profilo APPROVATE di altri utenti + URL firmati.
 async function fotoProfiloLeggiAltri(userIds) {
     return supabaseClient.rpc('leggi_foto_profilo', { p_user_ids: userIds });
 }

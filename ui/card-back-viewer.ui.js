@@ -1,34 +1,4 @@
-// ── ui/card-back-viewer.ui.js ────────────────────────────────────────────
-// Visualizzatore del retro carta personalizzato, ramo "non owner" —
-// condiviso SOLO tra scambio.html e wishlist.html (sealed.html non ha il
-// flip-modal: i prodotti sealed non hanno un "retro carta" da mostrare).
-// Codice identico, byte per byte, tra le due pagine — prima duplicato.
-//
-// Questa pagina è sempre pubblica/anonima (nessuna sessione): non
-// mostriamo MAI una sleeve pending o rejected, solo 'approved' — via RPC
-// leggi_card_back_approvata(p_owner_id, p_binder_id) (24_card_back_binder_id.sql),
-// che filtra lato server per owner E per binder specifico. Fallback:
-// nessuna riga approvata per quel binder → default di sistema
-// (default-assets/card_back/defaultcard.png) → se anche quello fallisce,
-// .cbd-wrap resta nascosto e si vede il semplice sfondo var(--primary) di
-// prima (nessuna regressione).
-//
-// Fix 26/08/2026: con Multi-Binder ogni binder ha la propria sleeve — non
-// esiste più "la sleeve dell'owner", solo "la sleeve di questo binder
-// dell'owner". Ogni pagina (scambio.ui.js/wishlist.ui.js) risolve il
-// binder_id giusto (via leggi_binder_id_owner) in _ownerBinderId prima di
-// aprire il flip-modal.
-//
-// L'UNICA differenza reale tra scambio.html e wishlist.html era il testo
-// del campo "variazione" (scambio: "Disponibili: N", wishlist: "Obiettivo:
-// €N") — estratta qui nella funzione _cbdTestoVariazione(card), che
-// ciascuna pagina definisce nel proprio ui/*.ui.js (scambio.ui.js /
-// wishlist.ui.js). Tutto il resto è identico.
-//
-// Dipende da: _ownerUserId e _ownerBinderId (state della pagina),
-// _cbdTestoVariazione (definita nel file ui/*.ui.js della pagina), e da
-// data/card-back-viewer.repository.js (cardBackViewerLeggiApprovata,
-// cardBackViewerDefaultPublicUrl, cardBackViewerImmaginiVisibiliPublicUrl).
+// Retro carta personalizzato visto da chi non è il proprietario (pagine pubbliche).
 
 const CARD_BACK_W = 900;
 const DEFAULT_STATE_CARD_BACK = {
@@ -52,15 +22,6 @@ async function renderRetroCartaViewer(card) {
             const media = await cardBackViewerLeggiApprovata(_ownerUserId, _ownerBinderId);
 
             if (media) {
-                // Path pubblico per-binder (fix 26/08/2026): la copia in
-                // 'immaginivisibili' viene scritta da admin.html come
-                // carta/{ownerId}/{binderId}.png (vedi
-                // _sincronizzaCopiaPubblica in admin-requests.ui.js).
-                //
-                // Cache-buster: il path pubblico è sempre lo stesso file per
-                // quel binder — senza "?v=reviewed_at" il browser continua a
-                // servire la versione vecchia dalla cache anche dopo una
-                // nuova approvazione.
                 if (media.source === 'default') {
                     sleeveUrl = cardBackViewerDefaultPublicUrl(media.storage_path);
                 } else {

@@ -1,52 +1,15 @@
-// ═══════════════════════════════════════════════════════════════════════
-// WIDGET-VISUALIZZAZIONE.UI.JS — tessere "Visualizzazione" + "Ultime
-// aggiunte" (CardSync Pro)
-// ═══════════════════════════════════════════════════════════════════════
-// STEP 21 della ristrutturazione file widget home (vedi
-// Roadmap_Ristrutturazione_Widget_Home_2026-09-11.md). Estratto da
-// ui/phone.ui.js il 2026-09-11. NESSUNA riscrittura: solo spostamento di
-// codice, zero cambi di comportamento per l'utente finale.
-//
-// "Visualizzazione" — CATEGORIA C: nessuna pagina propria — id catalogo
-// coincide col nome della tab (una delle 5 fisse del sito), quindi non
-// serve nemmeno il campo 'tab': il dispatch generico
-// (apriDettaglioWidget → w.id quando manca 'tab', ui/paginainiziale.ui.js)
-// arriva già al posto giusto.
-//
-// "Ultime aggiunte" (id catalogo 'carte_recenti') — ACCORPATA QUI in
-// questo step: era stata estratta per errore come file a sé
-// (widget-ultime-aggiunte.ui.js) allo STEP 12, fuori dall'ordine della
-// roadmap originale che la bundlava con "Visualizzazione". Claudio ha
-// confermato l'opzione B: accorpare qui e cancellare il file a sé — vedi
-// istruzioni sotto per il file da eliminare da GitHub. Stessa categoria C:
-// 'tab': 'visualizzazione' apre la stessa tab di cui sopra.
-//
-// COSA RESTA FUORI (non spostato qui, invariato):
-// - _ballCORPI.visualizzazione / _ballCORPI.carte_recenti (e ASPETTO/
-//   TITOLI_BREVI corrispondenti, ui/widget-render-condiviso.ui.js) —
-//   motore visivo, non toccato. Verificato: leggono rispettivamente
-//   d.totale/d.aggiunteRecenti/d.serie/d.ultime e d.lista dal 'dati'
-//   restituito dai due preview() qui sotto — forme confermate coerenti.
-// ───────────────────────────────────────────────────────────────────────
+// Widget Visualizzazione e Ultime aggiunte.
 
-// ── VOCE DI CATALOGO "VISUALIZZAZIONE" ───────────────────────────────
 CATALOGO_WIDGET.visualizzazione = {
-        // Restyle FASE 2 (2026-09-30): "Collezione" (id e tab invariati).
         titolo: 'Collezione', icona: 'fa-images',
         preview: () => {
             const collezione = carteReali.filter(c => c.stato === 'collezione');
             const n = collezione.length;
-            // 'dati' è AGGIUNTIVO (tessere grandi): 'righe' resta identica,
-            // così 1x1, mini, badge e semaforo non cambiano di una virgola.
-            // Le ultime quattro entrate, stesso ordinamento di ultima_carta.
             const ultime = collezione.slice()
                 .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
-                .slice(0, 40) // quante ne servono lo decide lo spazio: il CSS e la potatura nascondono le carte che non ci stanno
+                .slice(0, 40)
                 .map(c => ({ id: c.id, nome: c.name || '', immagine: c.immagine, rarita: c.rarita }));
 
-            // Andamento VERO degli inserimenti negli ultimi 14 giorni, per
-            // la sparkline: quante carte sono entrate ogni giorno. Dato già
-            // in memoria (createdAt), nessuna query nuova.
             const GIORNI = 14;
             const oggi = new Date(); oggi.setHours(0, 0, 0, 0);
             const serie = new Array(GIORNI).fill(0);
@@ -58,10 +21,7 @@ CATALOGO_WIDGET.visualizzazione = {
             });
             const aggiunteRecenti = serie.reduce((a, b) => a + b, 0);
 
-            // Restyle FASE 2 (tavola "Collezione = carte · valore,
-            // Carte/Sealed/Wishlist, ultime 4"): valore (Σ prezzo × qty, stessa
-            // formula di Valore collezione) e i tre conteggi, tutto in memoria.
-            const valore = collezione.filter(c => !c.esclusoValore).reduce((t, c) => t + (Number(c.price) || 0) * (Number(c.qty) || 1), 0); // sql/95
+            const valore = collezione.filter(c => !c.esclusoValore).reduce((t, c) => t + (Number(c.price) || 0) * (Number(c.qty) || 1), 0);
             const nSealed = (typeof prodottiSealedReali !== 'undefined' && Array.isArray(prodottiSealedReali)) ? prodottiSealedReali.length : 0;
             const nWishlist = carteReali.filter(c => c.tabella === 'wishlist').length;
 
@@ -72,12 +32,9 @@ CATALOGO_WIDGET.visualizzazione = {
         },
 };
 
-// ── VOCE DI CATALOGO "ULTIME AGGIUNTE" (accorpata, vedi header) ──────
 CATALOGO_WIDGET.carte_recenti = {
     titolo: 'Ultime aggiunte', icona: 'fa-clock',
-    tagliaDefault: '6x6', // cinque righe di elenco più la fila di miniature
-    // Da carteReali per createdAt, come caricaAttivitaRecentiHome().
-    // Nessuna query.
+    tagliaDefault: '6x6',
     preview: () => {
         const collezione = (typeof carteReali !== 'undefined' ? carteReali : [])
             .filter(c => c.stato === 'collezione');
@@ -88,9 +45,6 @@ CATALOGO_WIDGET.carte_recenti = {
         const quando = (c) => c.createdAt
             ? new Date(c.createdAt).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' })
             : '—';
-        // Restyle FASE 2 (tavola "Ultime aggiunte = una lista"): quante
-        // negli ultimi 7 giorni, e per ogni voce anche la data "umana" e il
-        // prezzo. Nessun badge (non è un'azione).
         const setteGiorniFa = Date.now() - 7 * 86400000;
         const in7 = collezione.filter(c => c.createdAt && new Date(c.createdAt).getTime() >= setteGiorniFa).length;
         return {

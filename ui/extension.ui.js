@@ -1,46 +1,12 @@
-// ── ui/extension.ui.js ─────────────────────────────────────────────────
-// Pannello integrazione con l'estensione Chrome: rilevamento versione,
-// istruzioni installazione/aggiornamento/disinstallazione, apertura app
-// dal sito verso l'estensione.
+// Collegamento con l'estensione: versione, istruzioni, apertura dell'app, tema.
 
-
-        // ── FOTO DETTAGLIO (angoli, pieghe...) — caricate dall'utente ─────────────
-
-        // ── RICERCA UNICA SU TUTTO ─────────────────────────────────────────────────
-        // Cerca in TUTTO carteReali (già unisce carte+wishlist), ignorando
-        // la tab/filtri attivi al momento — a differenza della barra di
-        // ricerca dentro Visualizzazione, che filtra solo quello che è già
-        // visibile lì.
-        // ═══════════════════════════════════════════════════════════════════
-        // PANNELLO CARDSYNC — controllo estensione + accesso, tutto insieme
-        // ═══════════════════════════════════════════════════════════════════
-
-        // Il wizard di installazione/aggiornamento (statoIstruzioni, poco più
-        // sotto) usa un comando PowerShell — funziona solo su Windows. Su
-        // qualunque altro sistema quel percorso è semplicemente inapplicabile,
-        // quindi lo saltiamo del tutto (vedi controlloIngressoCardsync).
-        // navigator.userAgentData è il modo moderno e più affidabile (Chrome
-        // 90+); se assente si ricade su navigator.platform/userAgent.
-        function _piattaformaNonWindows() {
+function _piattaformaNonWindows() {
             if (navigator.userAgentData && navigator.userAgentData.platform) {
                 return navigator.userAgentData.platform.toLowerCase() !== 'windows';
             }
             return !/win/i.test(navigator.platform || navigator.userAgent || '');
         }
 
-
-        // Chiede la versione all'estensione (se installata) tramite
-        // externally_connectable — se non risponde entro il timeout, la
-        // consideriamo assente (disinstallata, o non è Chrome/Chromium).
-        //
-        // TIMEOUT 1,2s → 5s (audit 2026-09-25, M4). Il service worker di
-        // un'estensione MV3 addormentato può metterci più di 1,2s a
-        // svegliarsi e rispondere: rischio di un falso "estensione non
-        // installata/non aggiornata" a intermittenza. Alzarlo NON rallenta
-        // chi l'estensione non ce l'ha: in quel caso chrome.runtime non
-        // esiste proprio nella pagina (la funzione esce subito, prima riga
-        // sotto) oppure Chrome risponde subito con lastError. Il timeout
-        // scatta solo se l'estensione c'è ma tarda.
         const TIMEOUT_RISPOSTA_ESTENSIONE_MS = 5000;
         function _chiediVersioneEstensione() {
             return new Promise((resolve) => {
@@ -64,21 +30,6 @@
             });
         }
 
-
-        // ── "APRI L'APP" — manda la sessione già attiva qui all'estensione ──────
-        // Un sito normale non può aprire da solo una pagina chrome-extension://
-        // (bloccato dal browser per sicurezza) — per questo chiediamo
-        // all'estensione stessa di aprirsi. Vedi il listener
-        // CARDSYNC_OPEN_APP in background.js (estensione).
-        // Estensione 5.17: NON le passiamo più i token di sessione. Sito ed
-        // estensione finivano per usare la stessa sessione e Supabase la
-        // chiudeva a entrambi appena uno dei due riusava una chiave di rinnovo
-        // vecchia (succedeva riaprendo il sito dopo qualche ora). L'estensione
-        // ora ha un suo login, una volta per dispositivo.
-
-        // I 16 temi dell'estensione sono scelti dal sito con solo 3 opzioni
-        // (viola/verde/pokemon, vedi setSiteTheme) — mappiamo qui i nomi,
-        // l'estensione non ha più un proprio selettore.
         function _temaEstensioneDaSito() {
             const temaSito = prefSiteThemeGet();
             if (temaSito === 'verde') return 'green';
@@ -86,18 +37,12 @@
             return 'purple';
         }
 
-
-        // Estensione 5.46: il chiaro/scuro scelto qui vale subito anche
-        // nell'estensione (CARDSYNC_SET_TEMA in background.js, le pagine
-        // aperte cambiano senza ricaricarsi). Prima arrivava solo con "Apri
-        // l'app". Nessuna risposta attesa: senza estensione non succede nulla.
         function mandaTemaScuroAEstensione(isDark) {
             if (!window.chrome || !chrome.runtime || !chrome.runtime.sendMessage) return;
             try {
                 chrome.runtime.sendMessage(ID_ESTENSIONE_CARDSYNC, { type: 'CARDSYNC_SET_TEMA', temaScuro: !!isDark }, () => { void chrome.runtime.lastError; });
-            } catch (_) { /* estensione assente */ }
+            } catch (_) {   }
         }
-
 
         function _mandaAperturaAppAEstensione() {
             return new Promise((resolve) => {
@@ -115,7 +60,6 @@
             });
         }
 
-
         async function apriAppEstensione() {
             const btn = document.getElementById('btnApriApp');
             const testoOriginale = btn.innerHTML;
@@ -129,17 +73,10 @@
             btn.disabled = false;
         }
 
-
         function salvaPreferenzaApriSempreApp(attivo) {
             prefApriSempreAppSet(attivo);
         }
 
-
-        // Chiede all'estensione lo stato attuale di "aiutaGruppo" (per-
-        // dispositivo, chrome.storage.local — vedi CARDSYNC_GET_AIUTA_GRUPPO
-        // in background.js). Stessa tolleranza di _chiediVersioneEstensione:
-        // se l'estensione non risponde entro 1.2s, o non c'è proprio,
-        // risolve a false invece di restare in attesa.
         function _chiediAiutaGruppoEstensione() {
             return new Promise((resolve) => {
                 if (!window.chrome || !chrome.runtime || !chrome.runtime.sendMessage) {
@@ -162,23 +99,15 @@
             });
         }
 
-        // Scrive la preferenza nell'estensione (CARDSYNC_SET_AIUTA_GRUPPO) —
-        // stessa tolleranza delle altre chiamate verso l'estensione: se non
-        // risponde non blocchiamo né avvisiamo l'utente con un errore, la
-        // preferenza resta quella che era prima sul dispositivo.
         function salvaPreferenzaAiutaGruppoDispositivo(attivo) {
             if (!window.chrome || !chrome.runtime || !chrome.runtime.sendMessage) return;
             try {
                 chrome.runtime.sendMessage(ID_ESTENSIONE_CARDSYNC, { type: 'CARDSYNC_SET_AIUTA_GRUPPO', valore: attivo }, () => {
                     void chrome.runtime.lastError;
                 });
-            } catch (_) { /* silenzioso */ }
+            } catch (_) {   }
         }
 
-
-        // "Lavora anche a estensione chiusa" (v5.25, per-dispositivo come
-        // aiutaGruppo — CARDSYNC_GET/SET_LAVORA_A_CHIUSO in background.js).
-        // Senza risposta vale acceso, il comportamento delle versioni prima.
         function _chiediLavoraAChiusoEstensione() {
             return new Promise((resolve) => {
                 if (!window.chrome || !chrome.runtime || !chrome.runtime.sendMessage) { resolve(true); return; }
@@ -204,15 +133,9 @@
                 chrome.runtime.sendMessage(ID_ESTENSIONE_CARDSYNC, { type: 'CARDSYNC_SET_LAVORA_A_CHIUSO', valore: attivo }, () => {
                     void chrome.runtime.lastError;
                 });
-            } catch (_) { /* silenzioso */ }
+            } catch (_) {   }
         }
 
-
-        // Mostra i controlli "Apri l'app" (sidebar) e "Apri sempre l'app" +
-        // "Aiuta il gruppo da questo dispositivo" (Impostazioni) solo se
-        // l'estensione è stata rilevata (installata e aggiornata — vedi
-        // controlloIngressoCardsync). Se la preferenza locale "apri sempre"
-        // è attiva, la apre subito senza bisogno di cliccare nulla.
         async function _aggiornaControlliApriApp() {
             const gruppo = document.getElementById('appLaunchGroup');
             const gruppoImpostazioni = document.getElementById('impostazioniEstensioneGroup');
@@ -235,15 +158,6 @@
             _controllaAccountEstensione();
         }
 
-
-        // ── ACCOUNT DIVERSO TRA SITO ED ESTENSIONE ──────────────────────────────
-        // Dalla 5.17 sito ed estensione hanno due login separati: cambiare
-        // account sul sito non cambia quello dell'estensione, che continua a
-        // lavorare coda e ordini con l'account vecchio. Qui il sito chiede
-        // all'estensione chi è loggato (CARDSYNC_GET_UTENTE, estensione 5.26:
-        // risponde con id e nome, mai token) e, se non è lo stesso utente,
-        // lascia una barra fissa finché non combaciano. Estensioni più vecchie
-        // non conoscono il messaggio: nessuna risposta, nessun avviso.
         const ID_AVVISO_ACCOUNT_ESTENSIONE = 'account-estensione';
 
         function _chiediUtenteEstensione() {
@@ -269,7 +183,6 @@
             if (!_versioneVecchiaRilevata) return;
             try {
                 const [estensione, userIdSito] = await Promise.all([_chiediUtenteEstensione(), authGetUserId()]);
-                // Estensione senza login: all'apertura mostra già il suo form.
                 if (!estensione || !estensione.userId || !userIdSito || estensione.userId === userIdSito) {
                     avvisoFissoTogli(ID_AVVISO_ACCOUNT_ESTENSIONE);
                     return;
@@ -282,17 +195,10 @@
             }
         }
 
-        // Tornando sulla scheda del sito (es. dopo aver rifatto il login
-        // nell'estensione) ricontrolla, così la barra sparisce da sola.
         document.addEventListener('visibilitychange', () => {
             if (document.visibilityState === 'visible') _controllaAccountEstensione();
         });
 
-
-        // Emoji diversa in base al tema attivo del sito — solo "atmosfera"
-        // (fantasma per il viola, natura per il verde, acqua per l'azzurro),
-        // MAI personaggi Pokémon veri e propri: sarebbe materiale protetto
-        // da copyright, non qualcosa che generiamo qui.
         function _motivoEmojiTema() {
             if (document.body.classList.contains('theme-verde')) return '🌿';
             if (document.body.classList.contains('theme-pokemon')) return '💧';
@@ -307,16 +213,13 @@
             });
         }
 
-
         function _mostraSoloStato(idStato) {
             ['statoNonInstallata', 'statoIstruzioni', 'statoBeccato', 'statoDisinstalla', 'statoBossFiero']
                 .forEach((id) => { document.getElementById(id).style.display = id === idStato ? 'block' : 'none'; });
         }
 
-
         function _apriPannelloCardsync() {
             const panel = document.getElementById('cardsyncPanel');
-            // Garanzia definitiva anti-annidamento: sempre direttamente sotto body.
             if (panel.parentElement !== document.body) document.body.appendChild(panel);
             panel.style.display = 'block';
             _applicaMotiviTema();
@@ -326,14 +229,6 @@
             document.getElementById('cardsyncPanel').style.display = 'none';
         }
 
-
-        // ── Accesso a ZERO scorrimento anche con zoom del browser molto alto ──
-        // Es. zoom 500% su un 1920×1080 = finestra di ~384×216 px CSS: i
-        // breakpoint di index.css (.pdx-login-*) non bastano a quell'altezza.
-        // Qui si riduce con `zoom` il SOLO contenuto dello stato "accesso"
-        // fino alla scala massima che sta nello schermo del Pokédex. Con il
-        // browser a 500% anche una scala 0.3 lascia il testo grande quanto a
-        // zoom normale. Il resto del pannello e gli altri stati non si toccano.
         let _adattamentoAccessoAttivo = false;
         let _adattamentoAccessoUltimaLarghezza = 0;
 
@@ -348,16 +243,12 @@
                 return schermo.scrollHeight <= schermo.clientHeight;
             };
             if (sta(1)) { login.style.zoom = ''; return; }
-            // Ricerca binaria della scala massima che sta (il padding non
-            // scala, quindi un semplice rapporto sprecherebbe spazio).
             let basso = 0.15, alto = 1;
             for (let i = 0; i < 10; i++) {
                 const medio = (basso + alto) / 2;
                 if (sta(medio)) basso = medio; else alto = medio;
             }
             login.style.zoom = String(basso);
-            // Rete di sicurezza contro gli arrotondamenti dei pixel: se per 1px
-            // comparisse comunque la barra, stringi a piccoli passi.
             for (let i = 0; i < 8 && schermo.scrollHeight > schermo.clientHeight; i++) {
                 basso *= 0.98;
                 login.style.zoom = String(basso);
@@ -375,24 +266,17 @@
                 rafId = requestAnimationFrame(_adattaAccessoAlloSchermo);
             };
             window.addEventListener('resize', () => {
-                // Tastiera mobile aperta mentre si digita: cambia solo
-                // l'altezza, non la larghezza — non rimpicciolire il form.
                 const el = document.activeElement;
                 const tastiera = !!el && el.tagName === 'INPUT' && window.innerWidth === _adattamentoAccessoUltimaLarghezza;
                 _adattamentoAccessoUltimaLarghezza = window.innerWidth;
                 if (!tastiera) rimanda();
             });
             window.addEventListener('orientationchange', rimanda);
-            // Il messaggio d'errore del login aggiunge una riga: rifai il calcolo.
             const err = document.getElementById('authError');
             if (err) new MutationObserver(rimanda).observe(err, { attributes: true, childList: true, characterData: true, subtree: true });
-            // I font web cambiano gli a-capo quando finiscono di caricare.
             if (document.fonts && document.fonts.ready) document.fonts.ready.then(rimanda);
         }
 
-
-        // Punto d'ingresso principale — chiamato all'avvio della pagina.
-        // Controlla PRIMA l'estensione, poi (solo se è a posto) il login.
         async function controlloIngressoCardsync() {
             try {
                 const [versioneInstallata, ultimaVersioneTesto] = await Promise.all([
@@ -406,18 +290,11 @@
                 const estensioneOk = !ultimaVersione || (versioneInstallata && !versioneMaggioreSito(ultimaVersione, versioneInstallata));
 
                 if (!estensioneOk && _piattaformaNonWindows()) {
-                    // Il wizard di installazione/aggiornamento è Windows-only
-                    // (comando PowerShell) — su questo dispositivo non ha senso
-                    // proporlo: messaggio dedicato, poi si passa dritti al login.
                     await _mostraStatoNonWindows();
                     return;
                 }
 
                 if (!estensioneOk) {
-                    // Mostra pagina 1: scelta tra aggiornare / non installare / disinstallare.
-                    // "Non installare" solo se non è mai stata rilevata (nessuna
-                    // versione vecchia in giro); "disinstalla" solo se invece
-                    // una versione (vecchia) risponde davvero.
                     document.getElementById('btnNonInstallare').style.display = versioneInstallata ? 'none' : 'flex';
                     document.getElementById('btnDisinstallare').style.display = versioneInstallata ? 'flex' : 'none';
                     document.getElementById('statoNonInstallataTitolo').textContent = versioneInstallata
@@ -431,34 +308,12 @@
                     return;
                 }
 
-                // Estensione a posto — controlla il login. La conferma "il
-                // boss è fiero di te" compare sempre, anche se già loggato —
-                // cambia solo cosa c'è sotto: il form, o un solo bottone
-                // "Continua come..." per chi deve solo confermare.
                 await _mostraStatoLoginOControllo();
             } catch (e) {
-                // Un controllo fallito non deve mai bloccare il sito — ma
-                // prima l'errore spariva del tutto (catch muto): se qualcosa
-                // qui dentro lanciava, il pannello di login poteva non
-                // comparire mai senza lasciare traccia. Ora finisce nel log
-                // diagnostico (audit 2026-09-25, M3). Comportamento invariato.
                 console.error('[ingresso] controllo estensione/login fallito:', e);
             }
         }
 
-
-        // Estratta a parte perché richiamabile anche da "Non installarla"
-        // (chi sceglie di non usare l'estensione su questo PC deve comunque
-        // poter accedere al sito — prima questo passaggio veniva saltato
-        // del tutto, bloccando di fatto il login per sempre in quel caso).
-        //
-        // mostraTestoEstensione=false: usato da chi ha scelto di NON
-        // installare (o non può, es. dispositivo non Windows) — il testo
-        // "hai l'estensione installata" sarebbe falso in quel caso.
-        // nonWindows=true: usato quando il dispositivo non è Windows e il
-        // wizard di installazione/aggiornamento (PowerShell) non è quindi
-        // proponibile — messaggio dedicato invece del generico "Nessun
-        // problema!" usato da chi sceglie volontariamente di non installare.
         async function _mostraStatoLoginOControllo(mostraTestoEstensione = true, nonWindows = false) {
             if (nonWindows) {
                 document.getElementById('statoBossFieroTitolo').textContent = 'Niente Windows, nessun problema!';
@@ -471,10 +326,6 @@
                     : 'Puoi usare il sito tranquillamente anche senza l\'estensione su questo dispositivo — accedi per continuare.';
             }
 
-            // "Voglio disinstallarla comunque" non ha senso dove l'estensione
-            // non si può installare (telefono, tablet, Mac/Linux): lì non c'è
-            // niente da disinstallare. Il flag è sempre riapplicato, perché
-            // lo stato viene riaperto più volte nella stessa sessione.
             document.getElementById('btnDisinstallaDaAccesso').style.display = nonWindows ? 'none' : 'flex';
 
             const sessione = await assicuraLoginSupabase();
@@ -490,61 +341,39 @@
                 document.getElementById('bossFieroGiaLoggato').style.display = 'none';
                 document.getElementById('bossFieroLoginForm').style.display = 'block';
             }
-            // Dopo aver scelto form/"continua come": adatta all'altezza reale.
             _avviaAdattamentoAccesso();
             _adattaAccessoAlloSchermo();
             if (!sessione) authEmail.focus();
         }
 
-
         function mostraIstruzioniInstallazione() {
             _mostraSoloStato('statoIstruzioni');
             _applicaMotiviTema();
 
-            // Bivio: il sito sa già (dal controllo appena fatto) se è la
-            // prima installazione o un semplice aggiornamento — mostra solo
-            // le istruzioni rilevanti al caso specifico, invece di un
-            // generico "solo la prima volta potrebbe...". Il tipo viene
-            // aggiunto anche in coda al comando, ma aggiorna_cardsync.bat
-            // NON lo legge (verificato 2026-10-15): capisce da solo se Chrome
-            // conosce già la cartella leggendo le sue impostazioni, in modo
-            // più affidabile. Lasciato nel comando perché innocuo.
             const tipoOperazione = _versioneVecchiaRilevata ? 'aggiornamento' : 'installazione';
             document.getElementById('comandoAggiornaEstensione').textContent =
                 `irm https://bindexxx.github.io/bindex/releases/aggiorna_cardsync.bat -OutFile "$env:TEMP\\aggiorna_cardsync.bat"; & "$env:TEMP\\aggiorna_cardsync.bat" ${tipoOperazione}`;
 
             const elPasso3 = document.getElementById('statoIstruzioniPasso3');
             if (_versioneVecchiaRilevata) {
-                // Chrome conosce già questa cartella (un'estensione ha
-                // risposto) — nessun passo manuale in più da fare.
-                // v5.17 (estensione): testo allineato a quello che lo script
-                // fa davvero — prima prometteva di aprire anche la tab Prezzi
-                // dell'estensione, cosa che lo script non ha mai fatto.
                 elPasso3.innerHTML = 'Scarica, controlla e installa da solo, poi riavvia Chrome riaprendo questo sito. Chrome conosce già questa estensione — nessun altro passo da fare.';
             } else {
                 elPasso3.innerHTML = 'Scarica, controlla e installa da solo, poi riavvia Chrome riaprendo questo sito. <strong>Poi, un ultimo passo a mano</strong> (Chrome lo richiede per sicurezza, non è automatizzabile): vai su <code>chrome://extensions</code>, attiva <strong>"Modalità sviluppatore"</strong> in alto a destra se non è già attiva, poi clicca <strong>"Carica estensione non pacchettizzata"</strong> e seleziona la cartella che lo script ti indicherà.';
             }
         }
 
-
         async function _ricontrollaEChiudiIstruzioni() {
-            // FIX (anti-furbetti): prima proseguire bastava chiudere il
-            // wizard senza aver davvero aggiornato — ora si ricontrolla per
-            // davvero, e se non è passato ributta fuori l'avviso scherzoso.
             const versioneInstallata = await _chiediVersioneEstensione();
             if (!_ultimaVersioneRichiesta || (versioneInstallata && !versioneMaggioreSito(_ultimaVersioneRichiesta, versioneInstallata))) {
-                controlloIngressoCardsync(); // tutto ok (o controllo non valido) — ricomincia da capo, ora passerà al login
+                controlloIngressoCardsync();
                 return;
             }
             _mostraSoloStato('statoBeccato');
         }
 
-
         async function _ricontrollaVersioneECambiaStato() {
-            // Usato dopo le istruzioni di disinstallazione: ricontrolla tutto da capo.
             controlloIngressoCardsync();
         }
-
 
         async function _sceltaNonUsoEstensione() {
             await _mostraStatoLoginOControllo(false);
@@ -558,12 +387,10 @@
             _mostraSoloStato('statoDisinstalla');
         }
 
-
         async function _continuaAlSito() {
             nascondiPannelloCardsync();
             await _avviaSitoDopoAccesso();
         }
-
 
         function _copiaChromeExtensions(el) {
             navigator.clipboard.writeText('chrome://extensions').then(() => {
@@ -572,7 +399,6 @@
                 setTimeout(() => { el.innerHTML = originale; }, 1500);
             });
         }
-
 
         function copiaComandoAggiorna() {
             const testo = document.getElementById('comandoAggiornaEstensione').textContent;
