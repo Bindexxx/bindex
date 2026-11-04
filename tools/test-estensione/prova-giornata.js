@@ -127,5 +127,21 @@ function caricaPagina(file, chromeFinto, supabaseFinto) {
     controlla('nessun errore nel service worker', env.log.errori.length === 0, env.log.errori);
   }
 
+  // ── 3) Dalla 5.49: stessa cosa nella ricerca di riserva con scheda ───────────
+  //    (lettura leggera della ricerca fallita → ricerca e prezzo nella stessa scheda).
+  if (min >= 49 || maj > 5) {
+    const IMG = 'https://product-images.s3.cardmarket.com/1/SV9/2/2.jpg';
+    const ZORO = B + 'Battle-Partners/Zoroark-sv9061';
+    const RIC = CM + '/it/Pokemon/Products/Search?searchMode=v2&searchString=sv9061';
+    const pagine = {
+      [RIC]: `<html><head><title>Risultati Di Ricerca | Cardmarket</title></head><body><h1>Risultati</h1><a href="/it/Pokemon/Products/Singles/Battle-Partners/Zoroark-sv9061">Zoroark</a></body></html>`,
+      [ZORO]: pagina('Zoroark (SV9 061)', '', IMG),
+    };
+    const { ctx, env } = caricaBackground({ version: manifest.version, accelera: 10, sharedJs: fs.readFileSync(path.join(EXT, 'shared.js'), 'utf8'), pagine, fetch: async () => null });
+    const r = await ctx._leggiNomeDaCardmarket(RIC, 'IT', 'NM', '', false, 0, null, null, null);
+    uguale('ricerca di riserva con scheda, nessuna offerta nella lingua: carta trovata, foto della pagina', [r.urlSingles, r.prezzo, r.immagine], [ZORO, null, IMG]);
+    controlla('nessun errore nel service worker (riserva)', env.log.errori.length === 0, env.log.errori);
+  }
+
   chiudi();
 })().catch(e => { console.log('CRASH', e.stack); process.exit(1); });
