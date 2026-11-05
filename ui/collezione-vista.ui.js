@@ -191,6 +191,16 @@ async function collEliminaSealed(id) {
     filterTable();
 }
 
+function _collPillVarianti(link) {
+    if (!link || link === '#') return '';
+    let p;
+    try { p = new URL(link).searchParams; } catch (_) { return ''; }
+    const v = [];
+    if (p.get('isReverseHolo') === 'Y') v.push(['RH', 'Reverse holo']);
+    if (p.get('isFirstEd') === 'Y') v.push(['1ª ed.', 'Prima edizione']);
+    return v.map(([t, tit]) => ` <span title="${tit}" style="display:inline-block; font-size:0.68em; font-weight:800; line-height:1; padding:0.2em 0.45em; border-radius:6px; vertical-align:0.15em; background:var(--primary-light); color:var(--primary-text, var(--primary)); white-space:nowrap;">${t}</span>`).join('');
+}
+
 function _collRigaTelefonoHtml(card) {
     const id = _collAttr(card.id);
     const aperta = String(_collAzioniId) === String(card.id);
@@ -198,7 +208,7 @@ function _collRigaTelefonoHtml(card) {
             <div class="coll-riga-top">
                 ${_collMiniatura(card, 'coll-mini')}
                 <div class="coll-riga-testo">
-                    <div class="coll-nome">${escapeHtml(card.name || '(senza nome)')}</div>
+                    <div class="coll-nome">${escapeHtml(card.name || '(senza nome)')}${_collPillVarianti(card.link)}</div>
                     <div class="coll-meta">${escapeHtml(_collMeta(card, true))}</div>
                 </div>
                 ${_collChip(card)}
@@ -279,7 +289,7 @@ function _collTesseraHtml(card) {
     const src = _urlImmagineVisualizzabile(card.immagine);
     return `<button type="button" class="coll-tessera${card.tipo === 'sealed' ? ' e-sealed' : ''}${card.tabella === 'wishlist' ? ' e-wish' : ''}" onclick="${_collEdSealed(card) ? `apriModificaSealed('${id}')` : `apriImmagineIngrandita('${id}')`}">
             <span class="coll-tessera-img">${src ? `<img src="${src}" alt="" loading="lazy" onerror="this.remove()">` : ''}<i class="fa-solid ${card.tipo === 'sealed' ? 'fa-box' : 'fa-clone'} coll-segnaposto"></i></span>
-            <span class="coll-tessera-nome">${escapeHtml(card.name || '(senza nome)')}</span>
+            <span class="coll-tessera-nome">${escapeHtml(card.name || '(senza nome)')}${_collPillVarianti(card.link)}</span>
             <span class="coll-tessera-sotto"><span>${card.tabella === 'wishlist' ? 'Wishlist' : (_collEdSealed(card) ? 'Sealed' : escapeHtml(card.location || '—'))}</span><b>${formattaEuro(card.price)}</b></span>
         </button>`;
 }
@@ -330,7 +340,7 @@ function _collTabellaPC(data) {
         const wish = card.tabella === 'wishlist';
         return `<tr class="${sel ? 'sel' : ''}${wish ? ' e-wish' : ''}" data-coll-id="${escapeHtml(String(card.id))}" onclick="collToccaRiga('${id}')">
             <td class="coll-td-check">${_collEdSealed(card) ? '' : `<input type="checkbox" class="riga-checkbox" data-id="${escapeHtml(String(card.id))}" data-tabella="${card.tabella}" onclick="event.stopPropagation(); aggiornaSelezioneMultipla();">`}</td>
-            <td><div class="coll-td-carta">${_collMiniatura(card, 'coll-mini piccola')}<div><div class="coll-nome">${escapeHtml(card.name || '(senza nome)')}</div><div class="coll-meta">${escapeHtml([card.code, card.tipo === 'sealed' ? 'Sealed' : null].filter(Boolean).join(' · '))}</div></div></div></td>
+            <td><div class="coll-td-carta">${_collMiniatura(card, 'coll-mini piccola')}<div><div class="coll-nome">${escapeHtml(card.name || '(senza nome)')}${_collPillVarianti(card.link)}</div><div class="coll-meta">${escapeHtml([card.code, card.tipo === 'sealed' ? 'Sealed' : null].filter(Boolean).join(' · '))}</div></div></div></td>
             <td>${_collChip(card)}</td>
             <td>${escapeHtml(card.lang || '—')}</td>
             <td>${card.tipo === 'sealed' ? '—' : escapeHtml(card.cond || '—')}</td>
@@ -383,7 +393,7 @@ function _collDettaglioHtml(data) {
         <button type="button" class="coll-dett-img" onclick="apriImmagineIngrandita('${id}')" aria-label="Apri la carta a tutto schermo">
             ${src ? `<img src="${src}" alt="" onerror="this.remove()">` : ''}<i class="fa-solid ${card.tipo === 'sealed' ? 'fa-box' : 'fa-clone'} coll-segnaposto"></i>
             <span class="coll-lente"><i class="fa-solid fa-magnifying-glass-plus"></i></span></button>
-        <div class="coll-dett-nome">${escapeHtml(card.name || '(senza nome)')}</div>
+        <div class="coll-dett-nome">${escapeHtml(card.name || '(senza nome)')}${_collPillVarianti(card.link)}</div>
         <div class="coll-meta">${escapeHtml(_collMeta(card, false))}</div>
         <div class="coll-dett-prezzo"><span>${formattaEuro(card.price)}</span>${_collVarHtml(card)}</div>
         <div class="coll-campi">
