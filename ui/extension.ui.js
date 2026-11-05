@@ -213,7 +213,44 @@ function _piattaformaNonWindows() {
             });
         }
 
+        const ATTESA_INGRESSO_AUTOMATICO_MS = 2000;
+        let _ingressoAutomaticoTimer = null;
+        let _accessoInCorso = false;
+
+        function _annullaIngressoAutomatico() {
+            clearTimeout(_ingressoAutomaticoTimer);
+            _ingressoAutomaticoTimer = null;
+            const barra = document.getElementById('barraIngressoAutomatico');
+            if (barra) barra.remove();
+        }
+
+        function _avviaIngressoAutomatico() {
+            _annullaIngressoAutomatico();
+            const btn = document.getElementById('btnContinuaComeUtente');
+            if (btn) {
+                btn.style.position = 'relative';
+                btn.style.overflow = 'hidden';
+                const barra = document.createElement('span');
+                barra.id = 'barraIngressoAutomatico';
+                barra.setAttribute('aria-hidden', 'true');
+                barra.style.cssText = 'position:absolute; left:0; bottom:0; height:3px; width:0; background:rgba(255,255,255,0.6); transition:width ' + ATTESA_INGRESSO_AUTOMATICO_MS + 'ms linear; pointer-events:none;';
+                btn.appendChild(barra);
+                requestAnimationFrame(() => requestAnimationFrame(() => { barra.style.width = '100%'; }));
+            }
+            _ingressoAutomaticoTimer = setTimeout(() => {
+                _ingressoAutomaticoTimer = null;
+                const panel = document.getElementById('cardsyncPanel');
+                const stato = document.getElementById('statoBossFiero');
+                const giaLoggato = document.getElementById('bossFieroGiaLoggato');
+                if (panel && panel.style.display !== 'none' && stato && stato.style.display !== 'none'
+                    && giaLoggato && giaLoggato.style.display !== 'none') {
+                    _continuaAlSito();
+                }
+            }, ATTESA_INGRESSO_AUTOMATICO_MS);
+        }
+
         function _mostraSoloStato(idStato) {
+            if (idStato !== 'statoBossFiero') _annullaIngressoAutomatico();
             ['statoNonInstallata', 'statoIstruzioni', 'statoBeccato', 'statoDisinstalla', 'statoBossFiero']
                 .forEach((id) => { document.getElementById(id).style.display = id === idStato ? 'block' : 'none'; });
         }
@@ -337,7 +374,9 @@ function _piattaformaNonWindows() {
                 document.getElementById('bossFieroGiaLoggato').style.display = 'block';
                 document.getElementById('btnContinuaComeUtente').innerHTML =
                     `Continua come ${_nomeDaEmail(sessione.user.email)} <i class="fa-solid fa-arrow-right"></i>`;
+                _avviaIngressoAutomatico();
             } else {
+                _annullaIngressoAutomatico();
                 document.getElementById('bossFieroGiaLoggato').style.display = 'none';
                 document.getElementById('bossFieroLoginForm').style.display = 'block';
             }
@@ -388,8 +427,15 @@ function _piattaformaNonWindows() {
         }
 
         async function _continuaAlSito() {
-            nascondiPannelloCardsync();
-            await _avviaSitoDopoAccesso();
+            _annullaIngressoAutomatico();
+            if (_accessoInCorso) return;
+            _accessoInCorso = true;
+            try {
+                nascondiPannelloCardsync();
+                await _avviaSitoDopoAccesso();
+            } finally {
+                _accessoInCorso = false;
+            }
         }
 
         function _copiaChromeExtensions(el) {
