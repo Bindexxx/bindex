@@ -1,23 +1,23 @@
-# CardSync Pro (bindex)
+# Bindex (nome interno CardSync Pro)
 
 Gestione collezione carte Pokémon condivisa tra un piccolo gruppo: sito web
 (GitHub Pages), estensione Chrome, backend Supabase (progetto
-`xpfibrzsffurdlypxnrw`, piano free). Oggi in fase di test: quando diventerà
-ufficiale si cancelleranno account e dati, mentre la struttura del
-database resta com'è.
+`xpfibrzsffurdlypxnrw`, piano free). Un solo ambiente, ancora "di test"
+(account `nome@test.local`): il passaggio in produzione è pianificato a parte
+e la struttura del database resta com'è.
 
 Sito: https://bindexxx.github.io/bindex/
 
-## Pagine (7)
+## Pagine (6)
 
 | Pagina | A cosa serve |
 |---|---|
 | `index.html` | App principale: home a widget ("telefono" con cornice Pokédex) e tutte le sezioni |
-| `admin.html` | Pannello admin: utenti, richieste, log, Work in Progress |
+| `admin.html` | Pannello admin: richieste da approvare, utenti (con le versioni dell'estensione dei loro PC), Shop, lavori in corso, registro |
 | `binder-pubblico.html` | Binder condiviso (sola lettura, richiesta di scambio) |
 | `scaffali-pubblico.html` | Scaffale sealed condiviso (sola lettura, richiesta di scambio) |
-| `wishlist.html` | Wishlist condivisa |
-| `sealed.html` | Catalogo sealed condiviso |
+| `wishlist.html` | Wishlist condivisa: mostra il binder Wishlist del proprietario |
+| `sealed.html` | Vecchio link dei sealed condivisi: avvisa che si sono spostati nello Scaffale |
 
 (`scambio.html` è stata ritirata ed eliminata il 2026-09-25: lo Scambio ora
 passa dai binder pubblici.)
@@ -40,8 +40,13 @@ globale**.
   proprio `<style>` interno).
 - `ui/*.ui.js` — DOM, logica, eventi. Home a widget: motore in
   `ui/paginainiziale*.ui.js`, un file per widget in `ui/widget-<nome>.ui.js`
-  (28 widget registrati in `CATALOGO_WIDGET`).
+  (28 id registrati in `CATALOGO_WIDGET`, in 25 file).
 - `statusbar.js` / `statusbar.css` — barra di stato e tendina (CSBar).
+- `sw.js` — service worker (sito installabile, file in cache): la versione
+  la scrive la pubblicazione.
+- `vendor/` — librerie copiate nel repo (supabase-js 2.117.1, Chart.js 4.5.1,
+  qrcodejs 1.0.0, Font Awesome 6.4.0): nessun CDN esterno. Dettagli e impronte
+  in `vendor/LEGGIMI.txt`.
 - `sql/schema_live_2026-09-25.sql` — **fotografia reale dello schema** del
   database (tabelle, funzioni, policy…), generata dal DB live: è il
   riferimento per sapere com'è fatto il DB oggi.
@@ -72,10 +77,25 @@ globale**.
 5. **Euro:** sempre `formattaEuro()`, che produce "1.234,50 €" (in
    `utils/comuni.js`, unica copia). Eccezione voluta: le tessere compatte
    della home (`ui/widget-render-corpi.ui.js`) usano valori arrotondati.
-6. **Librerie esterne a versione esatta.** Oggi è `@supabase/supabase-js@2.117.1`,
-   uguale in tutte le pagine: va aggiornata a mano, in tutte insieme.
+6. **Librerie a versione esatta, servite da `vendor/`.** Oggi
+   `supabase-js-2.117.1.js`, uguale in tutte le pagine: si aggiorna
+   sostituendo il file in tutte insieme (vedi `vendor/LEGGIMI.txt`).
    Chart.js 4.5.1 viene caricato solo all'apertura del grafico prezzi
    (`ui/prices.ui.js`).
+7. **Testi visibili:** "Bindex" (mai "CardSync Pro"), nickname e mai email,
+   badge rossi solo per azioni da fare.
+
+## Pubblicazione e prove
+
+- A ogni push su `main` il workflow `.github/workflows/pubblica-sito.yml`
+  pubblica il sito su GitHub Pages; prima `tools/versiona_file.py` aggiunge
+  `?v=<impronta>` ai file di ogni pagina e la versione in `sw.js`.
+- Prima di ogni PR del sito: `cd tools/test-sito && npm install && npm test`
+  (prova statica: script esistenti, nomi doppi tra script, `supabaseClient`
+  solo in `config/` e `data/`; prova delle 6 pagine in Chromium con Supabase
+  finto). Non copre le parti dopo il login.
+- Prima di ogni PR dell'estensione: `cd tools/test-estensione && npm install
+  && npm test` (di default sullo zip pubblicato; vedi il suo README).
 
 ## Sessione e logout
 
@@ -87,8 +107,20 @@ globale**.
 
 ## Estensione Chrome
 
-Sorgente = `releases/cardsync-extension.zip`. A ogni modifica: incrementare
-`version` nel `manifest.json` e scrivere lo stesso numero in
-`releases/latest-version.txt`. Il sito confronta le due versioni
-all'avvio. Il dominio in `externally_connectable` deve combaciare
-esattamente con quello del sito.
+Sorgente = `releases/cardsync-extension.zip` (struttura piatta, 36 file; non
+esiste un repo separato). A ogni modifica, anche minima: stesso numero nuovo in
+`version` del `manifest.json`, in `VERSIONE_MOTORE` di `background.js` e in
+`releases/latest-version.txt`, più una voce in `CHANGELOG.md`. Il nome nel
+manifest resta "CardSync Pro" (lo cerca `aggiorna_cardsync.bat`).
+
+- `releases/aggiorna_cardsync.bat` trova la cartella dell'estensione dalle
+  Preferences di Chrome, scarica lo zip, lo estrae e riavvia Chrome.
+- `configurazione_app.versione_minima` sul DB blocca le versioni vecchie: si
+  alza solo dopo che i PC sono aggiornati (tabella `dispositivi_estensione`,
+  visibile anche nella scheda Utenti dell'admin).
+- Il dominio in `externally_connectable` deve combaciare esattamente con
+  quello del sito (oggi `https://bindexxx.github.io/bindex/*`).
+- "AMBIENTE DI TEST": il login col solo nome aggiunge `@test.local` in
+  `auth_ui.js` (estensione), `ui/auth.ui.js`, `ui/admin-shell.ui.js`,
+  `utils/shared-public.js` e nella funzione `admin_process_pending_request`
+  (sql/110). Al passaggio in produzione si cambiano tutti insieme.
