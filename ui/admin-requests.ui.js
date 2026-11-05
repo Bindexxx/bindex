@@ -1,48 +1,22 @@
-// ── ui/admin-requests.ui.js ──────────────────────────────────────────
-// Pannello "Richieste": elenco pending_requests, approvazione/rifiuto.
-//
-// STEP separato dal piano "riduzione accoppiamento" concordato con Claudio
-// il 2026-09-11. Filtri/export/nascondi/archivia e la sincronizzazione
-// delle copie pubbliche sono stati spostati in
-// ui/admin-requests-utility.ui.js — NESSUNA riscrittura del codice
-// esistente in nessuna delle due parti: solo spostamento, zero cambi di
-// comportamento.
-//
-// Contiene: _etichettaTipoRichiesta, _popolaFiltroUtenteRichieste,
-// _aggiornaContatoreRichieste, caricaRichieste, renderRichieste.
-//
-// caricaRichieste() è chiamata cross-file dai listener registrati in
-// ui/admin-requests-utility.ui.js (filtri, preset data, reset, nascondi
-// gestite). Nessuna istruzione qui gira a tempo di caricamento script (a
-// differenza dell'altro file, vedi nota lì) — comunque l'ordine tra i due
-// file è indifferente, dato che le chiamate cross-file sono tutte dentro
-// callback di eventi, mai a tempo di parsing.
+// Admin, Richieste: elenco, approvazione e rifiuto.
 
-// ── RICHIESTE PENDENTI ─────────────────────────────────────────
-// Etichette leggibili per i 3 tipi di richiesta gestiti dal dispatcher.
 function _etichettaTipoRichiesta(type, slot) {
   if (type === 'password_reset') return 'Reset password';
   if (type === 'username_change') return 'Cambio username';
-  if (type === 'binder_nome') return 'Nome Binder'; // 21_binder_nome_con_approvazione.sql
-  if (type === 'scaffale_nome') return 'Nome Scaffale'; // 41_fase1_3_scaffali.sql
+  if (type === 'binder_nome') return 'Nome Binder';
+  if (type === 'scaffale_nome') return 'Nome Scaffale';
   if (type === 'photo_upload') {
-    // FASE 4-bis (20/08/2026): prima era genericamente "Foto Binder" per
-    // qualsiasi slot — da quando esiste anche card_back (Fase 2) va
-    // distinto, altrimenti l'admin approva "alla cieca" su cosa sta
-    // davvero approvando.
     if (slot === 'card_back') return 'Retro carta';
     if (slot === 'binder_cover') return 'Copertina Binder';
-    if (slot === 'profilo') return 'Foto profilo'; // sql/90
-    return 'Foto Binder'; // slot sconosciuto/non ancora caricato — fallback prudente
+    if (slot === 'profilo') return 'Foto profilo';
+    return 'Foto Binder';
   }
   return type;
 }
 
-
-
 async function _popolaFiltroUtenteRichieste() {
   const sel = document.getElementById('filtroUtenteRichieste');
-  if (sel.options.length > 1) return; // già popolato in precedenza
+  if (sel.options.length > 1) return;
   const { data } = await adminListaUtentiPerFiltro();
   (data || []).forEach(u => {
     const opt = document.createElement('option');
@@ -52,17 +26,12 @@ async function _popolaFiltroUtenteRichieste() {
   });
 }
 
-
-// Contatore badge sulla tab "Richieste": SEMPRE il totale reale delle
-// pending non archiviate, indipendente dai filtri applicati alla vista
-// (altrimenti filtrando per tipo/utente il numero diventerebbe fuorviante).
 async function _aggiornaContatoreRichieste() {
   const { count } = await adminContaRichiestePendenti();
   const elC = document.getElementById('count-richieste');
   elC.textContent = count || 0;
-  elC.classList.toggle('zero', !count); // badge rosso solo se c'è davvero qualcosa da fare
+  elC.classList.toggle('zero', !count);
 }
-
 
 async function caricaRichieste() {
   const cont = document.getElementById('richieste-list');
@@ -86,9 +55,6 @@ async function caricaRichieste() {
   if (error) { cont.innerHTML = `<div class="empty-state">Errore: ${error.message}</div>`; return; }
   _ultimeRichiesteCaricate = data || [];
 
-  // Join fatto qui in JS invece che con l'embed di PostgREST: evita di
-  // dipendere dalla cache schema delle foreign key (che si è dimostrata
-  // inaffidabile per questa tabella), con una seconda query separata.
   const userIds = [...new Set(_ultimeRichiesteCaricate.map(r => r.user_id).filter(Boolean))];
   _mappaUsernameRichieste = {};
   if (userIds.length > 0) {
@@ -98,9 +64,6 @@ async function caricaRichieste() {
     }
   }
 
-  // Per le richieste photo_upload pending, recuperiamo l'anteprima
-  // dell'immagine da approvare/rifiutare (Fase 3 — prima non era
-  // visibile, l'admin doveva approvare "alla cieca").
   const mediaIds = [...new Set(_ultimeRichiesteCaricate
     .filter(r => r.type === 'photo_upload' && r.status === 'pending' && r.payload?.media_id)
     .map(r => r.payload.media_id))];
@@ -118,8 +81,6 @@ async function caricaRichieste() {
     }
   }
 
-  // Nome attuale ("prima") delle rinomine pending: una chiamata per richiesta,
-  // errori ignorati (es. sql/86 non ancora applicata → resta solo il "dopo").
   _mappaPrimaRichieste = {};
   await Promise.all(_ultimeRichiesteCaricate
     .filter(r => (r.type === 'binder_nome' || r.type === 'scaffale_nome') && r.status === 'pending')
@@ -134,7 +95,6 @@ async function caricaRichieste() {
   renderRichieste();
 }
 
-
 function renderRichieste() {
   const cont = document.getElementById('richieste-list');
   const elenco = _nascondiGiaGestite
@@ -147,9 +107,6 @@ function renderRichieste() {
   }
 
   cont.innerHTML = elenco.map(r => {
-    // RESTYLE BINDEX FASE 7: schede "prima → dopo" dove il "prima" è noto
-    // (username). Per nome binder/scaffale e foto l'admin non può leggere
-    // il valore attuale (RLS: solo il proprietario) → si mostra solo il "dopo".
     const utente = escAttr(_mappaUsernameRichieste[r.user_id] || r.user_id);
     let dettaglio = '';
     if (r.type === 'username_change' && r.payload?.nuovo_username) {
@@ -191,7 +148,7 @@ function renderRichieste() {
       const riga = btn.closest('.row');
       const id = riga.dataset.id;
       const tipo = riga.dataset.type;
-      const azione = btn.dataset.action; // 'approve' | 'reject'
+      const azione = btn.dataset.action;
       const mediaId = riga.dataset.mediaId;
       const slotFoto = riga.dataset.slot;
       const ownerUserId = riga.dataset.userId;
@@ -212,23 +169,18 @@ function renderRichieste() {
 
       let nota = null;
       if (azione === 'reject') {
-        // RESTYLE BINDEX FASE 7: rifiuto in-app (niente prompt()), motivo a
-        // scelte + nota libera; il tutto finisce nella stessa admin_note di prima.
         const esito = await adminDialog({
           titolo: 'Rifiutare la richiesta?',
           testo: `Richiesta di ${riga.dataset.utente}. Il motivo resta nella nota della richiesta.`,
           conferma: 'Rifiuta', pericolo: true, conNota: true,
           motivi: ['Non appropriata', 'Immagine poco leggibile o di bassa qualità', 'Nome non consentito', 'Altro motivo']
         });
-        if (!esito) return; // annullato
+        if (!esito) return;
         nota = esito.motivo + (esito.nota ? ' — ' + esito.nota : '');
       }
 
       riga.querySelectorAll('button').forEach(b => b.disabled = true);
 
-      // ── Ramo password_reset in approvazione: genera la password qui,
-      // la passa al dispatcher, poi la mostra con tasto Condividi. Per
-      // tutti gli altri casi il payload è nota (rifiuto) o assente.
       let payloadRpc = nota ? { nota } : null;
       let nuovaPwGenerata = null;
       if (azione === 'approve' && tipo === 'password_reset') {
@@ -244,14 +196,6 @@ function renderRichieste() {
         return;
       }
 
-      // FASE 4-bis (20/08/2026): dopo un'approvazione di photo_upload,
-      // copia il file nel bucket pubblico 'immaginivisibili' — serve a
-      // scambio.html/wishlist.html (viewer anonimi, non possono leggere
-      // il bucket privato 'user-media'). Non blocca il flusso: se questo
-      // passo fallisce, l'approvazione in DB è comunque già andata a
-      // buon fine (l'utente la vede su index.html); si vedrà solo un
-      // avviso qui, recuperabile in qualsiasi momento col bottone
-      // "Sincronizza copie pubbliche".
       if (azione === 'approve' && tipo === 'photo_upload' && mediaId && slotFoto && ownerUserId) {
         try {
           await _sincronizzaCopiaPubblica(mediaId, slotFoto, ownerUserId);
@@ -262,24 +206,9 @@ function renderRichieste() {
       }
 
       if (nuovaPwGenerata) {
-        // FIX (bug [14]): _ultimeRichiesteCaricate non viene ricaricato da
-        // qui (di proposito: il pannello password sotto va mostrato SUBITO,
-        // un refresh lo farebbe sparire visto che la password non è salvata
-        // da nessuna parte, va copiata ora). Ma senza aggiornare anche solo
-        // lo status in memoria, un clic su "Nascondi già gestite"/"Mostra
-        // tutte" PRIMA del prossimo caricaRichieste() ricostruiva la riga
-        // da un record ancora 'pending' — pannello password sparito,
-        // bottoni Approva/Rifiuta ricomparsi, un secondo Approva sarebbe
-        // andato in errore RPC (richiesta non più pending). Aggiornando lo
-        // status qui, un render successivo la mostra correttamente come
-        // "approved" (nessun bottone, vedi renderRichieste), niente stato
-        // inconsistente.
         const rigaInMemoria = _ultimeRichiesteCaricate.find(r => String(r.id) === String(id));
         if (rigaInMemoria) rigaInMemoria.status = 'approved';
 
-        // Non ricarichiamo subito la lista: mostriamo prima la password
-        // generata con il tasto Condividi, stesso pattern già usato
-        // nella modale utente per "Genera e reimposta password".
         const nomeUtente = _mappaUsernameRichieste[riga.dataset.userId] || 'utente';
         riga.querySelector('.row-azioni').innerHTML = `
           <div class="pw-reveal">
@@ -306,4 +235,3 @@ function renderRichieste() {
     });
   });
 }
-

@@ -1,54 +1,6 @@
-// ═══════════════════════════════════════════════════════════════════════
-// WIDGET-BINDER.UI.JS — tessera "Binders" (CardSync Pro)
-// ═══════════════════════════════════════════════════════════════════════
-// STEP 3 della ristrutturazione file widget home (vedi
-// Roadmap_Ristrutturazione_Widget_Home_2026-09-11.md). Estratto da
-// ui/phone.ui.js il 2026-09-11.
-//
-// CATEGORIA B (come da roadmap §2, decisione confermata da Claudio): il
-// widget "Binders" NON ha una pagina propria scritta dentro i widget —
-// apre la pagina Binder già esistente altrove nel sito (ui/binder.ui.js,
-// render tramite switchTab('binder', null), lo stesso meccanismo delle 5
-// tab fisse del sito). Questo file contiene SOLO ciò che viveva in
-// phone.ui.js: l'anteprima nella tessera (preview) e la voce di
-// CATALOGO_WIDGET. Il click continua a funzionare come prima — NESSUNA
-// pagina spostata qui, sarebbe un cambio di comportamento fuori scope.
-//
-// Il caricamento dei dati veri del binder all'apertura (apriWidgetBinders())
-// resta nel motore home (ui/paginainiziale.ui.js, dentro apriDettaglioWidget,
-// ramo "if (tabId === 'binder')") — non toccato in questo step, comportamento
-// identico a prima.
-//
-// _ballCORPI.binder (il corpo grande della tessera) resta in
-// ui/widget-render-condiviso.ui.js — verificato che la forma dei 'dati'
-// letti lì (d.totale, d.voci) combacia esattamente con quella restituita
-// dal preview() qui sotto: nessuna modifica necessaria.
-//
-// Caricato in ordine alfabetico sul titolo mostrato in home, dopo i tre
-// file motore/condivisi (paginainiziale, widget-render-condiviso,
-// widget-funzioni-condivise) — vedi index.html.
-// ───────────────────────────────────────────────────────────────────────
+// Widget Binders.
 
-// Multi-Binder (2026-08-25): 'scambio' e 'wishlist' come widget home
-// separati sono stati rimossi — puntavano a switchTab('scambio'/
-// 'wishlist'), view-section che non esistono più in index.html (solo 5
-// restano: visualizzazione/inserimento/prezzi/binder/impostazioni).
-// Erano già inattivi prima di questa sessione. Il loro contenuto vive
-// ora dentro il widget "Binders" sotto, come binder dedicati.
-// RESTYLE BINDEX FASE 2 (2026-09-30, file 02 § 1: "conteggio vero dei
-// binder, oggi stima dalle location"). La stima di prima (location distinte
-// in carteReali + 2) sbagliava in entrambi i sensi: ignorava il binder
-// Scambio e le location senza carte, contava come binder le location che
-// il sito non ha ancora materializzato. Ora si conta ESATTAMENTE ciò che
-// mostra la pagina Binders dopo _garantisciTuttiIBinder (ui/binder.ui.js):
-// le righe di 'binders' + ciò che quella funzione creerebbe all'apertura
-// (una location senza binder, o wishlist/extra/scambio non ancora creati).
-// Qui si LEGGE soltanto, non si crea niente (la creazione resta alla
-// pagina Binders, come oggi).
-// Costo: due select leggere, al massimo una volta al minuto (cache sotto):
-// il render della home gira ogni 15s e rifare le query ogni volta sarebbe
-// traffico inutile.
-let _widgetBinderCache = null; // { quando, binders, nomiLocation }
+let _widgetBinderCache = null;
 const _WIDGET_BINDER_CACHE_MS = 60000;
 
 async function _widgetBinderLeggi() {
@@ -66,12 +18,8 @@ async function _widgetBinderLeggi() {
     return _widgetBinderCache;
 }
 
-// Ordine delle copertine in tessera: prima quelli speciali, poi le location
-// (stesso ordine logico della pagina: Scambio, Wishlist, il mio binder).
 const _WIDGET_BINDER_ORDINE = { scambio: 0, wishlist: 1, extra: 2, location: 3 };
 
-// Icona sulla costa dei binder speciali, cosi' Scambio e Wishlist si riconoscono
-// a colpo d'occhio (le coste normali si distinguono solo per colore).
 const _WIDGET_BINDER_ICONE = { scambio: 'fa-right-left', wishlist: 'fa-heart', extra: 'fa-star' };
 
 CATALOGO_WIDGET.binder = {
@@ -85,12 +33,6 @@ CATALOGO_WIDGET.binder = {
             + ['wishlist', 'extra', 'scambio'].filter(t => !tipi.has(t)).length;
         const totale = d.binders.length + mancanti;
         const pubblici = d.binders.filter(b => b.stato_pubblicazione === 'pubblico').length;
-        // I binder che la pagina Binders creera' all'apertura (Scambio, Wishlist,
-        // "Il mio binder", location senza binder) esistono GIA' per il conteggio
-        // qui sopra: si mostrano anche fra le copertine, altrimenti Scambio
-        // spariva dalla tessera finche' non si apriva la pagina Binders. Solo
-        // visualizzazione, niente viene creato qui. Pubblici per definizione:
-        // Scambio e Wishlist.
         const nomiSpeciali = { scambio: 'Scambio', wishlist: 'Wishlist', extra: 'Il mio binder' };
         const daMostrare = d.binders.map(b => ({ nome: b.nome, tipo: b.tipo, colore: b.colore, stato_pubblicazione: b.stato_pubblicazione }));
         ['scambio', 'wishlist', 'extra'].filter(t => !tipi.has(t)).forEach(t => {

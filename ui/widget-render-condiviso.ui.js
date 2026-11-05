@@ -1,84 +1,14 @@
-// ═══════════════════════════════════════════════════════════════════════
-// WIDGET-RENDER-CONDIVISO.UI.JS — motore visivo condiviso dei widget
-// (CardSync Pro)
-// ═══════════════════════════════════════════════════════════════════════
-// STEP 1 della ristrutturazione file widget home (vedi
-// Roadmap_Ristrutturazione_Widget_Home_2026-09-11.md). Estratto da
-// ui/phone.ui.js il 2026-09-11: palette/emblemi, disegno sfera, animazione
-// di cattura, semaforo, particelle, componenti visivi riusati (_ballRiga,
-// _ballPill, _ballSparkline, _ballMiniCarta, ecc.), _ballCORPI (il corpo
-// grafico di ogni widget in modalità tessera), _ballCorpoWidget. NESSUNA
-// riscrittura: solo spostamento di codice, zero cambi di comportamento.
-//
-// Caricato SUBITO DOPO ui/paginainiziale.ui.js e PRIMA di ui/phone.ui.js
-// in index.html — ogni widget successivo (estratto nei prossimi step) lo
-// userà per disegnare la propria tessera.
-//
-// DIPENDENZA CRITICA (segnalata già nella roadmap): _ballCORPI contiene,
-// per ogni id, la funzione che disegna il corpo grande della tessera —
-// undici di queste fanno riferimento ai 'dati' prodotti dal preview() del
-// widget corrispondente (oggi ancora in CATALOGO_WIDGET dentro
-// phone.ui.js). Restano QUI (motore visuale, non logica del widget) ma
-// vanno riverificate una per una quando si estrae ogni widget nei
-// prossimi step, per assicurarsi che la forma dei 'dati' non cambi.
-//
-// NOTA: la "LIBRERIA DEI SET" (_ballLIBRERIA_MANUALE, _ballLIBRERIA_SET,
-// _ballCaricaLibreriaDaDb, _ballSetBase, _ballALIAS_TESTA,
-// _ballSetBaseConAlias, _ballLeggiCodice — righe 34-230 circa di
-// phone.ui.js) NON è stata spostata qui nonostante il prefisso "_ball":
-// verificato leggendo il codice, è usata ESCLUSIVAMENTE dal preview() del
-// widget Set (CATALOGO_WIDGET.set_completamento) — è dato/logica
-// specifica di quel widget, non motore condiviso. Resta in phone.ui.js e
-// si sposterà in widget-set.ui.js allo STEP 18, non prima. Il prefisso
-// "_ball" qui è solo convenzione anti-collisione di nomi globali, non
-// indica appartenenza al motore grafico.
-// ───────────────────────────────────────────────────────────────────────
+// Disegno comune dei widget.
 
-// ═══════════════════════════════════════════════════════════════════════
-// GRAFICA POKÉ BALL DEI WIDGET (sessione 2026-08-27)
-// ═══════════════════════════════════════════════════════════════════════
-// Sostituisce l'icona FontAwesome delle tessere con una sfera disegnata in
-// SVG. Origine: mockup approvato da Claudio (mockup-widget.html), a sua
-// volta derivato dal modulo di Opus.
-//
-// ROLLBACK IN UNA RIGA: mettere BALL_ATTIVA a false qui sotto. Il markup
-// vecchio (icona FontAwesome) è ancora tutto in renderWidgetHome(), dentro
-// il ramo else — non è stato cancellato niente.
-//
-// NOMI: tutto ciò che vive qui è prefissato _ball/_pkdx perché gli script
-// del sito condividono un unico scope globale (niente moduli): nomi come
-// TEMPI, EMBLEMI o miscela() avrebbero potuto collidere con qualunque
-// altro dei 29 file e rompere l'intera pagina in fase di parsing.
 const BALL_ATTIVA = true;
 
-// Tempi originali dell'animazione di cattura. Alzare/abbassare qui cambia
-// tutta la sequenza senza toccare i singoli fotogrammi.
 const _ballTEMPI = { lancio: 300, scosse: 1500, click: 720 };
 const _ballAMPIEZZA = [19, 14, 10];
 
-// viewBox ritagliato ESATTAMENTE sulla sfera (centro 64,70 raggio 48), così
-// il riquadro CSS coincide con la sfera e il diametro è il lato del box.
-// Quello originale ('0 0 128 124') lasciava margine per le skin sporgenti
-// (orecchie, code): servirà se un giorno arriveranno, oggi renderebbe la
-// sfera solo il 75% del riquadro.
 const _ballVIEWBOX = '16 22 96 96';
 
-// ── PALETTE: la ball segue il TEMA, non il singolo widget ────────────────
-// Claudio: calotta lavanda sul viola, verde sul tema verde; nei temi scuri
-// la pancia diventa grigia (mai bianca: su fondo scuro abbaglia) e la
-// calotta si incupisce.
-// I colori per-widget originali sono conservati in CATALOGO_WIDGET.colore e
-// oggi inutilizzati: diventeranno un tema a sé ("ball colorate" sbloccabili)
-// riportando _ballPaletteWidget a true.
 let _ballPaletteWidget = false;
 
-// AGGIORNATO (STEP 1 restyle "cornice Pokédex", 2026-09-17): la vecchia
-// tabella fissa _ballPALETTE (3 temi x chiaro/scuro, 6 voci hardcoded) è
-// sostituita da derivaPaletteBall() in utils/theme-colori.js, che calcola
-// calotta/pancia dai DUE colori liberi (Principale/Secondario) scelti
-// dall'utente invece che da un tema preimpostato. Nessun'altra riga di
-// questo file cambia: _ballSvg/_ballSvgCache continuano a chiamare
-// _ballTemaAttivo() esattamente come prima, ignare del cambio sotto.
 function _ballTemaAttivo() {
     const scuro = document.body.classList.contains('dark-mode');
     const principale = (typeof prefColorePrincipaleGet === 'function' && prefColorePrincipaleGet()) || TEMA_COLORE_PRINCIPALE_DEFAULT;
@@ -86,7 +16,6 @@ function _ballTemaAttivo() {
     return derivaPaletteBall(principale, secondario, scuro);
 }
 
-// ── COLORI DERIVATI ──────────────────────────────────────────────────────
 function _ballMiscela(hex, target, q) {
     let h = String(hex).replace('#', '');
     if (h.length === 3) h = h[0]+h[0]+h[1]+h[1]+h[2]+h[2];
@@ -97,19 +26,9 @@ function _ballMiscela(hex, target, q) {
 const _ballSchiarisci = (h, q) => _ballMiscela(h, 255, q);
 const _ballScurisci   = (h, q) => _ballMiscela(h, 0, q);
 
-// ── EMBLEMI (sagome bianche piene, riquadro 24x24) ───────────────────────
-// RESTYLE BINDEX FASE 1 (2026-09-30, tavole approvate sulla tela "Bindex —
-// restyle"): TUTTI gli emblemi ora hanno il bordino scuro sottile che prima
-// avevano solo 'carte' (stesso tono: calotta scurita al 50%, 1.6 di
-// spessore) — pieni, leggibili anche sulle sfere piccole. La sfera
-// (_ballSvg) e le animazioni NON cambiano: cambia solo il contenuto
-// dell'emblema. Nuovi: cartaNuova, cartellino, trend, corona, bandiera,
-// stella, doppie, griglia, puzzle, nodi, fumetto, vassoio, coppa, mensole,
-// fotocamera. Le chiavi vecchie restano tutte (nessun chiamante rotto).
 function _ballEmbBordo(c) {
     return ` stroke="${_ballScurisci(c, 0.5)}" stroke-width="1.6" stroke-linejoin="round"`;
 }
-// Tratto bianco con contorno scuro (per le frecce/linee non chiuse).
 function _ballEmbLinea(c, d, w) {
     return `<path d="${d}" fill="none" stroke="${_ballScurisci(c, 0.5)}" stroke-width="${w + 2.6}" stroke-linecap="round" stroke-linejoin="round"/>` +
            `<path d="${d}" fill="none" stroke="#fff" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round"/>`;
@@ -157,7 +76,6 @@ const _ballEMBLEMI = {
         '<rect x="11.2" y="6.6" width="1.7" height="6.6" rx=".85"/>' +
         '<rect x="11.2" y="11.6" width="5.6" height="1.7" rx=".85"/>' +
         '<circle cx="12" cy="12.4" r="1.4"/>',
-    // ── nuovi (restyle 2026-09-30) ──
     cartaNuova: (c) => `<rect x="2.6" y="4.6" width="12.6" height="17.6" rx="2"${_ballEmbBordo(c)}/>` +
         `<rect x="5.2" y="7.3" width="7.4" height="5.6" rx="1" fill="${c}"/>` +
         `<path d="M18.5 .8l1.5 3.3 3.6.4-2.7 2.4.8 3.5-3.2-1.8-3.2 1.8.8-3.5-2.7-2.4 3.6-.4z"${_ballEmbBordo(c)}/>`,
@@ -174,14 +92,12 @@ const _ballEMBLEMI = {
     doppie: (c) => `<rect x="2.4" y="1.8" width="12.6" height="16.6" rx="2"${_ballEmbBordo(c)}/>` +
         `<rect x="9" y="5.6" width="12.6" height="16.6" rx="2"${_ballEmbBordo(c)}/>` +
         `<path d="M12.3 13.9h6.2M15.4 10.8v6.2" stroke="${c}" stroke-width="2.2" stroke-linecap="round"/>`,
-    // Set: pagina di raccoglitore 3x3, caselle piene = carte del set che hai
     griglia: (c) => `<rect x="2.2" y="2.2" width="19.6" height="19.6" rx="2.6"${_ballEmbBordo(c)}/>` +
         [[0,0,1],[1,0,1],[2,0,1],[0,1,1],[1,1,1],[2,1,0],[0,2,1],[1,2,0],[2,2,0]].map(([x, y, pieno]) => {
             const X = 4.6 + x * 5.2, Y = 4.6 + y * 5.2;
             return pieno ? `<rect x="${X}" y="${Y}" width="4.2" height="4.2" rx=".8" fill="${c}"/>`
                          : `<rect x="${X + .5}" y="${Y + .5}" width="3.2" height="3.2" rx=".6" fill="none" stroke="${c}" stroke-width="1"/>`;
         }).join(''),
-    // Estensione: tassello di puzzle
     puzzle: (c) => `<path d="M3.6 7.4h4.2a2.7 2.7 0 1 1 5.4 0h4.2v4.2a2.7 2.7 0 1 1 0 5.4v4.6H3.6v-4.6a2.7 2.7 0 1 0 0-5.4z"${_ballEmbBordo(c)}/>`,
     nodi: (c) => _ballEmbLinea(c, 'M6 12l12.4-6.7M6 12l12.4 6.7', 2.6) +
         `<circle cx="5.3" cy="12" r="3.7"${_ballEmbBordo(c)}/><circle cx="18.6" cy="5.2" r="3.7"${_ballEmbBordo(c)}/><circle cx="18.6" cy="18.8" r="3.7"${_ballEmbBordo(c)}/>`,
@@ -196,20 +112,12 @@ const _ballEMBLEMI = {
     mensole: (c) => `<rect x="2" y="2" width="20" height="20" rx="2"${_ballEmbBordo(c)}/>` +
         `<rect x="2.8" y="9" width="18.4" height="1.9" fill="${c}"/><rect x="2.8" y="15.6" width="18.4" height="1.9" fill="${c}"/>` +
         `<rect x="5" y="3.8" width="3" height="5.2" rx=".5" fill="${c}"/><rect x="9" y="4.9" width="3" height="4.1" rx=".5" fill="${c}"/><rect x="13" y="11" width="4.2" height="4.6" rx=".5" fill="${c}"/>`,
-    // Widget Foto carte (FASE 8c): pronto da ora, nessuno lo usa ancora.
     fotocamera: (c) => `<path d="M8.2 3.6h7.6l1.6 2.6h3a1.8 1.8 0 011.8 1.8v11a1.8 1.8 0 01-1.8 1.8H3.6a1.8 1.8 0 01-1.8-1.8V8a1.8 1.8 0 011.8-1.8h3z"${_ballEmbBordo(c)}/>` +
         `<circle cx="12" cy="13.2" r="4.6" fill="${c}"/><circle cx="12" cy="13.2" r="2.6"/>`
 };
 
-// ── DISEGNO DELLA SFERA ──────────────────────────────────────────────────
 let _ballContatore = 0;
 
-// CACHE — indispensabile, non un'ottimizzazione facoltativa:
-// renderWidgetHome() rigenera tutto l'innerHTML ogni 15s (polling veloce).
-// Senza cache ricostruirebbe 10 SVG completi (5 gradienti + clipPath +
-// testo su arco ciascuno) quattro volte al minuto, per sempre, e
-// _ballContatore crescerebbe senza limite. L'SVG dipende solo da emblema,
-// tema e testo inciso: si rigenera solo quando uno dei tre cambia.
 const _ballCache = new Map();
 
 function _ballSvgCache(emblema, coloreWidget, etichetta) {
@@ -227,17 +135,6 @@ function _ballSvg(emblema, coloreWidget, etichetta) {
     const colore = _ballPaletteWidget ? (coloreWidget || pal.calotta) : pal.calotta;
     const p = pal.pancia;
 
-    // ── ETICHETTA INCISA ────────────────────────────────────────────────
-    // Non è un <div> sovrapposto (piatto su una superficie curva: sembrava
-    // un adesivo) ma un <textPath> lungo un arco concentrico alla sfera,
-    // raggio 34 su centro (64,70): parte a ore 9, passa sotto il pulsante
-    // centrale, risale a ore 3. Sweep-flag 0 = passa SOTTO (con 1 sopra).
-    // Finitura incisa: copia chiara spostata di 0.9 in basso = luce nel
-    // solco, copia scura sopra = il solco. Nessun rilievo, nessuna ombra.
-    // Font Space Grotesk maiuscolo: già caricato dal sito, proporzionale
-    // (~40% più stretto di Press Start 2P, quindi entra molto più grande
-    // nello stesso arco) e senza discendenti, la forma più leggibile su
-    // testo piccolo e curvo. textLength impedisce qualunque sbordo.
     let inciso = '';
     if (etichetta) {
         const testo = String(etichetta).toUpperCase()
@@ -302,7 +199,6 @@ function _ballSvg(emblema, coloreWidget, etichetta) {
     '</svg>';
 }
 
-// ── PARTICELLE DELLA CATTURA ─────────────────────────────────────────────
 const _ballSTELLE = [
     { top: 10, left: 5,  size: 11, color: '#F2C230', dx: -22, dy: -20, ritardo: 0 },
     { top: 6,  left: 77, size: 9,  color: '#ffffff', dx:  22, dy: -18, ritardo: 70 },
@@ -329,15 +225,6 @@ function _ballParticelle() {
     return out;
 }
 
-// ── TITOLI BREVI PER L'INCISIONE ─────────────────────────────────────────
-// L'arco della pancia regge ~84 unità: "Visualizzazione" (15 caratteri) ci
-// starebbe solo a un corpo illeggibile. Il titolo per esteso resta quello
-// vero del catalogo e ricompare su 2x1/1x2/2x2, dove il testo sta fuori.
-// RESTYLE BINDEX FASE 2 (2026-09-30, tavola "Tessere piccole · nomi incisi
-// corti"): 'In vetrina' → 'In primo piano' ("Vetrina" è la location e lo
-// scaffale Sealed), 'Visualizza' → 'Collezione', 'Preferita' → 'Vetrina';
-// aggiunti i widget che non c'erano e ricadevano sul titolo lungo del
-// catalogo (Contributi al gruppo, Match trovati...).
 const _ballTITOLI_BREVI = {
     variazione_valore: 'Variazione',
     primo_piano: 'In primo piano',
@@ -375,15 +262,7 @@ const _ballTITOLI_BREVI = {
     foto: 'Foto carte'
 };
 
-// ── EMBLEMA + COLORE PER OGNI WIDGET ─────────────────────────────────────
-// Il colore serve solo al tema futuro "ball colorate": oggi la calotta la
-// decide _ballTemaAttivo().
 const _ballASPETTO = {
-    // RESTYLE BINDEX FASE 1 (2026-09-30): un emblema proprio per ogni
-    // widget (prima chat, achievement, richieste, scaffali e contributi non
-    // erano elencati e ricadevano sul "più" di ripiego in
-    // paginainiziale-render.ui.js). I colori restano quelli di sempre: oggi
-    // la calotta la decide comunque il tema (_ballPaletteWidget = false).
     variazione_valore:{ emblema: 'trend',       colore: '#3FA45B' },
     primo_piano:      { emblema: 'corona',      colore: '#D4A017' },
     carte_recenti:    { emblema: 'cartaNuova',  colore: '#3B7DD8' },
@@ -417,11 +296,9 @@ const _ballASPETTO = {
     bustina:          { emblema: 'bustina',     colore: '#D6538F' },
     polvere:          { emblema: 'polvere',     colore: '#7F77DD' },
     missioni:         { emblema: 'bandiera',    colore: '#639922' },
-    foto:             { emblema: 'fotocamera',  colore: '#7F77DD' } // FASE 8c
+    foto:             { emblema: 'fotocamera',  colore: '#7F77DD' }
 };
 
-// Il testo inciso è stretto: teniamo le prime parole, il resto lo dice la
-// pagina che si apre toccando.
 function _ballAccorcia(testo) {
     if (!testo) return '';
     if (testo.length <= 12) return testo;
@@ -434,7 +311,6 @@ function _ballAccorcia(testo) {
     return out || String(testo).slice(0, 12);
 }
 
-// ── ANIMAZIONE DI CATTURA ────────────────────────────────────────────────
 function _ballFotogrammiScosse() {
     const a = _ballAMPIEZZA;
     const r = (g) => `rotate(${g}deg)`;
@@ -465,10 +341,6 @@ function _ballAnimaFinito(el, f, o) {
     return a.finished || new Promise(r => { a.onfinish = r; });
 }
 
-// Vera o falsa a seconda delle due preferenze: "spegni tutto" vince su
-// "spegni solo la cattura".
-// "Riduci animazioni" (Impostazioni > Animazioni) vince su tutto: con quello
-// acceso i widget restano fermi e i widget si aprono senza cattura.
 function _ballAnimazioniAttive() { return prefAnimWidgetGet() && !prefRiduciAnimazioniGet(); }
 function _ballCatturaAttiva() { return _ballAnimazioniAttive() && prefAnimCatturaGet(); }
 
@@ -477,9 +349,6 @@ async function _ballGiocaCattura(tile) {
 
     const ball = tile.querySelector('.pkdx-ball');
 
-    // Widget con miniatura carta al posto della ball (Ultima carta, Carta
-    // del giorno): non c'è sfera da scuotere, ma il tocco non deve sembrare
-    // morto — un piccolo scatto sulla carta e via.
     if (!ball) {
         const thumb = tile.querySelector('.widget-tile-thumb');
         if (!thumb) return;
@@ -595,11 +464,6 @@ async function _ballGiocaCattura(tile) {
     await _ballAttendi(70);
 }
 
-// ── SEMAFORO ─────────────────────────────────────────────────────────────
-// Una ball si scuote e mostra i punti esclamativi solo se quel widget ha
-// davvero qualcosa da fare. Il movimento È la notifica.
-// Quali widget: quelli il cui preview() restituisce stato 'allerta', più
-// Match (novità) ed Estensione (non rilevata) — vedi _ballChiedeAttenzione.
 function _ballMostraAvviso(ball, forte, durata) {
     if (!ball) return;
     const segni = ball.querySelectorAll('.pkdx-avviso i');
@@ -647,30 +511,22 @@ function _ballAccendiAlone(tile, forte) {
     ], { duration: forte ? 1100 : 900, easing: 'ease-in-out' });
 }
 
-// null = ferma, 'forte' = tre punti esclamativi, 'normale' = uno.
-// Legge SOLO l'anteprima già calcolata dal render (nessuna query nuova).
 function _ballChiedeAttenzione(id, anteprima) {
     if (!anteprima) return null;
     if (id === 'match') return (anteprima.stato === 'ok' && /[1-9]/.test(anteprima.righe[0] || '')) ? 'forte' : null;
-    // AGGIUNTO (2026-09-24, estrazione widget Chat): stesso identico
-    // criterio di 'match' sopra — senza questo caso la tessera Chat non
-    // si anima MAI, anche con badge visibile, perché questa funzione non
-    // gestisce widget non elencati esplicitamente (vedi commento in cima
-    // al file).
     if (id === 'chat') return (anteprima.stato === 'ok' && /[1-9]/.test(anteprima.righe[0] || '')) ? 'forte' : null;
     if (id === 'estensione') return anteprima.rilevata === false ? 'normale' : null;
     if (anteprima.stato !== 'allerta') return null;
     return (id === 'inserimento' || id === 'prezzi') ? 'forte' : 'normale';
 }
 
-// Stato di attenzione dell'ultimo render, riempito da renderWidgetHome().
 let _ballAttenzioni = {};
 const _BALL_INTERVALLO_SEMAFORO_MS = 5200;
 let _ballSemaforoInterval = null;
 
 function _ballGiraSemaforo() {
     if (!BALL_ATTIVA || !_ballAnimazioniAttive()) return;
-    if (document.hidden) return; // audit 2026-09-25, M5: nessuna animazione a scheda nascosta
+    if (document.hidden) return;
     if (_editModeWidget || document.body.classList.contains('phone-detail-open')) return;
 
     let ritardo = 0;
@@ -693,17 +549,8 @@ function _ballAvviaSemaforo() {
     _ballSemaforoInterval = setInterval(_ballGiraSemaforo, _BALL_INTERVALLO_SEMAFORO_MS);
 }
 
-// Il tema si cambia da Impostazioni con funzioni che vivono in altri file
-// (setSiteTheme/toggleDarkMode, mai lette in questa sessione): invece di
-// modificarle, guardiamo le classi del <body>. Se cambiano, le ball vanno
-// ridisegnate — i gradienti sono scritti dentro l'SVG, una variabile CSS
-// non basterebbe.
 function _ballOsservaTema() {
     if (!window.MutationObserver) return;
-    // Solo queste tre classi cambiano l'aspetto delle sfere. Guardare
-    // l'intera className farebbe ridisegnare tutto anche per classi che non
-    // c'entrano nulla — per esempio 'senza-anim-widget', che aggiungiamo noi
-    // stessi e provocherebbe un secondo render inutile.
     const rilevanti = ['dark-mode', 'theme-verde', 'theme-pokemon'];
     const leggi = () => rilevanti.filter(c => document.body.classList.contains(c)).join(',');
     let ultimo = leggi();
@@ -716,8 +563,6 @@ function _ballOsservaTema() {
     }).observe(document.body, { attributes: true, attributeFilter: ['class'] });
 }
 
-// ── TOGGLE DELLE IMPOSTAZIONI ────────────────────────────────────────────
-// Chiamate dai quattro interruttori in index.html (sezione Impostazioni).
 function toggleAnimWidget(attive) {
     prefAnimWidgetSet(attive);
     const riga = document.getElementById('rigaAnimCattura');
@@ -726,13 +571,9 @@ function toggleAnimWidget(attive) {
     renderWidgetHome();
 }
 
-// Con le animazioni spente non deve restare NIENTE che si muova da solo:
-// cattura e semaforo li fermano già le due funzioni _ballAnimazioni*, ma il
-// riflesso olografico delle miniature è puro CSS e va fermato da qui.
 function _ballApplicaClasseAnimazioni() {
     const ridotte = prefRiduciAnimazioniGet();
     document.body.classList.toggle('senza-anim-widget', !prefAnimWidgetGet() || ridotte);
-    // Regola globale in index.css: azzera animazioni e transizioni di tutta l'interfaccia.
     document.body.classList.toggle('riduci-animazioni', ridotte);
 }
 function toggleAnimCattura(attiva) { prefAnimCatturaSet(attiva); }
@@ -753,10 +594,3 @@ function _ballSincronizzaToggleImpostazioni() {
     const riga = document.getElementById('rigaAnimCattura');
     if (riga) riga.style.opacity = prefAnimWidgetGet() ? '1' : '0.45';
 }
-
-
-// ── CONTENUTI DELLE TESSERE GRANDI — SPOSTATO (piano di taglio 2026-09-11)
-// in ui/widget-render-tessere-grandi.ui.js. Conteneva: miniatura di una
-// carta, componenti visivi condivisi (_ballRiga/_ballPill/ecc.),
-// _ballCORPI, _ballCorpoWidget.
-

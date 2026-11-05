@@ -1,72 +1,9 @@
-// ═══════════════════════════════════════════════════════════════════════
-// PAGINAINIZIALE-CORNICE-STATUSBAR.UI.JS — resize cornice, cornice/sfondo
-// personalizzabili, ponte verso CSBar (orologio, sync, beep, notifiche
-// push) — CardSync Pro
-// ═══════════════════════════════════════════════════════════════════════
-// STEP 2 del piano di taglio di ui/paginainiziale.ui.js (concordato con
-// Claudio il 2026-09-11). Estratto da ui/paginainiziale.ui.js. NESSUNA
-// riscrittura del codice esistente: solo spostamento, zero cambi di
-// comportamento per l'utente finale.
-//
-// Contiene: _gestisciResizeCornice(Debounced), _applicaCorniceUtente,
-// _applicaSfondoUtente, _aggiornaOrologioStatusBar, _impostaSyncAttivo,
-// _phoneAudioCtx/_beep, toggleSuoniWidgetHome, _controllaNotifichePush,
-// _mostraNotificaPush.
-//
-// NOTA: il vecchio commento "SEZIONE 5" (qui sotto, lasciato invariato)
-// descriveva insieme questo blocco E quello di polling/tasto fisico/
-// presenza/avvio (ora STEP 5, ui/paginainiziale-polling-avvio.ui.js) —
-// erano un'unica sezione nel file originale phone.ui.js. Separati qui in
-// due file distinti perché sono due concern diversi (ponte verso la UI
-// vs orchestrazione periodica/bootstrap), ma la numerazione "SEZIONE 5"
-// del commento storico non è stata rinominata per non alterare testo che
-// non genera comportamento — puramente cosmetico, ignorabile.
-//
-// Dipende da: CSBar (statusbar.js), _layoutWidget/_rettangoloSchermoCornice
-// (rimasti altrove), renderWidgetHome. Nessuna istruzione qui gira a tempo
-// di caricamento script — l'ordine rispetto agli altri file
-// paginainiziale-*.ui.js è indifferente (vedi nota identica nello STEP 1).
-// ───────────────────────────────────────────────────────────────────────
-
-// ───────────────────────────────────────────────────────────────────────
-// SEZIONE 5 — Resize cornice, cornice/sfondo personalizzabili, barra di
-// stato (orologio/sync), beep, notifiche push, polling, navigazione fissa,
-// tasto fisico, presenza live, avvio (initPhoneShell) (originariamente
-// righe 6459-fine file di phone.ui.js).
-// ───────────────────────────────────────────────────────────────────────
-
-// ── STAGE SEMPLIFICATO (STEP 9 restyle "cornice Pokédex", 2026-09-17) ────
-// SUPERA lo Step 3 (risoluzione nativa fissa + transform:scale()): Claudio
-// ha dimostrato nel suo mockup aggiornato che non serve — #phoneFrameBox è
-// tornato ad essere semplicemente width:100%/height:100% via CSS puro
-// (vedi index.html), niente più JS a calcolare dimensioni/scala. Le due
-// Poké Ball (percentuali su #phoneFrameBox) restano sempre perfette
-// proprio perché non c'è più nessuna trasformazione a complicare i conti.
-// La formula "colonne = spazio disponibile ÷ diametro" continua a
-// funzionare da sola: la griglia CSS (auto-fill, .widget-griglia) la
-// calcola già dal vivo sulla dimensione VERA di #phoneScreen.
-// POKEDEX_MODES/_modalitaCorniceCorrente/_aggiornaScalaCornice
-// rimosse — nessun altro punto del sito le chiamava (verificato via grep
-// prima di toglierle) a parte i 2 punti sistemati in questo stesso step.
+// Home: cornice, sfondo e barra di stato.
 
 function _gestisciResizeCornice() {
     if (document.body.classList.contains('phone-detail-open')) {
         requestAnimationFrame(_posizionaContainerNelloSchermo);
     } else if (_layoutWidget) {
-        // FIX (Claudio, 2026-09-10): senza questo ramo, un layout gia'
-        // disegnato con una griglia larga (tante colonne) restava con
-        // quelle classi CSS anche dopo una rotazione o un resize della
-        // finestra che riduce le colonne reali — il clamp di
-        // _tagliaEffettiva si applica solo DURANTE un render, quindi va
-        // fatto scattare di nuovo quando cambia la geometria.
-        // COSTO DA TENERE D'OCCHIO: renderWidgetHome() rifa' anche le
-        // preview di ogni widget (query/RPC), quindi ogni resize/
-        // rotazione ripete quelle chiamate (debounced a 100ms sopra, non
-        // ad ogni frame). Se in pratica risultasse troppo traffico
-        // durante un resize prolungato del browser desktop, va sostituito
-        // con un ricalcolo "leggero" che tocca solo le classi CSS delle
-        // tessere gia' in DOM senza rifare le query — non implementato
-        // ora per tenere il cambiamento contenuto.
         renderWidgetHome();
     }
 }
@@ -75,61 +12,27 @@ function _gestisciResizeCorniceDebounced() {
     _resizeCorniceTimeout = setTimeout(_gestisciResizeCornice, 100);
 }
 
-// ── CORNICE PERSONALIZZABILE — SUPERATA (STEP 2 restyle "cornice
-// Pokédex", 2026-09-17). Pensata per un giorno sostituire le immagini
-// frame-*.png con URL da bucket Supabase — piano abbandonato a favore del
-// sistema Principale/Secondario (vedi utils/theme-colori.js). MAI stata
-// chiamata da nessun punto del sito (verificato via grep prima di questo
-// step). Lasciata qui vuota-di-effetto invece che cancellata, per
-// rollback: gli elementi #phoneFrameV/#phoneFrameO che referenziava non
-// esistono più nel DOM, quindi il vecchio corpo avrebbe lanciato un
-// TypeError se mai richiamata.
 function _applicaCorniceUtente(urlVerticale, urlOrizzontale) {
-    // no-op — vedi commento sopra.
 }
 
-// ── SFONDO (WALLPAPER) PERSONALIZZABILE — stesso pattern della cornice ──
-// Oggi solo il placeholder (gradiente tenue via CSS, vedi #phoneWidgetHomeWrap
-// in index.html). Punto di innesto per quando esisterà la scelta da bucket.
 function _applicaSfondoUtente(url) {
     const wrap = document.getElementById('phoneWidgetHomeWrap');
     if (wrap && url) wrap.style.backgroundImage = `url('${url}')`;
 }
 
-// ── BARRA DI STATO (orario + indicatore di sync) ─────────────────────────
 function _aggiornaOrologioStatusBar() {
     const el = document.getElementById('phoneStatusOra');
     if (el) el.textContent = new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
 }
 
-// Pulsa mentre è in corso una VERA chiamata a Supabase (non ad ogni
-// ricalcolo locale gratuito da carteReali) — usata attorno al polling
-// "lento" e a caricaAvvisiHome.
-// AGGIORNATA (2026-09-01, integrazione status bar): il vecchio puntino
-// #phoneSyncDot è nascosto via CSS (vedi statusbar.css, blocco di
-// integrazione) — questa funzione ora pilota lo stato "connessione" della
-// nuova barra invece del puntino. Firma invariata, tutti i punti di
-// chiamata esistenti nel file continuano a funzionare senza modifiche.
-// Non è un mapping perfetto (CSBar distingue online/connecting/offline,
-// qui abbiamo solo "sta sincronizzando ora / non sta sincronizzando"), ma
-// è la stessa semplificazione già implicita nel vecchio puntino
-// acceso/spento — nessuna informazione persa.
 function _impostaSyncAttivo(attivo) {
-    const dot = document.getElementById('phoneSyncDot'); // lasciato per rollback, nascosto via CSS
+    const dot = document.getElementById('phoneSyncDot');
     if (dot) dot.classList.toggle('attivo', attivo);
     if (typeof CSBar !== 'undefined' && CSBar.getConnection) {
         CSBar.setConnection(attivo ? 'connecting' : 'online');
     }
 }
 
-// ── POKÉBALL DI STATO: ESTENSIONE (restyle Bindex FASE 1, 2026-09-30) ────
-// Rossa = Supabase + estensione attiva su questo computer, verde = solo
-// Supabase, grigia = offline (quest'ultima la gestisce già CSBar con
-// setConnection). Qui si decide solo rossa/verde: la classe
-// 'csb-solo-supabase' su #phoneScreen (vedi statusbar.css, blocco
-// restyle). Usa _chiediVersioneEstensione (ui/extension.ui.js), la stessa
-// sonda del widget Estensione: nessuna query al DB, timeout 1.2s, mai
-// bloccante. Chiamata all'avvio e a ogni giro di polling lento (60s).
 async function _aggiornaPokeballStatoEstensione() {
     let versione = null;
     try {
@@ -139,7 +42,6 @@ async function _aggiornaPokeballStatoEstensione() {
     if (schermo) schermo.classList.toggle('csb-solo-supabase', !versione);
 }
 
-// ── SUONI RETRO (Web Audio, nessun file esterno) ─────────────────────────
 let _phoneAudioCtx = null;
 function _beep(frequenza, durataMs) {
     if (!prefSuoniWidgetGet()) return;
@@ -149,13 +51,13 @@ function _beep(frequenza, durataMs) {
         const gain = _phoneAudioCtx.createGain();
         osc.type = 'square';
         osc.frequency.value = frequenza;
-        gain.gain.value = 0.025; // molto discreto, non invadente
+        gain.gain.value = 0.025;
         osc.connect(gain);
         gain.connect(_phoneAudioCtx.destination);
         osc.start();
         gain.gain.exponentialRampToValueAtTime(0.0001, _phoneAudioCtx.currentTime + durataMs / 1000);
         osc.stop(_phoneAudioCtx.currentTime + durataMs / 1000 + 0.02);
-    } catch (_) { /* Web Audio non disponibile o bloccato: niente suono, nessun errore visibile */ }
+    } catch (_) {   }
 }
 
 function toggleSuoniWidgetHome() {
@@ -163,17 +65,11 @@ function toggleSuoniWidgetHome() {
     prefSuoniWidgetSet(nuovoStato);
     const icona = document.getElementById('iconaSuoniWidgetHome');
     if (icona) icona.className = nuovoStato ? 'fa-solid fa-volume-high' : 'fa-solid fa-volume-xmark';
-    // Fase 10 (2026-09-13): tenuto in sincronia anche il checkbox della
-    // pagina Impostazioni > Suoni (id diverso, stesso stato sottostante).
     const checkbox = document.getElementById('suoniAppToggle');
     if (checkbox) checkbox.checked = nuovoStato;
     if (nuovoStato) _beep(660, 60);
 }
 
-// ── NOTIFICHE PUSH (diff sui dati già scaricati, nessuna query nuova) ────
-// Confronta i contatori di rischio col giro di polling precedente — se
-// sono aumentati, mostra un banner + bagliore + vibrazione + suono.
-// Nessun nuovo endpoint: riusa dati già ottenuti dal polling "lento".
 let _contatoriNotifichePrecedenti = null;
 
 async function _controllaNotifichePush() {
@@ -206,4 +102,3 @@ function _mostraNotificaPush(testo) {
         if (schermo) schermo.classList.remove('glow-notifica');
     }, 4000);
 }
-

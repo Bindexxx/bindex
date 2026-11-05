@@ -1,24 +1,10 @@
-// ═══════════════════════════════════════════════════════════════════════
-// RARITA.UI.JS — rarità delle carte dal catalogo (2026-10-14)
-// ═══════════════════════════════════════════════════════════════════════
-// La tabella carte non ha una colonna "rarita" (verificato sul DB): il bordo
-// colorato delle miniature in home non si accendeva mai. La rarità però è nel
-// catalogo dei set (set_carte: sigla + numero + variante), e il sito sa già
-// ricavare sigla e numero dal codice della carta (_ballLeggiCodice).
-// Qui si legge, UNA volta per set e poi dalla cache del dispositivo, solo
-// sigla/numero/rarità e si scrive c.rarita su carteReali con uno di cinque
-// livelli — gli stessi delle classi .widget-tile-thumb-r-* in index.css:
-//   comune, non_comune, rara, ultra_rara, secret   ('' = nessuna rarità nota)
-// Nessuna modifica al DB né all'estensione. Se il catalogo non ha il set o la
-// lettura fallisce, le miniature restano col bordo neutro di sempre.
-// ───────────────────────────────────────────────────────────────────────
+// Rarità delle carte dal catalogo dei set.
 
-const RARITA_VALIDITA_MS = 14 * 24 * 3600 * 1000;  // il catalogo cambia di rado
+const RARITA_VALIDITA_MS = 14 * 24 * 3600 * 1000;
 const RARITA_RETRY_ERRORE_MS = 5 * 60 * 1000;
 let _raritaInCorso = false;
 let _raritaErroreTs = 0;
 
-// Rarità del catalogo (testo inglese di TCGdex/Cardmarket) -> livello del sito.
 function raritaLivello(testo) {
     const t = String(testo || '').trim().toLowerCase();
     if (!t || t === 'none' || t === 'promo') return '';
@@ -30,7 +16,6 @@ function raritaLivello(testo) {
     return '';
 }
 
-// Scrive c.rarita su ogni carta di cui la cache conosce il set. true se ha cambiato qualcosa.
 function raritaApplica(carte, cache) {
     let cambiato = false;
     (carte || []).forEach(c => {
@@ -45,8 +30,6 @@ function raritaApplica(carte, cache) {
     return cambiato;
 }
 
-// Prima parte SINCRONA (applica quel che c'è in cache, prima che la home venga
-// disegnata), poi legge dal catalogo i set mancanti e, solo se serve, ridisegna la home.
 async function raritaAggiorna() {
     if (typeof carteReali === 'undefined' || !Array.isArray(carteReali) || !carteReali.length) return;
     let cache = prefRaritaCacheGet();
@@ -73,7 +56,6 @@ async function raritaAggiorna() {
             if (!voce) return;
             const livello = raritaLivello(r.rarita);
             if (!livello) return;
-            // stessa rarità per tutte le stampe di un numero; se c'è la "normale" vince quella
             if (!voce.r[r.numero] || r.variante === 'normale') voce.r[r.numero] = livello;
         });
         cache = Object.assign(prefRaritaCacheGet(), nuovo);

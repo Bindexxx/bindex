@@ -1,15 +1,4 @@
-// ── ui/shop.ui.js ────────────────────────────────────────────────────────
-// RESTYLE BINDEX FASE 9 (sql/91): pagina Polvere = Shop, con le schede
-// Negozio / Zaino / Movimenti (tavole OK-shop-l, OK-shop-sh, PC-shop-l,
-// PC-shop-retro, OK-polvere-mov, PC-polvere-mov-l). Si apre dalla tessera
-// Polvere (tab 'shop') e dal saldo ✧ nella barra in alto.
-//
-// Effetti (decisione Claudio 2026-10-01, "Base + cornici/retro"):
-//  - cornici e retro carta si vedono SUBITO nella carta a tutto schermo
-//    (shopApplicaAllaCarta, chiamata da apriFlipCardHome);
-//  - sfere, scaffali e tema si comprano e si attivano, l'effetto grafico
-//    arriva dopo: segnati "In arrivo".
-// Nessuna chiamata a Supabase qui: tutto passa da data/shop.repository.js.
+// Shop della Polvere: Negozio, Zaino, Movimenti.
 
 const SHOP_CATEGORIE = [
     { id: 'sfere', nome: 'Sfere', sotto: 'skin sfere' },
@@ -29,7 +18,6 @@ let _shop = {
     movimenti: null, altri: null, filtroMov: 'tutti', mioId: null,
 };
 
-// Effetti attivi (cornice / retro) letti anche fuori dalla pagina Shop.
 let _shopEffetti = { cornice: null, retro: [] };
 
 function _shopCat(id) { return SHOP_CATEGORIE.find(c => c.id === id) || { id, nome: id, sotto: '' }; }
@@ -43,7 +31,6 @@ function _shopNuovo(a) {
 }
 function _shopEstetico(a) { return a.categoria !== 'bustine' && a.categoria !== 'altro'; }
 
-// ── caricamento ─────────────────────────────────────────────────────────
 async function _shopCarica() {
     const userId = await authGetUserId();
     if (!userId) return false;
@@ -71,13 +58,10 @@ function _shopCalcolaEffetti() {
     };
 }
 
-// Lettura leggera all'avvio, per avere cornice/retro già pronti alla prima
-// carta aperta (nessun errore visibile se lo Shop non esiste ancora).
 async function shopCaricaEffetti() {
     try { await _shopCarica(); } catch (e) { console.warn('[shop] effetti:', e); }
 }
 
-// ── pagina ──────────────────────────────────────────────────────────────
 async function renderPaginaShop(scheda) {
     if (scheda) _shop.scheda = scheda;
     const box = document.getElementById('shopContenuto');
@@ -118,10 +102,7 @@ function _shopDisegna() {
         ${!pc && _shop.foglioId ? _shopFoglio() : ''}`;
 }
 
-// ── NEGOZIO ─────────────────────────────────────────────────────────────
 function _shopVisibiliNegozio() {
-    // In vendita + quelli che ho già (anche se ritirati dopo: no, i ritirati
-    // sono già stati rimborsati e tolti dallo Zaino).
     return _shop.articoli.filter(a => _shopInVendita(a) || (_shop.possessi.has(String(a.id)) && a.stato !== 'ritirato'));
 }
 
@@ -168,7 +149,6 @@ function _shopTessera(a) {
     </button>`;
 }
 
-// Anteprima: immagine caricata dall'admin, altrimenti un disegno CSS.
 function _shopAnteprima(a, grande) {
     if (a.immagine_path) return `<img src="${escapeHtml(shopImmagineUrl(a.immagine_path))}" alt="" loading="lazy">`;
     const s = a.stile || {};
@@ -250,7 +230,7 @@ async function shopCompraArticolo(id) {
         if (error) { _shop.errore = error.message || 'Acquisto non riuscito'; return; }
         if (data && data.saldo != null) {
             _shop.saldo = Number(data.saldo);
-            if (typeof CSBar !== 'undefined') try { CSBar.setCurrency({ value: _shop.saldo, glyph: '✧', label: 'Polvere' }); } catch (_) { /* niente */ }
+            if (typeof CSBar !== 'undefined') try { CSBar.setCurrency({ value: _shop.saldo, glyph: '✧', label: 'Polvere' }); } catch (_) {   }
             if (typeof _widgetPolvereSaldo !== 'undefined') { _widgetPolvereSaldo.valore = _shop.saldo; }
         }
         _shop.regaloA = '';
@@ -272,7 +252,6 @@ async function shopAttivaArticolo(id, attivo) {
     finally { _shop.inCorso = false; _shopDisegna(); }
 }
 
-// ── ZAINO ───────────────────────────────────────────────────────────────
 function _shopZaino() {
     const miei = _shop.articoli.filter(a => _shop.possessi.has(String(a.id)));
     const gruppi = SHOP_CATEGORIE.filter(c => miei.some(a => a.categoria === c.id)).map(c => `
@@ -293,7 +272,6 @@ function _shopZaino() {
     </div>`;
 }
 
-// ── MOVIMENTI ───────────────────────────────────────────────────────────
 async function _shopCaricaMovimenti() {
     try {
         const [mov, altri] = await Promise.all([polvereMovimentiLeggi(), ricompenseAltreLeggi()]);
@@ -305,7 +283,7 @@ async function _shopCaricaMovimenti() {
 function _shopFonteMovimento(r) {
     const rif = String(r.riferimento_id || '');
     if (rif === 'doppione') return { fonte: 'doppioni', titolo: 'Doppioni nella bustina', sotto: 'Bustina', icona: 'fa-box-open' };
-    if (rif.startsWith('codice:')) return { fonte: 'codici', titolo: `Codice “${rif.slice(7)}”`, sotto: 'Codici', icona: 'fa-gift' }; // sql/102
+    if (rif.startsWith('codice:')) return { fonte: 'codici', titolo: `Codice “${rif.slice(7)}”`, sotto: 'Codici', icona: 'fa-gift' };
     if (rif.startsWith('shop:') || rif.startsWith('rimborso:')) {
         const acq = _shop.acquisti.find(x => String(x.id) === rif.split(':')[1]);
         const art = acq ? _shop.articoli.find(a => String(a.id) === String(acq.articolo_id)) : null;
@@ -326,7 +304,6 @@ function shopFiltroMovimenti(f) { _shop.filtroMov = f; _shopDisegna(); }
 function _shopMovimenti(pc) {
     if (!_shop.movimenti) return '<p class="sh-vuoto">Carico i movimenti…</p>';
     const righe = _shop.movimenti.map(r => Object.assign({ r }, _shopFonteMovimento(r)));
-    // Settimana: guadagni dal lunedì (i rimborsi non contano come guadagno).
     const lun = new Date(); lun.setHours(0, 0, 0, 0); lun.setDate(lun.getDate() - ((lun.getDay() + 6) % 7));
     const settimana = righe.filter(x => x.r.quantita > 0 && x.fonte !== 'shop' && new Date(x.r.ottenuto_il) >= lun).reduce((t, x) => t + x.r.quantita, 0);
     const fonti = [['missioni', 'Missioni', 'fa-bullseye'], ['traguardi', 'Traguardi', 'fa-trophy'], ['doppioni', 'Doppioni della bustina', 'fa-box-open']];
@@ -376,7 +353,6 @@ function _shopMovimenti(pc) {
     return `${testa}${daDove}${altri}${movimenti}`;
 }
 
-// ── EFFETTI SULLA CARTA A TUTTO SCHERMO ─────────────────────────────────
 function _shopRetroHtml(elementi, dati) {
     return (elementi || []).map(e => {
         if (e.tipo === 'sticker') return `<span class="shop-retro-sticker v-${escapeHtml(e.variante)}"><b>${escapeHtml(dati.cond || '—')}</b><i>${escapeHtml(dati.prezzo || '')}</i></span>`;
@@ -402,14 +378,12 @@ function shopApplicaAllaCarta(card) {
     strato.innerHTML = card ? _shopRetroHtml(_shopEffetti.retro, { cond: card.cond || '', prezzo: formattaEuro(card.price) }) : '';
 }
 
-// Il saldo ✧ nella barra in alto apre lo Shop.
 document.addEventListener('click', (e) => {
     const chip = e.target.closest && e.target.closest('.csb-currency');
     if (!chip || typeof apriDettaglioWidget !== 'function') return;
     apriDettaglioWidget('shop');
 });
 
-// Telefono ↔ PC: ridisegna (foglio vs pannello).
 (function () {
     let t = null, era = null;
     window.addEventListener('resize', () => {

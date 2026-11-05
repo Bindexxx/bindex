@@ -1,10 +1,4 @@
-// ── data/moderation.repository.js ────────────────────────────────────────
-// Tabella pending_requests: richieste in attesa di approvazione admin
-// (cambio username, upload foto copertina binder/retro carta). Nel codice
-// originale l'insert era duplicato identico in 3 punti diversi di
-// index.html — stessa query, stessa forma, consolidata qui.
-//
-// Dipende da: supabaseClient.
+// Richieste da approvare (pending_requests): cambio nome, foto.
 
 async function creaRichiestaPendente(userId, type, payload) {
     return supabaseClient.from('pending_requests').insert({

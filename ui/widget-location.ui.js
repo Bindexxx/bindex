@@ -1,56 +1,7 @@
-// ═══════════════════════════════════════════════════════════════════════
-// WIDGET-LOCATION.UI.JS — tessera + pagina "Location" (CardSync Pro)
-// ═══════════════════════════════════════════════════════════════════════
-// STEP 11 della ristrutturazione file widget home (vedi
-// Roadmap_Ristrutturazione_Widget_Home_2026-09-11.md). Estratto da
-// ui/phone.ui.js il 2026-09-11. NESSUNA riscrittura: solo spostamento di
-// codice, zero cambi di comportamento per l'utente finale.
-//
-// CATEGORIA A: pagina propria che unisce due fonti (location USATE da
-// preview(), da carteReali — zero query nuove — e TUTTE le location via
-// locationsList(), incluse quelle senza ancora nessuna carta). Include
-// anche "+ Aggiungi" (_locationAggiungi) e "✕ Rimuovi" (_locationRimuovi,
-// bloccata se la location ha ancora carte assegnate).
-//
-// COSA RESTA FUORI (non spostato qui, invariato):
-// - apriDettaglioWidget (ui/paginainiziale.ui.js) continua a chiamare
-//   renderPaginaLocation() per tabId === 'location' — motore home,
-//   dispatch generico, non toccato in questo step.
-// - _ballCORPI.location / _ballASPETTO.location / _ballTITOLI_BREVI
-//   .location / _ballAzioneRiga / _ballRigaBarra
-//   (ui/widget-render-condiviso.ui.js) — motore visivo, non toccato.
-//   Verificato: legge d.voci dal 'dati' restituito dal preview() qui
-//   sotto — forma confermata coerente, nessuna modifica necessaria.
-// - authGetUserId, locationsList, locationExists, locationInsert,
-//   locationDelete, escapeHtml: esterne, non toccate.
-//
-// AGGIORNAMENTO 2026-09-20 (sessione widget Location): pagina rifatta a
-// TESSERE con anteprima del binder-location (copertina reale, icona di
-// ripiego), stessa griglia e stesso spirito di ui/widget-condividi.ui.js —
-// ma il tap sulla tessera GESTISCE la location invece di condividerla:
-// vedi carte / rinomina / sposta tutte le carte / elimina (solo se vuota).
-// Spunta in alto a destra sulla tessera = selezione multipla (sposta /
-// elimina in blocco). "Più piena" → "Più valore". La voce
-// CATALOGO_WIDGET.location qui sotto e la firma renderPaginaLocation()
-// (chiamata senza argomenti da paginainiziale-dettaglio.ui.js) sono
-// INVARIATE. Rinomina = RPC atomica sql/65 (data/locations.repository.js:
-// locationRinomina). Il nome del binder-location NON cambia da solo:
-// la RPC mette il nuovo nome in binders.nome_proposto (stato 'pending') e
-// il client invia la richiesta admin già esistente (creaRichiestaPendente
-// 'binder_nome'). Chi vuole mostrare il nuovo nome in attesa legge
-// binders.nome_in_attesa (colonna generata, NULL = nessuna proposta).
-// CSS della pagina e modale "Gestisci": iniettati da questo file
-// (_locAssicuraStile) — index.html NON toccato.
-// ───────────────────────────────────────────────────────────────────────
+// Widget e pagina Location.
 
-// ── VOCE DI CATALOGO ──────────────────────────────────────────────────
 CATALOGO_WIDGET.location = {
         titolo: 'Location', icona: 'fa-map-pin',
-        // RESTYLE BINDEX FASE 2 (2026-09-30, tavola "Location = 3 più
-        // preziose + N in ?"): ordinate per VALORE (Σ prezzo × qty, stessa
-        // formula della pagina Location e di Valore collezione), non più per
-        // numero di carte; '?' (carte in attesa di una location) contata a
-        // parte. Sempre zero query: tutto da carteReali.
         preview: () => {
             const collezione = carteReali.filter(c => c.stato === 'collezione');
             const agg = {};
@@ -71,72 +22,21 @@ CATALOGO_WIDGET.location = {
                 dati: { voci, totale, inAttesa },
             };
         },
-        // AGGIUNTO (2026-08-30): prima non aveva 'tab', quindi
-        // _eseguiAzioneWidget cadeva su apriDettaglioWidget(w.id, ...) =
-        // apriDettaglioWidget('location', ...) — non essendo 'location' né
-        // una whitelist custom né una vera view-section, il tap sul tile
-        // non portava da nessuna parte. Ora ha una pagina propria (#location
-        // in index.html, renderPaginaLocation() sotto).
         tab: 'location',
 };
 
-// ── PAGINA "LOCATION" ────────────────────────────────────────────────────
-// Fonti unite:
-//   1) carteReali (stato 'collezione', già in memoria, nessuna query):
-//      per ogni location numero di carte (righe, come nel widget Binder) e
-//      VALORE = Σ prezzo × qty (stessa formula di widget-valore-collezione).
-//   2) locationsList(userId) → TUTTE le location della tabella 'location',
-//      comprese quelle senza ancora nessuna carta.
-//   3) bindersQueryTutti(userId) → il binder-location di ogni location:
-//      copertina (via _risolviCopertinaBinder, ui/binder.ui.js, stessa
-//      cache di Binder e Condividi) e nome in attesa (nome_in_attesa).
-//
-// TESSERE (2026-09-20): tap sulla tessera → modale "Gestisci" a schermo
-// intero DENTRO la cornice (stesso meccanismo di #condividiShareModal:
-// _rettangoloSchermoCornice + resize). Il modale è creato da JS, non c'è
-// markup in index.html.
-//
-// Stato tenuto qui sotto (prefisso _loc, verificato senza collisioni):
-//   _locDati      → { voci:[{nome,n,valore}], binder:{nome→riga binders},
-//                     copertine:{nome→url} }: le tessere si ridisegnano da
-//                   qui, senza nuove query.
-//   _locSelezione → nomi spuntati (azioni multiple).
-//   _locModale    → null | {tipo:'gestisci', nome} | {tipo:'sposta', sorgenti}
-//   _locOccupato  → blocca i doppi tap durante un'operazione.
-// Si esce da selezione/modale a ogni apertura "fresca" della pagina
-// (renderPaginaLocation() senza argomenti); le operazioni interne
-// ricaricano con { mantieni:true }.
-//
-// CONTENITORI DI SISTEMA — '?', 'SCAMBIO', 'WISHLIST' (decisione di
-// Claudio): ci sono funzioni del sito che si basano su questi nomi, quindi
-// BLOCCATI: niente rinomina, elimina, selezione, "sposta carte" da lì; mai
-// come nome nuovo né destinazione. Eccezione: '?' (fallback "in attesa di
-// una location", vedi widget-dafare) resta valida come DESTINAZIONE. Dal
-// modale si possono comunque VEDERE le loro carte.
-// '—' = carte senza location (se mai comparisse): tessera inerte.
-//
-// LOCATION VUOTE: MAI cancellate in automatico — né dopo uno spostamento
-// né altrove. Si eliminano solo su richiesta esplicita dell'utente. Sono
-// rese molto evidenti (tessera rossa, fascia VUOTA, riquadro "Vuote").
-// I conteggi che decidono se eliminare/spostare sono RICALCOLATI da
-// carteReali al momento dell'azione (mai dalla cache di disegno: una carta
-// arrivata dall'estensione nel frattempo non deve sparire nel nulla).
 const _LOC_SISTEMA = ['?', 'SCAMBIO', 'WISHLIST'];
 let _locDati = { voci: [], binder: {}, copertine: {} };
 let _locSelezione = new Set();
 let _locModale = null;
 let _locOccupato = false;
-// RESTYLE FASE 3g: ordine delle tessere ('valore' | 'carte' | 'az') e modalità Seleziona.
 let _locOrd = 'valore';
 let _locSelezionando = false;
 let _locModaleResizeHandler = null;
 
 function _locSistema(nome) { return _LOC_SISTEMA.includes(String(nome).trim().toUpperCase()); }
-// Tessera senza nome vero (carte senza location): nessuna azione.
 function _locInerte(nome) { return nome === '—'; }
-// Su queste si può selezionare/rinominare/spostare/eliminare.
 function _locModificabile(nome) { return !_locSistema(nome) && !_locInerte(nome); }
-// Nomi che non si possono creare né usare come nome nuovo.
 function _locRiservata(nome) { return _locSistema(nome) || _locInerte(String(nome).trim()); }
 function _locConteggioLive(nome) {
     return carteReali.filter(c => c.stato === 'collezione' && (c.location || '—') === nome).length;
@@ -145,7 +45,7 @@ function _locVoce(nome) { return _locDati.voci.find(v => v.nome === nome) || nul
 function _locAttr(s) { return escapeHtml(s).replace(/"/g, '&quot;'); }
 function _locCarte(n) { return `${n} cart${n === 1 ? 'a' : 'e'}`; }
 function _locEur(v) {
-    return formattaEuro(v); // formato unico "12.345,00 €" (decisione Claudio 2026-09-25)
+    return formattaEuro(v);
 }
 function _locIconaFallback(nome) {
     const u = String(nome).trim().toUpperCase();
@@ -153,12 +53,9 @@ function _locIconaFallback(nome) {
     if (u === 'SCAMBIO') return 'fa-right-left';
     if (u === 'WISHLIST') return 'fa-heart';
     if (nome === '—') return 'fa-circle-question';
-    return 'fa-box-open'; // come _iconaFallbackBinder() per i binder-location
+    return 'fa-box-open';
 }
 
-// Dopo QUALUNQUE modifica alle location: le liste cache usate da altre
-// pagine (tendina Inserimento, checkbox Prezzi, tendina modifica inline)
-// vengono invalidate, così alla prossima apertura si ricaricano.
 function _locInvalidaCache() {
     _locationDisponibiliCache = null;
     _locationCaricate = false;
@@ -172,10 +69,6 @@ async function _locDopoModificaCarte() {
     await renderPaginaLocation({ mantieni: true });
 }
 
-// ── CSS (iniettato una volta sola) ──────────────────────────────────────
-// Stessa geometria di .condividi-* (colonne da --ball-misura-binder,
-// copertina 58.2% con proporzione 63:88) con classi proprie: non si
-// aggiunge un consumer alle classi di Condividi (Regola d'Oro #1).
 function _locAssicuraStile() {
     if (document.getElementById('locStileWidget')) return;
     const st = document.createElement('style');
@@ -266,13 +159,8 @@ function _locAssicuraStile() {
     document.head.appendChild(st);
 }
 
-// ── Modale "Gestisci" ───────────────────────────────────────────────────
-// Mirror di _condividiSharePosiziona()/apriCondividiPannelloShare()
-// (ui/widget-condividi.ui.js): duplicazione intenzionale, stessa tecnica.
 function _locModalePosiziona() {
     const modal = document.getElementById('locGestisciModal');
-    // 2026-10-14: sotto la barra di stato (come le pagine): prima la copriva e il
-    // tasto di chiusura in alto finiva sotto l'avatar del profilo.
     const r = (typeof _rettangoloPaginaSottoBarra === 'function') ? _rettangoloPaginaSottoBarra()
         : (typeof _rettangoloSchermoCornice === 'function') ? _rettangoloSchermoCornice() : null;
     if (!modal || !r) return;
@@ -330,11 +218,9 @@ function _locChiudiModale() {
 function _locModaleDisegna() {
     const corpo = document.getElementById('locModaleCorpo');
     if (!corpo || !_locModale) return;
-    // Titolo nella testata "‹ + titolo" (2026-10-14, come le altre sottopagine).
     const titoloEl = document.getElementById('locModaleTitolo');
     if (titoloEl) titoloEl.textContent = _locModale.tipo === 'sposta' ? 'Sposta le carte' : (_locModale.nome || '');
 
-    // ── Sposta: scelta destinazione ─────────────────────────────────────
     if (_locModale.tipo === 'sposta') {
         const sorgenti = _locModale.sorgenti;
         const totale = sorgenti.reduce((somma, nome) => somma + _locConteggioLive(nome), 0);
@@ -354,7 +240,6 @@ function _locModaleDisegna() {
         return;
     }
 
-    // ── Gestisci: menu della singola location ───────────────────────────
     const nome = _locModale.nome;
     const v = _locVoce(nome);
     if (!v) { corpo.innerHTML = '<p style="color:var(--text-muted);">Location non trovata.</p>'; return; }
@@ -390,7 +275,6 @@ function _locModaleDisegna() {
         <div style="margin-top:0.8rem;">${azioni}</div>`;
 }
 
-// Tap su una tessera.
 function _locApriGestione(i) {
     if (_locOccupato) return;
     const v = _locDati.voci[i];
@@ -415,7 +299,6 @@ async function _locEliminaModale() {
     await _locElimina([_locModale.nome]);
 }
 
-// ── Aggiungi ────────────────────────────────────────────────────────────
 async function _locAggiungi() {
     if (_locOccupato) return;
     const nome = ((await chiediTesto({ titolo: 'Nuova location', testo: 'Nome della nuova location:', conferma: 'Crea', maxLength: 60 })) || '').trim();
@@ -438,7 +321,6 @@ async function _locAggiungi() {
     } finally { _locOccupato = false; }
 }
 
-// ── Rinomina ────────────────────────────────────────────────────────────
 async function _locRinomina(nome) {
     if (_locOccupato) return;
     if (!_locVoce(nome)) return;
@@ -460,9 +342,6 @@ async function _locRinomina(nome) {
         const { data, error } = await locationRinomina(nome, nuovo);
         if (error) { mostraAvviso('Errore nella rinomina: ' + error.message); return; }
 
-        // Il nome in attesa è GIÀ nel DB (la RPC ha scritto nome_proposto +
-        // nome_stato='pending', mai binders.nome — trigger sql/26). Qui
-        // manca solo la richiesta all'admin, con il flusso già esistente.
         let notaRichiesta = '';
         if (data && data.proposta_nome && data.binder_id) {
             const userId = await authGetUserId();
@@ -478,7 +357,6 @@ async function _locRinomina(nome) {
     } finally { _locOccupato = false; }
 }
 
-// ── Elimina (solo su richiesta esplicita; singola o selezione) ──────────
 async function _locElimina(nomi) {
     if (_locOccupato || !nomi || nomi.length === 0) return;
     const eliminabili = [];
@@ -513,7 +391,6 @@ async function _locElimina(nomi) {
 }
 function _locEliminaSelezionate() { _locElimina([..._locSelezione]); }
 
-// ── Sposta le carte (singola o selezione) ───────────────────────────────
 function _locApriSposta(nomi) {
     if (_locOccupato) return;
     const sorgenti = (nomi || []).filter(nome => _locModificabile(nome) && _locConteggioLive(nome) > 0);
@@ -546,7 +423,6 @@ async function _locConfermaSposta() {
     if (totale === 0) { mostraAvviso('Nel frattempo non ci sono più carte da spostare.'); return; }
     if (!(await chiediConferma({ titolo: 'Spostare le carte?', testo: `${_locCarte(totale)} da ${sorgenti.map(n => `"${n}"`).join(', ')} in "${destinazione}".\n\nLe location di partenza NON vengono eliminate: restano, vuote e ben evidenziate.`, conferma: 'Sposta' }))) return;
 
-    // (Q3) Location di partenza di ogni carta, per "Annulla".
     const primaDi = carteReali
         .filter(c => c.tabella === 'carte' && c.stato === 'collezione' && sorgenti.includes(c.location || '—'))
         .map(c => ({ id: c.id, location: c.location || '' }));
@@ -574,8 +450,6 @@ async function _locConfermaSposta() {
     } finally { _locOccupato = false; }
 }
 
-// (Q3) Rimette ogni carta nella location di partenza (quella creata come
-// destinazione, se nuova, resta: vuota, come le location di partenza).
 async function _locAnnullaSposta(primaDi) {
     if (!primaDi || !primaDi.length) return;
     const gruppi = new Map();
@@ -590,8 +464,6 @@ async function _locAnnullaSposta(primaDi) {
     else avvisoBreve('Spostamento annullato.', { tipo: 'ok' });
 }
 
-// ── Selezione multipla (spunte sulle tessere) ───────────────────────────
-// Aggiorna solo classi/spunte e barra, senza ridisegnare la griglia.
 function _locToggleSel(i) {
     const v = _locDati.voci[i];
     if (!v || !_locModificabile(v.nome)) return;
@@ -630,11 +502,6 @@ function _locAggiornaSelezioneUI() {
         <button onclick="_locAnnullaSelezione()">Annulla</button>` : ''}`;
 }
 
-// ── Disegno (sincrono, da _locDati) ─────────────────────────────────────
-// RESTYLE BINDEX FASE 3g (2026-10-01, tavola "Location"): riepilogo, pulsante
-// Seleziona (le spunte compaiono solo in quella modalità), ordini
-// "Per valore / Per numero di carte / A → Z", tessere a scheda con barra del
-// valore. Il tocco apre ancora il modale "Gestisci" (invariato).
 function _locOrdina() {
     const voci = _locDati.voci;
     const conCarte = (v) => (v.n > 0 ? 1 : 0);
@@ -643,7 +510,7 @@ function _locOrdina() {
     else voci.sort((a, b) => conCarte(b) - conCarte(a) || b.valore - a.valore || b.n - a.n || String(a.nome).localeCompare(String(b.nome)));
 }
 
-function _locImpostaOrdine(o) { _locOrd = o; prefFiltroPaginaSet('location', 'ordine', o); _locDisegna(); } // (Q5) ricordato
+function _locImpostaOrdine(o) { _locOrd = o; prefFiltroPaginaSet('location', 'ordine', o); _locDisegna(); }
 
 function _locToggleSeleziona() {
     _locSelezionando = !_locSelezionando;
@@ -653,7 +520,6 @@ function _locToggleSeleziona() {
 
 function _locClicTessera(i) {
     if (_locSelezionando) { _locToggleSel(i); return; }
-    // RESTYLE (tavola PC "Location"): su PC la gestione è nel pannello a destra.
     if (_locEPC()) {
         const v = _locDati.voci[i];
         if (!v) return;
@@ -665,7 +531,6 @@ function _locClicTessera(i) {
     _locApriGestione(i);
 }
 
-// ── PC: pannello di gestione a destra (RESTYLE, tavola "Location PC") ───
 let _locPannelloNome = null;
 function _locEPC() { const s = document.getElementById('location'); return !!s && s.clientWidth >= 780; }
 
@@ -730,7 +595,6 @@ function _locDisegna() {
         return;
     }
 
-    // "Più preziosa": la location col valore più alto (nessuna se tutte a 0).
     const top = voci.reduce((m, v) => (v.valore > (m ? m.valore : 0) ? v : m), null);
     const maxValore = Math.max(0, ...voci.map(v => v.valore));
 
@@ -738,7 +602,7 @@ function _locDisegna() {
         const { nome, n, valore } = v;
         const modificabile = _locModificabile(nome);
         const sistema = _locSistema(nome);
-        const vuota = n === 0 && modificabile; // '?' vuoto è normale: nessun allarme
+        const vuota = n === 0 && modificabile;
         const b = _locDati.binder[nome];
         const url = _locDati.copertine[nome];
         const sel = _locSelezione.has(nome);
@@ -794,10 +658,6 @@ function _locDisegna() {
     _locPannelloDisegna();
 }
 
-// ── Ingresso: lettura dati + disegno ────────────────────────────────────
-// Chiamata SENZA argomenti dal dispatch di apriDettaglioWidget → apertura
-// fresca (azzera selezione e modale). Le operazioni di questo file la
-// richiamano con { mantieni: true }.
 async function renderPaginaLocation(opzioni) {
     const container = document.getElementById('locationContenuto');
     if (!container) return;
@@ -807,12 +667,11 @@ async function renderPaginaLocation(opzioni) {
     if (!mantieni) {
         _locSelezione.clear();
         _locSelezionando = false;
-        _locOrd = prefFiltroPaginaScegli('location', 'ordine', ['valore', 'carte', 'az'], 'valore'); // (Q5)
+        _locOrd = prefFiltroPaginaScegli('location', 'ordine', ['valore', 'carte', 'az'], 'valore');
         _locChiudiModale();
         container.innerHTML = '<p style="text-align:center; color:var(--text-muted); font-size:0.85rem; padding:1rem 0;">Caricamento…</p>';
     }
 
-    // 1) Carte in collezione → conteggio (righe) e valore (prezzo × qty)
     const agg = {};
     try {
         carteReali.filter(c => c.stato === 'collezione').forEach(c => {
@@ -828,9 +687,6 @@ async function renderPaginaLocation(opzioni) {
     }
     const voci = Object.values(agg);
 
-    // 2) Location senza ancora nessuna carta + 3) binder-location.
-    // Un fallimento qui non deve mai nascondere le location che hanno già
-    // delle carte.
     const binder = {};
     const copertine = {};
     const userId = await authGetUserId();
@@ -849,7 +705,6 @@ async function renderPaginaLocation(opzioni) {
             const { data: binders, error } = await bindersQueryTutti(userId);
             if (error) throw error;
             (binders || []).filter(b => b.tipo === 'location' && b.location_valore).forEach(b => { binder[b.location_valore] = b; });
-            // Copertine: stessa funzione/cache di Binder e Condividi.
             if (typeof _risolviCopertinaBinder === 'function') {
                 await Promise.all(voci.map(async v => {
                     const b = binder[v.nome];
@@ -863,18 +718,14 @@ async function renderPaginaLocation(opzioni) {
         }
     }
 
-    // Ordine: prima le location con carte, per VALORE decrescente (poi
-    // numero di carte, poi nome); in fondo le vuote, in ordine alfabetico.
     voci.sort((a, b) => (b.n > 0) - (a.n > 0)
         || b.valore - a.valore
         || b.n - a.n
         || String(a.nome).localeCompare(String(b.nome)));
 
     _locDati = { voci, binder, copertine };
-    // Selezione riferita a nomi che non esistono più: via.
     const nomi = new Set(voci.map(v => v.nome));
     _locSelezione = new Set([..._locSelezione].filter(n => nomi.has(n)));
-    // Modale aperto su una location sparita/cambiata: chiuso.
     if (_locModale) {
         const ok = _locModale.tipo === 'gestisci' ? nomi.has(_locModale.nome) : _locModale.sorgenti.every(n => nomi.has(n));
         if (!ok) _locChiudiModale(); else _locModaleDisegna();

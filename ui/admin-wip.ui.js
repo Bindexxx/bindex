@@ -1,7 +1,4 @@
-// ── ui/admin-wip.ui.js ─────────────────────────────────────────────────
-// Fase 11 (2026-09-13). Pannello admin per attivare/disattivare Work in
-// Progress. RLS fa comunque da barriera reale (solo is_admin() scrive) —
-// questo pannello è solo la comodità, non la sicurezza.
+// Admin, Lavori in corso: attiva e disattiva (la barriera vera è la RLS).
 
 async function caricaWip() {
     const cont = document.getElementById('wip-list');
@@ -17,8 +14,6 @@ async function caricaWip() {
         return;
     }
 
-    // RESTYLE BINDEX FASE 7: stesse battute di sempre, ma con interruttore
-    // attivo/spento al posto dei due pulsanti Disattiva/Riattiva.
     cont.innerHTML = data.map(w => `
         <div class="row">
             <div class="main">
@@ -34,13 +29,6 @@ async function caricaWip() {
     `).join('');
 }
 
-// ── Bersagli validi (2026-09-26, Claudio: "trasforma in tendina") ─────
-// Sono gli id che arrivano davvero ad apriDettaglioWidget() in
-// ui/paginainiziale-dettaglio.ui.js, l'unico punto dove il WIP viene
-// controllato: def.tab || id di CATALOGO_WIDGET, più le destinazioni
-// aperte direttamente (dafare, impostazioni, primopiano). Copia locale
-// voluta (admin.html non carica il catalogo widget di index): se nasce un
-// widget/pagina nuovo, va aggiunto anche qui.
 const WIP_BERSAGLI = [
     ['achievement', 'Achievement'],
     ['binder', 'Binders'],
@@ -79,8 +67,6 @@ function _wipRiempiTendina() {
         + `<option value="${WIP_SCELTA_ALTRO}">Altro… (scrivi l'id)</option>`;
 }
 
-// Tendina per widget/pagina; campo di testo per binder speciale/funzione
-// (nessun elenco fisso) o quando si sceglie "Altro…".
 function _wipAggiornaCampoId() {
     _wipRiempiTendina();
     const tipo = document.getElementById('wipTargetTipo').value;

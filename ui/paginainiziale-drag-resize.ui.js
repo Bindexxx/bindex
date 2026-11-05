@@ -1,48 +1,11 @@
-// ═══════════════════════════════════════════════════════════════════════
-// PAGINAINIZIALE-DRAG-RESIZE.UI.JS — drag&drop riordino + resize
-// interattivo delle tessere (CardSync Pro)
-// ═══════════════════════════════════════════════════════════════════════
-// STEP 4 del piano di taglio di ui/paginainiziale.ui.js (concordato con
-// Claudio il 2026-09-11). Estratto da ui/paginainiziale.ui.js. NESSUNA
-// riscrittura del codice esistente: solo spostamento, zero cambi di
-// comportamento per l'utente finale.
-//
-// Contiene: _dragState/_resizeState/_peekTimeout/_riordinoInCorso/
-// _listenerChiusuraMenuSpostaAgganciato, _toggleMenuSpostaWidget,
-// _chiudiMenuSpostaWidget, _aggiornaMenuSpostaWidget, _attivaDragEResize,
-// _onResizeHandlePointerDown/Move/Up, _onWidgetPointerDown/Move/Up,
-// _avviaDragVero, _riordinaConAnimazione, _mostraPeek/_nascondiPeek,
-// _rettangoloSchermoCornice, _posizionaContainerNelloSchermo.
-//
-// NOTA: _rettangoloSchermoCornice/_posizionaContainerNelloSchermo sono
-// riusate anche da ui/paginainiziale-dettaglio.ui.js (STEP 1) — restano
-// QUI (dove sono nate, legate al calcolo del rettangolo cornice durante
-// il resize/drag) e vengono chiamate cross-file da apriDettaglioWidget,
-// stesso meccanismo già in uso ovunque in questa ristrutturazione.
-//
-// Dipende da: _layoutWidget, _salvaLayoutWidget, renderWidgetHome,
-// _vibraSeSupportato, _tagliaEffettiva/_leggiTaglia (paginazione/kernel).
-// Nessuna istruzione qui gira a tempo di caricamento script — l'ordine
-// rispetto agli altri file paginainiziale-*.ui.js è indifferente (vedi
-// nota identica negli STEP precedenti).
-// ───────────────────────────────────────────────────────────────────────
+// Home: spostamento e ridimensionamento delle tessere.
 
-// ── DRAG & DROP (riordino) + RIDIMENSIONAMENTO — Pointer Events ─────────
-// Un solo set di listener via Pointer Events (non HTML5 Drag&Drop, che su
-// touch è inaffidabile) funziona identico con mouse e dito. Attivati solo
-// in modalità modifica, ri-agganciati ad ogni renderWidgetHome() perché il
-// markup viene rigenerato da zero ogni volta.
 let _dragState = null;
 let _resizeState = null;
 let _peekTimeout = null;
 let _riordinoInCorso = false;
 let _listenerChiusuraMenuSpostaAgganciato = false;
 
-// ── MENU A COMPARSA "SPOSTA" (Piano B, Claudio 2026-09-10) ──────────────
-// Apre/chiude il menu con su/giù/pagina prec/succ per UN widget alla
-// volta. Il trascinamento resta il modo primario di riordinare; questo
-// menu è il ripiego per chi non vuole/non può trascinare (es. spostamenti
-// precisi, o dispositivi dove il drag è scomodo).
 function _toggleMenuSpostaWidget(instanceId, e) {
     if (e) e.stopPropagation();
     _menuSpostaWidgetApertoId = _menuSpostaWidgetApertoId === instanceId ? null : instanceId;
@@ -60,10 +23,6 @@ function _aggiornaMenuSpostaWidget() {
 }
 
 function _attivaDragEResize() {
-    // Chiude il menu "sposta" al click fuori — agganciato una volta sola
-    // (questa funzione viene richiamata ad ogni render): i click DENTRO
-    // .widget-edit-controls/.widget-menu-sposta non arrivano mai qui
-    // grazie all'onclick="event.stopPropagation()" già sul loro markup.
     if (!_listenerChiusuraMenuSpostaAgganciato) {
         document.addEventListener('click', _chiudiMenuSpostaWidget);
         _listenerChiusuraMenuSpostaAgganciato = true;
@@ -76,26 +35,11 @@ function _attivaDragEResize() {
     });
 }
 
-// ── RIDIMENSIONAMENTO ─────────────────────────────────────────────────
-// FIX (Claudio: "macchinoso e impreciso, non si capisce il senso, si
-// finisce per farlo 4x4 senza volerlo"): la versione precedente sommava
-// insieme lo spostamento orizzontale e verticale in un unico numero e
-// ciclava attraverso 4 taglie fisse ad ogni soglia di 40px superata anche
-// nella STESSA gestualità continua — trascinando in una direzione sola,
-// avanzava ripetutamente nel ciclo, "scappando" fino a 2×2. Ora larghezza
-// e altezza sono due assi INDIPENDENTI, calcolati direttamente dalla
-// posizione del dito rispetto all'angolo in alto a sinistra della
-// tessera (stessa logica dei quadratini di ridimensionamento su Android:
-// il bordo segue il dito 1:1, non "a scatti"), quindi trascinare a
-// destra allarga, trascinare in basso allunga, in diagonale fa entrambe
-// le cose insieme — mai l'una al posto dell'altra.
 function _onResizeHandlePointerDown(e) {
     e.stopPropagation();
     e.preventDefault();
     const id = e.currentTarget.dataset.widgetId;
     const tile = document.querySelector(`.widget-tile[data-widget-id="${id}"]`);
-    // Con le pagine multiple le griglie sono N: quella giusta e' quella che
-    // contiene QUESTA tessera, non piu' un id unico nel documento.
     const grid = tile ? tile.closest('.widget-griglia') : null;
     const w = _layoutWidget.find(x => x.instanceId === id);
     if (!tile || !grid || !w) return;
@@ -104,28 +48,13 @@ function _onResizeHandlePointerDown(e) {
     const gap = parseFloat(gridStyle.columnGap) || 0;
     const rowGap = parseFloat(gridStyle.rowGap) || 0;
 
-    // FIX COLONNE (2026-09-30, decisione Claudio "una per riga"): prima le
-    // colonne si contavano da gridTemplateColumns, che include le colonne
-    // implicite da 0px create da una tessera più larga della griglia (vedi
-    // _misuraPaginaWidget in ui/paginainiziale-paginazione.ui.js) — il
-    // massimo trascinabile dipendeva quindi da cosa c'era in pagina.
-    // ORA il ridimensionamento ragiona sempre a PASSI LOGICI: tante colonne
-    // quante quelle vere, ma mai meno di COLONNE_GRIGLIA_WIDGET (6). Sul
-    // telefono (3 colonne vere) si continua a scegliere da 1 a 6 come prima;
-    // quanto spazio occupa davvero lo decide poi il render (tessera larga al
-    // massimo quanto lo schermo, vedi _tagliaAspettoWidget).
     const colonneVere = _misuraPaginaWidget().colonne;
     const numColonneGriglia = Math.max(colonneVere, COLONNE_GRIGLIA_WIDGET);
     const larghezzaGriglia = grid.clientWidth
         - (parseFloat(gridStyle.paddingLeft) || 0)
         - (parseFloat(gridStyle.paddingRight) || 0);
-    // Larghezza di UN passo logico: la griglia divisa in numColonneGriglia
-    // parti (con i loro spazi). Dove le colonne vere sono 6 o più coincide
-    // con la cella vera, come prima.
     const cellW = Math.max(1, (larghezzaGriglia + gap) / numColonneGriglia - gap);
 
-    // Altezza di una cella dedotta dalla tessera stessa (le righe non hanno
-    // colonne fantasma: lì il calcolo di prima resta valido).
     const _ta = _tagliaEffettiva(w, _misuraPaginaWidget());
     const rowSpanAttuale = _ta.row;
     const cellH = (tileRect.height - rowGap * (rowSpanAttuale - 1)) / rowSpanAttuale;
@@ -134,21 +63,8 @@ function _onResizeHandlePointerDown(e) {
         id, originLeft: tileRect.left, originTop: tileRect.top,
         cellW, cellH, gap, rowGap,
         maxColSpan: Math.max(1, numColonneGriglia),
-        // Tetto in altezza = quante righe stanno nella PAGINA visibile, non
-        // nella griglia (che cresce col contenuto). Cosi' "un widget solo
-        // che riempie la pagina" (Claudio) e' esattamente il massimo
-        // raggiungibile trascinando, e non si puo' andare oltre lo schermo.
         maxRowSpan: (() => {
             const wrap = grid.closest('.widget-pagina') || document.getElementById('phoneWidgetHomeWrap') || grid.parentElement;
-            // FIX (STEP 3 restyle "cornice Pokédex", 2026-09-17): era
-            // wrap.clientHeight (misura NATIVA/pre-transform dell'elemento,
-            // ignara di un eventuale transform:scale() su un antenato —
-            // vedi #phoneFrameBox). cellH/cellHTot qui sotto derivano invece
-            // da getBoundingClientRect() (tileRect, riga ~102), che RISPETTA
-            // gli scale — mischiare le due unità avrebbe fatto sbagliare
-            // maxRowSpan ogni volta che la cornice non è a scala 1:1 (praticamente
-            // sempre su desktop). getBoundingClientRect().height è nella
-            // STESSA unità di cellH: stesso spazio, coerente in ogni caso.
             const hVisibile = wrap ? wrap.getBoundingClientRect().height : 0;
             const cellHTot = cellH + rowGap;
             if (!hVisibile || cellHTot <= 0) return RIGHE_MAX_WIDGET;
@@ -157,15 +73,6 @@ function _onResizeHandlePointerDown(e) {
     };
     tile.classList.add('widget-tile-resizing');
     window.addEventListener('pointermove', _onResizeHandlePointerMove);
-    // FIX (2026-09-01): serve ANCHE pointercancel, non solo pointerup. Se il
-    // gesto viene interrotto dal sistema (gesto di navigazione del telefono,
-    // notifica in arrivo, cambio scheda a metà trascinamento) il browser
-    // manda pointercancel e non manderà mai pointerup: senza questa riga il
-    // listener di pointermove restava agganciato per sempre e _resizeState
-    // non veniva mai azzerato, lasciando la tessera bloccata in stato
-    // "in ridimensionamento" fino al ricaricamento della pagina. Il libro
-    // sfogliabile del Binder (_libroInitGesti, ui/binder.ui.js) gestiva già
-    // entrambi gli eventi, qui mancava.
     window.addEventListener('pointerup', _onResizeHandlePointerUp, { once: true });
     window.addEventListener('pointercancel', _onResizeHandlePointerUp, { once: true });
 }
@@ -174,13 +81,6 @@ function _onResizeHandlePointerMove(e) {
     if (!_resizeState) return;
     const { id, originLeft, originTop, cellW, cellH, gap, rowGap, maxColSpan, maxRowSpan } = _resizeState;
 
-    // Quante celle sono "coperte" dalla posizione del dito, arrotondato
-    // alla cella più vicina — segue il movimento in tempo reale, ogni
-    // asse per conto suo. Qui NON clampiamo subito a un minimo di 1: il
-    // valore "grezzo" (anche 0 o negativo se trascini molto verso
-    // l'angolo opposto) ci serve per sapere se l'utente sta chiedendo di
-    // rimpicciolire OLTRE il minimo normale (Claudio: "possono essere
-    // rimpiccioliti fino a diventare solo icone come su iphone/android").
     const distX = e.clientX - originLeft + gap / 2;
     const distY = e.clientY - originTop + rowGap / 2;
     const colSpanGrezzo = Math.round(distX / (cellW + gap));
@@ -189,22 +89,9 @@ function _onResizeHandlePointerMove(e) {
     const w = _layoutWidget.find(x => x.instanceId === id);
     if (!w) return;
 
-    // Sotto lo zero su entrambi gli assi (l'utente ha trascinato la
-    // maniglia oltre l'angolo opposto della cella) → modalità icona:
-    // stessa cella 1×1, ma il contenuto si riduce a sola icona (vedi
-    // .widget-tile-mini in index.html). Altrimenti dimensione normale,
-    // ed uscire da mini se prima lo era.
-    // Il flag 'mini' esplicito non serve piu': con 6 colonne la modalita'
-    // icona si ottiene semplicemente restringendo a 1-2 celle, ed e' la
-    // taglia stessa a deciderla (vedi _iconaStatica in renderWidgetHome).
-    // Trascinare oltre l'angolo opposto porta quindi alla taglia minima
-    // reale, 1x1, che ORA e' davvero un'icona da ~55px e non piu' una
-    // cella larga mezzo schermo.
     const vuoleMini = false;
     let colSpan = Math.max(1, Math.min(maxColSpan, colSpanGrezzo));
     let rowSpan = Math.max(1, Math.min(maxRowSpan, rowSpanGrezzo));
-    // Standard 2x2 in zona icona (vedi _correggiTagliaZonaIcona sopra):
-    // impedisce di creare trascinando una striscia tipo 1x6.
     ({ col: colSpan, row: rowSpan } = _correggiTagliaZonaIcona(colSpan, rowSpan));
     const nuovaTaglia = `${colSpan}x${rowSpan}`;
 
@@ -225,33 +112,15 @@ function _onResizeHandlePointerUp() {
     }
     _resizeState = null;
     window.removeEventListener('pointermove', _onResizeHandlePointerMove);
-    // Rimossi entrambi a mano: 'once' toglie solo quello che è scattato
-    // davvero, l'altro resterebbe agganciato e se ne accumulerebbe uno ad
-    // ogni ridimensionamento.
     window.removeEventListener('pointerup', _onResizeHandlePointerUp);
     window.removeEventListener('pointercancel', _onResizeHandlePointerUp);
 }
 
-// ── DRAG & DROP (riordino) ────────────────────────────────────────────
-// FIX (Claudio: "innaturale, sistema per assomigliare a iPhone/Android"):
-// prima la tessera trascinata restava FERMA nella griglia (solo scala +
-// ombra) finché il dito non entrava nell'area di un'altra — lo scambio
-// avveniva di scatto con un ri-render completo, senza che nulla seguisse
-// davvero il dito. Ora: un "fantasma" (clone della tessera, posizione
-// fissa) segue il puntatore 1:1 in tempo reale; la tessera originale
-// diventa invisibile ma mantiene il suo posto in griglia (per non far
-// saltare il layout); quando il fantasma passa sopra un'altra tessera,
-// l'ordine cambia e le tessere si RIPOSIZIONANO CON UN'ANIMAZIONE
-// (tecnica FLIP: misura le posizioni prima, cambia l'ordine, anima dalla
-// vecchia posizione alla nuova) invece di scattare — stesso effetto di
-// "far posto" che si vede spostando le icone su iPhone/Android.
 function _onWidgetPointerDown(e) {
     if (e.target.closest('.widget-edit-controls') || e.target.closest('.widget-resize-handle')) return;
     const tile = e.currentTarget;
     const id = tile.dataset.widgetId;
 
-    // Tocco lungo (peek) — annullato in _onWidgetPointerMove appena il
-    // gesto si trasforma in un vero drag.
     _peekTimeout = setTimeout(() => { _mostraPeek(id, tile); _vibraSeSupportato(8); }, 480);
 
     const rect = tile.getBoundingClientRect();
@@ -261,9 +130,6 @@ function _onWidgetPointerDown(e) {
         iniziato: false, ghost: null,
     };
     window.addEventListener('pointermove', _onWidgetPointerMove);
-    // FIX (2026-09-01): stesso motivo del ridimensionamento qui sopra — senza
-    // pointercancel un gesto interrotto dal sistema lasciava il "fantasma"
-    // della tessera appiccicato allo schermo e _dragState mai azzerato.
     window.addEventListener('pointerup', _onWidgetPointerUp, { once: true });
     window.addEventListener('pointercancel', _onWidgetPointerUp, { once: true });
 }
@@ -295,16 +161,15 @@ function _onWidgetPointerMove(e) {
     const dy = e.clientY - _dragState.startY;
 
     if (!_dragState.iniziato) {
-        if (Math.abs(dx) < 10 && Math.abs(dy) < 10) return; // ancora un tocco fermo, non un drag
+        if (Math.abs(dx) < 10 && Math.abs(dy) < 10) return;
         const tileAttuale = document.querySelector(`.widget-tile[data-widget-id="${_dragState.id}"]`);
         if (!tileAttuale) { _dragState = null; return; }
         _avviaDragVero(tileAttuale);
     }
 
-    // Il fantasma segue il dito/mouse esattamente, in tempo reale.
     _dragState.ghost.style.transform = `translate(${dx}px, ${dy}px) scale(1.05)`;
 
-    if (_riordinoInCorso) return; // un riordino con animazione è già in corso, aspetta che finisca
+    if (_riordinoInCorso) return;
     const sotto = document.elementFromPoint(e.clientX, e.clientY);
     const tileSotto = sotto ? sotto.closest('.widget-tile[data-widget-id]') : null;
     if (tileSotto && tileSotto.dataset.widgetId !== _dragState.id) {
@@ -317,11 +182,6 @@ function _onWidgetPointerMove(e) {
     }
 }
 
-// Tecnica FLIP (First-Last-Invert-Play): cattura le posizioni ATTUALI di
-// tutte le tessere, scambia l'ordine nell'array, ri-renderizza (async,
-// per questo la guardia _riordinoInCorso), poi ogni tessera parte dalla
-// SUA vecchia posizione e anima verso quella nuova via transform —
-// risultato: le altre tessere scivolano per fare spazio, non scattano.
 async function _riordinaConAnimazione(idxA, idxB) {
     _riordinoInCorso = true;
 
@@ -371,7 +231,6 @@ function _onWidgetPointerUp() {
     window.removeEventListener('pointercancel', _onWidgetPointerUp);
 }
 
-// ── PEEK — anteprima al tocco lungo, senza aprire il popup fullscreen ────
 function _mostraPeek(instanceId, tileEl) {
     const w = _layoutWidget.find(x => x.instanceId === instanceId);
     const def = w && CATALOGO_WIDGET[w.id];
@@ -385,7 +244,6 @@ function _mostraPeek(instanceId, tileEl) {
 
     Promise.resolve(def.preview(w)).then(anteprima => {
         const el = document.getElementById('widgetPeekRighe');
-        // (Audit tessere 2026-10-11) Righe = testo semplice (nomi di carte): escapeHtml come nella tessera.
         if (el) el.innerHTML = (anteprima.righe || []).map(r => `<span>${escapeHtml(r)}</span>`).join('<br>');
     }).catch(() => {});
 }
@@ -395,12 +253,6 @@ function _nascondiPeek() {
     if (overlay) overlay.style.display = 'none';
 }
 
-// ── APERTURA/CHIUSURA DETTAGLIO FULLSCREEN DENTRO IL FRAME ───────────────
-// Rettangolo REALE dello schermo dentro la cornice pokedex (#phoneScreen)
-// — unica fonte di verità per chiunque debba starci dentro: sia .container
-// (ogni widget, sotto) sia l'overlay bustina (vedi _bustinaRicalcolaScale
-// in ui/widget-bustina.ui.js, STEP 4 ristrutturazione). Un solo posto dove
-// può disallinearsi, non due.
 function _rettangoloSchermoCornice() {
     const schermo = document.getElementById('phoneScreen');
     if (!schermo) return null;
@@ -409,48 +261,19 @@ function _rettangoloSchermoCornice() {
     return { top: rect.top, left: rect.left, width: rect.width, height: rect.height, borderRadius: raggio };
 }
 
-// RISTRUTTURATA 2026-09-10 (Claudio, istruzione valida per TUTTO il sito,
-// non solo bustina): "cornice pokedex" (#phoneFrameBox, l'immagine rosso/
-// bianco) deve sempre occupare il massimo spazio disponibile, e TUTTO
-// ciò che il sito mostra deve restare CONTENUTO al suo interno. Questo
-// ANNULLA la decisione del 2026-08-30 ("il cerchio ma a schermo intero")
-// che mandava .container a tutta la finestra del browser ignorando
-// completamente la cornice — da oggi .container torna a essere agganciato
-// al rettangolo REALE di #phoneScreen (lo "schermo" ritagliato dentro la
-// cornice pokedex), esattamente per ogni widget (missioni/valore/
-// wishlist/doppioni/sealed/set/binder/bustina/impostazioni, tutti passano
-// da qui). Effetto collaterale ACCETTATO da Claudio: su desktop con
-// finestre larghe, i widget con tabelle/griglie lunghe (binder, set,
-// traguardi, prezzi — segnalati esplicitamente, vedi risposta di Claudio)
-// avranno meno spazio orizzontale/verticale reale e faranno più scroll
-// interno — nessuna eccezione per ora, da verificare widget per widget
-// quando Claudio li prova dal vivo.
-//
-// RESTYLE BINDEX FASE 3a (2026-10-01, decisione Claudio "Barra vera,
-// fissa"): le pagine interne partono SOTTO la barra di stato vera
-// (.csb-bar dentro #phoneScreen), che resta visibile e viva (ora,
-// contatore, pokéball, tendina). Prima .container copriva tutto lo schermo,
-// barra compresa. Il rettangolo si calcola in _rettangoloPaginaSottoBarra
-// (usata anche per l'origine dell'animazione, ui/paginainiziale-dettaglio.ui.js).
-// Gli altri overlay che usano _rettangoloSchermoCornice (bustina, condividi,
-// location, binder) NON cambiano: restano a schermo intero.
 function _rettangoloPaginaSottoBarra() {
     const r = _rettangoloSchermoCornice();
     if (!r) return null;
     const schermo = document.getElementById('phoneScreen');
-    const barra = document.querySelector('.csb-bar'); // globale: con una pagina aperta la barra sta in #csbHeadsFuori
+    const barra = document.querySelector('.csb-bar');
     let alto = 0;
     if (barra) {
         const rb = barra.getBoundingClientRect();
-        // Solo se la barra sta davvero in cima allo schermo (visibile):
-        // altrimenti si torna al comportamento di prima, schermo intero.
         if (rb.height > 0 && rb.bottom > r.top && rb.bottom < r.top + r.height / 2) alto = rb.bottom - r.top;
     }
     const cs = schermo ? getComputedStyle(schermo) : null;
     return {
         top: r.top + alto, left: r.left, width: r.width, height: r.height - alto,
-        // Sotto la barra gli angoli in alto sono dritti; quelli in basso
-        // restano quelli dello schermo.
         borderRadius: alto && cs ? `0 0 ${cs.borderBottomRightRadius} ${cs.borderBottomLeftRadius}` : r.borderRadius,
     };
 }
@@ -465,4 +288,3 @@ function _posizionaContainerNelloSchermo() {
     container.style.height = r.height + 'px';
     container.style.borderRadius = r.borderRadius;
 }
-

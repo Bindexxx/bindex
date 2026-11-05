@@ -1,24 +1,4 @@
-// ═══════════════════════════════════════════════════════════════════════
-// RICHIESTA-OSPITE.UI.JS — "Richiedi" senza profilo Bindex (pagine pubbliche)
-// ═══════════════════════════════════════════════════════════════════════
-// RESTYLE BINDEX FASE 8b (2026-10-01, tavole "Richiedi · scegli",
-// "Richiesta come ospite", "Richiesta inviata", "Di persona"). Caricato da
-// binder-pubblico.html e scaffali-pubblico.html DOPO utils/shared-public.js.
-//
-// Flusso: Richiedi (senza sessione) → foglio "Ho un profilo Bindex" (login
-// di sempre, apriLoginPubblico) | "Continua come ospite" → modulo (nome,
-// contatto o "Di persona", messaggio, consenso) → RPC invia_richiesta_ospite
-// (sql/88) → codice RQ-XXXX. Con il codice si controlla lo stato dalla
-// stessa pagina (leggi_richiesta_ospite: solo vedere, niente annulla).
-//
-// Il foglio si costruisce al volo dentro #phoneScreen (posizione assoluta,
-// come #loginPubblicoModal) e si rimuove alla chiusura: nessun HTML nuovo
-// nelle due pagine. Stili in utils/cornice-pubblica.css (.og-*).
-//
-// Dipende da: carte/selezioni/_tipoOggettoRichiesta/apriLoginPubblico
-// (utils/shared-public.js), pubblicoInviaRichiestaOspite/
-// pubblicoLeggiRichiestaOspite (data/pubblico.repository.js), escapeHtml/
-// formattaEuro/_urlImmagineVisualizzabile (utils/comuni.js).
+// "Richiedi" dalle pagine pubbliche per chi non ha un profilo.
 
 let _ospiteProprietarioId = null;
 let _ospiteContattoTipo = 'whatsapp';
@@ -31,7 +11,6 @@ const _OSPITE_CONTATTI = {
     persona:   { etichetta: 'Di persona', icona: 'fa-solid fa-handshake', segnaposto: '',                  campo: '' },
 };
 
-// ── Utilità ─────────────────────────────────────────────────────────────
 function _ospiteNomeProprietario() {
     if (typeof _binderInfo !== 'undefined' && _binderInfo && _binderInfo.nickname) return _binderInfo.nickname;
     if (typeof _scaffaleInfo !== 'undefined' && _scaffaleInfo && _scaffaleInfo.nickname) return _scaffaleInfo.nickname;
@@ -40,13 +19,10 @@ function _ospiteNomeProprietario() {
 function _ospiteChi() { return _ospiteNomeProprietario() || 'il proprietario'; }
 function _ospiteChiMaiuscolo() { const n = _ospiteChi(); return n.charAt(0).toUpperCase() + n.slice(1); }
 
-// Identificativo casuale del dispositivo (solo per i limiti anti-spam e per
-// Blocca; non contiene nulla di personale). Se lo storage non c'è, ne usa
-// uno per la sola pagina aperta.
 let _ospiteDispositivoMemoria = null;
 function _ospiteDispositivo() {
     const nuovo = () => {
-        try { if (window.crypto && crypto.randomUUID) return crypto.randomUUID().replace(/-/g, ''); } catch (_) { /* sotto */ }
+        try { if (window.crypto && crypto.randomUUID) return crypto.randomUUID().replace(/-/g, ''); } catch (_) {   }
         let s = ''; for (let i = 0; i < 32; i++) s += Math.floor(Math.random() * 16).toString(16); return s;
     };
     try {
@@ -59,9 +35,8 @@ function _ospiteDispositivo() {
     }
 }
 function _ospiteUltimoCodice() { try { return localStorage.getItem('bindexOspiteUltimoCodice') || ''; } catch (_) { return ''; } }
-function _ospiteSalvaCodice(c) { try { localStorage.setItem('bindexOspiteUltimoCodice', c); } catch (_) { /* niente */ } }
+function _ospiteSalvaCodice(c) { try { localStorage.setItem('bindexOspiteUltimoCodice', c); } catch (_) {   } }
 
-// Righe selezionate (stesso calcolo di _richiediScambioDopoLogin) + riepilogo.
 function _ospiteSelezione() {
     const righe = [], voci = [], immagini = [];
     let totale = 0;
@@ -85,7 +60,6 @@ function _ospiteRiepilogoHtml(sel) {
     return `<div class="og-riepilogo">${mini}<span class="og-riep-testo">${escapeHtml(sel.voci.join(', '))}</span>${sel.totale > 0 ? `<b class="og-riep-tot">${formattaEuro(sel.totale)}</b>` : ''}</div>`;
 }
 
-// ── Foglio (overlay) ───────────────────────────────────────────────────
 function _ospiteFoglio(html) {
     let velo = document.getElementById('ogVelo');
     if (!velo) {
@@ -114,9 +88,6 @@ function _ospiteTesta(titolo, indietro) {
     </div>`;
 }
 
-// ── 1. Scelta: profilo o ospite ────────────────────────────────────────
-// Chiamata da avviaRichiestaScambio (utils/shared-public.js) quando non c'è
-// una sessione attiva.
 function apriSceltaRichiesta(proprietarioId) {
     _ospiteProprietarioId = proprietarioId;
     const sel = _ospiteSelezione();
@@ -138,7 +109,6 @@ function apriSceltaRichiesta(proprietarioId) {
         <button type="button" class="og-link" onclick="apriControlloRichiestaOspite()">Hai già un codice RQ? Controlla la tua richiesta</button>`);
 }
 
-// ── 2. Modulo ospite ───────────────────────────────────────────────────
 function _ospiteApriModulo() {
     const sel = _ospiteSelezione();
     if (!sel.righe.length) { chiudiFoglioOspite(); return; }
@@ -214,7 +184,6 @@ async function _ospiteInvia() {
 
     const codice = String(esito.data);
     _ospiteSalvaCodice(codice);
-    // Come dopo una richiesta col profilo: selezione svuotata sul posto.
     Object.keys(selezioni).forEach(k => { delete selezioni[k]; });
     if (typeof _refreshVistaCorrente === 'function') _refreshVistaCorrente(); else if (typeof renderLista === 'function') renderLista();
     if (typeof aggiornaTotale === 'function') aggiornaTotale();
@@ -222,7 +191,6 @@ async function _ospiteInvia() {
     ospiteMostraControllo();
 }
 
-// ── 3. Inviata: codice RQ ──────────────────────────────────────────────
 function _ospiteMostraInviata(codice, contatto) {
     const chi = escapeHtml(_ospiteChiMaiuscolo());
     const persona = _ospiteContattoTipo === 'persona';
@@ -246,7 +214,6 @@ async function _ospiteCopiaCodice(codice, btn) {
     catch (_) { prompt('Copia il codice:', codice); }
 }
 
-// ── 4. Controlla con il codice ─────────────────────────────────────────
 const _OSPITE_STATI = {
     in_attesa: { testo: 'In attesa', cls: 'att' },
     accettata: { testo: 'Riservata per te', cls: 'ris' },
@@ -305,8 +272,6 @@ async function _ospiteControlla() {
         <p class="og-nota">Le richieste non accettate entro 7 giorni scadono da sole.</p>`;
 }
 
-// Link "Hai un codice RQ? Controlla" sotto il titolo delle pagine Scambio.
-// Chiamata dalle pagine quando il bottone Richiedi è visibile, e dopo un invio.
 function ospiteMostraControllo() {
     if (document.getElementById('ogLinkControllo')) return;
     const dopo = document.getElementById('statRiepilogo');

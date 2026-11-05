@@ -1,22 +1,6 @@
-// ═══════════════════════════════════════════════════════════════════════
-// QUEUE-CORREZIONI.UI.JS — pannello "Carte con problemi" (correzione
-// manuale) — CardSync Pro
-// ═══════════════════════════════════════════════════════════════════════
-// STEP separato dal piano "riduzione accoppiamento" concordato con Claudio
-// il 2026-09-11. Estratto da ui/queue.ui.js. NESSUNA riscrittura del
-// codice esistente: solo spostamento, zero cambi di comportamento per
-// l'utente finale.
-//
-// Contiene: caricaCarteConProblemi, _filtraOpzioniDisambiguazione,
-// _rimettiInCodaDaCorrezioneManuale, sceglieOpzioneDisambiguazione,
-// riprovaCartaFallita, modificaERiprovaCartaFallita, eliminaCartaFallita.
-//
-// Chiama cross-file _aggiornaPallinoMenu() (ui/queue.ui.js) dopo alcune
-// azioni sulla coda. Nessuna istruzione qui gira a tempo di caricamento
-// script — l'ordine tra i due file è indifferente.
-// ───────────────────────────────────────────────────────────────────────
+// "Carte con problemi": correzione a mano delle carte che l'estensione non ha trovato.
 
-        async function caricaCarteConProblemi() {
+async function caricaCarteConProblemi() {
             const userId = await authGetUserId();
             if (!userId) return;
 
@@ -28,14 +12,12 @@
 
             const conteggio = (data || []).length;
             _aggiornaPallinoMenu('inserimento', conteggio);
-            if (typeof insAggiornaPagina === 'function') insAggiornaPagina(); // RESTYLE: avviso e "Ultimo invio" in Inserimento
+            if (typeof insAggiornaPagina === 'function') insAggiornaPagina();
             pannello.style.display = conteggio > 0 ? 'block' : 'none';
             if (conteggio === 0) return;
 
             lista.innerHTML = data.map(r => {
                 const opzioni = Array.isArray(r.opzioni_disambiguazione) ? r.opzioni_disambiguazione : [];
-                // escapeJsAttr (audit 2026-09-25, M2): nomi carta ed etichette
-                // Cardmarket possono contenere " — prima rompevano i bottoni.
                 const nomeAttr = escapeJsAttr(r.nome);
                 const idOpzioni = 'opz-' + r.id;
                 const filtroHtml = opzioni.length > 8 ? `
@@ -71,15 +53,6 @@
             }).join('');
         }
 
-
-        // Sceglie una delle opzioni trovate durante la disambiguazione:
-        // salva il link ESATTO di quella carta (url_diretto) — l'estensione
-        // la leggerà direttamente da lì, saltando del tutto una nuova
-        // ricerca per nome (che può risultare ancora ambigua se il nome
-        // scelto non è abbastanza specifico da solo — è successo).
-        // Filtra le opzioni di disambiguazione mentre scrivi — utile quando
-        // ce ne sono tante (es. set con carte che condividono lo stesso
-        // codice, tipo "My First Battle").
         function _filtraOpzioniDisambiguazione(idContenitore, query) {
             const q = query.trim().toLowerCase();
             document.querySelectorAll('#' + idContenitore + ' [data-filtro-testo]').forEach(el => {
@@ -87,17 +60,6 @@
             });
         }
 
-
-        // FIX (sessione dedicata "correzione manuale per-utente"): le tre
-        // funzioni sotto ("scegli opzione" / "riprova" / "correggi e
-        // riprova") prima facevano un semplice UPDATE su 'coda_carte' (la
-        // riga non si era mai spostata da lì). Ora la riga vive in
-        // 'correzioni_manuali_carte' — "rimetterla in coda" significa quindi
-        // leggerla da lì, reinserirla in 'coda_carte' come nuova riga
-        // 'pending' (tentativi_falliti azzerato: si riparte da zero), e
-        // infine toglierla da 'correzioni_manuali_carte'. Nessuna RPC
-        // necessaria: A sta agendo sulle PROPRIE righe in entrambe le
-        // tabelle, la RLS owner_id=auth.uid() lo consente direttamente.
         async function _rimettiInCodaDaCorrezioneManuale(id, overrides = {}) {
             const { data: riga, error: errLettura } = await correzioniManualiLeggiRiga(id);
             if (errLettura || !riga) { mostraAvviso('❌ Errore: ' + (errLettura?.message || 'riga non trovata')); return false; }
@@ -119,18 +81,15 @@
             return true;
         }
 
-
         async function sceglieOpzioneDisambiguazione(id, etichetta, urlDiretto) {
             const ok = await _rimettiInCodaDaCorrezioneManuale(id, { nome: etichetta, url_diretto: urlDiretto || null });
             if (ok) await caricaCarteConProblemi();
         }
 
-
         async function riprovaCartaFallita(id) {
             const ok = await _rimettiInCodaDaCorrezioneManuale(id);
             if (ok) await caricaCarteConProblemi();
         }
-
 
         async function modificaERiprovaCartaFallita(id, nomeAttuale) {
             const nuovo = await chiediTesto({ titolo: 'Correggi la carta', testo: 'Nome della carta:', valore: nomeAttuale, conferma: 'Riprova con questo nome' });
@@ -139,12 +98,9 @@
             if (ok) await caricaCarteConProblemi();
         }
 
-
         async function eliminaCartaFallita(id) {
             if (!(await chiediConferma({ titolo: 'Eliminare la richiesta?', testo: 'Questa azione non si può annullare.', conferma: 'Elimina', pericolo: true }))) return;
             const { error } = await correzioniManualiElimina(id);
             if (error) { mostraAvviso('❌ Errore: ' + error.message); return; }
             await caricaCarteConProblemi();
         }
-
-

@@ -1,82 +1,4 @@
-// ============================================================================
-// MISSIONI.UI.JS — Motore di valutazione missioni/traguardi (Fase 1)
-// ============================================================================
-// STEP separato dal piano "riduzione accoppiamento" concordato con Claudio
-// il 2026-09-11. Il catalogo (CATALOGO_MISSIONI, CATALOGO_TRAGUARDI,
-// scale, frasi, descrizioni) è stato spostato in
-// ui/missioni-catalogo.ui.js — NESSUNA riscrittura, solo spostamento, zero
-// cambi di comportamento. Questo file contiene ora SOLO il motore di
-// valutazione generico (MOTORE_MISSIONI) e la notifica condivisa dei
-// completamenti (_missioniNotificaCompletamenti, usata sia da
-// renderPaginaMissioni() sia da ui/missioni-watcher.js).
-//
-// Contiene SOLO le voci Fase 1 (calcolabili da dati/stato già esistenti,
-// nessun nuovo log eventi necessario). Le voci Fase 2 (aperture, ricerche,
-// visite binder, streak accessi, categorie, azioni doppioni/estensione)
-// sono OMESSE e vanno costruite in una sessione dedicata, dopo aver
-// aggiunto la scrittura eventi nel punto giusto del codice (tabella
-// activity_log esiste già ma è vuota/dormiente).
-//
-// Formato dichiarativo (non funzioni per voce): ogni missione/traguardo è
-// un oggetto dati con { metrica, operatore, valore }, valutato da questo
-// motore generico. Aggiungere una voce = solo editare l'array in
-// ui/missioni-catalogo.ui.js, zero rischio di rompere logica JS.
-//
-// Tabelle DB di supporto (migration 32, eseguita su Bindexxx):
-//   missioni_completate(owner_id, missione_id, finestra, periodo, origine, completato_il)
-//   traguardi_riscossi(owner_id, traguardo_id, riscosso_il)
-//   inventario_ricompense(owner_id, tipo, riferimento_id, quantita, ottenuto_il)
-//
-// Dipende da CATALOGO_MISSIONI/CATALOGO_TRAGUARDI (ui/missioni-catalogo.ui.js)
-// solo a tempo di CHIAMATA dei metodi di MOTORE_MISSIONI (mai a tempo di
-// caricamento script) — l'ordine tra questo file e
-// ui/missioni-catalogo.ui.js nei <script> tag di index.html è indifferente,
-// purché entrambi carichino prima che la pagina Missioni venga aperta.
-// ============================================================================
-
-// ----------------------------------------------------------------------------
-// MOTORE DI VALUTAZIONE GENERICO
-// ----------------------------------------------------------------------------
-// Riceve un oggetto "dati" con i valori già calcolati delle metriche (vedi
-// elenco sotto) e valuta condizione/soglia. Il motore NON fa query dirette
-// al DB — quello spetta a data/*.repository.js (mai chiamare supabaseClient
-// da qui), secondo il pattern del progetto: UI raccoglie input → chiama
-// repository → passa i dati al motore.
-//
-// METRICHE ATTESE nell'oggetto "dati" (da calcolare in un repository dedicato,
-// es. data/missioni.repository.js — NON ANCORA SCRITTO, prossimo passo):
-//   carte_aggiunte_periodo     — count(carte) WHERE owner_id=X AND created_at IN periodo
-//   prezzi_aggiornati_periodo  — count(DISTINCT carta_id) FROM storico_prezzi WHERE ... IN periodo
-//   errori_risolti_oggi        — da preferenze_utente.dafare_risolti (ultime 24h)
-//   errori_coda_vuota          — boolean, coda_carte/coda_wishlist stato='errore' count==0
-//   carte_totali               — count(carte) WHERE owner_id=X
-//   valore_collezione          — sum(carte.prezzo) WHERE owner_id=X
-//   location_distinte          — count(DISTINCT location) su location o su carte.location
-//   location_aggiunta_periodo  — carta con location valorizzata, created_at IN periodo
-//   wishlist_totale            — count(wishlist) WHERE owner_id=X
-//   wishlist_obiettivi_raggiunti — count wishlist/carte con prezzo<=prezzo_obiettivo
-//   doppioni_totali            — count(carte) WHERE qty>1
-//   carte_stessa_espansione_max — max count raggruppando per codice-espansione
-//   carte_stessa_rarita_max    — max count raggruppando per rarità
-//   rarita_distinte            — count(DISTINCT rarità) tra le carte
-//   match_attivi_totale        — length(trovaMatch()) — riusa funzione esistente in queue.ui.js
-//   binder_pubblicati_periodo  — count(binders) WHERE stato_pubblicazione='pubblico' AND created_at IN periodo
-//   prezzi_scaduti_totale      — carte.ultimo_controllo IS NULL OR < oggi-SOGLIA_GIORNI_PREZZO_SCADUTO giorni (vedi ui/prices.ui.js:apriModalePrezziScaduti). Solo collezione, non wishlist (stessa scelta di caricaUltimaSincronizzazioneHome).
-//   estensione_aperta_periodo  — RICHIEDE nuova scrittura sul canale chrome.runtime esistente
-//   layout_modificato_periodo  — MAI calcolata per davvero (vedi il commento
-//     sopra "layout_modificato_periodo: 0" in fondo a raccogliDati()):
-//     m94_personalizza/m95_il_tuo_telefono vengono assegnate da un aggancio
-//     diretto in ui/phone.ui.js, non passando da qui. Se in futuro servisse
-//     un vero tracciamento "layout prima/dopo per periodo" per qualcos'altro,
-//     va costruito da zero in quel momento, non riesumato da questa nota.
-//   missioni_completate_totale — count(missioni_completate) WHERE owner_id=X
-//   missioni_completate_periodo — count(missioni_completate) WHERE owner_id=X AND periodo=Y
-//   percentuale_missioni_giorno — (missioni_completate oggi / missioni assegnate oggi) * 100
-//   giorno_perfetto_mai        — boolean, true se mai raggiunto 100% in un giorno (per traguardo)
-//
-// Diverse di queste richiedono ancora funzioni repository non scritte in
-// questa sessione (non avevo accesso a data/*.repository.js) — vedi nota di
-// consegna in fondo alla chat.
+// Motore delle missioni e dei traguardi.
 
 const MOTORE_MISSIONI = {
 
@@ -88,7 +10,6 @@ const MOTORE_MISSIONI = {
         '<':  (a, b) => a < b,
     },
 
-    // Valuta una singola voce (missione o traguardo) contro l'oggetto dati.
     valuta(voce, dati) {
         const valoreAttuale = dati[voce.metrica];
         if (valoreAttuale === undefined) {
@@ -103,23 +24,14 @@ const MOTORE_MISSIONI = {
         return op(valoreAttuale, voce.valore);
     },
 
-    // Valuta l'intero catalogo missioni contro i dati, ritorna le voci soddisfatte.
     valutaMissioni(dati) {
         return CATALOGO_MISSIONI.filter(m => this.valuta(m, dati));
     },
 
-    // Valuta l'intero catalogo traguardi contro i dati, ritorna le voci soddisfatte.
     valutaTraguardi(dati) {
         return CATALOGO_TRAGUARDI.filter(t => this.valuta(t, dati));
     },
 
-    // Selezione deterministica delle missioni per finestra, di un utente.
-    // Stesso input (owner_id + chiave periodo) => stesso output, sempre.
-    // Nessuna tabella "missioni_assegnate": ricalcolato ad ogni apertura
-    // pagina. Generalizzata (2026-08-30, Claudio) dalla sola giornaliera
-    // alle tre finestre ricorrenti — le una_tantum NON passano da qui,
-    // restano sempre "in gioco" tutte insieme (sono obiettivi permanenti,
-    // non ha senso nasconderne a sorte alcune).
     NUMERO_MISSIONI_GIORNO: 4,
     NUMERO_MISSIONI_SETTIMANA: 2,
     NUMERO_MISSIONI_MESE: 2,
@@ -132,14 +44,8 @@ const MOTORE_MISSIONI = {
         return Math.abs(h);
     },
 
-    // pool: array di missioni già filtrate per finestra. chiavePeriodo:
-    // stringa stabile per l'unità di tempo corrente (data/settimana/mese).
-    // numero: quante estrarre — se il pool è più piccolo del numero
-    // richiesto (caso comune oggi per settimanali/mensili, pool ancora
-    // piccoli), ritorna semplicemente tutto il pool.
     _estraiDaPool(ownerId, chiavePeriodo, pool, numero) {
         const seme = this._hashSemplice(ownerId + '|' + chiavePeriodo);
-        // Fisher-Yates deterministico usando il seme come sorgente pseudo-casuale
         const copia = [...pool];
         let s = seme;
         for (let i = copia.length - 1; i > 0; i--) {
@@ -165,19 +71,13 @@ const MOTORE_MISSIONI = {
         return this._estraiDaPool(ownerId, periodoMese, pool, this.NUMERO_MISSIONI_MESE);
     },
 
-    // ── Periodo corrente per finestra ─────────────────────────────────
-    // 'periodo' è la stringa salvata in missioni_completate.periodo (chiave
-    // dello UNIQUE insieme a owner_id+missione_id — vedi migration 32).
-    // inizioISO/fineISO servono alle query *_periodo del repository
-    // (created_at/registrato_il >= inizio AND < fine).
     _pad2(n) { return String(n).padStart(2, '0'); },
 
     _isoData(d) { return `${d.getFullYear()}-${this._pad2(d.getMonth() + 1)}-${this._pad2(d.getDate())}`; },
 
     _numeroSettimanaISO(d) {
-        // Algoritmo standard settimana ISO-8601 (lunedì primo giorno).
         const dt = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
-        const giornoSett = (dt.getUTCDay() + 6) % 7; // lunedì=0
+        const giornoSett = (dt.getUTCDay() + 6) % 7;
         dt.setUTCDate(dt.getUTCDate() - giornoSett + 3);
         const primoGennaio = new Date(Date.UTC(dt.getUTCFullYear(), 0, 4));
         const numero = 1 + Math.round(((dt - primoGennaio) / 86400000 - 3 + ((primoGennaio.getUTCDay() + 6) % 7)) / 7);
@@ -194,7 +94,7 @@ const MOTORE_MISSIONI = {
         }
 
         if (finestra === 'settimanale') {
-            const giornoSett = (ora.getDay() + 6) % 7; // lunedì=0
+            const giornoSett = (ora.getDay() + 6) % 7;
             const lunedi = new Date(ora.getFullYear(), ora.getMonth(), ora.getDate() - giornoSett);
             const prossimoLunedi = new Date(lunedi); prossimoLunedi.setDate(prossimoLunedi.getDate() + 7);
             const { anno, settimana } = this._numeroSettimanaISO(ora);
@@ -210,10 +110,6 @@ const MOTORE_MISSIONI = {
         throw new Error(`periodoCorrente: finestra "${finestra}" non riconosciuta`);
     },
 
-    // ── Raccolta dati ──────────────────────────────────────────────────
-    // Chiama i repository necessari per TUTTE le metriche Fase 1 e
-    // restituisce l'oggetto "dati" pronto per valuta()/valutaMissioni()/
-    // valutaTraguardi(). Un solo giro di Promise.all per chiamata.
     async raccogliDati(userId) {
         const oggi = this.periodoCorrente('giornaliera');
         const settimana = this.periodoCorrente('settimanale');
@@ -288,9 +184,6 @@ const MOTORE_MISSIONI = {
             missioniWidgetDistintiPeriodo(userId, oggi.inizioISO, oggi.fineISO),
         ]);
 
-        // Ogni chiamata sopra ritorna { data, error } o { count, error } (le
-        // *_totale con head:true) — normalizzo qui, un errore singolo non
-        // deve far fallire l'intera raccolta (resta 0/false, loggato).
         const v = (r, campo = 'data') => {
             if (r && r.error) { console.warn('[missioni] raccoglata dati:', r.error.message); return 0; }
             return r ? (r[campo] ?? r.count ?? 0) : 0;
@@ -299,8 +192,6 @@ const MOTORE_MISSIONI = {
         const numeroMissioniOggiCompletate = v(missioniOggi, 'count');
         const poolOggi = this.missioniDelGiorno(userId, oggi.periodo).length;
 
-        // Categorie (#96-98): mappa missione_id → categoria usando il
-        // catalogo JS (il DB non conosce le categorie, sono solo qui).
         const _categoriaDi = (missioneId) => {
             const m = CATALOGO_MISSIONI.find(x => x.id === missioneId);
             return m ? m.categoria : null;
@@ -313,10 +204,6 @@ const MOTORE_MISSIONI = {
         const categorieSettimana = new Set(_idsDaRange(completateSettimanaRange).map(_categoriaDi).filter(Boolean));
         const totaleCategorieCatalogo = new Set(CATALOGO_MISSIONI.map(m => m.categoria)).size;
 
-        // Traguardo #98 "Collezionista completo" (2026-08-30): stesso
-        // approccio di categorieOggi/categorieSettimana sopra, ma su
-        // CATALOGO_TRAGUARDI e SENZA range temporale — traguardi_riscossi
-        // è permanente, non ha senso un "oggi/questa settimana" qui.
         const _categoriaTraguardoDi = (traguardoId) => {
             const t = CATALOGO_TRAGUARDI.find(x => x.id === traguardoId);
             return t ? t.categoria : null;
@@ -326,15 +213,6 @@ const MOTORE_MISSIONI = {
             : ((traguardiRiscossiIdTotale && traguardiRiscossiIdTotale.data) || []).map(row => row.traguardo_id);
         const categorieTraguardi = new Set(_idsTraguardiRiscossi.map(_categoriaTraguardoDi).filter(Boolean));
 
-        // #99/#100 "percentuale_traguardi_sbloccati" (2026-09-01, soglia
-        // dinamica invece di numero fisso — vedi nota su
-        // t_maestro_cardsync/t_leggenda_cardsync in TRAGUARDI_SINGOLI).
-        // Stesso array _idsTraguardiRiscossi sopra, ma escludendo dal
-        // NUMERATORE i traguardi con questa stessa metrica — simmetrico al
-        // denominatore _totaleTraguardiPerPercentuale, altrimenti sbloccare
-        // t_maestro_cardsync (50%) farebbe salire la percentuale contando
-        // anche se stesso, potendo superare il 100% prima che tutti i
-        // traguardi "reali" siano davvero sbloccati.
         const _traguardiSbloccatiPerPercentuale = _idsTraguardiRiscossi.filter(id => {
             const t = CATALOGO_TRAGUARDI.find(x => x.id === id);
             return t && t.metrica !== 'percentuale_traguardi_sbloccati';
@@ -343,17 +221,10 @@ const MOTORE_MISSIONI = {
             ? Math.round((_traguardiSbloccatiPerPercentuale / _totaleTraguardiPerPercentuale) * 100)
             : 0;
 
-        // Missione #78 "Esplora il gruppo" (2026-08-30): OR tra apertura
-        // widget Binders e apertura widget Match — "collezione condivisa O
-        // sezione sociale", nessuno dei due obbligatorio da solo.
         const _aperturaBinderOggi = v(aperturaBinder, 'count');
         const _aperturaMatchOggi = v(aperturaMatch, 'count');
         const esplorazioneSocialeOggi = _aperturaBinderOggi >= 1 || _aperturaMatchOggi >= 1;
 
-        // Missione #81 "Conta tutto" (2026-08-30, decisione b): "controlla
-        // carte, valore e location — 3 statistiche consultate" = numero di
-        // widget tra {visualizzazione, valore_collezione, location} aperti
-        // almeno una volta oggi, non un evento nuovo.
         const _aperturaVisualizzazioneOggi = v(aperturaVisualizzazione, 'count');
         const _aperturaValoreCollezioneOggi = v(aperturaValoreCollezione, 'count');
         const _aperturaLocationOggi = v(aperturaLocation, 'count');
@@ -362,11 +233,6 @@ const MOTORE_MISSIONI = {
             (_aperturaValoreCollezioneOggi >= 1 ? 1 : 0) +
             (_aperturaLocationOggi >= 1 ? 1 : 0);
 
-        // Missione #93 "Panoramica completa" (2026-08-30): "tutti i widget
-        // informativi disponibili" — CATALOGO_WIDGET (ui/phone.ui.js) meno
-        // i segnaposto gacha mai implementati (bloccato:true — bustina,
-        // polvere, missioni). Contato a runtime, non un numero fisso: se il
-        // catalogo cambia, questa soglia si aggiorna da sola.
         const totaleWidgetInformativi = Object.keys(CATALOGO_WIDGET).filter(id => !CATALOGO_WIDGET[id].bloccato).length;
         const widgetDistintiPeriodo = v(widgetDistinti);
 
@@ -426,74 +292,22 @@ const MOTORE_MISSIONI = {
             esplorazione_sociale_oggi: esplorazioneSocialeOggi,
             statistiche_distinte_periodo: statisticheDistintePeriodo,
             tutti_widget_informativi_periodo: totaleWidgetInformativi > 0 && widgetDistintiPeriodo >= totaleWidgetInformativi,
-            // FIX (Claudio, 2026-09-10): m94_personalizza/m95_il_tuo_telefono
-            // (metrica layout_modificato_periodo) non vengono MAI assegnate
-            // passando da qui — hanno un aggancio diretto e separato
-            // (_missioneAggancioPersonalizzaLayout() in ui/paginainiziale.ui.js,
-            // chiamata da _salvaLayoutWidget(daAzioneUtente=true)), che
-            // inserisce il completamento direttamente in missioni_completate,
-            // protetto dallo stesso UNIQUE anti-doppio-accredito di sempre.
-            // Nessuna funzione qui calcola mai davvero questa metrica (vedi
-            // nota sopra MOTORE_MISSIONI: "richiede ancora funzioni
-            // repository non scritte"), quindi valuta() la trovava sempre
-            // undefined e stampava un console.warn ad ogni giro — per m95
-            // (una_tantum, sempre "in gioco", vedi _valutaEAssegnaUnGiro)
-            // letteralmente ogni volta. Impostarla a 0 fisso non cambia
-            // NESSUN comportamento reale: valuta() userebbe comunque
-            // "0 >= 1" → false via questa strada, esattamente come con
-            // undefined — l'assegnazione vera continua identica tramite
-            // l'aggancio diretto. Zittisce solo un avviso fuorviante che
-            // segnalava un buco senza mai aver avuto effetti pratici.
             layout_modificato_periodo: 0,
-            // 2026-09-26: stessa logica per il traguardo t_il_tuo_telefono
-            // (ex m95): sbloccato solo dall'aggancio diretto, mai da qui.
             layout_personalizzato_mai: false,
-            // OTTIMIZZAZIONE (Claudio, 2026-09-10, dallo screenshot Network
-            // con decine di POST 409 su traguardi_riscossi): il dato per
-            // saltare i traguardi GIA' sbloccati prima di ritentare l'insert
-            // era già calcolato qui sopra (_idsTraguardiRiscossi, oggi usato
-            // solo per categorie/percentuale) — semplicemente non veniva mai
-            // restituito. Esposto qui con underscore iniziale apposta: non è
-            // una metrica da confrontare con un operatore in valuta() (nessun
-            // catalogo la referenzia come 'metrica'), è solo dato di servizio
-            // per _valutaEAssegnaUnGiro sotto. Zero query in più: stesso giro
-            // di Promise.all di sempre, solo un valore in più esposto.
             _traguardiRiscossiIds: _idsTraguardiRiscossi,
         };
     },
 
-    // ── Valutazione + assegnazione automatica ───────────────────────────
-    // Raccoglie i dati, valuta l'intero catalogo Fase 1, e per ogni voce
-    // soddisfatta prova a INSERIRE il completamento/riscossione. L'UNIQUE
-    // di migration 32 (owner_id+periodo+missione_id / owner_id+traguardo_id)
-    // fa da guardia anti-doppio-accredito: un insert che fallisce con
-    // 23505 significa "già assegnata", non è un errore — non si assegna di
-    // nuovo la ricompensa. Solo gli insert riusciti (novità vere) tornano
-    // nell'elenco "nuove" per il feedback visivo alla pagina che chiama.
-    //
-    // SECONDO GIRO (bug trovato e corretto, 2026-08-30): le missioni/
-    // traguardi "meta" (m51-54, m96-100, t_giorno_impeccabile) dipendono da
-    // missioni_completate — ma 'dati' è calcolato PRIMA di inserire i
-    // completamenti di QUESTO stesso giro. Se in un solo giro l'utente
-    // completa abbastanza missioni "normali" da far scattare anche una
-    // meta (es. 5 categorie diverse per m98 "Tuttofare"), la meta non
-    // verrebbe rilevata finché non si riapre la pagina una seconda volta —
-    // non è "automatico, si sblocca da solo" come deciso. Fix: se il primo
-    // giro ha inserito qualcosa, ricalcolo 'dati' da capo e rifaccio un
-    // secondo giro completo. Sicuro farlo sempre (anche se non necessario):
-    // le missioni non-meta dipendono solo da stato reale (mai da altre
-    // missioni), quindi non c'è rischio di catena infinita — un secondo
-    // giro è sempre sufficiente, mai serve un terzo.
     async valutaEAssegna(userId) {
         const primoGiro = await this._valutaEAssegnaUnGiro(userId);
 
         if (primoGiro.nuoveMissioni.length === 0 && primoGiro.nuoviTraguardi.length === 0) {
-            return primoGiro; // niente di nuovo, nessun secondo giro necessario
+            return primoGiro;
         }
 
         const secondoGiro = await this._valutaEAssegnaUnGiro(userId);
         return {
-            dati: secondoGiro.dati, // il più aggiornato dei due
+            dati: secondoGiro.dati,
             missioniOggiPool: secondoGiro.missioniOggiPool,
             missioniSettimanaPool: secondoGiro.missioniSettimanaPool,
             missioniMesePool: secondoGiro.missioniMesePool,
@@ -502,8 +316,6 @@ const MOTORE_MISSIONI = {
         };
     },
 
-    // Singolo giro raccolta-valutazione-assegnazione — estratto da
-    // valutaEAssegna() sopra per poterlo richiamare due volte in sequenza.
     async _valutaEAssegnaUnGiro(userId) {
         const dati = await this.raccogliDati(userId);
 
@@ -514,27 +326,11 @@ const MOTORE_MISSIONI = {
         const missioniSettimanaPool = this.missioniDellaSettimana(userId, settimana.periodo);
         const missioniMesePool = this.missioniDelMese(userId, mese.periodo);
 
-        // "In gioco" (2026-08-30, generalizzato): giornaliere/settimanali/
-        // mensili SOLO se estratte nel pool della loro finestra corrente —
-        // le una_tantum restano sempre tutte in gioco (obiettivi permanenti,
-        // nessuna estrazione a sorte per quelle, vedi missioniDelGiorno
-        // e sorelle qui sopra).
         const pool = { giornaliera: missioniOggiPool, settimanale: missioniSettimanaPool, mensile: missioniMesePool };
         const inGioco = CATALOGO_MISSIONI.filter(m =>
             m.finestra === 'una_tantum' || (pool[m.finestra] || []).some(p => p.id === m.id)
         );
 
-        // FIX (Claudio, 2026-09-10, screenshot Network: decine di POST 409
-        // su missioni_completate) — stesso principio del fix già fatto sopra
-        // per traguardi_riscossi: prima si ritentava l'insert per OGNI
-        // missione soddisfatta, incluse quelle già completate per il
-        // periodo corrente. Capita soprattutto con le una_tantum a metrica
-        // monotona (es. giorni_consecutivi, missioni_completate_totale):
-        // una volta soddisfatte restano soddisfatte per sempre, quindi
-        // senza questo filtro vengono ritentate a ogni apertura della
-        // pagina Missioni, per sempre. Un solo IN(...) sui periodo
-        // DAVVERO in gioco ora (al massimo 4 valori distinti), non una
-        // query per missione.
         const periodiInGioco = [...new Set([oggi.periodo, settimana.periodo, mese.periodo, 'sempre'])];
         const { data: righeGiaCompletate, error: errGiaCompletate } = await missioniCompletateIdPerPeriodi(userId, periodiInGioco);
         if (errGiaCompletate) console.warn('[missioni] verifica missioni già completate:', errGiaCompletate.message);
@@ -542,26 +338,12 @@ const MOTORE_MISSIONI = {
 
         const missioniSoddisfatte = inGioco.filter(m => this.valuta(m, dati))
             .filter(m => !_giaCompletate.has(m.id + '|' + this.periodoCorrente(m.finestra).periodo));
-        // FIX (Claudio, 2026-09-10): prima si ritentava l'insert per OGNI
-        // traguardo soddisfatto, inclusi quelli sbloccati mesi fa — 409
-        // garantito e ignorato, ma pur sempre una richiesta di rete sprecata
-        // ad ogni apertura della pagina Missioni, per sempre. Il filtro qui
-        // usa lo stesso identico elenco già raccolto in raccogliDati()
-        // (dati._traguardiRiscossiIds, vedi sopra) — nessuna query in più.
-        // Il vincolo UNIQUE lato DB resta comunque la vera rete di
-        // sicurezza anti-doppio-accredito (questo filtro è solo per non
-        // sprecare chiamate su casi che sappiamo già essere no-op).
         const _giaRiscossi = new Set(dati._traguardiRiscossiIds || []);
         const traguardiSoddisfatti = this.valutaTraguardi(dati).filter(t => !_giaRiscossi.has(t.id));
 
         const nuoveMissioni = [];
         for (const m of missioniSoddisfatte) {
             const { periodo } = this.periodoCorrente(m.finestra);
-            // Fase 9 (2026-09-13, sql/58): una sola RPC atomica al posto
-            // di due insert separati — vedi data/missioni-scrittura.
-            // repository.js per il motivo (blindatura sicurezza premi).
-            // true = nuovo davvero, false = già completata (mai un errore
-            // per quel caso, il controllo error.code==='23505' non serve più).
             const { data: nuovaDavvero, error } = await missioneRiscattaCompletamento(m.id, m.finestra, periodo);
             if (error) {
                 console.error('[missioni] errore assegnazione', m.id, error.message);
@@ -584,45 +366,10 @@ const MOTORE_MISSIONI = {
     },
 };
 
-// ── NOTIFICA COMPLETAMENTI (avvisi + beep + saldo + popup Achievement) ───
-// STEP 14 ristrutturazione file widget home, 2026-09-11 (vedi
-// Roadmap_Ristrutturazione_Widget_Home_2026-09-11.md). Consolida in
-// un'unica funzione ciò che prima era duplicato quasi identico in due
-// punti: renderPaginaMissioni() (oggi ui/widget-missioni.ui.js) e
-// _watcherMissioniGiro() (ui/missioni-watcher.js). I due punti chiamavano
-// due metodi DIVERSI per rileggere il saldo polvere — un disallineamento
-// reale trovato leggendo il codice, non solo una differenza di stile:
-// renderPaginaMissioni usava già polvereSaldoLeggi() (RPC polvere_saldo,
-// SELECT SUM lato Postgres, aggiornata 2026-09-07), il watcher era rimasto
-// al vecchio ricompenseSaldo(userId,'polvere') (somma lato client, tronca
-// oltre ~1000 righe senza segnalarlo). Consolidando qui, il watcher eredita
-// automaticamente il metodo corretto.
-//
-// UNA sola query di lettura quando c'è davvero qualcosa di nuovo — corpo
-// di polvere_saldo() verificato su Supabase da Claudio prima di scrivere
-// questa funzione (SELECT COALESCE(SUM(quantita),0) FROM
-// inventario_ricompense WHERE owner_id=auth.uid() AND tipo='polvere';
-// SECURITY DEFINER, nessuna scrittura). Nessun limite aggiuntivo oltre
-// alla guardia "solo se è cambiato qualcosa", già presente in entrambi i
-// chiamanti originali e qui preservata identica — Claudio ha chiesto
-// esplicitamente di non aggiungerne altri.
-//
-// ESTESA (2026-09-25, Milestones = Achievement): trigger del popup di
-// sblocco (badge/confetti stile trofeo Xbox) per ogni nuovo traguardo —
-// _achievementNotificaSblocco (ui/widget-achievement.ui.js), fire-and-forget
-// (mai awaited), sfalsati di 3.5s l'uno dall'altro (la durata del popup,
-// vedi _achievementMostraOverlaySblocco in quel file) per non sovrapporli
-// nel caso raro di più sblocchi nello stesso giro. Guardia
-// typeof === 'function' coerente con lo stile già in uso in questa stessa
-// funzione (typeof CSBar !== 'undefined' ecc.) — non deve mai bloccare o
-// rompere il resto (beep/saldo) se widget-achievement.ui.js non fosse
-// caricato in un contesto futuro.
 async function _missioniNotificaCompletamenti(nuoveMissioni, nuoviTraguardi) {
     if (!(nuoveMissioni && nuoveMissioni.length) && !(nuoviTraguardi && nuoviTraguardi.length)) return;
 
     if (typeof CSBar !== 'undefined') {
-        // (Q6, 2026-10-12) Da 3 in su (es. al primo avvio dopo qualche giorno)
-        // un solo avviso riassuntivo per tipo invece di uno per elemento.
         const elenco = (voci) => {
             const t = voci.map(v => v.titolo).filter(Boolean);
             return t.length <= 2 ? t.join(' e ') : t.slice(0, 2).join(', ') + ` e ${t.length - 2 === 1 ? 'un\'altra' : 'altre ' + (t.length - 2)}`;
@@ -634,8 +381,6 @@ async function _missioniNotificaCompletamenti(nuoveMissioni, nuoviTraguardi) {
         else traguardi.forEach(t => CSBar.avvisa('traguardo-sbloccato', { text: t.titolo }));
     }
 
-    // Beep "vinto" — 1200Hz, stesso in entrambi i chiamanti originali.
-    // Rispetta già da sé la preferenza suoni (prefSuoniWidgetGet dentro _beep).
     if (typeof _beep === 'function') _beep(1200, 90);
 
     if (typeof CSBar !== 'undefined' && typeof CSBar.setCurrency === 'function' && typeof polvereSaldoLeggi === 'function') {
@@ -645,9 +390,6 @@ async function _missioniNotificaCompletamenti(nuoveMissioni, nuoviTraguardi) {
         } catch (e) { console.error('[missioni] aggiornamento saldo polvere:', e); }
     }
 
-    // NUOVO 2026-09-25: popup badge/confetti per ogni traguardo appena
-    // sbloccato (ui/widget-achievement.ui.js). Non awaited: non deve mai
-    // ritardare/bloccare né questa funzione né chi la chiama.
     if (nuoviTraguardi && nuoviTraguardi.length && typeof _achievementNotificaSblocco === 'function') {
         nuoviTraguardi.forEach((t, i) => {
             setTimeout(() => _achievementNotificaSblocco(t), i * 3500);

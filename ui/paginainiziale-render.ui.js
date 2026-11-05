@@ -1,76 +1,13 @@
-// ═══════════════════════════════════════════════════════════════════════
-// PAGINAINIZIALE-RENDER.UI.JS — render griglia home, gestione widget
-// (mostra/nascondi/aggiungi), esecuzione azione widget — CardSync Pro
-// ═══════════════════════════════════════════════════════════════════════
-// STEP 6 (ULTIMO) del piano di taglio di ui/paginainiziale.ui.js
-// (concordato con Claudio il 2026-09-11). Estratto da
-// ui/paginainiziale.ui.js. NESSUNA riscrittura del codice esistente: solo
-// spostamento, zero cambi di comportamento per l'utente finale. Con
-// questo step il taglio del motore home è completo.
-//
-// Contiene: renderWidgetHome (il cuore visivo, disegna la griglia),
-// _potaContenutoFuoriTessera, _eseguiAzioneWidget, _spostaWidget,
-// _nascondiWidget, _apriPickerAggiungiWidget/_chiudiPickerAggiungiWidget,
-// _mostraWidget, _aggiungiIstanzaWidget, toggleModificaWidgetHome.
-//
-// NOTA EREDITATA DAL COMMENTO ORIGINALE (SEZIONE 2, qui sotto invariato):
-// _aggiungiIstanzaWidget richiama _apriRicercaCartaVetrina, che oggi vive
-// in ui/widget-vetrina.ui.js (spostata lì allo STEP 20 del primo giro di
-// ristrutturazione) — accoppiamento cross-file già esistente, non
-// introdotto da questo secondo giro di taglio.
-//
-// Dipende da: CATALOGO_WIDGET, _layoutWidget, _salvaLayoutWidget,
-// _tagliaDiNascita/_correggiTagliaZonaIcona (kernel), _tagliaEffettiva/
-// _distribuisciWidgetInPagine/_aggiornaPuntiniPagine (paginazione),
-// _attivaDragEResize (drag-resize), _ballCORPI/_ballPill ecc.
-// (widget-render-condiviso.ui.js), e le funzioni preview() di ogni singolo
-// widget dal loro file widget-<nome>.ui.js. Nessuna istruzione qui gira a
-// tempo di caricamento script — l'ordine rispetto agli altri file
-// paginainiziale-*.ui.js è indifferente (vedi nota identica negli STEP
-// precedenti).
-// ───────────────────────────────────────────────────────────────────────
+// Home: disegno della griglia e gestione dei widget.
 
-// ───────────────────────────────────────────────────────────────────────
-// SEZIONE 2 — Render griglia, gestione widget (mostra/nascondi/aggiungi),
-// esecuzione azione widget (originariamente righe 3095-3564 di
-// phone.ui.js). NOTA: subito dopo questa sezione, in phone.ui.js originale
-// c'era il blocco "RICERCA CARTE per Vetrina" (_apriRicercaCartaVetrina e
-// affini) — resta apposta in ui/phone.ui.js, NON qui: è logica specifica
-// del widget Vetrina, non del motore home. Verrà spostata in
-// widget-vetrina.ui.js allo STEP 20. _aggiungiIstanzaWidget qui sotto la
-// richiama comunque (per i widget multiIstanza, oggi solo Vetrina) — è un
-// accoppiamento già esistente nel codice originale, non introdotto ora:
-// funziona perché tutti gli script condividono lo stesso scope globale e
-// phone.ui.js è comunque caricato prima che l'utente possa cliccare.
-// ───────────────────────────────────────────────────────────────────────
-
-// (Q1 quality of life, 2026-10-12) Tessere che si calcolano dalla collezione
-// in memoria (carteReali). Se il caricamento è fallito e non c'è nessun dato
-// da mostrare (_carteNonCaricate, ui/cards.ui.js) scrivono "—" — lo stesso
-// ripiego delle anteprime lente — invece di "0 carte", "tutti aggiornati",
-// "tutto in ordine" che sembrerebbero veri.
 const _WIDGET_SU_CARTE = new Set([
     'visualizzazione', 'carte_recenti', 'valore_collezione', 'variazione_valore', 'doppioni', 'location',
     'prezzi', 'prezzi_recenti', 'primo_piano', 'ultima_carta', 'wishlist_obiettivi', 'suggerimento',
     'foto', 'set_completamento',
 ]);
 
-// ── RENDER GRIGLIA HOME ──────────────────────────────────────────────────
-// (velocità, 2026-10-15) UN SOLO RENDER ALLA VOLTA. renderWidgetHome() è
-// chiamata da una trentina di punti (carte caricate, rarità, tema, status
-// bar, primo piano, polling...) e ogni render rifà le anteprime di TUTTI i
-// widget, cioè decine di richieste a Supabase. All'apertura ne partivano
-// diversi insieme: dai log del 2026-10-15 ogni query usciva 2-6 volte nello
-// stesso secondo (141 richieste in 25 s, solo 86 diverse) e il gateway di
-// Supabase (piano free), sommerso, teneva ferme le prime fino a 18 s anche
-// se il database rispondeva in pochi millisecondi. Ora una chiamata che
-// arriva durante un render non ne avvia un altro in parallelo: si accoda a
-// UN unico render successivo (che legge lo stato più recente), e chi fa
-// "await renderWidgetHome()" aspetta proprio quello.
 let _renderHomeInCorso = null;
 let _renderHomeAccodato = null;
-// Anteprime rimaste oltre il tetto al primo render (instanceId -> promessa):
-// il render successivo usa queste risposte invece di richiederle di nuovo.
 let _anteprimeTardiveDaRiusare = new Map();
 
 function renderWidgetHome() {
@@ -93,31 +30,15 @@ async function _eseguiRenderWidgetHome() {
     const cont = document.getElementById('phoneWidgetPagine');
     if (!cont) return;
 
-    // Richiude i buchi fra pagine PRIMA di qualunque altro calcolo (vedi
-    // _compattaPagineWidget) — deve girare prima che _misuraPaginaWidget/
-    // _distribuisciWidgetInPagine ragionino su quali pagine esistono.
-    if (_compattaPagineWidget()) _salvaLayoutWidget(false); // correzione automatica, non un'azione utente
+    if (_compattaPagineWidget()) _salvaLayoutWidget(false);
 
     const visibili = _layoutWidget.filter(w => w.visibile);
     const primoRender = !_primoRenderWidgetFatto;
 
-    // Misurata QUI, prima di costruire le tessere, cosi' la stessa misura
-    // serve sia per clampare la taglia di ogni singola tessera (vedi
-    // _tagliaEffettiva) sia per l'impaginazione piu' sotto — un'unica
-    // fonte di verita' per "quanto spazio c'e' davvero in questo render",
-    // invece di due misurazioni separate che potrebbero disallinearsi.
     const misura = _misuraPaginaWidget();
 
-    // Raccolta locale, riversata in _ballAttenzioni a fine render: le
-    // tessere si costruiscono in parallelo con Promise.all, scrivere
-    // direttamente sulla globale lascerebbe residui dei widget rimossi.
     const attenzioni = {};
-    const carteMancanti = typeof _carteNonCaricate === 'function' && _carteNonCaricate(); // (Q1)
-    // (velocità, 2026-10-15) Al primo render il tetto per anteprima è 1,5 s
-    // invece di 5: la home si disegna subito, le tessere lente col ripiego
-    // "—", e appena le loro risposte arrivano parte un nuovo render che le
-    // riempie riusando quelle stesse risposte, senza nuove richieste
-    // (anteprimeInRitardo, in fondo alla funzione).
+    const carteMancanti = typeof _carteNonCaricate === 'function' && _carteNonCaricate();
     const tettoAnteprimaMs = primoRender ? 1500 : 5000;
     const anteprimeInRitardo = new Map();
     const daRiusare = _anteprimeTardiveDaRiusare;
@@ -128,15 +49,7 @@ async function _eseguiRenderWidgetHome() {
         if (!def) return '';
         let anteprima = { righe: ['—'] };
         if (carteMancanti && !def.bloccato && _WIDGET_SU_CARTE.has(w.id)) {
-            // (Q1) collezione non caricata: resta il ripiego "—"
         } else if (!def.bloccato) {
-            // (Audit tessere 2026-10-11) Tetto di 5 s per anteprima. Le tessere si aspettano
-            // tutte insieme (Promise.all qui sopra), quindi UNA sola chiamata lenta o appesa
-            // (rete ballerina, RPC che non risponde) teneva ferma TUTTA la home: al primo
-            // avvio restava vuota finche' quella chiamata non tornava (prova con una RPC da
-            // 8 s: home disegnata dopo 8 s). Oltre il tetto la tessera si disegna col ripiego
-            // "—" e la risposta, se arriva, entra al giro successivo (rinfresco automatico).
-            // Stesso ripiego se un'anteprima torna vuota (prima: errore e home non disegnata).
             let timerTetto = null;
             try {
                 const richiesta = (w.instanceId && daRiusare.get(w.instanceId)) || Promise.resolve(def.preview(w));
@@ -152,16 +65,6 @@ async function _eseguiRenderWidgetHome() {
         const classeCascata = primoRender ? 'widget-tile-entrata' : '';
         const stileRitardo = primoRender ? `style="animation-delay:${Math.min(indice * 45, 400)}ms"` : '';
 
-        // CONTROLLI DI MODIFICA — ridisegnati (Claudio, 2026-09-10): prima
-        // 5 bottoni fissi da 22px (su/giù/pagina prec/pagina succ/rimuovi)
-        // non ci stavano in una tessera piccola (lo standard 2x2 li rende
-        // comuni) e si accavallavano fra tessere vicine — vedi screenshot.
-        // Il trascinamento (vedi _onWidgetPointerDown) è già il modo
-        // primario e "semplice" per riordinare — su/giù/pagina prec/succ
-        // restano disponibili come PIANO B dentro un menu a comparsa (⋮),
-        // per chi preferisce non trascinare. Sulla tessera restano SEMPRE
-        // visibili solo 2 elementi (⋮ e X), che ci stanno anche su una
-        // 2x2, più la maniglia di resize.
         const menuSpostaAperto = _menuSpostaWidgetApertoId === w.instanceId;
         const controlliEdit = _editModeWidget ? `
             <div class="widget-edit-controls" onclick="event.stopPropagation()">
@@ -177,31 +80,10 @@ async function _eseguiRenderWidgetHome() {
             </div>
             <div class="widget-resize-handle" data-widget-id="${w.instanceId}" title="Trascina per ridimensionare"><i class="fa-solid fa-up-right-and-down-left-from-center"></i></div>` : '';
 
-        // Badge Pokédex sul primo numero trovato in "righe".
-        // CORREZIONE 27/08/2026: la regex era /\d+/ e su "1.284 carte
-        // totali" si fermava al punto, mostrando "1" invece di "1.284" —
-        // succedeva su qualunque conteggio a quattro cifre. Ora tiene
-        // separatori di migliaia e decimali.
-        // Il badge è anche disattivabile da Impostazioni: su una tessera
-        // 1x1 ripete il dato già inciso nella pancia della ball.
-        // 'badge' esplicito (oggi solo 'suggerimento': conta i segnali
-        // attivi, non un numero già dentro il testo) ha la precedenza;
-        // altrimenti resta il comportamento di sempre per tutti gli altri.
-        // RESTYLE BINDEX FASE 2 (2026-09-30, regola imperativa "badge rossi
-        // SOLO per azioni, mai conteggi, mai 0"): il badge NON si estrae più
-        // da righe[0] (dava "0" su Missioni, "1.520" su Valore, il giorno
-        // di una data...) e il vecchio campo 'badge' non si legge più.
-        // Lo mostra solo chi dichiara 'azioni': quante cose l'utente deve
-        // fare adesso (da correggere, da gestire, da aggiornare, premi da
-        // riscuotere, messaggi/match nuovi). 0 o assente = nessun badge.
         const nAzioni = Number(anteprima.azioni) || 0;
         const valoreBadge = nAzioni > 0 ? (nAzioni > 99 ? '99+' : String(nAzioni)) : null;
         const badge = (valoreBadge != null && prefBadgeWidgetGet()) ? `<div class="widget-badge">${valoreBadge}</div>` : '';
 
-        // Bordo colorato per rarità SOLO se la carta ha davvero un campo
-        // 'rarita' valorizzato (mai confermato nello schema in questa
-        // sessione — nessun rischio: se il campo non esiste, la classe
-        // semplicemente non si applica e resta il bordo neutro di sempre).
         const classeRarita = anteprima.rarita ? ` widget-tile-thumb-r-${String(anteprima.rarita).toLowerCase().replace(/\s+/g, '_')}` : '';
         const rigaImmagine = anteprima.immagine
             ? `<div class="widget-tile-thumb-row"><img class="widget-tile-thumb${classeRarita}" src="${_urlImmagineVisualizzabile(anteprima.immagine, 96) || ''}" alt="" onerror="this.style.display='none';"></div>`
@@ -209,58 +91,16 @@ async function _eseguiRenderWidgetHome() {
 
         const azioneClick = _editModeWidget || def.decorativo ? '' : `onclick="_eseguiAzioneWidget('${w.instanceId}', event)"`;
 
-        // ── VISUALE DELLA TESSERA ───────────────────────────────────────
-        // Con BALL_ATTIVA la vecchia icona FontAwesome lascia il posto alla
-        // sfera. Il ramo else qui sotto è il markup ORIGINALE, intatto:
-        // rimettere BALL_ATTIVA a false in cima al file riporta tutto com'era.
-        // I widget con immagine (Ultima carta, Carta del giorno) restano
-        // senza ball e mostrano la carta, per scelta di Claudio.
-        // Taglia e modalita' icona: DEVONO stare prima della visuale.
-        // BUG 2026-09-03 (segnalato da Claudio con screenshot): erano
-        // calcolate piu' sotto, quindi la sfera veniva costruita anche a
-        // taglia minima — 90px dentro una cella da ~50px, con le sfere che
-        // si sovrapponevano l'una sull'altra e l'incisione del titolo
-        // ancora leggibile. Ora la modalita' icona esclude la sfera in
-        // partenza.
-        // FIX COLONNE (2026-09-30): due taglie distinte. _t = SPAN vero
-        // nella griglia (solo per le classi widget-col-N/widget-row-N, cioè
-        // quanto spazio occupa); _ta = taglia d'ASPETTO (icona, forma,
-        // incisione, corpo ricco), calcolata come su 6 colonne anche sul
-        // telefono — vedi _tagliaAspettoWidget in
-        // ui/paginainiziale-paginazione.ui.js. Prima una sola taglia faceva
-        // entrambe le cose, gonfiata dalle colonne fantasma.
         const _t = _tagliaEffettiva(w, misura);
         const _ta = _tagliaAspettoWidget(w, misura);
-        // VETRINA (Claudio, 2026-10-10): con una carta scelta e con foto, la
-        // tessera mostra SEMPRE la carta intera (63:88, centrata, col nome/
-        // codice/prezzo sopra) a QUALUNQUE taglia, icona 2x2 compresa. Prima
-        // le taglie piccole davano stellina/miniatura/scritta e alcune
-        // forme la potavano via. Niente sfera, niente testata: il corpo e'
-        // solo il blocco foto (_ballCorpoFotoCarta).
         const _fotoVetrina = (w.id === 'ultima_carta' && anteprima.dati && !anteprima.dati.vuoto && typeof _ballCorpoFotoCarta === 'function')
             ? _ballCorpoFotoCarta(anteprima.dati) : '';
         const _iconaStatica = !_fotoVetrina && (w.mini || _ta.col < CELLE_MIN_PER_SFERA || _ta.row < 2);
 
         let visuale;
-        // RESTYLE BINDEX FASE 1 (2026-09-30): "badge SEMPRE sulla sfera".
-        // Se la tessera ha una sfera, il badge viene messo DENTRO
-        // .pkdx-icon-wrap (fratello di .pkdx-ball: resta fermo durante la
-        // cattura) e non più come figlio diretto della tessera. Senza
-        // sfera (tessere con la foto della carta) resta dov'era.
         let badgeSuSfera = false;
         if (BALL_ATTIVA && !anteprima.immagine && _iconaStatica) {
-            // SFERA FERMA (Claudio: "devono essere comunque piccole
-            // pokeball, senza movimento e senza nome, non icone a caso").
-            // Stessa sfera delle taglie grandi, ridotta al lato della
-            // cella, ma SPOGLIATA di tutto cio' che si muove o occupa
-            // spazio: niente alone, polvere, ombra, punti esclamativi del
-            // semaforo, vetro con riflesso che scorre, anelli, particelle.
-            // Niente incisione: a questa misura il testo sarebbe illeggibile
-            // ed e' proprio quello che si vedeva nello screenshot.
-            // Restano il corpo della sfera e il badge numerico.
             const aspettoMini = _ballASPETTO[w.id] || { emblema: 'piu', colore: null };
-            // RESTYLE BINDEX FASE 1: badge SOPRA la sfera (in alto a
-            // destra), non più nell'angolo della tessera — vedi 'badgeSuSfera'.
             visuale = `
                 <div class="pkdx-icon-wrap pkdx-ball-statica"><div class="pkdx-ball">
                     <div class="pkdx-ball-body">${_ballSvgCache(aspettoMini.emblema, aspettoMini.colore, null)}</div>
@@ -268,19 +108,7 @@ async function _eseguiRenderWidgetHome() {
             badgeSuSfera = true;
         } else if (BALL_ATTIVA && !anteprima.immagine) {
             const aspetto = _ballASPETTO[w.id] || { emblema: 'piu', colore: null };
-            // L'incisione compare solo sulle 1x1: sulle altre taglie il
-            // titolo per esteso sta fuori dalla ball, dove c'è spazio.
             let inciso = null;
-            // Incisione solo sulla forma piccola (ex 1x1). Con le taglie
-            // libere, confrontare w.size con la stringa '1x1' era diventato
-            // sbagliato: '1x1' ora e' l'ICONA, dove non c'e' nemmeno la
-            // sfera su cui incidere.
-            // RESTYLE BINDEX FASE 1 (2026-09-30, regola imperativa "nessun
-            // numero inciso sulle sfere"): sempre e solo il titolo breve.
-            // Prima, quando il widget chiedeva attenzione, nella pancia
-            // finiva righe[0] ("3 da correggere"): ora il dato sta accanto
-            // alla sfera (vedi .widget-tile-testo) e l'attenzione la danno
-            // il semaforo e il badge sulla sfera.
             if (_ta.col <= 4 && _ta.row <= 2 && prefScritteBallGet()) {
                 inciso = _ballTITOLI_BREVI[w.id] || def.titolo;
             }
@@ -301,38 +129,15 @@ async function _eseguiRenderWidgetHome() {
             visuale = `<i class="fa-solid ${def.icona} widget-tile-icon"></i>`;
         }
 
-        // Chi ha bisogno di attenzione: letto qui, usato dal semaforo senza
-        // rifare nessuna query (i preview sono già stati calcolati sopra).
         attenzioni[w.instanceId] = _ballChiedeAttenzione(w.id, anteprima);
 
-        // ── CORPO DELLA TESSERA ─────────────────────────────────────────
-        // 1x1 e mini: solo la sfera, col titolo inciso nella pancia.
-        // Taglie grandi: due slot, uno accanto alla sfera e uno sotto (il
-        // secondo solo dove c'è altezza, cioè 1x2 e 2x2 — vedi il CSS).
-        // Con BALL_ATTIVA a false si torna al corpo originale del sito.
-        // Sotto CELLE_MIN_PER_SFERA la tessera e' un'icona statica: niente
-        // sfera, niente corpo ricco. Sopra, tutto come prima.
         const grande = BALL_ATTIVA && !_iconaStatica && !(_ta.col === 3 && _ta.row === 2);
         let corpo;
         if (_fotoVetrina) {
             corpo = `<div class="ball-slot-blocco ball-slot-foto">${_fotoVetrina}</div>`;
         } else if (grande) {
             const c = _ballCorpoWidget(w.id, anteprima);
-            // AGGIUNTO (Claudio, sessione bugfix widget Vetrina — vedi chat):
-            // niente più titolo/icona sopra la foto — il nome carta è già
-            // scritto nell'overlay di _ballCorpoFotoCarta, ripeterlo con
-            // "Vetrina" sopra era ridondante. Condizione su
-            // 'anteprima.immagine && c.blocco' (non solo su w.id) apposta:
-            // se in futuro un altro widget fotografico avesse lo stesso
-            // trattamento lo eredita gratis; se _ballCorpoFotoCarta fallisce
-            // (foto irraggiungibile, torna '') si ricade sul corpo generico
-            // E la testa torna visibile, mai un buco vuoto silenzioso.
             const senzaTesta = !!(anteprima.immagine && c.blocco);
-            // RESTYLE BINDEX FASE 2 (2026-09-30, "niente titolo doppio"): se
-            // il corpo porta già il suo titolo (.ball-k-tit, es. "Missioni
-            // di oggi", "Collezione"), quello del catalogo non si stampa.
-            // Prima si leggevano due titoli uno sotto l'altro (Doppioni,
-            // Binders, Prezzi, Set...).
             const titoloNelCorpo = /class="ball-k-tit"/.test(c.inline || '');
             corpo = `
                 ${senzaTesta ? '' : `
@@ -344,25 +149,7 @@ async function _eseguiRenderWidgetHome() {
                     </div>
                 </div>`}
                 ${c.blocco ? `<div class="ball-slot-blocco">${c.blocco}</div>` : ''}`;
-            // AGGIUNTO (Claudio, sessione bugfix widget Vetrina — vedi chat):
-            // 'rigaImmagine' qui NON c'è più. Prima era sempre appesa in
-            // fondo alla tessera grande, anche quando esisteva già un corpo
-            // dedicato — per 'ultima_carta' (unico widget con 'immagine' a
-            // livello radice oggi, vedi widget-render-condiviso.ui.js) questo
-            // significava la miniatura piccola duplicata sotto la nuova foto
-            // a piena larghezza (_ballCorpoFotoCarta). Nessun altro widget
-            // imposta 'anteprima.immagine', quindi 'rigaImmagine' era
-            // comunque stringa vuota per tutti loro: questa riga non cambia
-            // niente per nessun altro widget. Resta invariata sulla tessera
-            // PICCOLA (ramo else sotto), dove non c'è nessun corpo dedicato.
         } else {
-            // (Audit tessere 2026-10-11) Le righe passano da escapeHtml: contengono nomi di
-            // carte/prodotti (Sealed, Prezzi, Primo piano, Vetrina...), testo semplice.
-            // RESTYLE BINDEX FASE 1 (2026-09-30): titolo e righe avvolti in
-            // .widget-tile-testo, così sulle tessere piccole con la sfera
-            // possono stare ACCANTO alla sfera (sfera sempre a sinistra,
-            // nome + stato in una riga). Per mini/icona e senza sfera il
-            // CSS li tratta come prima (nascosti o in colonna).
             corpo = `
                 ${visuale}
                 ${rigaImmagine}
@@ -382,9 +169,6 @@ async function _eseguiRenderWidgetHome() {
     }));
 
     let tileAggiungi = '';
-    // RESTYLE BINDEX (tavola "Modifica home"): niente tessera "Aggiungi"
-    // in mezzo ai widget — si aggiunge dalla barra in cima ("＋ Aggiungi
-    // widget"). Il codice resta, spento, per tornare indietro al volo.
     const _TESSERA_AGGIUNGI = false;
     if (_TESSERA_AGGIUNGI && _editModeWidget && visibili.length < MAX_WIDGET_VISIBILI) {
         tileAggiungi = `
@@ -394,37 +178,20 @@ async function _eseguiRenderWidgetHome() {
             </div>`;
     }
 
-    // ── COMPOSIZIONE DELLE PAGINE ───────────────────────────────────────
-    // Le tessere sono gia' state costruite tutte insieme (con Promise.all,
-    // che va lasciato in un blocco solo: spezzarlo per pagina moltiplica
-    // le query). Qui si distribuiscono soltanto.
-    // Impaginazione vera: chi non ci sta trabocca sulla pagina dopo.
-    // 'misura' e' la stessa calcolata a inizio funzione (vedi sopra), non
-    // ricalcolata qui: stessa fonte di verita' usata per clampare le
-    // singole tessere.
     const distribuzione = _distribuisciWidgetInPagine(visibili, misura);
     _paginePresenti = distribuzione.length;
 
     const nPagine = _numeroPagineWidget();
-    // Uscendo dalla modifica la pagina vuota di cortesia sparisce: se
-    // l'utente era proprio li', va riportato sull'ultima pagina vera,
-    // altrimenti resterebbe su uno scorrimento che non esiste piu' e i
-    // puntini indicherebbero una pagina sbagliata.
     if (_paginaWidgetCorrente > nPagine - 1) _paginaWidgetCorrente = nPagine - 1;
     const classiGriglia = 'widget-griglia'
         + (BALL_ATTIVA ? ' ball-ui' : '')
         + (_editModeWidget ? ' in-modifica-widget' : '');
     const paginaHtml = [];
     for (let p = 0; p < nPagine; p++) {
-        // La pagina di destinazione arriva dalla distribuzione, non piu'
-        // dal campo 'pagina' letto direttamente: fra i due c'e' di mezzo il
-        // traboccamento.
         const suQuestaPagina = distribuzione[p] || [];
         const dentro = suQuestaPagina
             .map(w => tessere[visibili.indexOf(w)])
             .join('');
-        // Il tassello "Aggiungi" sta sull'ultima pagina REALE, non su
-        // quella vuota di cortesia che compare solo in modifica.
         const ultimaReale = p === nPagine - 1 - (_editModeWidget ? 1 : 0);
         const vuota = !dentro && !(ultimaReale && tileAggiungi);
         paginaHtml.push(`
@@ -434,16 +201,6 @@ async function _eseguiRenderWidgetHome() {
             </div>`);
     }
 
-    // NAVIGAZIONE FRA PAGINE PIU' CHIARA (Claudio, 2026-09-10: "non è
-    // chiaro come si fa"): prima erano solo puntini da 7px a bassissimo
-    // contrasto (30% di opacità), l'unico modo per capire che si poteva
-    // cambiare pagina era scoprirlo per caso scorrendo. Ora: puntini dentro
-    // una pillola visibile (si riconosce come controllo, non come
-    // decorazione) + due frecce ai lati per chi preferisce toccare invece
-    // di scorrere (utile anche su desktop, dove lo swipe orizzontale non è
-    // sempre comodo col mouse). Le frecce restano disabilitate a inizio/
-    // fine, stesso linguaggio già usato per "pagina precedente" nel menu
-    // sposta.
     const puntini = nPagine > 1
         ? `<div id="phoneWidgetPuntini">
             <button type="button" class="widget-pagina-freccia" onclick="_vaiAllaPaginaWidgetRelativa(-1)" ${_paginaWidgetCorrente === 0 ? 'disabled' : ''} aria-label="Pagina precedente"><i class="fa-solid fa-chevron-left"></i></button>
@@ -453,9 +210,6 @@ async function _eseguiRenderWidgetHome() {
         </div>`
         : '';
 
-    // Il ridimensionamento ridisegna a ogni movimento del dito: senza
-    // questa riga lo scorrimento orizzontale tornerebbe a zero e la pagina
-    // "scapperebbe" alla prima sotto le dita.
     const scrollPrima = Math.min(cont.scrollLeft, _paginaWidgetCorrente * cont.clientWidth);
     cont.innerHTML = paginaHtml.join('');
     const vecchiPuntini = document.getElementById('phoneWidgetPuntini');
@@ -467,17 +221,10 @@ async function _eseguiRenderWidgetHome() {
     _ballAttenzioni = attenzioni;
     _potaContenutoFuoriTessera();
 
-    // Al primo render, dopo la cascata d'ingresso, un giro di semaforo
-    // così chi ha qualcosa da fare si fa notare subito invece di aspettare
-    // i 5,2 secondi del ciclo.
     if (primoRender && BALL_ATTIVA) setTimeout(_ballGiraSemaforo, 900);
 
     if (_editModeWidget) _attivaDragEResize();
 
-    // Tessere rimaste sul "—" perché oltre il tetto: quando le loro risposte
-    // arrivano (o falliscono), un nuovo render le mostra senza aspettare i
-    // 15 s del polling. Solo al primo render: dopo ci pensa il polling, e una
-    // tessera sempre lenta non deve innescare render a ripetizione.
     if (primoRender && anteprimeInRitardo.size) {
         Promise.allSettled([...anteprimeInRitardo.values()]).then(() => {
             _anteprimeTardiveDaRiusare = anteprimeInRitardo;
@@ -486,82 +233,27 @@ async function _eseguiRenderWidgetHome() {
     }
 }
 
-// ── NIENTE RIGHE TAGLIATE A META' (Claudio, 2026-09-03) ─────────────────
-// La tessera ha altezza fissa e taglia cio' che esce. Con un elenco, il
-// taglio cadeva a meta' di una riga: si leggeva mezza scritta e mezza data,
-// che sembra un difetto di resa piu' che un limite di spazio.
-// Qui, a disegno finito, si nasconde ogni blocco che NON ci sta per intero.
-// Il risultato e' un elenco che finisce dove finisce la tessera, come le
-// liste dei widget di un telefono vero.
-//
-// PERCHE' DOPO IL DISEGNO E NON PRIMA: quante righe ci stiano dipende dal
-// font, dalla densita' scelta, dalla lingua e dalla larghezza della
-// tessera. Calcolarlo in anticipo vorrebbe dire indovinare l'altezza di un
-// testo non ancora impaginato; misurarlo dopo e' esatto.
-//
-// COSTO: una lettura di geometria su poche decine di elementi. Gira anche
-// durante il ridimensionamento (che ridisegna a ogni movimento del dito),
-// quindi resta volutamente minimale: nessuna scrittura di stile se non
-// serve, e nessun ciclo annidato.
 function _potaContenutoFuoriTessera() {
     document.querySelectorAll('.widget-tile .ball-slot-blocco').forEach(blocco => {
         const tessera = blocco.closest('.widget-tile');
         if (!tessera) return;
         const stile = getComputedStyle(tessera);
         const fondo = tessera.getBoundingClientRect().bottom - (parseFloat(stile.paddingBottom) || 0);
-        const troncati = new Set(); // contenitori il cui elenco e' gia' finito (vedi sotto)
-        // Un gruppo nascosto al giro prima va riaperto PRIMA di misurare le sue righe,
-        // altrimenti le righe risultano alte 0 e passerebbero tutte.
+        const troncati = new Set();
         blocco.querySelectorAll(':scope > .ball-gruppo').forEach(g => { g.style.display = ''; });
 
-        // I candidati sono i blocchi "atomici": una riga di elenco, una
-        // colonna di categoria con le sue carte, un grafico. Mai le
-        // singole carte dentro una fila — nascondere la terza carta di
-        // tre lascerebbe una categoria monca, che e' peggio del taglio.
-        // .ball-quota aggiunta il 2026-09-06 per il widget 'contributi':
-        // barra + didascalia della percentuale, che vanno nascoste
-        // INSIEME. Nessun altro widget usa questa classe, quindi la
-        // riga non cambia il comportamento di nulla di esistente.
-        // .ball-foto-carta aggiunta (Claudio, sessione bugfix widget
-        // Vetrina — vedi chat): senza, la foto a piena larghezza del nuovo
-        // corpo 'ultima_carta' (_ballCorpoFotoCarta) non sarebbe mai
-        // riconosciuta da questa potatura e potrebbe sporgere dal fondo
-        // della tessera su combinazioni di taglia strette senza che nulla
-        // la nasconda — stesso ragionamento di .ball-quota sopra, nessun
-        // altro widget usa questa classe quindi nessun comportamento
-        // esistente cambia.
         blocco.querySelectorAll(':scope > .ball-riga, :scope > .ball-gruppi > .ball-gruppo, :scope > .ball-spark, :scope > .ball-strip:not(.ball-strip-fill), :scope > .ball-strip-fill > .ball-mini, :scope > .ball-quota, ' +
-            // (.ball-foto-carta NON si pota piu': la carta della Vetrina resta sempre visibile, 2026-10-10)
-            // RESTYLE BINDEX FASE 2 (2026-09-30): i mattoncini nuovi delle tessere.
             ':scope > .ball-riga-set, :scope > .ball-cov:not(.ball-cov-fill), :scope > .ball-cov-fill > .ball-cov-v, :scope > .ball-ripiano, :scope > .ball-medaglie, :scope > .ball-th, :scope > .ball-chips, :scope > .ball-k-lab, :scope > .ball-azione, :scope > .ball-ul > div, :scope > .ball-co > *, ' +
-            // (Audit tessere 2026-10-11) Le righe dentro un gruppo con titolo (Foto carte:
-            // "Prossime da fotografare") prima non erano candidate: in una tessera bassa
-            // restavano tagliate a meta' dal bordo.
             ':scope > .ball-gruppo > .ball-riga, ' +
-            // (Audit tessere 2026-10-11) Inserimento e Controllo prezzi: i pezzi del contenitore
-            // unico (ultimo invio, barra, riquadri, pulsante) si nascondono interi dal fondo.
             ':scope > .ball-ins > *, :scope > .ball-prz > *').forEach(pezzo => {
-            // Sempre ripristinato prima di misurare: la tessera puo' essere
-            // stata ingrandita dall'ultimo giro e cio' che prima non ci
-            // stava ora ci sta.
             pezzo.style.display = '';
-            // (Audit tessere 2026-10-11) L'elenco FINISCE al primo pezzo che non ci sta:
-            // tutto quello che viene dopo nello stesso contenitore sparisce senza
-            // misurarlo. Prima ogni pezzo era misurato da solo e, nascosto uno, quelli
-            // dopo risalivano nel posto liberato: nel Centro operativo restava il titolo
-            // "Opportunita'" senza nessuna voce sotto, e le voci perdevano l'ordine.
             if (troncati.has(pezzo.parentElement)) { pezzo.style.display = 'none'; return; }
             const r = pezzo.getBoundingClientRect();
-            // Copertine del widget Binders (riga unica nella forma larga): quelle che
-            // sporgono a destra spariscono intere invece di restare tagliate.
             if (r.bottom > fondo + 1 || (pezzo.classList.contains('ball-cov-v') && r.right > blocco.getBoundingClientRect().right + 1)) {
                 pezzo.style.display = 'none';
                 troncati.add(pezzo.parentElement);
             }
         });
-        // Un titolo di sezione senza nessuna voce visibile sotto non resta da solo
-        // (Centro operativo, "Opportunita'"); un gruppo con titolo che ha perso tutte le
-        // sue righe sparisce intero.
         blocco.querySelectorAll('.ball-co > .ball-co-sez').forEach(titolo => {
             if (titolo.style.display === 'none') return;
             let dopo = titolo.nextElementSibling, haVoci = false;
@@ -575,10 +267,6 @@ function _potaContenutoFuoriTessera() {
             const righe = gruppo.querySelectorAll(':scope > .ball-riga');
             if (righe.length && [...righe].every(r => r.style.display === 'none')) gruppo.style.display = 'none';
         });
-        // File di miniature in riga unica (Doppioni, Valore collezione...): la carta
-        // che sporge a destra sparisce intera invece di restare tagliata a meta'.
-        // (Audit tessere 2026-10-11) Stessa regola per la riga di copertine di Condividi
-        // (.ball-cov senza -fill): nella forma larga l'ultima copertina restava tagliata.
         blocco.querySelectorAll('.ball-strip:not(.ball-strip-fill), .ball-cov:not(.ball-cov-fill), .ball-th').forEach(fila => {
             const destra = fila.getBoundingClientRect().right;
             fila.querySelectorAll(':scope > .ball-mini, :scope > i, :scope > img').forEach(m => {
@@ -589,23 +277,11 @@ function _potaContenutoFuoriTessera() {
     });
 }
 
-// Esegue l'azione del widget: 'azione' personalizzata nel catalogo se
-// presente (riceve gli stessi dati calcolati da preview, per widget come
-// carta del giorno/ultima carta che devono sapere QUALE carta aprire),
-// altrimenti apre come dettaglio la tab indicata in 'tab' o l'id stesso.
 async function _eseguiAzioneWidget(instanceId, evt) {
     const w = _layoutWidget.find(x => x.instanceId === instanceId);
     const def = w && CATALOGO_WIDGET[w.id];
     if (!def || def.bloccato) return;
 
-    // Missioni/Traguardi Fase 2 — apertura sezioni/widget (2026-08-30).
-    // Fire-and-forget, stesso pattern di missioniAccessoRegistraOggi in
-    // ui/auth.ui.js: un fallimento qui non deve mai bloccare l'apertura
-    // del widget. Nessun dedup: ogni apertura conta (stesso approccio di
-    // missioniRicercaRegistra). Loggato per TUTTI i widget, anche quelli
-    // senza ancora una missione agganciata — le prossime missioni di
-    // questa categoria non richiederanno un nuovo punto di scrittura, solo
-    // una nuova lettura in ui/missioni.ui.js:raccogliDati().
     (async () => {
         try {
             const userId = await authGetUserId();
@@ -613,17 +289,9 @@ async function _eseguiAzioneWidget(instanceId, evt) {
         } catch (e) { console.error('[missioni] registrazione apertura widget:', e); }
     })();
 
-    // Animazione di cattura PRIMA di aprire. Mai in modalità modifica: lì
-    // il tocco lungo apre il peek e il trascinamento riordina, e 2,6s di
-    // animazione a ogni tentativo di spostare un widget renderebbero il
-    // riordino inusabile. (_eseguiAzioneWidget non viene nemmeno agganciata
-    // in edit mode — vedi azioneClick nel render — ma il controllo resta
-    // come rete se un giorno la si chiamasse da altrove.)
-    // L'evento serve dopo per il punto d'origine dell'apertura: va
-    // conservato ORA, perché dopo l'await l'oggetto evento è esaurito.
     const punto = evt ? { clientX: evt.clientX, clientY: evt.clientY, currentTarget: evt.currentTarget } : null;
     if (BALL_ATTIVA && !_editModeWidget && evt && evt.currentTarget) {
-        try { await _ballGiocaCattura(evt.currentTarget); } catch (_) { /* l'animazione non deve mai bloccare l'apertura */ }
+        try { await _ballGiocaCattura(evt.currentTarget); } catch (_) {   }
     }
 
     if (def.azione) {
@@ -635,13 +303,6 @@ async function _eseguiAzioneWidget(instanceId, evt) {
     apriDettaglioWidget(def.tab || w.id, punto);
 }
 
-// SUPERATA dalle pagine multiple (2026-09-03) e senza piu' chiamanti: con
-// le pagine, muovere per indice sull'elenco visibile faceva saltare un
-// widget da una pagina all'altra come effetto collaterale invisibile. Le
-// frecce su/giu' usano ora _spostaWidgetNellaPagina(instanceId, dir), che
-// resta dentro la pagina. Lasciata qui perche' innocua e perche' un
-// eventuale onclick residuo in una schermata non ancora aggiornata
-// continuerebbe a funzionare invece di lanciare un errore.
 function _spostaWidget(indiceVisibile, direzione) {
     const visibili = _layoutWidget.filter(w => w.visibile);
     const target = visibili[indiceVisibile];
@@ -659,7 +320,7 @@ function _nascondiWidget(instanceId) {
     const w = _layoutWidget[idx];
     const def = CATALOGO_WIDGET[w.id];
     if (def && def.multiIstanza) {
-        _layoutWidget.splice(idx, 1); // istanza effimera: via del tutto, non solo nascosta
+        _layoutWidget.splice(idx, 1);
     } else {
         w.visibile = false;
     }
@@ -667,10 +328,6 @@ function _nascondiWidget(instanceId) {
     renderWidgetHome();
 }
 
-// Picker "Aggiungi": due tipi di voci ora. I widget multiIstanza (Vetrina)
-// compaiono SEMPRE, anche se ne hai già una copia — cliccare ne crea una
-// nuova. I widget normali compaiono solo se attualmente nascosti, come
-// prima (_mostraWidget li riattiva, riga unica già esistente).
 function _apriPickerAggiungiWidget() {
     const nascosti = _layoutWidget.filter(w => !w.visibile && !(CATALOGO_WIDGET[w.id] && CATALOGO_WIDGET[w.id].multiIstanza));
     const multi = Object.entries(CATALOGO_WIDGET).filter(([, def]) => def.multiIstanza);
@@ -699,9 +356,7 @@ function _mostraWidget(id) {
     const w = _layoutWidget.find(x => x.id === id);
     if (w) {
         w.visibile = true;
-        w.pagina = _paginaWidgetCorrente; // compare dove stai guardando, non sulla prima pagina
-        // Se non e' mai stato ridimensionato a mano (e' ancora alla taglia
-        // di ripiego), nasce alla taglia giusta per il suo contenuto.
+        w.pagina = _paginaWidgetCorrente;
         if (w.size === '3x2') w.size = _tagliaDiNascita(id);
     }
     _salvaLayoutWidget();
@@ -709,13 +364,9 @@ function _mostraWidget(id) {
     renderWidgetHome();
 }
 
-// Crea una nuova copia di un widget multiIstanza (oggi solo Vetrina) e
-// apre subito la ricerca carte per scegliere cosa mostrarci — niente
-// copia vuota abbandonata in giro senza che l'utente sappia cosa farci.
 function _aggiungiIstanzaWidget(id) {
     const visibiliCount = _layoutWidget.filter(w => w.visibile).length;
     if (visibiliCount >= MAX_WIDGET_VISIBILI) { mostraAvviso(`Massimo ${MAX_WIDGET_VISIBILI} widget in home.`); return; }
-    // Nasce sulla pagina che stai guardando, non sempre sulla prima.
     const nuovo = { id, instanceId: _nuovoInstanceId(), visibile: true, size: _tagliaDiNascita(id), mini: false, cartaId: null, pagina: _paginaWidgetCorrente, v: VERSIONE_LAYOUT_WIDGET };
     _layoutWidget.push(nuovo);
     _salvaLayoutWidget();
@@ -724,36 +375,14 @@ function _aggiungiIstanzaWidget(id) {
     _apriRicercaCartaVetrina(nuovo.instanceId);
 }
 
-// ───────────────────────────────────────────────────────────────────────
-// SEZIONE 3 — Bottone diagnostico "2x2" (originariamente righe 3644-3657
-// di phone.ui.js). Usa-e-getta secondo Claudio, vedi compilati precedenti.
-// ───────────────────────────────────────────────────────────────────────
-
-// _testForzaTaglia2x2() RIMOSSA (audit 2026-09-25): strumento diagnostico
-// usa-e-getta, il suo bottone non esiste più in index.html.
-
-// ───────────────────────────────────────────────────────────────────────
-// SEZIONE 4 — Modifica/drag/resize, peek, apertura/chiusura dettaglio
-// widget (originariamente righe 3659-4194 di phone.ui.js).
-// ───────────────────────────────────────────────────────────────────────
-
 function toggleModificaWidgetHome() {
     _editModeWidget = !_editModeWidget;
     const btn = document.getElementById('btnModificaWidgetHome');
     if (btn) {
         btn.classList.toggle('attivo', _editModeWidget);
-        // Testo esplicito ("Fatto" mentre sei dentro, non solo un colore
-        // diverso) — Claudio voleva un bottone che si capisce al volo,
-        // stessa logica del perché e' stato spostato fuori dalla barra
-        // affollata.
         const label = btn.querySelector('span');
         if (label) label.textContent = _editModeWidget ? 'Fatto' : 'Modifica';
     }
-    // RESTYLE BINDEX FASE 1 (2026-09-30): la riga in cima alla home è
-    // nascosta e ricompare SOLO in modifica, come barra "Aggiungi widget /
-    // Fatto" (tavola "Modifica home" approvata) — vedi .phone-home-header
-    // in index.css. La classe sul body è l'unico aggancio per il CSS.
     document.body.classList.toggle('home-in-modifica', _editModeWidget);
     renderWidgetHome();
 }
-

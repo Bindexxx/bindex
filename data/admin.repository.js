@@ -1,19 +1,8 @@
-// ── data/admin.repository.js ─────────────────────────────────────────────
-// Tutte le chiamate a Supabase usate da admin.html: auth, profiles,
-// pending_requests, user_media, storage (user-media/immaginivisibili),
-// admin_audit_log, activity_log, e le RPC SECURITY DEFINER di
-// moderazione/gestione utenti. Un solo file (a differenza di index.html,
-// diviso in più repository) perché il volume qui è molto più contenuto.
-//
-// Dipende da: supabaseClient (creato in admin.html, vedi config/supabase.js).
+// Chiamate a Supabase della pagina admin: utenti, richieste, media, registro, moderazione.
 
-// ── Auth ──────────────────────────────────────────────────────────────
 async function adminAuthLogin(email, password) {
     return supabaseClient.auth.signInWithPassword({ email, password });
 }
-// scope 'local' (audit 2026-09-25, A1): esce solo da questo browser, non
-// da tutti i dispositivi dell'admin — stessa scelta di authLogout() in
-// data/auth.repository.js.
 async function adminAuthLogout() {
     return supabaseClient.auth.signOut({ scope: 'local' });
 }
@@ -22,9 +11,6 @@ async function adminAuthGetSession() {
     return data.session || null;
 }
 
-// ── Codice da app / secondo fattore TOTP (S6, 2026-10-12) ─────────────
-// Con sql/99 i poteri admin (is_admin()) valgono solo se la sessione è stata
-// verificata col codice: livello "aal2". Funzioni Auth di supabase-js.
 async function adminMfaLivello() {
     return supabaseClient.auth.mfa.getAuthenticatorAssuranceLevel();
 }
@@ -41,12 +27,10 @@ async function adminMfaTogli(factorId) {
     return supabaseClient.auth.mfa.unenroll({ factorId });
 }
 
-// ── Profilo/ruolo ─────────────────────────────────────────────────────
 async function adminProfiloRuolo(userId) {
     return supabaseClient.from('profiles').select('role, username, banned_until, deleted_at').eq('id', userId).single();
 }
 
-// ── Richieste pendenti (pending_requests) ────────────────────────────
 async function adminListaUtentiPerFiltro() {
     return supabaseClient.from('profiles').select('id, username').order('username');
 }
@@ -55,9 +39,6 @@ async function adminContaRichiestePendenti() {
     return supabaseClient.from('pending_requests').select('*', { count: 'exact', head: true }).eq('status', 'pending').is('deleted_at', null);
 }
 
-// Ritorna il query builder NON risolto: il chiamante applica i filtri
-// facoltativi (tipo/utente/stato/data) prima di risolvere con await,
-// esattamente come faceva il codice originale.
 function adminQueryRichieste() {
     return supabaseClient.from('pending_requests').select('*').is('deleted_at', null).order('created_at', { ascending: false });
 }
@@ -66,8 +47,6 @@ async function adminProfiliPerIds(ids) {
     return supabaseClient.from('profiles').select('id, username').in('id', ids);
 }
 
-// RESTYLE BINDEX FASE 7/8e (sql/86): nome attuale e proposto di una richiesta
-// di rinomina binder/scaffale (l'admin non legge quelle tabelle per RLS).
 async function adminContestoRichiesta(requestId) {
     return supabaseClient.rpc('admin_contesto_richiesta', { p_request_id: requestId });
 }
@@ -92,13 +71,6 @@ function adminQueryLogAdminEsportazione() {
     return supabaseClient.from('admin_audit_log').select('*').order('created_at', { ascending: false });
 }
 
-// ── Copia pubblica foto approvate (bucket immaginivisibili) ──────────
-// Multi-Binder (2026-08-25): aggiunto binder_id alla select — prima del
-// Multi-Binder c'era un solo binder per utente, quindi il path pubblico
-// era per-utente; ora serve sapere DI QUALE binder è la copertina/sleeve,
-// altrimenti la copia pubblica del secondo binder approvato sovrascrive
-// quella del primo. Vedi _sincronizzaCopiaPubblica in
-// ui/admin-requests.ui.js, unico punto che usa questo dato.
 async function adminMediaStoragePath(mediaId) {
     return supabaseClient.from('user_media').select('storage_path, binder_id').eq('id', mediaId).single();
 }
@@ -117,7 +89,6 @@ async function adminMediaApprovatiDaSincronizzare() {
         .in('slot', ['card_back', 'binder_cover']);
 }
 
-// ── Utenti / ruoli ────────────────────────────────────────────────────
 async function adminListaUtenti() {
     return supabaseClient.from('profiles').select('*').order('created_at', { ascending: true });
 }
@@ -128,7 +99,6 @@ async function adminAggiornaAnagrafica(userId, payload) {
     return supabaseClient.from('profiles').update(payload).eq('id', userId);
 }
 
-// ── Log admin ─────────────────────────────────────────────────────────
 async function adminLogAudit(limite) {
     return supabaseClient.from('admin_audit_log').select('*').order('created_at', { ascending: false }).limit(limite);
 }
@@ -136,12 +106,10 @@ async function adminRegistraAzione(action, target, details) {
     return supabaseClient.rpc('log_admin_action', { p_action: action, p_target: target, p_details: details });
 }
 
-// ── Attività utente (log nella modale dettaglio) ─────────────────────
 async function adminActivityLog(userId, limite) {
     return supabaseClient.from('activity_log').select('*').eq('user_id', userId).order('created_at', { ascending: false }).limit(limite);
 }
 
-// ── Azioni SECURITY DEFINER sull'utente (ban/sblocco/reset/eliminazione) ──
 async function adminBanUtente(userId, until, reason) {
     return supabaseClient.rpc('admin_ban_user', { p_target: userId, p_until: until, p_reason: reason });
 }
@@ -164,12 +132,6 @@ async function adminHardDeleteUtente(userId) {
     return supabaseClient.rpc('admin_hard_delete_user', { p_target: userId });
 }
 
-// ── Restrizioni chat — flag minorenne (sql/72, 2026-09-24) ───────────────
-// Tabella A SÉ (chat_restrizioni_utente), non una colonna su profiles/
-// preferenze_utente — RLS verificata dal vivo prima di scrivere sql/72:
-// scrittura riservata a is_admin(), quindi qui è scrittura DIRETTA (come
-// adminAggiornaAnagrafica sopra), non una RPC — la RLS della tabella è il
-// vero controllo di accesso, non un wrapper SECURITY DEFINER.
 async function adminChatRestrizioneGet(userId) {
     return supabaseClient.from('chat_restrizioni_utente').select('minorenne').eq('owner_id', userId).maybeSingle();
 }

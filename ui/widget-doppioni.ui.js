@@ -1,80 +1,25 @@
-// ═══════════════════════════════════════════════════════════════════════
-// WIDGET-DOPPIONI.UI.JS — tessera + pagina "Doppioni" (CardSync Pro)
-// ═══════════════════════════════════════════════════════════════════════
-// RISCRITTO (sessione 2026-09-18, "doppioni-split"). Cambio di modello
-// dalla versione precedente (riga singola con qty>1, mai spostata
-// davvero): oggi una carta/box può esistere su PIÙ righe fisiche nella
-// stessa tabella (dopo uno split di questa stessa pagina), quindi un
-// "doppione" è un GRUPPO di righe con la stessa identità la cui qty
-// sommata è > 1 — non più una riga singola.
-//
-// Bug corretto in questa sessione (mai risolto prima): "Sposta in
-// Scambio" non spostava/splittava nulla, si limitava a taggare una
-// quantità offerta sulla riga condivisa (_quantitaOfferteScambio) senza
-// mai toccare carteReali — la pagina Doppioni continuava quindi a
-// mostrare la qty intera. Ora lo split è reale (righe fisiche separate,
-// vedi _doppioniSplitCarta/_doppioniSplitBox sotto).
-//
-// COSA RESTA FUORI (non toccato):
-// - apriFlipCardHome/toggleFlipCard/vaiAllaCartaNelBinder (ui/flip-card-
-//   detail.ui.js) — usata QUI SENZA opzioni.doppione (quindi il vecchio
-//   bottone "Gestisci doppione"/_mostraSceltaGestisciDoppione nell'overlay
-//   del flip non compare più da questa pagina: sostituito dal pannello
-//   dedicato #doppioniControlliContainer). Il vecchio flusso resta
-//   comunque nel file condiviso, intatto, per compatibilità: se in futuro
-//   qualche altro punto d'ingresso chiamasse ancora
-//   apriFlipCardHome(id,{doppione:true}), continuerebbe a funzionare come
-//   prima — semplicemente Doppioni non lo usa più.
-// - apriModificaCarta/apriModificaSealed: chiamate as-is dal pannello
-//   controlli, nessuna modifica ai loro file.
-// - #immagineModal/#flipCardScene: NESSUNA modifica, né di markup/JS né di
-//   CSS — la visuale (carta o box) resta SEMPRE a piena pagina, grande
-//   quanto il suo contenuto naturale (RIVISTO dopo il primo collaudo:
-//   prima si affiancava/impilava al 50% col pannello controlli, Claudio
-//   l'ha trovato uno spreco di spazio). #doppioniControlliContainer è ora
-//   un pannello COMPATTO E FLOTTANTE sopra la visuale (card ancorata a
-//   destra in orizzontale, "a foglio" in basso in verticale — vedi CSS in
-//   index.html), non più un contenitore che si contende metà schermo.
-// ───────────────────────────────────────────────────────────────────────
+// Widget e pagina Doppioni.
 
-// ── CHIAVI DI IDENTITÀ (raggruppamento righe → "stessa carta/box") ─────
-// Carte: nome+codice+lingua+condizione+reverseHolo+firstEd — i soli campi
-// copiati identici dallo split (vedi _doppioniSplitCarta) che definiscono
-// la variante esatta. Confermato con Claudio: reverseHolo/firstEd erano
-// assenti da carteReali prima di questa sessione (aggiunti in
-// ui/cards.ui.js apposta per questo raggruppamento).
 function _doppioniChiaveCarta(c) {
     return [c.name, c.code, c.lang, c.cond, !!c.reverseHolo, !!c.firstEd].join('||');
 }
 
-// Box: non esiste un campo "condizione" per i sealed — integrita
-// (integrita_packaging) è il campo più vicino per significato (stato
-// fisico della confezione), stesso trattamento voluto da Claudio
-// ("facciamole uguali" alle carte). ASSUNZIONE che non ho fatto
-// confermare esplicitamente: se due prodotti sealed hanno lo stesso nome/
-// codice/set/lingua ma integrità diversa, oggi vengono trattati come
-// varianti distinte (non sommati nello stesso gruppo) — segnalo qui
-// perché è una scelta di design, non un dato verificato con Claudio.
 function _doppioniChiaveBox(p) {
     return [p.name, p.codice, p.setEspansione, p.lingua, p.integrita].join('||');
 }
 
-// ── STATO (indipendente tra Carte e Box, come richiesto) ────────────────
-let _doppioniModalita = 'carte'; // 'carte' | 'box'
-let _doppioniOrdinamentoCarte = prefFiltroPaginaScegli('doppioni', 'ordine_carte', ['quantita', 'valore', 'alfabetico'], 'quantita'); // (Q5) ricordato
+let _doppioniModalita = 'carte';
+let _doppioniOrdinamentoCarte = prefFiltroPaginaScegli('doppioni', 'ordine_carte', ['quantita', 'valore', 'alfabetico'], 'quantita');
 let _doppioniRicercaCarte = '';
-let _doppioniOrdinamentoBox = prefFiltroPaginaScegli('doppioni', 'ordine_box', ['quantita', 'valore', 'alfabetico'], 'quantita'); // (Q5) ricordato
+let _doppioniOrdinamentoBox = prefFiltroPaginaScegli('doppioni', 'ordine_box', ['quantita', 'valore', 'alfabetico'], 'quantita');
 let _doppioniRicercaBox = '';
 let _doppioniGruppiCarte = [];
 let _doppioniGruppiBox = [];
-let _doppioniGruppoApertoIndice = null; // indice nell'array della modalità aperta
-let _doppioniRigheSorgenteScelta = null; // [{rigaId, qty}] — le righe fisiche dietro la posizione scelta, nel pannello controlli
-let _doppioniPosizioniRaggruppateCorrenti = []; // posizioni con la stessa etichetta unite, indice usato dai bottoni "Sposta da qui"
-let _doppioniDestinazioniCache = null;  // location/scaffali caricati alla prima apertura del pannello sposta
+let _doppioniGruppoApertoIndice = null;
+let _doppioniRigheSorgenteScelta = null;
+let _doppioniPosizioniRaggruppateCorrenti = [];
+let _doppioniDestinazioniCache = null;
 
-
-// ── VOCE DI CATALOGO (tile Home — resta leggera, solo carte, nessuna
-// query extra, stesso principio della versione precedente) ─────────────
 CATALOGO_WIDGET.doppioni = {
         titolo: 'Doppioni', icona: 'fa-clone',
         preview: () => {
@@ -93,8 +38,6 @@ CATALOGO_WIDGET.doppioni = {
         tab: 'doppioni',
 };
 
-
-// ── RAGGRUPPAMENTO ───────────────────────────────────────────────────
 function _doppioniRaggruppaCarte() {
     const fonte = carteReali.filter(c => c.tabella === 'carte' && c.stato === 'collezione');
     const mappa = new Map();
@@ -106,7 +49,7 @@ function _doppioniRaggruppaCarte() {
     const gruppi = [];
     mappa.forEach((righe, chiave) => {
         const qtyTotale = righe.reduce((t, r) => t + (Number(r.qty) || 1), 0);
-        if (qtyTotale <= 1) return; // non è un doppione
+        if (qtyTotale <= 1) return;
         const prima = righe[0];
         gruppi.push({
             chiave, tipo: 'carte',
@@ -120,7 +63,7 @@ function _doppioniRaggruppaCarte() {
 }
 
 function _doppioniRaggruppaBox() {
-    const fonte = prodottiSealedReali; // già filtrato stato='collezione' da sealedListMie
+    const fonte = prodottiSealedReali;
     const mappa = new Map();
     fonte.forEach(p => {
         const chiave = _doppioniChiaveBox(p);
@@ -143,19 +86,10 @@ function _doppioniRaggruppaBox() {
     return gruppi;
 }
 
-
-// ── PAGINA "DOPPIONI" ────────────────────────────────────────────────
-// RESTYLE BINDEX FASE 3g (2026-10-01, tavola "Doppioni"): riepilogo
-// "N carte doppie · M copie in più · valore extra", interruttore Carte/Box,
-// ricerca, ordini e una riga per gruppo ("×3 · 2 in più", valore e prezzo
-// cad.). Il tocco sulla riga apre il dettaglio ESISTENTE (carta a tutto
-// schermo + pannello per spostare le copie): la logica di spostamento/split
-// non è toccata.
 async function renderPaginaDoppioni() {
     const container = document.getElementById('doppioniContenuto');
     if (!container) return;
 
-    // I box servono già caricati per il raggruppamento (come la pagina Sealed).
     try { await caricaProdottiSealedReali(); } catch (e) { console.error('[doppioni] box:', e); }
 
     _doppioniModalita = 'carte';
@@ -187,8 +121,6 @@ function _doppioniCambiaModalita(modalita) {
     _doppioniRenderCorpo();
 }
 
-// Ricostruisce riepilogo+ricerca+filtri+elenco per la modalità attiva —
-// stato (ricerca/ordinamento) INDIPENDENTE tra Carte e Box, come richiesto.
 function _doppioniRenderCorpo() {
     const corpo = document.getElementById('doppioniCorpo');
     if (!corpo) return;
@@ -206,7 +138,7 @@ function _doppioniRenderCorpo() {
     const titoli = gruppi.length;
     const copieExtra = gruppi.reduce((t, g) => t + (g.qtyTotale - 1), 0);
     const valoreExtra = gruppi.reduce((t, g) => t + g.prezzoUnitario * (g.qtyTotale - 1), 0);
-    const eur = (v) => formattaEuro(v); // formato unico "12.345,00 €" (decisione Claudio 2026-09-25)
+    const eur = (v) => formattaEuro(v);
     const nome = _doppioniModalita === 'carte' ? (titoli === 1 ? 'carta doppia' : 'carte doppie') : (titoli === 1 ? 'box doppio' : 'box doppi');
     if (riep) riep.innerHTML = `<b>${titoli} ${nome}</b> &middot; ${copieExtra} cop${copieExtra === 1 ? 'ia' : 'ie'} in più &middot; valore extra ${eur(valoreExtra)}`;
 
@@ -228,7 +160,6 @@ function _doppioniRenderCorpo() {
     _doppioniPcAutoApri();
 }
 
-// ── PC (RESTYLE, tavola "Doppioni PC"): pannello copie a destra ─────────
 let _doppioniInline = false;
 function _doppioniEPC() { const s = document.getElementById('doppioni'); return !!s && s.clientWidth >= 780; }
 function _doppioniPcAutoApri() {
@@ -243,7 +174,7 @@ function _doppioniPcAutoApri() {
 function _doppioniImpostaOrdinamento(ordine) {
     if (_doppioniModalita === 'carte') _doppioniOrdinamentoCarte = ordine;
     else _doppioniOrdinamentoBox = ordine;
-    prefFiltroPaginaSet('doppioni', _doppioniModalita === 'carte' ? 'ordine_carte' : 'ordine_box', ordine); // (Q5)
+    prefFiltroPaginaSet('doppioni', _doppioniModalita === 'carte' ? 'ordine_carte' : 'ordine_box', ordine);
     document.querySelectorAll('#doppioniChips .dp-chip').forEach(el => {
         el.classList.toggle('attivo', el.dataset.ord === ordine);
     });
@@ -274,11 +205,8 @@ function _doppioniRenderGriglia() {
         return;
     }
 
-    const eur = (v) => formattaEuro(v); // formato unico "12.345,00 €" (decisione Claudio 2026-09-25)
+    const eur = (v) => formattaEuro(v);
 
-    // L'indice è nell'array ORIGINALE (non filtrato/ordinato) della
-    // modalità attiva: il tocco resta valido anche se ricerca/ordinamento
-    // cambiano dopo l'apertura.
     const arrayOriginale = _doppioniModalita === 'carte' ? _doppioniGruppiCarte : _doppioniGruppiBox;
 
     griglia.innerHTML = gruppi.map(g => {
@@ -305,15 +233,6 @@ function _doppioniRenderGriglia() {
     }).join('');
 }
 
-
-// ── DETTAGLIO GRUPPO — due contenitori a schermo intero ─────────────────
-// Carte: il primo contenitore è il modale flip già esistente
-// (#immagineModal, via apriFlipCardHome SENZA opzioni.doppione — vedi
-// nota in testa al file), affiancato via classe CSS. Box: niente flip
-// (i sealed non hanno fronte/retro), contenitore statico dedicato
-// #doppioniBoxVisualContainer che copia la stessa struttura visiva.
-// In entrambi i casi, #doppioniControlliContainer è il pannello nuovo con
-// il breakdown posizioni + il flusso di split.
 async function _doppioniApriDettaglio(indice) {
     const gruppi = _doppioniModalita === 'carte' ? _doppioniGruppiCarte : _doppioniGruppiBox;
     const gruppo = gruppi[indice];
@@ -340,46 +259,21 @@ async function _doppioniApriDettaglio(indice) {
     controlli.innerHTML = `<div class="doppioni-controlli-loading"><i class="fa-solid fa-spinner fa-spin"></i> Carico le posizioni...</div>`;
 
     if (gruppo.tipo === 'carte') {
-        // apriFlipCardHome() da sola mette già #immagineModal a schermo
-        // intero, centrato, grande quanto il suo contenuto naturale
-        // (classe .modal-content-flip-fullscreen, sempre applicata,
-        // invariata) — nessuna classe aggiuntiva necessaria per QUELLO.
         apriFlipCardHome(gruppo.righe[0].id, { nascondiVaiAlBinder: true });
-        // FIX (segnalato da Claudio con screenshot da telefono, 2026-09-18):
-        // senza questo la carta si centrava su TUTTO lo schermo e il
-        // pannello, ancorato a un bordo, finiva SOPRA alla sua metà
-        // inferiore/destra invece che nello spazio libero — questa classe
-        // aggiunge solo un padding (CSS in index.html), mai una modifica
-        // al file condiviso stesso.
         document.getElementById('immagineModal').classList.add('doppioni-spazio-riservato');
-        // FIX (segnalato da Claudio, 2026-09-18): #immagineModal ha i suoi
-        // modi nativi di chiudersi (click fuori, tasto chiudi proprio,
-        // ecc.) che non passano dalla mia _doppioniChiudiDettaglio() —
-        // senza questo, chiudere il flip in uno di quei modi lasciava il
-        // pannello Doppioni orfano in primo piano. Nessuna modifica a
-        // flip-card-detail.ui.js: osservo da fuori quando lo stile di
-        // #immagineModal cambia (MutationObserver, non invasivo) e chiudo
-        // il pannello di conseguenza se è ancora aperto.
         _doppioniOsservaChiusuraFlip();
     } else {
         _doppioniMostraVisualStaticoBox(gruppo);
     }
 
     const posizioni = await _doppioniCaricaPosizioni(gruppo);
-    // Il gruppo potrebbe essere stato chiuso nel frattempo (utente rapido) —
-    // non ridisegnare un pannello ormai non più aperto.
     if (_doppioniGruppoApertoIndice !== indice) return;
     _doppioniRenderControlli(gruppo, posizioni);
 }
 
-// Contenitore statico per i Box — stessa struttura del back-overlay del
-// flip (pg-riga/pg-stat, sleeve niente perché i sealed non hanno sleeve),
-// nessuna animazione. Markup nuovo, id propri: nessuna interferenza con
-// #flipCardScene. RIVISTO (dopo il primo collaudo): stesso "sentiment"
-// del flip — grande, centrato, a piena pagina (niente più metà schermo).
 function _doppioniMostraVisualStaticoBox(gruppo) {
     const contenitore = document.getElementById('doppioniBoxVisualContainer');
-    const eur = (v) => formattaEuro(v); // formato unico "12.345,00 €" (decisione Claudio 2026-09-25)
+    const eur = (v) => formattaEuro(v);
     const immagineSrc = gruppo.immagine ? (_urlImmagineVisualizzabile(gruppo.immagine, 500) || '') : '';
     contenitore.innerHTML = `
         <div class="doppioni-box-visual">
@@ -393,12 +287,6 @@ function _doppioniMostraVisualStaticoBox(gruppo) {
     contenitore.style.display = 'flex';
 }
 
-// Osserva #immagineModal (condiviso, mai modificato) dall'esterno: quando
-// il SUO stile cambia (qualunque via nativa di chiusura, non solo la mia
-// "×"), se è appena diventato invisibile e il pannello Doppioni è ancora
-// aperto, lo chiudo di conseguenza. Disconnesso ad ogni chiusura (vedi
-// _doppioniChiudiDettaglio) per evitare che la chiusura innescata da qui
-// richiami se stessa.
 let _doppioniObserverFlipChiusura = null;
 
 function _doppioniOsservaChiusuraFlip() {
@@ -431,18 +319,13 @@ function _doppioniChiudiDettaglio() {
         document.querySelectorAll('#doppioniGriglia .dp-riga.sel').forEach(r => r.classList.remove('sel'));
         return;
     }
-    _doppioniFermaOsservazioneFlip(); // PRIMA di richiudere il flip sotto, altrimenti la disconnect avverrebbe dopo aver già innescato un secondo giro
+    _doppioniFermaOsservazioneFlip();
 
     const gruppi = _doppioniModalita === 'carte' ? _doppioniGruppiCarte : _doppioniGruppiBox;
     const gruppo = _doppioniGruppoApertoIndice != null ? gruppi[_doppioniGruppoApertoIndice] : null;
 
     if (gruppo && gruppo.tipo === 'carte') {
-        // Se questa chiusura è stata innescata DA _doppioniOsservaChiusuraFlip
-        // (il flip si era già chiuso da solo), #immagineModal ha già
-        // display:none — chiamare di nuovo chiudiImmagineIngrandita() qui
-        // resta comunque sicuro: fa solo le stesse pulizie (overflow/
-        // classi) di ogni altra chiusura, mai dannoso ripeterle.
-        chiudiImmagineIngrandita(); // esistente, ui/modals.ui.js — ripristina overflow/classi come per ogni altra chiusura del flip
+        chiudiImmagineIngrandita();
         document.getElementById('immagineModal').classList.remove('doppioni-spazio-riservato');
     } else {
         document.getElementById('doppioniBoxVisualContainer').style.display = 'none';
@@ -455,16 +338,6 @@ function _doppioniChiudiDettaglio() {
     _doppioniDestinazioniCache = null;
 }
 
-// Breakdown "dove si trovano le copie" — SOLO al momento dell'apertura del
-// dettaglio, mai nella tessera/preview (per non appesantire il
-// caricamento Home con una query per doppione). Per le carte non serve
-// nessuna query aggiuntiva: _idsInScambio/_quantitaOfferteScambio sono già
-// caricati globalmente da caricaCarteReali(). Per i box serve un'unica
-// query (scaffaleProdottiTuttiUtente) — non ci si appoggia a
-// _quantitaOfferteScambioSealed perché quella variabile, per come
-// documentato in widget-sealed.ui.js, potrebbe non essere ancora stata
-// caricata se l'utente non ha mai aperto la pagina Scaffali in questa
-// sessione.
 async function _doppioniCaricaPosizioni(gruppo) {
     if (gruppo.tipo === 'carte') {
         return gruppo.righe.map(r => {
@@ -477,11 +350,9 @@ async function _doppioniCaricaPosizioni(gruppo) {
         });
     }
 
-    // Box: un giro solo per tutte le associazioni scaffale↔prodotto
-    // dell'utente, poi filtro sui soli id di questo gruppo.
     const userId = await authGetUserId();
-    let mappaScaffali = new Map(); // scaffaleId -> {nome, tipo}
-    let associazioniPerProdotto = new Map(); // prodottoId -> [{scaffaleId, quantitaOfferta}]
+    let mappaScaffali = new Map();
+    let associazioniPerProdotto = new Map();
     if (userId) {
         const [{ data: scaffali, error: errScaffali }, { data: associazioni, error: errAssoc }] = await Promise.all([
             scaffaliList(userId),
@@ -511,12 +382,6 @@ async function _doppioniCaricaPosizioni(gruppo) {
     });
 }
 
-// Unisce posizioni con la STESSA etichetta (es. due righe fisiche diverse
-// entrambe "In BULBY", nate da split separati) in una sola voce mostrata,
-// con la qty sommata — richiesto da Claudio dopo il primo collaudo. Tiene
-// comunque traccia delle righe fisiche originali dietro ogni voce unita:
-// il flusso "sposta" deve poter attingere da più righe in sequenza se la
-// quantità richiesta supera quella di una singola riga.
 function _doppioniPosizioniRaggruppate(posizioni) {
     const mappa = new Map();
     posizioni.forEach(p => {
@@ -530,13 +395,10 @@ function _doppioniPosizioniRaggruppate(posizioni) {
     return gruppi;
 }
 
-// Disegna il pannello controlli: lista posizioni con "Sposta da qui" +
-// bottone Modifica, invariato nella sua funzione (apre il modale di
-// modifica già esistente, carte o box) come confermato da Claudio.
 function _doppioniRenderControlli(gruppo, posizioni) {
     const controlli = document.getElementById(_doppioniInline ? 'doppioniPannelloPc' : 'doppioniControlliContainer');
     if (!controlli || _doppioniGruppoApertoIndice == null) return;
-    const eur = (v) => formattaEuro(v); // formato unico "12.345,00 €" (decisione Claudio 2026-09-25)
+    const eur = (v) => formattaEuro(v);
 
     _doppioniPosizioniRaggruppateCorrenti = _doppioniPosizioniRaggruppate(posizioni);
     if (_doppioniInline) {
@@ -594,12 +456,6 @@ function _doppioniRenderControlli(gruppo, posizioni) {
     `;
 }
 
-// FIX (segnalato da Claudio dopo il collaudo, 2026-09-18): apriModificaCarta/
-// apriModificaSealed non sanno nulla di #doppioniControlliContainer (nato
-// in questa sessione, isolato a questo file) — cliccare "Modifica" apriva
-// il modale di modifica lasciando il pannello Doppioni orfano aperto
-// dietro/sopra. Chiudo prima il dettaglio Doppioni, poi apro la modifica
-// esistente — nessuna modifica a apriModificaCarta/apriModificaSealed.
 function _doppioniApriModificaCarta(id) {
     _doppioniChiudiDettaglio();
     _doppioneApriModifica(id);
@@ -609,13 +465,10 @@ function _doppioniApriModificaBox(id) {
     apriModificaSealed(id);
 }
 
-// Step 2 del flusso "sposta": scelta quantità per la POSIZIONE selezionata
-// (può corrispondere a più righe fisiche unite, vedi
-// _doppioniPosizioniRaggruppate sopra).
 function _doppioniSelezionaSorgente(indicePosizione) {
     const posizione = _doppioniPosizioniRaggruppateCorrenti[indicePosizione];
     if (!posizione) return;
-    _doppioniRigheSorgenteScelta = posizione.righe; // [{rigaId, qty}, ...]
+    _doppioniRigheSorgenteScelta = posizione.righe;
 
     const qtyDisponibile = posizione.qtyTotale;
     const flusso = document.getElementById('doppioniSpostaFlusso');
@@ -628,9 +481,6 @@ function _doppioniSelezionaSorgente(indicePosizione) {
     `;
 }
 
-// Step 3: destinazioni disponibili (Scambio + Location per carte,
-// Scambio + Scaffali per box) — caricate on-demand, una sola volta per
-// apertura del dettaglio (cache in _doppioniDestinazioniCache).
 async function _doppioniMostraDestinazioni() {
     const flusso = document.getElementById('doppioniSpostaFlusso');
     const inputQty = document.getElementById('doppioniQuantitaSposta');
@@ -659,17 +509,9 @@ async function _doppioniMostraDestinazioni() {
         }
     }
 
-    // Scambio sempre come prima opzione, esclusa se la riga è già
-    // interamente lì (per le carte, via _idsInScambio; per i box andrebbe
-    // verificato nelle posizioni già mostrate — qui, più semplicemente,
-    // resta sempre proposta: spostarne ancora in Scambio da una riga già
-    // parzialmente lì è comunque un'azione valida).
     const opzioni = [{ tipo: 'scambio', etichetta: 'Scambio' }, ..._doppioniDestinazioniCache];
 
     const bottoni = opzioni.map((o, i) => `<button class="pg-filtro" onclick="_doppioniConfermaSposta(${i}, ${quantita})">${escapeHtml(o.etichetta)}</button>`).join('');
-    // Le opzioni vengono ricostruite ad ogni chiamata: le tengo su una
-    // variabile globale temporanea per indice, così il bottone sopra può
-    // richiamarle senza reincollare oggetti interi negli attributi HTML.
     _doppioniOpzioniDestinazioneCorrenti = opzioni;
 
     flusso.innerHTML = `
@@ -681,14 +523,6 @@ async function _doppioniMostraDestinazioni() {
 }
 let _doppioniOpzioniDestinazioneCorrenti = [];
 
-// Step 4: conferma e scrittura reale (split). La posizione scelta può
-// corrispondere a PIÙ righe fisiche unite (vedi _doppioniPosizioniRaggruppate)
-// — attingo da ciascuna in sequenza, nell'ordine in cui compaiono, finché
-// non copro la quantità richiesta. Ogni riga è uno split INDIPENDENTE
-// (stessa scrittura di prima, solo ripetuta): se una fallisce a metà, le
-// precedenti sono già scritte per davvero (niente transazione unica sulle
-// più chiamate separate) — l'avviso lo dice esplicitamente, e ricarico
-// comunque i dati per riflettere quanto è effettivamente riuscito.
 async function _doppioniConfermaSposta(indiceOpzione, quantitaRichiesta) {
     const opzione = _doppioniOpzioniDestinazioneCorrenti[indiceOpzione];
     if (!opzione || !_doppioniRigheSorgenteScelta) return;
@@ -705,7 +539,7 @@ async function _doppioniConfermaSposta(indiceOpzione, quantitaRichiesta) {
     for (const rigaSorgente of _doppioniRigheSorgenteScelta) {
         if (restante <= 0) break;
         const riga = gruppo.righe.find(r => String(r.id) === String(rigaSorgente.rigaId));
-        if (!riga) continue; // teoricamente non dovrebbe succedere, righe lette dallo stesso snapshot del gruppo aperto
+        if (!riga) continue;
 
         const daQuestaRiga = Math.min(restante, rigaSorgente.qty);
         const risultato = gruppo.tipo === 'carte'
@@ -716,8 +550,6 @@ async function _doppioniConfermaSposta(indiceOpzione, quantitaRichiesta) {
             const notaParziale = spostateFinQui > 0 ? `\n\n${spostateFinQui} copie erano già state spostate correttamente prima di questo errore.` : '';
             mostraAvviso('❌ Errore nello spostamento: ' + risultato.error.message + notaParziale);
             flusso.innerHTML = '';
-            // Ricarico comunque, per riflettere quanto è effettivamente
-            // riuscito prima dell'errore (vedi nota sopra: niente rollback).
             if (gruppo.tipo === 'carte') await caricaCarteReali(); else await caricaProdottiSealedReali();
             _doppioniGruppiCarte = _doppioniRaggruppaCarte();
             _doppioniGruppiBox = _doppioniRaggruppaBox();
@@ -729,21 +561,16 @@ async function _doppioniConfermaSposta(indiceOpzione, quantitaRichiesta) {
         restante -= daQuestaRiga;
     }
 
-    // Ricarico i dati reali e ridisegno da capo il dettaglio (il gruppo
-    // potrebbe non esistere più come "doppione" se questo split ha portato
-    // la qty totale a 1, o la riga sorgente potrebbe essere sparita se lo
-    // spostamento era "tutto").
     if (gruppo.tipo === 'carte') await caricaCarteReali();
     else await caricaProdottiSealedReali();
 
     _doppioniGruppiCarte = _doppioniRaggruppaCarte();
     _doppioniGruppiBox = _doppioniRaggruppaBox();
-    _doppioniRenderGriglia(); // aggiorna anche la griglia sotto, se il pannello resta aperto
+    _doppioniRenderGriglia();
 
     const gruppiAggiornati = gruppo.tipo === 'carte' ? _doppioniGruppiCarte : _doppioniGruppiBox;
     const stessoGruppo = gruppiAggiornati.find(g => g.chiave === gruppo.chiave);
     if (!stessoGruppo) {
-        // Non è più un doppione (o è sparito del tutto) — chiudo.
         _doppioniChiudiDettaglio();
         return;
     }
@@ -754,14 +581,6 @@ async function _doppioniConfermaSposta(indiceOpzione, quantitaRichiesta) {
     _doppioniRenderControlli(stessoGruppo, posizioni);
 }
 
-
-// ── SPLIT REALE — CARTE ──────────────────────────────────────────────
-// Se N = qty totale della riga sorgente: nessuna riga nuova, aggiorno solo
-// quella esistente (più economico, coerente con "riduci le entry al
-// minimo"). Se N < qty totale: leggo la riga grezza (cardsSelectById,
-// già esistente per questo scopo esatto, vedi commento nel file), creo la
-// riga nuova con qty=N, decremento l'originale, poi applico la
-// destinazione SOLO alla riga nuova.
 async function _doppioniSplitCarta(rigaOriginale, quantitaRichiesta, destinazione) {
     const userId = await authGetUserId();
     if (!userId) return { error: { message: 'Utente non autenticato.' } };
@@ -782,9 +601,6 @@ async function _doppioniSplitCarta(rigaOriginale, quantitaRichiesta, destinazion
     delete nuovaRiga.updated_at;
     nuovaRiga.owner_id = userId;
     nuovaRiga.qty = N;
-    // Punto confermato da Claudio: la riga nuova tiene lo STESSO
-    // created_at dell'originale (concettualmente è la stessa carta, solo
-    // spostata) — già presente in "grezza", nessuna modifica necessaria.
 
     const { data: inserite, error: errInsert } = await cardsInsertNellaCollezione(nuovaRiga);
     if (errInsert) return { error: errInsert };
@@ -801,17 +617,6 @@ async function _doppioniApplicaDestinazioneCarta(userId, cartaId, quantitaSullaR
     if (destinazione.tipo === 'location') {
         const { error } = await cardsUpdateCampo('carte', cartaId, 'location', destinazione.valore);
         if (error) return { error };
-        // FIX (segnalato da Claudio dopo il primo collaudo, 2026-09-18):
-        // una riga spostata a una location restava "comunque in scambio"
-        // se era già membro di binder_carte (tag residuo, es. da prima di
-        // questa sessione) — questo scritto sopra cambia solo `location`,
-        // non toccava l'appartenenza al binder Scambio, quindi
-        // _idsInScambio continuava a includerla e il breakdown posizioni
-        // mostrava "In Scambio" ignorando la location nuova. Qui puliamo
-        // sempre l'eventuale riga in binder_carte per questa carta — un
-        // delete su una riga che non c'è non è un errore (nessun'altra
-        // conseguenza), quindi è sicuro farlo incondizionatamente ad ogni
-        // spostamento verso una location.
         if (_binderScambioId) {
             const { error: errPulizia } = await binderCarteDeleteOne(userId, _binderScambioId, cartaId);
             if (errPulizia) console.error('_doppioniApplicaDestinazioneCarta (pulizia Scambio residuo):', errPulizia.message);
@@ -826,13 +631,6 @@ async function _doppioniApplicaDestinazioneCarta(userId, cartaId, quantitaSullaR
     return { error: { message: 'Destinazione non riconosciuta.' } };
 }
 
-
-// ── SPLIT REALE — BOX ────────────────────────────────────────────────
-// Stesso motore delle carte, tabella/repository diversi (prodotti_sealed,
-// mai carte). Differenza chiave: la destinazione "scaffale" è
-// un'appartenenza (scaffale_prodotti), non un campo sulla riga — un box
-// può restare membro di PIÙ scaffali insieme (deliberato, non toccato:
-// nessuna rimozione dalle appartenenze precedenti della riga nuova).
 async function _doppioniSplitBox(rigaOriginale, quantitaRichiesta, destinazione) {
     const userId = await authGetUserId();
     if (!userId) return { error: { message: 'Utente non autenticato.' } };

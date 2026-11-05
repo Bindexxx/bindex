@@ -1,92 +1,28 @@
-// ── utils/comuni.js ──────────────────────────────────────────────────────
-// Utilità di formattazione/sicurezza CONDIVISE da tutte le pagine del sito
-// (index.html e le pagine pubbliche binder-pubblico, scaffali-pubblico,
-// wishlist, sealed). Creato il 2026-09-25 (refactoring approvato da
-// Claudio): prima queste funzioni esistevano in DUE copie da tenere
-// allineate a mano (utils/formatters.js per il sito, utils/shared-public.js
-// per le pagine pubbliche). Ora una copia sola: una correzione vale ovunque.
-// Contenuto spostato IDENTICO dalla versione di formatters.js (quella di
-// shared-public.js era uguale, verificato).
-//
-// Funzioni pure, nessun accesso a Supabase, niente eseguito al caricamento.
-// Va caricato prima dei file che le usano (in pratica: subito prima di
-// utils/formatters.js in index.html, subito prima di utils/shared-public.js
-// nelle pagine pubbliche).
-//
-// Contiene: formattaEuro, formattaEuroTondo, formattaEuroVariazione,
-// escapeHtml, escapeJsAttr, _urlImmagineSicura, _urlImmagineVisualizzabile.
+// Funzioni di formattazione e sicurezza comuni a tutte le pagine.
 
-// AGGIUNTA (2026-09-24): mancava — ui/richieste-scambio.ui.js la
-// dava per scontata fin dall'header ("utils condivisi: escapeHtml,
-// formattaEuro") ma non era mai stata scritta, causava
-// ReferenceError non appena una riga aveva prezzo_congelato
-// valorizzato (scoperto solo ora, primo test con un prezzo reale
-// sulla pagina Richieste). Stessa convenzione già usata inline nel
-// resto del sito (Number(x).toFixed(2) + ' €') — nessun formato
-// nuovo inventato, solo resa condivisa.
-// FORMATO UNICO (audit 2026-09-25, C2 — decisione Claudio: "1.234,50 €"
-// ovunque). Prima qui "1234.50 €" e nelle pagine pubbliche
-// "1234,50 €": lo stesso prezzo appariva diverso tra sito e pagine
-// condivise. useGrouping 'always': l'italiano standard NON mette il
-// punto delle migliaia sotto 10.000 ("1234,50") — 'always' lo forza.
-// Browser vecchi che non conoscono 'always' ricadono sul comportamento
-// standard (nessun errore). Tollera null/undefined/stringhe (→ 0,00 €).
-// (Dal 2026-09-25 esiste in una sola copia, qui in utils/comuni.js.)
-// (V2 velocità, 2026-10-12) Formattatore creato UNA volta e riusato: con le
-// opzioni, toLocaleString ne ricreava uno a ogni chiamata — migliaia di volte
-// per pagina, ~1 s di CPU sul telefono con 1000+ carte. Stesso risultato
-// (toLocaleString usa proprio Intl.NumberFormat con queste opzioni).
 let _formatoEuroDueDecimali = null;
 function formattaEuro(v) {
     if (!_formatoEuroDueDecimali) _formatoEuroDueDecimali = new Intl.NumberFormat('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2, useGrouping: 'always' });
     return _formatoEuroDueDecimali.format(Number(v) || 0) + ' €';
 }
 
-// RESTYLE BINDEX FASE 1 (2026-09-30) — regola comune "Euro" (file 01 § B):
-//   "12,00 €" in liste e dettagli          → formattaEuro (sopra, invariata)
-//   "1.520 €" arrotondato, SOLO nei widget → formattaEuroTondo
-//   "+14,00 €" / "−14,00 €" per le variazioni, segno attaccato, mai
-//   "€ 14" né "+€3,20"                     → formattaEuroVariazione
-// Usate dalle fasi successive (tessere e pagine): nessun chiamante ancora.
-let _formatoEuroIntero = null; // (V2 velocità) riusato, come _formatoEuroDueDecimali
+let _formatoEuroIntero = null;
 function formattaEuroTondo(v) {
     if (!_formatoEuroIntero) _formatoEuroIntero = new Intl.NumberFormat('it-IT', { maximumFractionDigits: 0, useGrouping: 'always' });
     return _formatoEuroIntero.format(Math.round(Number(v) || 0)) + ' €';
 }
 function formattaEuroVariazione(v) {
     const n = Number(v) || 0;
-    // Sotto il mezzo centesimo è rumore di arrotondamento: niente segno.
     if (Math.abs(n) < 0.005) return formattaEuro(0);
     return (n > 0 ? '+' : '−') + formattaEuro(Math.abs(n));
 }
 
-
-// FIX (audit 2026-09-25, A2): textContent→innerHTML escapa solo
-// & < > — NON le virgolette doppie. Dentro un attributo
-// (value="${escapeHtml(x)}", alt="...", title="...") una " nel
-// testo chiudeva l'attributo: nomi/note tipo 'box 10"' venivano
-// troncati al ripristino della bozza di Inserimento. Ora escapa
-// anche " (→ &quot;), che nel testo normale si vede identica.
-// L'apostrofo resta invariato APPOSTA: diversi punti fanno
-// escapeHtml(x).replace(/'/g, "\\'") per metterlo dentro un
-// onclick — convertirlo in &#39; romperebbe quei punti. Per gli
-// argomenti stringa degli onclick usare escapeJsAttr() qui sotto.
-// (Dal 2026-09-25 esiste in una sola copia, qui in utils/comuni.js.)
 function escapeHtml(str) {
     const div = document.createElement('div');
     div.textContent = str == null ? '' : String(str);
     return div.innerHTML.replace(/"/g, '&quot;');
 }
 
-// Testo da mettere come argomento stringa TRA APICI SINGOLI dentro
-// un attributo HTML a virgolette doppie, es.
-//   onclick="apri('${escapeJsAttr(nome)}')"
-// Prima escapa per la stringa JS (\ ' a-capo), poi per l'attributo
-// HTML (& " < >): il browser decodifica l'attributo e poi esegue il
-// JS, quindi il valore arriva alla funzione IDENTICO all'originale,
-// qualunque carattere contenga. Sostituisce il vecchio
-// .replace(/'/g, "\\'") che gestiva solo l'apostrofo (una " o un
-// a-capo in un nome/nota rompevano il click). Audit 2026-09-25, M2.
 function escapeJsAttr(str) {
     return String(str == null ? '' : str)
         .replace(/\\/g, '\\\\')
@@ -100,16 +36,6 @@ function escapeJsAttr(str) {
         .replace(/>/g, '&gt;');
 }
 
-
-// Link esterno da mettere in un href (audit sicurezza 2026-10-12).
-// Accetta SOLO indirizzi http/https: un link salvato nei dati con un altro
-// schema (javascript:, data:, vbscript:...) eseguirebbe codice nella pagina
-// di chi lo clicca, e il link di una carta puo' essere scritto anche da altri
-// utenti del gruppo (controllo prezzi di gruppo, vista coda condivisa).
-// new URL() normalizza spazi e caratteri di controllo come fa il browser,
-// quindi varianti con maiuscole o spazi davanti vengono riconosciute.
-// Ritorna il valore gia' escapato per un attributo a virgolette doppie,
-// oppure null se il link non e' utilizzabile (i chiamanti non mostrano il link).
 function urlEsternoSicuro(url) {
     if (url == null) return null;
     const valore = String(url).trim();
@@ -124,43 +50,6 @@ function urlEsternoSicuro(url) {
     return escapeHtml(indirizzo.href);
 }
 
-
-// Il campo 'immagine' può contenere tre formati diversi, a seconda
-// di quando la carta è stata processata:
-// 1. Link a Supabase Storage (nuovo, leggero — riconoscibile dal
-//    dominio) → si usa direttamente.
-// 2. Data URI base64 (vecchio formato, prima che passassimo a
-//    Storage) → si usa direttamente, funziona comunque.
-// 3. URL esterno grezzo di Cardmarket (carte processate PRIMA di
-//    qualunque correzione) → Cardmarket lo blocca se richiesto da
-//    un altro dominio, tentiamo il proxy come ripiego (funziona
-//    solo per alcune, meglio di niente per lo storico).
-//
-// SICUREZZA (2026-09-01) — questa funzione è la sola cosa che sta
-// tra il contenuto del campo 'immagine' e un attributo src="..."
-// scritto via innerHTML in una decina di punti del sito. Prima
-// restituiva il valore GREZZO nei casi 1 e 2, quindi un valore
-// salvato come:
-//     data:image/png;base64,x" onerror="...codice..."
-// chiudeva l'attributo src e ne apriva un altro: il codice veniva
-// eseguito nel browser di chi apriva la pagina. Sulle pagine
-// pubbliche la vittima è il VISITATORE, non il proprietario dei
-// dati, e visto che index.html sta sullo stesso dominio quel codice
-// può leggere il token di sessione di un utente loggato.
-//
-// Tre difese, in ordine:
-//   a) i data URI passano solo se hanno la forma esatta di
-//      un'immagine base64 — quella forma non può contenere
-//      virgolette, spazi o parentesi, quindi non può uscire
-//      dall'attributo;
-//   b) gli URL Supabase vengono riconosciuti dal VERO nome host
-//      (new URL().hostname), non più con includes('supabase.co')
-//      che accettava anche https://sito-cattivo.com/?x=supabase.co;
-//   c) rete di sicurezza finale: le virgolette vengono comunque
-//      neutralizzate su ogni valore restituito, così anche un caso
-//      non previsto non può rompere l'attributo.
-// Se niente combacia si restituisce null: i chiamanti gestiscono
-// già questo caso mostrando il segnaposto.
 function _urlImmagineSicura(url) {
     return String(url).replace(/"/g, '&quot;');
 }
@@ -169,20 +58,15 @@ function _urlImmagineVisualizzabile(immagine, larghezza) {
     if (!immagine) return null;
     const valore = String(immagine).trim();
 
-    // (a) Data URI: solo immagini, solo base64, solo caratteri
-    // dell'alfabeto base64. Nessuna virgoletta possibile.
     if (/^data:image\/(png|jpe?g|gif|webp|avif);base64,[A-Za-z0-9+/=\s]+$/i.test(valore)) {
         return _urlImmagineSicura(valore);
     }
 
-    // (b) URL http(s) veri. Solo https, e solo host che finisce
-    // davvero per .supabase.co viene usato diretto; tutto il resto
-    // passa dal proxy, che riceve il valore già codificato.
     let indirizzo;
     try {
         indirizzo = new URL(valore);
     } catch (_) {
-        return null; // né data URI valido né URL valido: non lo mostriamo
+        return null;
     }
     if (indirizzo.protocol !== 'http:' && indirizzo.protocol !== 'https:') return null;
 

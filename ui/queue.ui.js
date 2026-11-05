@@ -1,49 +1,9 @@
-// ── ui/queue.ui.js ─────────────────────────────────────────────────────
-// Match automatico tra amici (scambio/wishlist) e relativo badge.
-//
-// STEP separato dal piano "riduzione accoppiamento" concordato con Claudio
-// il 2026-09-11. La coda "Carte con problemi" (correzione manuale) è stata
-// spostata in ui/queue-correzioni.ui.js — NESSUNA riscrittura del codice
-// esistente in nessuna delle due parti: solo spostamento, zero cambi di
-// comportamento.
-//
-// Contiene: _numNuoviMatchScambio/_numNuoviMatchWishlist, _chiaveMatch,
-// _matchVisti, _segnaMatchVisti, _notificaUnaVolta, aggiornaBadgeMatch,
-// _aggiornaPallinoMenu, caricaMatch.
-//
-// (Commento orfano "Sposta una carta dalla wishlist…" RIMOSSO, audit
-// 2026-09-25: relitto di uno spostamento precedente, nessuna funzione qui.)
-//
-// _aggiornaPallinoMenu() qui sotto è chiamata cross-file da
-// ui/queue-correzioni.ui.js dopo alcune azioni sulla coda. Nessuna
-// istruzione qui gira a tempo di caricamento script — l'ordine tra i due
-// file è indifferente.
+// Match automatico tra amici e relativo badge.
 
-
-        // ── MATCH AUTOMATICO TRA AMICI ────────────────────────────────────────────
-        // Due funzioni "security definer" sul database confrontano le tue
-        // carte con quelle di TUTTI gli altri senza esporre le liste intere
-        // altrui — restituiscono solo i match trovati (vedi
-        // match_e_immagini.sql per i dettagli).
-
-        // Letti da ui/phone.ui.js (widget Home "Match trovati", sbloccato
-        // 2026-08-27) — scritti SOLO da aggiornaBadgeMatch() qui sotto, mai
-        // interrogati direttamente dal widget: una query in meno ogni 15s,
-        // scelta esplicita di Claudio pensando alla scalabilità con più
-        // utenti nel gruppo.
-        let _numNuoviMatchScambio = 0;
+let _numNuoviMatchScambio = 0;
         let _numNuoviMatchWishlist = 0;
-        let _matchLetturaFallita = false; // (2026-10-14) le due RPC dei match hanno dato errore: la tessera mostra "—", non "Nessuna novità"
+        let _matchLetturaFallita = false;
 
-        // Sistema "letto/non letto": ogni match ha una chiave stabile
-        // (coppia di id che non cambia tra un controllo e l'altro) —
-        // salviamo su localStorage quali abbiamo già visto, così il
-        // pallino sul menu sparisce dopo aver aperto la tab, e ricompare
-        // solo per corrispondenze DAVVERO nuove.
-        // Fase 6, Step 3 (2026-09-13): chiave stabile anche per i match
-        // sealed (sql/52) — id diversi ma stesso concetto. 'm.categoria'
-        // distingue le due forme (aggiunta al merge in caricaMatch, non
-        // restituita dalla RPC).
         function _chiaveMatch(m, tipo) {
             if (m.categoria === 'sealed') {
                 return tipo === 'scambio' ? `s_${m.mio_prodotto_id}_${m.altra_wishlist_sealed_id}` : `s_${m.mia_wishlist_sealed_id}_${m.altro_prodotto_id}`;
@@ -61,37 +21,8 @@
             prefMatchVistiSet(visti);
         }
 
-
-        // [SEZIONI SPOSTATE in ui/widget-prezzi.ui.js — STEP 16 ristrutturazione file widget, 2026-09-11. Vedi Roadmap_Ristrutturazione_Widget_Home_2026-09-11.md]
-
-
-        // ── ANTI-RIPETIZIONE DELLE NOTIFICHE (2026-09-01) ────────────────────────
-        // Solo in memoria, per-scheda: si azzera ad ogni ricaricamento della
-        // pagina, esattamente come _daFareUltimoStato e
-        // _contatoriNotifichePrecedenti in ui/phone.ui.js (stesso identico
-        // pattern già usato nel progetto per non ripetere un avviso). NON è
-        // il sistema "letto/non letto" del badge, che vive su localStorage
-        // (prefMatchVistiGet) ed è una cosa diversa: quello dice "l'utente ha
-        // aperto la tab", questo dice "l'avviso è già comparso a schermo".
-        //
-        // Conseguenza voluta: dopo un F5, se ci sono ancora match o obiettivi
-        // non visti, l'avviso ricompare una volta sola. Se preferisci che non
-        // ricompaia MAI più dopo la prima volta, va salvato su localStorage
-        // con una coppia prefNotificheGiaViste Get/Set in
-        // data/preferences.repository.js — scelta rimandata a te, questa
-        // versione non tocca nessun altro file.
         const _giaNotificati = new Set();
 
-        // Manda a CSBar un avviso per ogni elemento mai notificato prima in
-        // questa sessione. chiaveDi() deve restituire una chiave stabile tra
-        // un giro di polling e l'altro (per i match è la stessa
-        // _chiaveMatch del badge), avvisoDi() la coppia [tipo, extra] da
-        // passare a CSBar.avvisa().
-        // (Q6 quality of life, 2026-10-12) riepilogoDi(nuovi): con 3 o più
-        // elementi nuovi nello stesso giro (tipico all'avvio, dopo giorni senza
-        // aprire il sito) parte UN solo avviso riassuntivo invece di uno per
-        // elemento: prima ognuno ridisegnava l'elenco della tendina, salvava,
-        // mostrava il suo banner e, se attive, la sua notifica di sistema.
         const _SOGLIA_RIEPILOGO_AVVISI = 3;
         function _notificaUnaVolta(elementi, chiaveDi, avvisoDi, riepilogoDi) {
             const nuovi = [];
@@ -113,30 +44,12 @@
             });
         }
 
-        // "Marco, Luca e altri 3" (nomi senza doppioni, al massimo due per esteso).
         function _elencoNomiAvviso(nomi) {
             const unici = [...new Set((nomi || []).filter(Boolean))];
             if (unici.length <= 2) return unici.join(' e ');
             return unici.slice(0, 2).join(', ') + ` e ${unici.length - 2 === 1 ? 'un altro' : 'altri ' + (unici.length - 2)}`;
         }
 
-        // [SEZIONI SPOSTATE in ui/widget-prezzi.ui.js — STEP 16 ristrutturazione file widget, 2026-09-11. Vedi Roadmap_Ristrutturazione_Widget_Home_2026-09-11.md]
-
-
-        // Controlla i match SENZA aprire nessuna tab — usata all'avvio per
-        // sapere subito se mostrare i pallini sul menu, senza dover
-        // aspettare che l'utente clicchi su Scambio o Wishlist.
-        // ── CARTE CON PROBLEMI ─────────────────────────────────────────────────────
-        // Righe di coda_carte finite in stato 'errore' (l'estensione non è
-        // riuscita a trovarle su Cardmarket) — prima l'errore restava
-        // scritto nel database ma nessuno lo vedeva mai.
-        // FIX (sessione dedicata "correzione manuale per-utente"): legge ora
-        // da 'correzioni_manuali_carte' (owner_id = vero proprietario
-        // originale, spostata lì dal worker autonomo dell'estensione dopo 3
-        // tentativi falliti) invece che da 'coda_carte'/stato='errore' — la
-        // RLS owner_id=auth.uid() di questa nuova tabella garantisce comunque
-        // che ognuno veda SOLO le proprie, da qualsiasi dispositivo, esattamente
-        // come prima.
         async function aggiornaBadgeMatch() {
             const userId = await authGetUserId();
             if (!userId) return;
@@ -145,23 +58,12 @@
                 trovaMatch('trova_match_scambio_wishlist', userId),
                 trovaMatch('trova_match_wishlist_scambio', userId),
             ]);
-            // (2026-10-14) Lettura fallita: si tengono i numeri di prima (prima un
-            // errore li azzerava come se non ci fossero match) e la tessera lo dice.
             _matchLetturaFallita = !!(errMatchScambio || errMatchWishlist);
             if (errMatchScambio && errMatchWishlist) {
                 console.error('aggiornaBadgeMatch:', errMatchScambio.message, '|', errMatchWishlist.message);
                 return;
             }
 
-            // Traguardi #46-55 "Match" (Fase 2, 2026-09-01): registra le
-            // chiavi di TUTTI i match attualmente trovati — non solo quelli
-            // "non visti" del badge locale qui sotto, sono due concetti
-            // diversi ("visto" è per-dispositivo/localStorage; il traguardo
-            // è cumulativo per-utente sul DB, dedup lato server). Agganciato
-            // qui e non in ui/phone.ui.js:renderPaginaMatch() perché questa
-            // funzione gira SEMPRE all'avvio (vedi commento sopra), mentre
-            // quella pagina solo se l'utente la apre manualmente — copertura
-            // più ampia, un solo punto invece di due.
             (async () => {
                 try {
                     const chiavi = [
@@ -177,38 +79,8 @@
             const nuoviWishlist = (dataWishlist || []).filter(m => !visti.has(_chiaveMatch(m, 'wishlist')));
             const { count: alertPrezzoNonVisti, nonVistiCarte: carteAlertPrezzo } = _contaAlertPrezzoNonVisti();
 
-            // Notifiche di sistema (2026-09-01): riuso ESATTAMENTE i "non
-            // visti" del badge (stesso concetto — non i match cumulativi
-            // registrati sopra per il traguardo, che sono un'altra cosa).
-            // Un avviso per elemento, raggruppati per tipo (group) così più
-            // notifiche ravvicinate si accorpano invece di spammare.
-            //
-            // FIX (2026-09-01), due problemi corretti insieme:
-            //
-            // 1) RIPETIZIONE OGNI 60 SECONDI. aggiornaBadgeMatch() gira nel
-            //    ciclo di polling lento (_pollingWidgetIntervalLento in
-            //    ui/phone.ui.js), ma "visto" viene segnato SOLO quando
-            //    l'utente apre davvero la tab (_segnaMatchVisti /
-            //    _segnaAlertPrezzoVisti, chiamate da caricaMatch). Finché
-            //    non la apre, gli stessi elementi restavano "non visti" e
-            //    l'avviso ripartiva ad ogni giro: il raggruppamento di
-            //    statusbar.js non lo impediva, perché su gruppo già presente
-            //    richiama comunque enqueue() e quindi rimostra il popup.
-            //    _giaNotificati (in memoria, vedi sopra) fa notificare ogni
-            //    elemento UNA volta sola per sessione. Il badge numerico
-            //    resta invariato: continua a contare tutti i non visti, non
-            //    solo quelli appena notificati.
-            //
-            // 2) NOME CARTA "undefined". Le righe di carteReali usano il
-            //    campo 'name' (il rename da 'nome' del database avviene in
-            //    caricaCarteReali, ui/cards.ui.js) — 'c.nome' era sempre
-            //    undefined e la notifica diceva "undefined ha raggiunto il
-            //    tuo prezzo obiettivo".
-            //
-            // Email: mostrato solo il nome prima della chiocciola, come già
-            // fa tutto il resto del sito (renderPaginaMatch, caricaMatch).
             if (typeof CSBar !== 'undefined') {
-                const _nomeUtenteMatch = (nick) => (nick || '').trim() || 'qualcuno del gruppo'; // sql/84: nickname, mai l'email
+                const _nomeUtenteMatch = (nick) => (nick || '').trim() || 'qualcuno del gruppo';
                 _notificaUnaVolta(nuoviScambio, m => _chiaveMatch(m, 'scambio'),
                     m => ['match-trovato', { text: `Hai una carta che interessa a ${_nomeUtenteMatch(m.altro_nickname)}.` }],
                     nuovi => ['match-trovato', { text: `${nuovi.length} tue carte interessano a ${_elencoNomiAvviso(nuovi.map(m => _nomeUtenteMatch(m.altro_nickname)))}.` }]);
@@ -224,12 +96,8 @@
             _numNuoviMatchWishlist = nuoviWishlist.length;
 
             _aggiornaPallinoMenu('scambio', nuoviScambio.length);
-            // Il pallino Wishlist conta ENTRAMBE le cose: match trovati +
-            // carte scese sotto il prezzo obiettivo — un solo numero, non
-            // due pallini diversi a confondere.
             _aggiornaPallinoMenu('wishlist', nuoviWishlist.length + alertPrezzoNonVisti);
         }
-
 
         function _aggiornaPallinoMenu(tabId, conteggio) {
             document.querySelectorAll(`[data-badge-tab="${tabId}"]`).forEach(el => {
@@ -238,7 +106,6 @@
             });
         }
 
-
         async function caricaMatch(tabId) {
             const userId = await authGetUserId();
             const container = document.getElementById('pannelloMatch');
@@ -246,12 +113,6 @@
 
             container.innerHTML = '<div class="card-panel" style="padding:1rem; text-align:center; color:var(--text-muted); font-size:0.85rem;"><i class="fa-solid fa-spinner fa-spin"></i> Cerco corrispondenze...</div>';
 
-            // Fase 6, Step 3 (2026-09-13): carte E sealed insieme, stesso
-            // pannello — le due coppie di RPC (sql/52) restituiscono le
-            // STESSE colonne di visualizzazione (mio_nome/mio_prezzo/
-            // altro_email/ecc.), cambiano solo i nomi delle colonne id
-            // (mia_carta_id vs mio_prodotto_id, ecc.) — gestiti da
-            // _chiaveMatch/_idOggettoMatch via m.categoria.
             const funzioneCarte = tabId === 'scambio' ? 'trova_match_scambio_wishlist' : 'trova_match_wishlist_scambio';
             const funzioneSealed = tabId === 'scambio' ? 'trova_match_scambio_wishlist_sealed' : 'trova_match_wishlist_scambio_sealed';
             const [{ data: dataCarte, error: errCarte }, { data: dataSealed, error: errSealed }] = await Promise.all([
@@ -263,10 +124,6 @@
                 container.innerHTML = `<div class="card-panel" style="padding:1rem; color:var(--danger); font-size:0.85rem;">Errore nella ricerca match: ${errCarte.message}</div>`;
                 return;
             }
-            // Un errore su un solo lato (es. sealed) non blocca l'altro —
-            // meglio mostrare i match carte che avere un pannello vuoto per
-            // un problema isolato. Segnalato in console, non con un alert
-            // invadente per un dato secondario.
             if (errCarte) console.error('Errore match carte:', errCarte.message);
             if (errSealed) console.error('Errore match sealed:', errSealed.message);
 
@@ -282,29 +139,16 @@
                 return;
             }
 
-            // Aprire questa tab equivale ad "aver visto" tutti i match
-            // mostrati qui — li segniamo visti e azzeriamo il pallino.
-            // Per Wishlist, segniamo visti anche gli avvisi prezzo (stesso
-            // pallino, mostra la somma di entrambi).
             _segnaMatchVisti(data.map(m => _chiaveMatch(m, tabId)));
             if (tabId === 'wishlist') _segnaAlertPrezzoVisti(_contaAlertPrezzoNonVisti().chiavi);
             _aggiornaPallinoMenu(tabId, 0);
 
             const righe = data.map(m => {
                 const persona = escapeHtml((m.altro_nickname || '').trim() || 'qualcuno del gruppo');
-                // Fase 6, Step 3: bottone "Richiedi" SOLO quando l'oggetto è
-                // di qualcun altro (tab 'wishlist' — la mia wishlist ha
-                // trovato una carta/prodotto altrui in Scambio). Sulla tab
-                // 'scambio' l'oggetto è MIO: nulla da richiedere, è l'altra
-                // persona che eventualmente richiederà a me.
                 let bottone = '';
                 if (tabId === 'wishlist') {
                     const oggettoId = m.categoria === 'sealed' ? m.altro_prodotto_id : m.altra_carta_id;
                     const tipoRichiesta = m.categoria === 'sealed' ? 'sealed' : 'carta';
-                    // escapeJsAttr (audit 2026-09-25, M2): nome oggetto e nome
-                    // dell'ALTRO utente dentro onclick — prima era escapato
-                    // solo l'apostrofo. personaAttr parte dal nome grezzo
-                    // (non da 'persona', già HTML-escapato per la stampa).
                     const nomeAttr = escapeJsAttr(m.mio_nome || '');
                     const personaAttr = escapeJsAttr((m.altro_nickname || '').trim() || 'qualcuno del gruppo');
                     bottone = `<button class="btn-secondary" style="padding:0.35rem 0.7rem; font-size:0.78rem; white-space:nowrap;"
@@ -333,33 +177,8 @@
             `;
         }
 
+        let _matchRichiestaPendente = null;
 
-        // ═══════════════════════════════════════════════════════════════════
-        // FASE 6, STEP 3 (2026-09-13) — "RICHIEDI" PRECOMPILATO DAL MATCH
-        // ═══════════════════════════════════════════════════════════════════
-        // Su richiesta esplicita di Claudio: NIENTE invio automatico dal
-        // match — apre un modale precompilato (proprietario/oggetto già
-        // impostati dal match, quantità di default 1 modificabile), l'invio
-        // vero parte solo dopo conferma manuale. Riusa invia_richiesta_
-        // scambio (Fase 4) via inviaRichiestaScambio() — nessuna RPC nuova.
-        //
-        // RESTYLE BINDEX FASE 3b (2026-10-01, tavola "Richiedi a …"): il
-        // modale ora accetta PIÙ oggetti della stessa persona e manda UNA
-        // sola richiesta (invia_richiesta_scambio riceve già p_righe con
-        // più righe, anche carta+sealed — verificato sul DB reale). Ogni
-        // oggetto ha un selettore quantità (minimo 1: il massimo lo
-        // controlla il server, che rifiuta quantità oltre quelle offerte e
-        // in quel caso annulla l'intera richiesta) e si vede il totale.
-        // I prezzi restano fissati al momento dell'invio (prezzo_congelato).
-        // Chiamata da ui/widget-match.ui.js (_matchRichiediUna /
-        // _matchRichiediSelezionate); al termine chiama
-        // _matchRichiestaInviata() lì per togliere le righe dalla selezione.
-        let _matchRichiestaPendente = null; // { ownerId, nomeAltro, voci:[{chiave,tipo,oggettoId,nome,code,img,prezzo,qty}] }
-
-        // Ponte per il pannello Match delle schede Scambio/Wishlist (caricaMatch,
-        // sopra): la FASE 3b (PR #6) aveva tolto apriRichiediMatch ma il bottone
-        // "Richiedi" di quel pannello la chiama ancora → ReferenceError.
-        // Stessa firma di prima, apre il modale nuovo con UNA voce.
         function apriRichiediMatch(ownerId, oggettoId, tipo, nomeOggetto, nomeAltro, prezzo) {
             apriRichiediMatchMulti(ownerId, nomeAltro, [{
                 chiave: `pannello_${oggettoId}`, tipo, oggettoId,

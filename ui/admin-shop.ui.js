@@ -1,9 +1,4 @@
-// ── ui/admin-shop.ui.js ──────────────────────────────────────────────────
-// RESTYLE BINDEX FASE 9 (sql/91): sezione "Shop" dell'admin (tavola
-// PC-adm-shop). Elenco articoli con stato, venduti e polvere spesa; pannello
-// laterale per creare/modificare (immagine, dati, stato, limite per utente,
-// regalabile solo per le bustine) e "Ritira dallo Shop" (rimborsa chi lo
-// possiede). Tutte le chiamate passano da data/shop.repository.js.
+// Admin, Shop: articoli, stati, vendite.
 
 const ADM_SHOP_CATEGORIE = {
     sfere: 'Skin sfere', scaffali: 'Skin scaffali', tema: 'Tema sito', cornici: 'Cornici foto',

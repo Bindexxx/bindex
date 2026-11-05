@@ -1,24 +1,4 @@
-// ── sw.js — service worker di Bindex (V7, 2026-10-12) ───────────────────
-// Rende il sito installabile sul telefono e lo apre più in fretta: i file
-// del sito restano in cache sul dispositivo. Registrato da index.html.
-//
-// REGOLE (volutamente prudenti):
-//  - Tocca SOLO richieste GET verso il sito stesso. Supabase (dati, foto,
-//    accesso), Google Fonts e immagini esterne passano sempre dalla rete,
-//    senza mai finire in cache.
-//  - Pagine (.html): prima la rete, così si vede sempre l'ultima versione;
-//    la copia in cache serve solo senza connessione.
-//  - File con ?v=… (versione messa in automatico alla pubblicazione da
-//    tools/versiona_file.py): non cambiano mai → prima la cache.
-//  - Altri file del sito: dalla cache e aggiornati in sottofondo.
-//  - releases/ (aggiornamento dell'estensione) e latest-version.txt: mai in cache.
-//  - Se la versione qui sotto NON è stata sostituita (sito pubblicato senza la
-//    GitHub Action), il service worker non mette in cache nulla: passa tutto
-//    alla rete come se non ci fosse.
-//
-// INTERRUTTORE DI EMERGENZA: se mai servisse spegnerlo su tutti i dispositivi,
-// sostituire QUESTO file con il contenuto di tools/sw-spegni.js e pubblicare.
-// Alla visita successiva ogni dispositivo lo disinstalla e svuota la cache.
+// Service worker: sito installabile e file in cache, aggiornati a ogni pubblicazione.
 
 const VERSIONE = '__VERSIONE_SITO__';
 const ATTIVO = !VERSIONE.startsWith('__');
@@ -27,16 +7,14 @@ const MAI_IN_CACHE = [/\/releases\//, /latest-version\.txt$/, /\/sw\.js$/];
 
 self.addEventListener('install', (evento) => {
     if (!ATTIVO) return;
-    // La pagina principale subito, per poter aprire il sito anche offline.
     evento.waitUntil(
         caches.open(CACHE)
             .then(c => c.add(new Request('index.html', { cache: 'no-cache' })))
-            .catch(() => { /* senza rete: si riempirà alla prima visita */ })
+            .catch(() => {   })
     );
 });
 
 self.addEventListener('activate', (evento) => {
-    // Via le cache delle versioni precedenti.
     evento.waitUntil(
         caches.keys().then(nomi => Promise.all(
             nomi.filter(n => n.startsWith('bindex-') && n !== CACHE).map(n => caches.delete(n))
@@ -75,7 +53,7 @@ self.addEventListener('fetch', (evento) => {
             return risposta;
         });
         if (inCache) {
-            dallaRete.catch(() => { /* offline: resta la copia in cache */ });
+            dallaRete.catch(() => {   });
             return inCache;
         }
         return dallaRete;

@@ -1,20 +1,6 @@
-// ── ui/codici.ui.js ──────────────────────────────────────────────────────
-// Impostazioni → Codici (2026-10-14): campo per riscattare un codice ed elenco
-// dei codici già usati. Il controllo vero (codice valido, attivo, non scaduto,
-// non già usato, limite tentativi) e l'accredito delle ricompense li fa il
-// database in riscatta_codice (sql/102). Qui solo input, messaggi ed elenco.
-//
-// Finché sql/102 non è eseguito: "I codici non sono ancora attivi" e niente
-// elenco (la sezione resta visibile, come richiesto).
-//
-// Si aggiorna al clic su "Codici" (PC, _impostazioniAlMostrare) e
-// all'apertura della voce (telefono).
-//
-// Dipende da: data/codici.repository.js, escapeHtml (utils/comuni.js);
-// facoltativi: polvereSaldoLeggi (data/bustina.repository.js), CSBar
-// (statusbar.js), _widgetPolvereSaldo (ui/widget-polvere.ui.js).
+// Impostazioni → Codici: riscatto ed elenco dei codici usati.
 
-let _codiciInCorso = null;      // lettura dell'elenco in corso
+let _codiciInCorso = null;
 let _codiciRiscattoInCorso = false;
 
 const _CODICI_NOMI = {
@@ -24,7 +10,6 @@ const _CODICI_NOMI = {
     skip_missione: ['salta missione', 'salta missione'],
 };
 
-// Il database non ha (ancora) la funzione o la tabella: sql/102 non eseguito.
 function _codiciNonAttivi(error) {
     const codice = String(error && error.code || '');
     const testo = String(error && error.message || '');
@@ -83,15 +68,14 @@ async function codiciRiscattaDaCampo() {
     }
 }
 
-// Saldo Polvere nella barra in alto e nella tessera, se il codice ne ha data.
 function _codiciAggiornaPolvere(ricompense) {
     if (!Array.isArray(ricompense) || !ricompense.some(r => r && r.tipo === 'polvere')) return;
     if (typeof _widgetPolvereSaldo !== 'undefined' && _widgetPolvereSaldo) _widgetPolvereSaldo.quando = 0;
     if (typeof polvereSaldoLeggi !== 'function') return;
     polvereSaldoLeggi().then(({ data, error }) => {
         if (error || typeof CSBar === 'undefined') return;
-        try { CSBar.setCurrency({ value: Number(data) || 0, glyph: '✧', label: 'Polvere' }); } catch (_) { /* niente */ }
-    }).catch(() => { /* niente: il saldo si aggiorna al giro successivo */ });
+        try { CSBar.setCurrency({ value: Number(data) || 0, glyph: '✧', label: 'Polvere' }); } catch (_) {   }
+    }).catch(() => {   });
 }
 
 function codiciAggiorna() {

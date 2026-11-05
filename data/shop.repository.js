@@ -1,13 +1,5 @@
-// ── data/shop.repository.js ──────────────────────────────────────────────
-// RESTYLE BINDEX FASE 9 (sql/91): Shop della Polvere. Tabelle shop_articoli,
-// shop_acquisti, shop_possessi; RPC shop_compra / shop_attiva /
-// shop_destinatari_regalo / shop_admin_salva / shop_admin_ritira; bucket
-// pubblico 'shop-articoli'. Movimenti della polvere da inventario_ricompense
-// (la RLS limita già alle righe dell'utente loggato).
-//
-// Caricato sia da index.html sia da admin.html. Dipende da: supabaseClient.
+// Shop della Polvere (sql/91): chiamate a Supabase.
 
-// Articoli visibili (non in bozza; l'admin vede anche le bozze).
 async function shopArticoliLeggi() {
     return supabaseClient.from('shop_articoli')
         .select('id, chiave, nome, categoria, descrizione, prezzo, limite_utente, regalabile, stato, in_vendita_dal, fino_al, immagine_path, stile, ordine, creato_il')
@@ -20,8 +12,6 @@ async function shopPossessiLeggi(userId) {
         .eq('owner_id', userId);
 }
 
-// I miei acquisti (anche i regali fatti e ricevuti): per i Movimenti e il
-// limite per utente.
 async function shopAcquistiMieiLeggi() {
     return supabaseClient.from('shop_acquisti')
         .select('id, articolo_id, compratore_id, destinatario_id, prezzo, rimborsato_il, creato_il')
@@ -45,7 +35,6 @@ function shopImmagineUrl(path) {
     return supabaseClient.storage.from('shop-articoli').getPublicUrl(path).data.publicUrl;
 }
 
-// Movimenti di polvere (ultimi 400), più recenti prima.
 async function polvereMovimentiLeggi() {
     return supabaseClient.from('inventario_ricompense')
         .select('id, tipo, riferimento_id, quantita, ottenuto_il')
@@ -53,7 +42,6 @@ async function polvereMovimentiLeggi() {
         .order('ottenuto_il', { ascending: false }).limit(400);
 }
 
-// Altri premi (bustine, stampini, salta missione): righe per sommarle.
 async function ricompenseAltreLeggi() {
     return supabaseClient.from('inventario_ricompense')
         .select('tipo, riferimento_id, quantita')
@@ -61,7 +49,6 @@ async function ricompenseAltreLeggi() {
         .limit(2000);
 }
 
-// ── ADMIN ───────────────────────────────────────────────────────────────
 async function shopAdminAcquistiLeggi() {
     return supabaseClient.from('shop_acquisti')
         .select('articolo_id, prezzo, rimborsato_il')

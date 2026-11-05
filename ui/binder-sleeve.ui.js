@@ -1,29 +1,5 @@
-// ═══════════════════════════════════════════════════════════════════════
-// BINDER-SLEEVE.UI.JS — editor sleeve (retro carta) per binder + galleria
-// sfondi predefiniti condivisa — CardSync Pro
-// ═══════════════════════════════════════════════════════════════════════
-// STEP separato dal piano "riduzione accoppiamento" concordato con Claudio
-// il 2026-09-11 (secondo giro di taglio). Estratto da
-// ui/binder-design.ui.js. NESSUNA riscrittura del codice esistente: solo
-// spostamento, zero cambi di comportamento per l'utente finale.
-//
-// Contiene: caricaSleeveBinderAttivoStato, gestisciUploadSleeveBinderAttivo,
-// salvaPosizioniSleeveBinderAttivo, ripristinaPosizioniSleeveBinderAttivoDefault,
-// toggleGalleriaDefaultSleeveBinderAttivo, selezionaDefaultSleeveBinderAttivo,
-// _caricaGalleriaDefault (helper condiviso — usato anche dalla galleria
-// copertina in ui/binder-design.ui.js, cross-file).
-//
-// Cross-file: caricaDesignBinderAttivo() in ui/binder-design.ui.js chiama
-// caricaSleeveBinderAttivoStato() qui sotto. Nessuna istruzione qui gira a
-// tempo di caricamento script — l'ordine tra i tre file (binder.ui.js,
-// binder-design.ui.js, binder-sleeve.ui.js) è indifferente.
-// ───────────────────────────────────────────────────────────────────────
+// Binder: retro carta (sleeve) e sfondi predefiniti.
 
-// ── Sleeve (retro carta) — stesso editor drag/resize di sempre, i campi
-// pokemon/condition/variazione/price sono UI pura (nessuna chiamata
-// Supabase), portati invariati. Solo caricamento/salvataggio diventano
-// per-binder. _cardBackFieldState resta condiviso (un solo editor alla
-// volta può essere aperto, quello del binder corrente). ─────────────────
 function _convertiImmagineCardBack(file) {
     return new Promise((resolve, reject) => {
         const url = URL.createObjectURL(file);
@@ -81,25 +57,6 @@ function _cardBackClampIntoStage(fieldKey) {
     applyCardBackFieldState(fieldKey);
 }
 
-// AGGIORNATO 2026-09-18 (Claudio: "non voglio scrollare... deve scalare in
-// base alle dimensioni della cornice per rimanerci all'interno") — prima
-// la scala dipendeva SOLO dalla larghezza disponibile (stageWrap.clientWidth
-// / CARD_BACK_W). Su un'immagine ritratto (900×1260) dentro un modale più
-// largo che alto, questo poteva produrre un canvas più alto dello spazio
-// verticale reale rimasto sotto di lui — da cui lo scroll. Ora si calcola
-// ANCHE la scala massima che l'altezza vera consente (letta dal DOM, mai
-// un valore indovinato — stesso principio già usato per .container/il
-// libro binder in questa sessione) e si usa la più PICCOLA delle due: il
-// canvas resta sempre dentro lo spazio visibile, sia in larghezza sia in
-// altezza.
-//
-// IMPORTANTE: la larghezza disponibile si legge da stageWrap.parentElement
-// (il contenitore #cardBackEditorWrap, la cui larghezza è fissata da CSS/
-// dal layout, MAI toccata da questa funzione), non da stageWrap.clientWidth
-// stesso — perché ora stageWrap.style.width viene impostato qui sotto in
-// px: leggerlo per calcolare la scala successiva creerebbe un ciclo che si
-// restringe (ogni resize partirebbe dalla larghezza già ridotta dal giro
-// precedente invece che da quella vera disponibile).
 function _cardBackRescale() {
     const stageWrap = document.getElementById('cardBackStageWrap');
     const stage = document.getElementById('cardBackStage');
@@ -109,12 +66,12 @@ function _cardBackRescale() {
     if (!contenitoreLarghezza) return;
     const scaleW = contenitoreLarghezza / CARD_BACK_W;
 
-    let scaleH = scaleW; // fallback: se non riesco a misurare l'altezza vera, mi comporto come prima (solo larghezza)
+    let scaleH = scaleW;
     const modalContent = stageWrap.closest('.modal-content');
     if (modalContent) {
         const rectContent = modalContent.getBoundingClientRect();
         const rectWrap = stageWrap.getBoundingClientRect();
-        const RISERVA_SOTTO_CANVAS_PX = 90; // bottoni "Salva posizioni"/"Ripristina", sotto il canvas nella stessa colonna
+        const RISERVA_SOTTO_CANVAS_PX = 90;
         const MARGINE_FONDO_PX = 16;
         const disponibileVerticale = rectContent.bottom - rectWrap.top - RISERVA_SOTTO_CANVAS_PX - MARGINE_FONDO_PX;
         if (disponibileVerticale > 0) scaleH = disponibileVerticale / CARD_BACK_H;
@@ -206,7 +163,7 @@ async function caricaSleeveBinderAttivoStato() {
     const statoEl = document.getElementById('cardBackStato');
     const previewEl = document.getElementById('cardBackPreview');
     const editorWrap = document.getElementById('cardBackEditorWrap');
-    if (!statoEl || !previewEl || !editorWrap) return; // pannello Design non ancora nel DOM
+    if (!statoEl || !previewEl || !editorWrap) return;
     document.getElementById('cardBackError').style.display = 'none';
 
     const userId = await authGetUserId();
@@ -279,9 +236,6 @@ async function gestisciUploadSleeveBinderAttivo(event) {
     const { error: errUpload } = await storageUploadUserMedia(path, pngBlob);
     if (errUpload) { errEl.textContent = '❌ Errore nel caricamento: ' + errUpload.message; errEl.style.display = 'block'; event.target.value = ''; return; }
 
-    // Ogni nuova sleeve riparte con le posizioni di default (stessa
-    // assunzione dichiarata nel vecchio file: un'immagine nuova ha
-    // probabilmente una composizione diversa dalla precedente).
     const { data: mediaRow, error: errUpsert } = await userMediaUpsertELeggi({
         user_id: userId,
         binder_id: _binderAttivo,
@@ -303,8 +257,6 @@ async function gestisciUploadSleeveBinderAttivo(event) {
     await caricaSleeveBinderAttivoStato();
 }
 
-// Salva SOLO il metadata (posizioni) sulla riga già esistente — non
-// richiede nuova approvazione admin (quella riguarda l'immagine).
 async function salvaPosizioniSleeveBinderAttivo() {
     const statoEl = document.getElementById('cardBackPosStato');
     if (!_cardBackFieldState || !_binderAttivo) return;
@@ -356,10 +308,6 @@ async function selezionaDefaultSleeveBinderAttivo(filename) {
     await caricaSleeveBinderAttivoStato();
 }
 
-// ── Galleria sfondi predefiniti (condivisa copertina/sleeve) ────────────
-// Bucket pubblico 'default-assets', due cartelle: card_back/ e
-// binder_cover/ — asset già curati, niente moderazione (status:'approved'
-// diretto). Invariata dal vecchio file.
 async function _caricaGalleriaDefault(prefix, gridElId, onSelect) {
     const gridEl = document.getElementById(gridElId);
     gridEl.innerHTML = '<span style="font-size:0.75rem; color:var(--text-muted);">Caricamento…</span>';
@@ -383,5 +331,3 @@ async function _caricaGalleriaDefault(prefix, gridElId, onSelect) {
         gridEl.appendChild(img);
     });
 }
-
-

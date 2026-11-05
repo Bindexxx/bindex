@@ -1,61 +1,19 @@
-// ═══════════════════════════════════════════════════════════════════════
-// SCAFFALI.UI.JS — pagina "Scaffali" (CardSync Pro)
-// ═══════════════════════════════════════════════════════════════════════
-// Fase 1.3, Step 5a (2026-09-12): gestione privata BASE. Ispirato a
-// ui/binder.ui.js ma più semplice di proposito — niente tipo='location'
-// auto-materializzato (Scaffali non ha un equivalente, sostituisce
-// location per i sealed, non la rispecchia), niente flipbook (Claudio:
-// "il flipbook non serve, faremo una visualizzazione a scaffali vera e
-// propria" — quella è un pezzo futuro a sé, questo file resta valido sotto
-// di essa). Griglia statica: click su un prodotto nella vista scaffale
-// per rimuoverlo, modale dedicata per aggiungerne.
-//
-// NON QUI (voluta, vedi piano 5a/5b/5c concordato con Claudio):
-//  - Copertina/sleeve personalizzabili (5b, come binder-design/binder-sleeve).
-//  - Link pubblico + pagina scaffali-pubblico.html dedicata (5c).
-//  - Visualizzazione "a scaffali vera e propria" (pezzo a sé, dopo 5b/5c).
-//
-// Punto di ingresso: widget Home dedicato (come Binders), MAI switchTab()
-// — 'scaffali' non è nella whitelist fissa delle 5 tab (intoccabile per
-// memoria di progetto), segue lo stesso schema di sealed/wishlist/location/
-// doppioni/set/bustina in apriDettaglioWidget() (mostra/nasconde
-// .view-section a mano). Vedi ui/paginainiziale-dettaglio.ui.js e
-// ui/widget-scaffali.ui.js (voce di catalogo + preview).
-//
-// Dipende da: data/scaffali.repository.js, data/sealed.repository.js
-// (sealedListMie, per la modale "aggiungi prodotti"), data/
-// moderation.repository.js (creaRichiestaPendente, per la rinomina —
-// SEMPRE moderata, stessa scelta dei Binder oggi, coerenza col precedente),
-// ui/auth.ui.js (authGetUserId), utils condivisi (escapeHtml).
-// ───────────────────────────────────────────────────────────────────────
+// Pagina Scaffali.
 
 let _scaffaliElenco = [];
 let _scaffaleAttivo = null;
-let _scaffaleAttivoProdottiIds = []; // prodotto_id assegnati allo scaffale aperto
-let _prodottiSealedCache = []; // tutti i prodotti sealed dell'utente, per la griglia+modale
+let _scaffaleAttivoProdottiIds = [];
+let _prodottiSealedCache = [];
 
-// Fase 3, Step 3 (2026-09-12) — Scaffale Scambio, mirror di
-// _binderScambioId/_quantitaOfferteScambio in state/binder.state.js. Qui
-// non in un file state/ a sé (coerente con come il resto dello stato di
-// questa pagina è già dichiarato direttamente in cima al file, non in
-// state/scaffali.state.js — mai creato in questa sessione).
 let _scaffaleScambioId = null;
-let _quantitaOfferteScambioSealed = {}; // prodottoId -> quantita_offerta
+let _quantitaOfferteScambioSealed = {};
 
-
-// ── Ingresso dal widget "Scaffali" ───────────────────────────────────────
-let _scaffaleDaAprire = null; // (Q4) id scelto nella ricerca globale, letto a fine caricamento
+let _scaffaleDaAprire = null;
 
 async function apriPaginaScaffali() {
     const userId = await authGetUserId();
     if (!userId) return;
 
-    // Fase 1.3, Step 5c (2026-09-12): 'scaffali' non passa da switchTab()
-    // (whitelist fissa di 5 tab, vedi header) quindi currentMode non viene
-    // mai impostato automaticamente — lo faccio qui a mano, serve al
-    // dispatcher di condivisione (_linkPubblicoCondivisione in
-    // ui/navigation-condivisione.ui.js) per sapere che il link da generare
-    // è quello di uno scaffale, non di un binder/scambio/wishlist.
     currentMode = 'scaffali';
 
     const [{ error: errVetrina }, { data: scambio, error: errScambio }] = await Promise.all([
@@ -77,10 +35,6 @@ async function apriPaginaScaffali() {
     _prodottiSealedCache = prodotti || [];
     _scaffaleAttivo = null;
 
-    // Fase 3, Step 3: precarica quantità offerte, servono al bottone "Offri
-    // in Scambio" nella modale modifica sealed (ui/widget-sealed.ui.js) —
-    // deve sapere se una carta è già offerta E con quale quantità PRIMA che
-    // l'utente apra lo Scaffale Scambio (che potrebbe non aprire mai).
     if (_scaffaleScambioId) {
         const { data: righeScambio, error: errRigheScambio } = await scaffaleProdottiQueryConQuantita(userId, _scaffaleScambioId);
         if (errRigheScambio) console.error('apriPaginaScaffali (quantità scambio):', errRigheScambio.message);
@@ -89,7 +43,6 @@ async function apriPaginaScaffali() {
     }
 
     await renderGrigliaScaffali();
-    // (Q4) Aperta dalla ricerca globale: direttamente sullo scaffale cercato.
     const daAprire = _scaffaleDaAprire;
     _scaffaleDaAprire = null;
     if (daAprire && _scaffaliElenco.some(sc => String(sc.id) === String(daAprire))) apriScaffaleDettaglio(daAprire);
@@ -98,12 +51,6 @@ async function apriPaginaScaffali() {
 
 function _scaEPC() { const s = document.getElementById('scaffali'); return !!s && s.clientWidth >= 780; }
 
-
-// ── Elenco degli scaffali ────────────────────────────────────────────────
-// RESTYLE BINDEX FASE 3f (2026-10-01, tavole "Scaffali"): una riga per
-// scaffale (icona, nome, "N prodotti · valore · stato", freccia), riepilogo
-// con quanti prodotti sono senza scaffale. Nessuna query nuova oltre alle
-// associazioni già lette (scaffaleProdottiTuttiUtente).
 function _scaValoreProdotto(p, qtaOverride) {
     const q = qtaOverride != null ? Number(qtaOverride) : (Number(p.qty) || 1);
     return (Number(p.prezzo) || 0) * q;
@@ -173,7 +120,6 @@ async function renderGrigliaScaffali() {
     }).join('');
 }
 
-
 async function creaNuovoScaffale() {
     const userId = await authGetUserId();
     if (!userId) return;
@@ -189,23 +135,17 @@ async function creaNuovoScaffale() {
     await renderGrigliaScaffali();
 }
 
-
-// ── Vista di dettaglio ───────────────────────────────────────────────────
-// RESTYLE FASE 3f: ripiano con i prodotti; "Modifica" mostra × e le frecce
-// per riordinare; il clic sul prodotto apre i DETTAGLI (prima lo toglieva
-// dallo scaffale). Ordini: "Come li metto io" (colonna scaffale_prodotti.
-// ordine), Nome, Tipo, Valore.
 let _scaEdit = false;
 let _scaOrd = 'mio';
-let _scaRighe = []; // [{ prodotto_id, ordine, aggiunta_il }] dello scaffale aperto
+let _scaRighe = [];
 
 async function apriScaffaleDettaglio(scaffaleId) {
     _scaffaleAttivo = scaffaleId;
     _scaEdit = false;
-    _scaOrd = prefFiltroPaginaScegli('scaffali', 'ordine', ['mio', 'nome', 'tipo', 'valore'], 'mio'); // (Q5)
+    _scaOrd = prefFiltroPaginaScegli('scaffali', 'ordine', ['mio', 'nome', 'tipo', 'valore'], 'mio');
 
     const elenco = document.getElementById('scaffaliElencoVista');
-    if (elenco) elenco.style.display = _scaEPC() ? '' : 'none'; // RESTYLE: su PC elenco e scaffale affiancati
+    if (elenco) elenco.style.display = _scaEPC() ? '' : 'none';
     document.querySelectorAll('#scaffaliContenitoriGrid .sc-riga').forEach(r => r.classList.toggle('sel', r.dataset.id === String(scaffaleId)));
     const wrapDettaglio = document.getElementById('scaffaleDettaglioWrap');
     if (wrapDettaglio) wrapDettaglio.style.display = 'block';
@@ -217,8 +157,6 @@ async function apriScaffaleDettaglio(scaffaleId) {
     const titoloEl = document.getElementById('scaffaleDettaglioTitolo');
     if (titoloEl) titoloEl.textContent = _scaNomeScaffale(scaffale);
 
-    // Vetrina e Scambio non si eliminano né si rinominano (fissi); Scambio è
-    // SEMPRE pubblico (forzato in scaffaleScambioGarantisci), nessun interruttore.
     const fisso = scaffale.tipo === 'vetrina' || eScambio;
     const btnElimina = document.getElementById('btnEliminaScaffaleAttivo');
     if (btnElimina) btnElimina.style.display = fisso ? 'none' : '';
@@ -231,8 +169,6 @@ async function apriScaffaleDettaglio(scaffaleId) {
     if (checkboxPub) checkboxPub.checked = eScambio || scaffale.stato_pubblicazione === 'pubblico';
     _aggiornaCondivisioneScaffaleWrap(scaffale);
 
-    // "Aggiungi o togli prodotti" non si applica a Scambio (serve una
-    // QUANTITÀ: si offre dalla scheda del prodotto, "Offri in Scambio").
     const btnAssegna = document.getElementById('btnApriModaleAssegnaProdotti');
     if (btnAssegna) btnAssegna.style.display = eScambio ? 'none' : '';
     const notaScambio = document.getElementById('scaffaleScambioNota');
@@ -288,18 +224,15 @@ function scaffaleToggleModifica() {
 
 function scaffaleImpostaOrdinamento(o) {
     _scaOrd = o;
-    prefFiltroPaginaSet('scaffali', 'ordine', o); // (Q5)
+    prefFiltroPaginaSet('scaffali', 'ordine', o);
     _scaAggiornaTesta();
     renderScaffaleContenuto();
 }
 
-
-// Mostra/nasconde il blocco "Condividi" — solo quando lo scaffale è pubblico.
 function _aggiornaCondivisioneScaffaleWrap(scaffale) {
     const wrap = document.getElementById('scaffaleCondivisioneWrap');
     if (wrap) wrap.style.display = (scaffale.stato_pubblicazione === 'pubblico' || scaffale.tipo === 'scambio') ? 'flex' : 'none';
 }
-
 
 function tornaAllaGrigliaScaffali() {
     _scaffaleAttivo = null;
@@ -308,9 +241,8 @@ function tornaAllaGrigliaScaffali() {
     if (wrapDettaglio) wrapDettaglio.style.display = 'none';
     const elenco = document.getElementById('scaffaliElencoVista');
     if (elenco) elenco.style.display = '';
-    renderGrigliaScaffali(); // conteggi e valori aggiornati dopo le modifiche
+    renderGrigliaScaffali();
 }
-
 
 async function _caricaProdottiScaffaleAttivo(scaffale) {
     const userId = await authGetUserId();
@@ -327,7 +259,6 @@ async function _caricaProdottiScaffaleAttivo(scaffale) {
     _scaffaleAttivoProdottiIds = (data || []).map(r => r.prodotto_id);
 }
 
-// Prodotti dello scaffale aperto nell'ordine scelto.
 function _scaProdottiOrdinati() {
     const scaffale = _scaffaliElenco.find(s => String(s.id) === String(_scaffaleAttivo));
     const eScambio = scaffale && scaffale.tipo === 'scambio';
@@ -367,8 +298,6 @@ function renderScaffaleContenuto() {
         const idAttr = escapeJsAttr(String(p.id));
         const nomeAttr = escapeHtml(p.nome || p.codice || '(senza nome)');
         const offerte = _quantitaOfferteScambioSealed[String(p.id)] ?? 0;
-        // Clic = dettagli del prodotto (scheda sealed); su Scambio il clic
-        // apre la quantità offerta, come prima.
         const onclick = eScambio ? `apriModaleQuantitaScambioSealed('${idAttr}')` : `scaffaleApriDettagliProdotto('${idAttr}')`;
         const src = _urlImmagineVisualizzabile(p.immagine, 200);
         const valore = _scaValoreProdotto(p, eScambio ? offerte : null);
@@ -389,9 +318,6 @@ function renderScaffaleContenuto() {
     }).join('') + '</div>';
 }
 
-
-// Dettagli del prodotto: usa la scheda sealed (modifica/dettaglio), dopo
-// essersi assicurati che l'elenco del widget Sealed sia caricato.
 async function scaffaleApriDettagliProdotto(id) {
     if (typeof prodottiSealedReali === 'undefined' || !prodottiSealedReali.some(p => String(p.id) === String(id))) {
         try { await caricaProdottiSealedReali(); } catch (e) { console.error('scaffaleApriDettagliProdotto:', e); }
@@ -399,9 +325,6 @@ async function scaffaleApriDettagliProdotto(id) {
     apriModificaSealed(id);
 }
 
-
-// Riordino "Come li metto io": scambia di posto col vicino e riscrive
-// l'ordine 1..N sulle righe dello scaffale.
 async function scaffaleSposta(prodottoId, delta) {
     if (!_scaffaleAttivo) return;
     const elenco = _scaProdottiOrdinati();
@@ -419,7 +342,6 @@ async function scaffaleSposta(prodottoId, delta) {
     if (error) { mostraAvviso('Errore nel salvare l\'ordine: ' + error.message); await _caricaProdottiScaffaleAttivo(_scaffaliElenco.find(s => String(s.id) === String(_scaffaleAttivo))); renderScaffaleContenuto(); }
 }
 
-
 async function rimuoviProdottoDaScaffaleAttivo(prodottoId) {
     if (!_scaffaleAttivo) return;
     const userId = await authGetUserId();
@@ -433,11 +355,6 @@ async function rimuoviProdottoDaScaffaleAttivo(prodottoId) {
     renderScaffaleContenuto();
 }
 
-
-// ── Modale "Aggiungi prodotti" — checkbox su TUTTI i prodotti sealed
-// dell'utente, spuntati quelli già nello scaffale aperto. Multi-scaffale
-// (sql/41: UNIQUE(owner_id,scaffale_id,prodotto_id)): un prodotto può
-// comparire spuntato in più scaffali contemporaneamente, nessun conflitto.
 function apriModaleAssegnaProdotti() {
     const modal = document.getElementById('scaffaleAssegnaProdottiModal');
     const lista = document.getElementById('scaffaleAssegnaProdottiLista');
@@ -460,17 +377,14 @@ function apriModaleAssegnaProdotti() {
     modal.style.display = 'flex';
 }
 
-
 async function chiudiModaleAssegnaProdotti() {
     const modal = document.getElementById('scaffaleAssegnaProdottiModal');
     if (modal) modal.style.display = 'none';
-    // riflette aggiunte/rimozioni fatte nella modale (righe e ordine da DB)
     const scaffale = _scaffaliElenco.find(s => String(s.id) === String(_scaffaleAttivo));
     if (scaffale) await _caricaProdottiScaffaleAttivo(scaffale);
     _scaAggiornaTesta();
     renderScaffaleContenuto();
 }
-
 
 async function _toggleAssegnazioneProdottoModale(prodottoId, spuntato) {
     if (!_scaffaleAttivo) return;
@@ -487,11 +401,6 @@ async function _toggleAssegnazioneProdottoModale(prodottoId, spuntato) {
     }
 }
 
-
-// ── Rinomina — SEMPRE moderata (coerenza col precedente Binder: lì è così
-// per QUALUNQUE tipo, non solo i pubblici, nonostante la prima risposta di
-// Claudio suggerisse "solo se pubblico" — verificato nel codice binder.ui.js
-// prima di scrivere, poi confermato da Claudio di seguire lo stesso schema).
 async function proponiRinominaScaffaleAttivo() {
     if (!_scaffaleAttivo) return;
     const scaffale = _scaffaliElenco.find(s => String(s.id) === String(_scaffaleAttivo));
@@ -507,7 +416,6 @@ async function proponiRinominaScaffaleAttivo() {
     mostraAvviso('Richiesta inviata — il nuovo nome sarà visibile dopo l\'approvazione di un admin.');
 }
 
-
 async function impostaPubblicazioneScaffaleAttivo(pubblico) {
     if (!_scaffaleAttivo) return;
     const scaffale = _scaffaliElenco.find(s => String(s.id) === String(_scaffaleAttivo));
@@ -518,7 +426,7 @@ async function impostaPubblicazioneScaffaleAttivo(pubblico) {
     if (error) {
         console.error('impostaPubblicazioneScaffaleAttivo:', error.message);
         const checkbox = document.getElementById('scaffalePubblicazioneCheckbox');
-        if (checkbox) checkbox.checked = !pubblico; // rollback visivo
+        if (checkbox) checkbox.checked = !pubblico;
         return;
     }
     scaffale.stato_pubblicazione = pubblico ? 'pubblico' : 'privato';
@@ -527,11 +435,10 @@ async function impostaPubblicazioneScaffaleAttivo(pubblico) {
     _scaAggiornaTesta();
 }
 
-
 async function eliminaScaffaleAttivo() {
     if (!_scaffaleAttivo) return;
     const scaffale = _scaffaliElenco.find(s => String(s.id) === String(_scaffaleAttivo));
-    if (!scaffale || scaffale.tipo === 'vetrina' || scaffale.tipo === 'scambio') return; // rete di sicurezza, il bottone è già nascosto per vetrina/scambio
+    if (!scaffale || scaffale.tipo === 'vetrina' || scaffale.tipo === 'scambio') return;
 
     if (!(await chiediConferma({ titolo: 'Eliminare lo scaffale?', testo: `"${scaffale.nome || ''}": i prodotti al suo interno NON vengono eliminati, solo l'associazione.`, conferma: 'Elimina', pericolo: true }))) return;
 
@@ -543,19 +450,8 @@ async function eliminaScaffaleAttivo() {
     tornaAllaGrigliaScaffali();
 }
 
-
-// ── Modale quantità offerta — Scaffale Scambio (Fase 3, Step 3, 2026-09-12)
-// Mirror ESATTO di apriModaleQuantitaScambio/confermaQuantitaScambio/
-// _applicaQuantitaScambio in ui/binder.ui.js, per prodotti sealed invece
-// che carte. Duplicazione intenzionale (Regola d'Oro #1) — dominio
-// diverso (scaffali vs binder), nessun rischio di toccare la logica carte
-// riusando/generalizzando queste funzioni.
 let _scambioSealedModaleProdottoId = null;
 
-// Wrapper chiamato dal bottone statico nella modale modifica sealed
-// (ui/widget-sealed.ui.js, _sealedInModifica) — legge il prodotto in
-// modifica al momento del click, dato che il bottone non viene rigenerato
-// per ogni prodotto.
 function apriScambioSealedDaModifica() {
     if (!_sealedInModifica) return;
     apriModaleQuantitaScambioSealed(_sealedInModifica.id);
@@ -598,10 +494,6 @@ async function rimuoviDaScambioSealed() {
     chiudiModaleQuantitaScambioSealed();
 }
 
-// Quantità 0: elimina la riga invece di scrivere 0 — coerente con "offerta
-// a 0 = non ancora messa in vendita" già usato lato RPC pubblica (sql/45b,
-// stesso principio applicato qui anche se la RPC pubblica scambio sealed
-// non è ancora stata scritta, vedi Step 4).
 async function _applicaQuantitaScambioSealed(prodottoId, quantita) {
     const userId = await authGetUserId();
     if (!userId || !_scaffaleScambioId) return;
@@ -617,20 +509,14 @@ async function _applicaQuantitaScambioSealed(prodottoId, quantita) {
     }
 
     _aggiornaBottoneScambioSealed(prodottoId);
-    // RESTYLE FASE 3g: se i dettagli Sealed sono aperti, si ridisegnano.
     if (typeof _sealedDettaglioId !== 'undefined' && _sealedDettaglioId && typeof _sealedRinfrescaDopoModifica === 'function') _sealedRinfrescaDopoModifica();
 
-    // Se lo Scaffale Scambio è aperto proprio ora, la cache locale
-    // (_scaffaleAttivoProdottiIds) è disallineata — stesso motivo di
-    // _applicaQuantitaScambio in ui/binder.ui.js.
     if (_scaffaleAttivo && String(_scaffaleAttivo) === String(_scaffaleScambioId)) {
         const scaffale = _scaffaliElenco.find(s => String(s.id) === String(_scaffaleAttivo));
         if (scaffale) { await _caricaProdottiScaffaleAttivo(scaffale); renderScaffaleContenuto(); }
     }
 }
 
-// Aggiorna il bottone "Offri in Scambio" nella modale modifica sealed
-// (ui/widget-sealed.ui.js), se presente nel DOM in questo momento.
 function _aggiornaBottoneScambioSealed(prodottoId) {
     const btn = document.getElementById('btnOffriScambioSealed');
     if (!btn || String(_sealedInModifica?.id) !== String(prodottoId)) return;

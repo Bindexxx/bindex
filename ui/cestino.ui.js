@@ -1,23 +1,8 @@
-// ── ui/cestino.ui.js ─────────────────────────────────────────────────────
-// Cestino (S8, 2026-10-12; sql/98) in Impostazioni → Account e dati: le carte
-// e i prodotti sealed eliminati negli ultimi 30 giorni, con "Ripristina" ed
-// "Elimina per sempre". Le righe le crea solo il database (trigger): qui si
-// leggono, si ripristinano (RPC ripristina_dal_cestino) o si tolgono.
-// Finché sql/98 non è eseguito la tabella non esiste: la card resta nascosta.
-//
-// Si aggiorna all'apertura delle Impostazioni (_impostazioniTornaHub), al
-// clic su "Account e dati" (PC) e all'apertura della voce (telefono).
-// Eliminazioni definitive: secondo tocco di conferma sul bottone stesso,
-// niente finestre del browser.
-//
-// Dipende da: data/cestino.repository.js, authGetUserId (data/auth.repository.js),
-// _urlImmagineVisualizzabile (utils/comuni.js); dopo un ripristino ricarica
-// con caricaCarteReali (ui/cards.ui.js) o caricaProdottiSealedReali
-// (ui/widget-sealed.ui.js).
+// Cestino (Impostazioni → Account e dati): ripristina o elimina per sempre.
 
 const CESTINO_GIORNI = 30;
 let _cestinoVoci = [];
-let _cestinoInCorso = null; // lettura in corso: aperture ravvicinate = una sola lettura
+let _cestinoInCorso = null;
 
 function cestinoAggiorna() {
     if (_cestinoInCorso) return _cestinoInCorso;
@@ -45,8 +30,6 @@ async function _cestinoCarica() {
     _cestinoAttivo = true;
     card.style.display = '';
     _cestinoMessaggio('', false);
-    // Oltre i 30 giorni la riga sparisce alla prossima eliminazione: qui
-    // non si mostra già più.
     const limite = Date.now() - CESTINO_GIORNI * 86400000;
     _cestinoVoci = (data || []).filter(v => {
         const t = new Date(v.eliminato_il).getTime();
@@ -55,7 +38,6 @@ async function _cestinoCarica() {
     _cestinoRender();
 }
 
-// Tabella non ancora creata (sql/98 non eseguito).
 function _cestinoTabellaAssente(error) {
     const codice = String(error && error.code || '');
     const testo = String(error && error.message || '');
@@ -172,7 +154,6 @@ function _cestinoRiga(v) {
     return riga;
 }
 
-// Primo tocco: il bottone chiede conferma per 4 secondi; secondo tocco: via.
 function _cestinoChiediConferma(bottone, testoConferma) {
     if (bottone.dataset.conferma === '1') { _cestinoAzzeraConferma(bottone); return true; }
     bottone._htmlOriginale = bottone.innerHTML;
@@ -191,8 +172,6 @@ function _cestinoAzzeraConferma(bottone) {
     bottone.classList.remove('imp-cestino-conferma');
 }
 
-// Rifiuti previsti dalla funzione del database (oggetto già presente o già
-// tolto dal cestino): si mostrano così come sono, senza errore in console.
 function _cestinoRifiutoPrevisto(error) {
     return /già nella collezione|non trovato nel cestino/i.test(String(error && error.message || ''));
 }
@@ -278,13 +257,7 @@ async function cestinoSvuotaChiedi() {
     _cestinoMessaggio('Cestino svuotato.', false);
 }
 
-
-// ── (Q3 quality of life, 2026-10-12) "ANNULLA" DOPO UN'ELIMINAZIONE ──────
-// Dopo aver eliminato carte o sealed compare un messaggio con "Annulla" per
-// 6 secondi: rimette gli oggetti dal cestino (stessa RPC del ripristino qui
-// sopra). Senza sql/98 il cestino non c'è: messaggio semplice, senza Annulla,
-// e la conferma dell'eliminazione dice che non si torna indietro.
-let _cestinoAttivo = null; // null = non ancora verificato in questa sessione
+let _cestinoAttivo = null;
 
 async function cestinoAttivo() {
     if (_cestinoAttivo !== null) return _cestinoAttivo;
@@ -292,19 +265,16 @@ async function cestinoAttivo() {
         const { error } = await cestinoPresente();
         if (!error) _cestinoAttivo = true;
         else if (_cestinoTabellaAssente(error)) _cestinoAttivo = false;
-    } catch (_) { /* rete assente: si riproverà la prossima volta */ }
+    } catch (_) {   }
     return _cestinoAttivo === true;
 }
 
-// Riga per la finestra di conferma dell'eliminazione.
 function cestinoTestoConferma(attivo) {
     return attivo
         ? 'Resta nel cestino per ' + CESTINO_GIORNI + ' giorni (Impostazioni → Account e dati).'
         : 'Questa azione non si può annullare.';
 }
 
-// Messaggio "eliminata" con Annulla. oggetti: [{ id, nome }]; dopo: funzione
-// che ridisegna la pagina dopo il ripristino (facoltativa).
 function cestinoOffriAnnulla(tabella, oggetti, testo, dopo) {
     const lista = (oggetti || []).filter(o => o && o.id != null);
     if (!lista.length || _cestinoAttivo === false) { avvisoBreve(testo, { tipo: 'ok' }); return; }
@@ -328,7 +298,6 @@ async function cestinoAnnullaEliminazione(tabella, oggetti, dopo) {
         mostraAvviso('❌ Non riesco ad annullare: se il cestino è attivo trovi tutto in Impostazioni → Account e dati.');
         return;
     }
-    // Una voce per oggetto: la più recente (arrivano già in quest'ordine).
     const daRipristinare = new Map();
     voci.forEach(v => { if (!daRipristinare.has(String(v.oggetto_id))) daRipristinare.set(String(v.oggetto_id), v.id); });
     let riusciti = 0;

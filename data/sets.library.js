@@ -1,17 +1,6 @@
-// ── data/sets.library.js ─────────────────────────────────────────────────
-// GENERATO AUTOMATICAMENTE da genera-libreria-set.html il 2026-08-31.
-// Non modificare a mano: rilancia lo strumento quando esce un'espansione.
-//
-// Fonte: TCGdex (api.tcgdex.net), lingua 'it'.
-//   base   = cardCount.official → il denominatore STAMPATO sulla carta
-//   totale = cardCount.total    → comprese le secret rare
-// L'avanzamento va calcolato su 'totale', mai su 'base': una carta
-// "ASC 123/217" appartiene a un set che ne ha 295.
-//
-// 182 espansioni (192 generate - 7 di Pokémon TCG Pocket, il gioco per
-// cellulare: TCGdex le include ma non sono carte fisiche — tolte a mano
-// il 2026-09-20 su richiesta di Claudio: A1, A1A, A2, A2A, A2B, A3, A4A).
-// Caricare PRIMA di ui/phone.ui.js in index.html.
+// GENERATO AUTOMATICAMENTE da genera-libreria-set.html: non modificare a mano, rilancia lo
+// strumento quando esce un'espansione.
+
 const CARDSYNC_SET_LIBRARY = {
     PBL: { nome: "Buio Pesto", base: 84, totale: 120 },
     CRI: { nome: "Caos Nascente", base: 86, totale: 122 },

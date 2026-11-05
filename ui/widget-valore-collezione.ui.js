@@ -1,58 +1,5 @@
-// ═══════════════════════════════════════════════════════════════════════
-// WIDGET-VALORE-COLLEZIONE.UI.JS — tessere + pagina "Valore collezione"
-// / "Variazione valore" (CardSync Pro)
-// ═══════════════════════════════════════════════════════════════════════
-// STEP 19 della ristrutturazione file widget home (vedi
-// Roadmap_Ristrutturazione_Widget_Home_2026-09-11.md). Estratto da
-// ui/phone.ui.js il 2026-09-11. NESSUNA riscrittura: solo spostamento di
-// codice, zero cambi di comportamento per l'utente finale.
-//
-// "Valore collezione" — CATEGORIA A: pagina propria (Le più preziose,
-// media, pezzi totali). "Variazione valore" — CATEGORIA C: nessuna pagina
-// propria, condividono lo stesso file perché concettualmente imparentati
-// (entrambi sul valore della collezione) e perché il secondo è piccolo.
-//
-// PUNTO APERTO §7.2 della roadmap — STESSA causa già trovata e confermata
-// dal vivo per "Contributi al gruppo" (STEP 6): 'variazione_valore' non ha
-// né 'azione' né 'tab' nel catalogo. Per lo stesso motivo già verificato
-// leggendo navigation.ui.js (switchTab attiva SEMPRE #visualizzazione
-// incondizionatamente, la sostituisce solo per le 5 tab fisse note — non
-// per 'variazione_valore'), il click su questa tessera apre Visualizzazione
-// come fallback silenzioso, non "nulla". Comportamento preesistente, non
-// introdotto da questa ristrutturazione, NON corretto qui senza
-// autorizzazione esplicita — stessa scelta che Claudio ha già fatto per
-// Contributi (placeholder "work in progress") potrebbe applicarsi anche
-// qui, ma NON l'ho applicata: aspetto conferma esplicita prima di
-// aggiungere qualunque comportamento nuovo, invece di presumere che valga
-// la stessa decisione.
-//
-// CONSOLIDAMENTO: il commento che introduceva la cache dello storico
-// valore (TTL_STORICO_VALORE_MS/_cacheStoricoValore/_storicoValoreConCache)
-// era condiviso con la cache di "Prezzi aggiornati" (già spostata in
-// widget-prezzi.ui.js allo STEP 16) — qui sotto ho scritto un commento
-// nuovo, mirato solo a questa cache, invece di portare quello vecchio
-// ormai per metà riferito a codice non più qui.
-//
-// COSA RESTA FUORI (non spostato qui, invariato):
-// - apriDettaglioWidget (ui/paginainiziale.ui.js) continua a chiamare
-//   renderPaginaValoreCollezione() per tabId === 'valore' — motore home,
-//   dispatch generico, non toccato in questo step.
-// - _ballCORPI.valore_collezione / _ballCORPI.variazione_valore (e
-//   ASPETTO/TITOLI_BREVI corrispondenti, ui/widget-render-condiviso.ui.js)
-//   — motore visivo, non toccato. Verificato: leggono rispettivamente
-//   d.valore/d.media/d.pezzi/d.top e d.variazione/d.valoreOggi/
-//   d.carteAggiunte/d.soloUnGiorno — forme confermate coerenti coi due
-//   preview() qui sotto.
-// - storicoValoreConfronta, storicoValoreUltimiGiorni, authGetUserId,
-//   apriFlipCardHome, _urlImmagineVisualizzabile, escapeHtml: esterne,
-//   non toccate.
-// ───────────────────────────────────────────────────────────────────────
+// Widget e pagine Valore collezione e Variazione valore.
 
-// ── CACHE STORICO VALORE (15 minuti) ─────────────────────────────────
-// Lo storico del valore cambia una volta al giorno: interrogarlo a ogni
-// giro di polling (renderWidgetHome gira anche da lì) sarebbe sprecato.
-// 15 minuti sono generosi e restano molto sotto la frequenza con cui il
-// dato si muove davvero.
 const TTL_STORICO_VALORE_MS = 15 * 60 * 1000;
 let _cacheStoricoValore = { quando: 0, righe: [] };
 
@@ -63,11 +10,6 @@ async function _storicoValoreConCache() {
         const userId = await authGetUserId();
         if (!userId) return [];
         const { data } = await storicoValoreUltimiGiorni(userId, 30);
-        // Come per i prezzi recenti: MAI mettere in cache un risultato
-        // vuoto. Il primo giro puo' capitare prima che la tabella abbia
-        // righe o mentre la rete e' giu', e memorizzare quel vuoto
-        // significherebbe mostrare "in raccolta" per un quarto d'ora a un
-        // widget che i dati ce li ha.
         if (data && data.length) _cacheStoricoValore = { quando: Date.now(), righe: data };
         return data || [];
     } catch (e) {
@@ -76,11 +18,10 @@ async function _storicoValoreConCache() {
     }
 }
 
-// ── VOCE DI CATALOGO "VALORE COLLEZIONE" ─────────────────────────────
 CATALOGO_WIDGET.valore_collezione = {
         titolo: 'Valore collezione', icona: 'fa-sack-dollar',
         preview: () => {
-            const coll = carteReali.filter(c => c.stato === 'collezione' && !c.esclusoValore); // sql/95
+            const coll = carteReali.filter(c => c.stato === 'collezione' && !c.esclusoValore);
             const valore = coll.reduce((t, c) => t + (Number(c.price) || 0) * (Number(c.qty) || 1), 0);
             const top = coll.slice()
                 .sort((a, b) => (Number(b.price) || 0) - (Number(a.price) || 0))
@@ -88,23 +29,13 @@ CATALOGO_WIDGET.valore_collezione = {
                 .map(c => ({ nome: c.name || '—', valore: Number(c.price) || 0, id: c.id, immagine: c.immagine, rarita: c.rarita }));
             const media = coll.length ? valore / coll.length : 0;
             return {
-                righe: [formattaEuroTondo(valore)], // restyle FASE 2: "1.520 €"
+                righe: [formattaEuroTondo(valore)],
                 dati: { valore, media, pezzi: coll.length, top }
             };
         },
-        // MODIFICATO (2026-08-30): prima apriva semplicemente la sezione
-        // Prezzi (tab:'prezzi') — ora ha una pagina propria dedicata
-        // (#valore in index.html, renderPaginaValoreCollezione() sotto).
-        // Nessun impatto sul tracciamento missioni m38/m39/m40/m80/m81
-        // (registrano l'evento su w.id='valore_collezione', non su
-        // 'def.tab' — vedi _eseguiAzioneWidget).
         tab: 'valore',
 };
 
-// Variazione su una finestra di N giorni (restyle FASE 2). righe = storico
-// ordinato per giorno (almeno 2). Parte dall'ultimo giorno misurato che sta
-// ALMENO N giorni prima di oggi, o dal primo disponibile se lo storico è
-// più corto: 'giorni' dice quanti giorni copre davvero.
 function _variazioneFinestra(righe, n) {
     const ultimo = righe[righe.length - 1];
     const limite = new Date(ultimo.giorno); limite.setDate(limite.getDate() - n);
@@ -126,29 +57,13 @@ function _variazioneFinestra(righe, n) {
     };
 }
 
-// ── VOCE DI CATALOGO "VARIAZIONE VALORE" ─────────────────────────────
 CATALOGO_WIDGET.variazione_valore = {
         titolo: 'Variazione valore', icona: 'fa-arrow-trend-up',
-        tagliaDefault: '6x5', // il grafico e la scomposizione hanno bisogno di altezza
-        // Fase 8, Step 3 (2026-09-13): pagina propria — prima cadeva su
-        // Visualizzazione come fallback silenzioso (stesso bug già noto
-        // di "Contributi al gruppo"), mai un vero 'tab' impostato qui.
-        // renderPaginaVariazioneValore() sotto, usa movimenti_collezione
-        // (sql/54) per il "perché", non più solo storico_valore_collezione
-        // (che resta comunque la fonte dell'anteprima qui sotto, invariata
-        // — il grafico rapido del widget Home non cambia).
+        tagliaDefault: '6x5',
         tab: 'variazione',
-        // Sostituisce il segnaposto "arrivera' con lo storico del valore
-        // totale" che stava nella home fissa da mesi. Ora lo storico c'e'
-        // (tabella storico_valore_collezione, migration 36) e viene
-        // riempito da ui/storico-valore.avvio.js a ogni apertura.
         preview: async () => {
             const righe = await _storicoValoreConCache();
 
-            // UN SOLO GIORNO NON E' UNA VARIAZIONE. Va detto, non
-            // mostrato come "zero": zero significherebbe "non e'
-            // cambiato niente", che e' un'altra cosa e sarebbe una bugia
-            // il primo giorno.
             if (!righe.length) return { righe: ['In raccolta', 'nessun dato ancora'], badge: false, dati: null };
             if (righe.length < 2) {
                 return {
@@ -159,22 +74,9 @@ CATALOGO_WIDGET.variazione_valore = {
             }
 
             const c = storicoValoreConfronta(righe);
-            // RESTYLE BINDEX FASE 2 (2026-09-30, tavola "Variazione = +X € in
-            // 7 giorni + mercato/aggiunte"): finestra di 7 giorni invece del
-            // solo confronto con il giorno prima. Stessa logica di
-            // storicoValoreConfronta, estesa alla finestra: aggiunte = somma
-            // di valore_aggiunte dei giorni nella finestra, mercato = il
-            // resto; se nel frattempo sono usciti dei pezzi il resto NON è
-            // attendibile come movimento dei prezzi e non si mostra (stesso
-            // principio della migration 36). "Scambi" delle tavole richiede
-            // movimenti_collezione (una query in più): resta alla pagina.
             const s7 = _variazioneFinestra(righe, 7);
             return {
                 righe: [`${formattaEuroVariazione(s7.variazione)} in ${s7.giorni} giorn${s7.giorni === 1 ? 'o' : 'i'}`],
-                // 'ok' o 'allerta' accendono il semaforo della sfera: qui
-                // NON si usano. Un calo di valore non e' un problema da
-                // risolvere e non deve far agitare la ball come fa un
-                // errore in coda.
                 dati: {
                     ...c,
                     settimana: s7,
@@ -186,27 +88,9 @@ CATALOGO_WIDGET.variazione_valore = {
         },
 };
 
-// ── PAGINA "VALORE COLLEZIONE" (2026-08-30) ─────────────────────────────
-// Prima widget con pagina di dettaglio propria (struttura adottata da
-// cardsync-tutto.html, vedi CSS pg-*/page-header in index.html) invece di
-// aprire semplicemente la sezione Prezzi. Zero query nuove: riusa
-// CATALOGO_WIDGET.valore_collezione.preview(), la stessa funzione già
-// usata per l'anteprima del widget in Home.
-// Le carte nella lista "Le più preziose" aprono il flip-viewer con
-// origine:'top_valore' — STESSO meccanismo già usato per le missioni
-// #39/#83 dal ball-peek in Home (vedi _ballMiniCarta/_ballAzioneRiga):
-// cliccarle da qui deve contare allo stesso modo, è concettualmente la
-// stessa lista.
-// RESTYLE BINDEX (2026-10-01, tavole "Valore collezione"): valore grande con
-// la variazione a 7 giorni, grafico Andamento (7 g / 30 g / Tutto) da
-// storico_valore_collezione, valore Per location, Le più preziose con la
-// variazione dell'ultimo prezzo e "Cosa l'ha mosso" (ultimi 7 giorni, da
-// movimenti_collezione, stessi gruppi della pagina Variazione). Su PC
-// grafico e location a sinistra, preziose e movimenti a destra.
-// Solo letture: storico (fino a 400 giorni) e movimenti (ultimi 1000).
-let _valPeriodo = '30';      // '7' | '30' | 'tutto'
-let _valStorico = [];        // righe storico_valore_collezione, dalla più vecchia
-let _valMovimenti = [];      // movimenti_collezione, più recenti prima
+let _valPeriodo = '30';
+let _valStorico = [];
+let _valMovimenti = [];
 
 function _valImpostaPeriodo(p) { _valPeriodo = p; _valRender(); }
 
@@ -218,8 +102,6 @@ function _valSerie() {
 
 function _valDataBreve(g) { return new Date(g).toLocaleDateString('it-IT', { day: 'numeric', month: 'short' }).replace('.', ''); }
 
-// Grafico ad area in SVG (niente libreria): l'asse verticale parte poco
-// sotto il minimo, come nelle tavole, così le oscillazioni si vedono.
 function _valGraficoHtml(serie) {
     if (serie.length < 2) {
         return `<div class="val-grafico-vuoto">${serie.length ? 'Serve un secondo giorno per disegnare l’andamento.' : 'Lo storico del valore si riempie da solo, un punto al giorno.'}</div>`;
@@ -317,7 +199,7 @@ function _valMossoHtml() {
 function _valRender() {
     const container = document.getElementById('valoreContenuto');
     if (!container) return;
-    const coll = carteReali.filter(c => c.stato === 'collezione' && c.tabella === 'carte' && !c.esclusoValore); // sql/95
+    const coll = carteReali.filter(c => c.stato === 'collezione' && c.tabella === 'carte' && !c.esclusoValore);
     const valore = coll.reduce((t, c) => t + (Number(c.price) || 0) * (Number(c.qty) || 1), 0);
     const media = coll.length ? valore / coll.length : 0;
 
@@ -391,7 +273,7 @@ function _valRender() {
 async function renderPaginaValoreCollezione() {
     const container = document.getElementById('valoreContenuto');
     if (!container) return;
-    _valRender(); // subito con quello che c'è già in memoria, poi storico e movimenti
+    _valRender();
     try {
         const userId = await authGetUserId();
         if (!userId) return;
@@ -407,25 +289,6 @@ async function renderPaginaValoreCollezione() {
     _valRender();
 }
 
-
-// ── PAGINA "VARIAZIONE VALORE" (Fase 8, Step 3 — 2026-09-13) ────────────
-// RESTYLE BINDEX FASE 3c (2026-10-01, tavole "Variazione"): la pagina è
-// sempre legata a un PERIODO (7 g / 30 g / Tutto) "da X a Y", con la
-// scomposizione a gradini "Da dove arriva la differenza" e i movimenti
-// raggruppati per giorno (filtri per tipo). Su PC (pagina larga) a destra
-// il dettaglio del movimento scelto.
-// Fonte: movimenti_collezione (un log differenziale, una riga per evento
-// reale). Verificato sul DB (2026-10-01, corpo delle funzioni):
-//   - prezzo_automatico (carte): prezzo_unitario = prezzo NUOVO,
-//     quantita_delta NULL, valore_delta = (nuovo − vecchio) × qty al momento.
-//     Il prezzo di prima si ricava come prezzo_unitario − valore_delta / qty,
-//     usando la qty ATTUALE della carta: se nel frattempo è cambiata il
-//     "prima" è approssimato (limite noto, segnalato in chat); se la carta non
-//     c'è più si mostra solo il prezzo nuovo.
-//   - prezzo_automatico (sealed): valore_delta NULL → si mostra "—".
-//   - vendita_scambio / aggiunta / rimozione: quantita_delta e prezzo_unitario
-//     presenti. La controparte di uno scambio NON è nel log.
-// Nessuna modifica al database: solo lettura.
 const _ETICHETTE_TIPO_MOVIMENTO = {
     aggiunta:            { label: 'Aggiunte alla collezione',   icona: 'fa-plus',            gruppo: 'aggiunte' },
     rimozione:           { label: 'Rimozioni',                  icona: 'fa-minus',           gruppo: 'rimozioni' },
@@ -435,7 +298,6 @@ const _ETICHETTE_TIPO_MOVIMENTO = {
     variazione_quantita: { label: 'Modifiche a mano',           icona: 'fa-layer-group',     gruppo: 'manuali' },
     correzione:          { label: 'Modifiche a mano',           icona: 'fa-wrench',          gruppo: 'manuali' },
 };
-// Ordine = ordine delle righe nella scomposizione e dei filtri.
 const _GRUPPI_MOVIMENTO = [
     { id: 'mercato',   label: 'Oscillazione di mercato', chip: 'Mercato',          icona: 'fa-chart-line' },
     { id: 'aggiunte',  label: 'Aggiunte alla collezione', chip: 'Aggiunte',        icona: 'fa-plus' },
@@ -445,17 +307,14 @@ const _GRUPPI_MOVIMENTO = [
 ];
 const _VAR_LIMITE_MOVIMENTI = 1000;
 
-let _varEventi = [];          // tutti i movimenti caricati (più recenti prima)
-let _varTroncato = false;     // true se il limite ha tagliato lo storico
-let _varPeriodo = '7';        // '7' | '30' | 'tutto'
-let _varFiltro = 'tutti';     // 'tutti' | id gruppo
-let _varSelId = null;         // id del movimento mostrato nel dettaglio (PC)
+let _varEventi = [];
+let _varTroncato = false;
+let _varPeriodo = '7';
+let _varFiltro = 'tutti';
+let _varSelId = null;
 
 function _varGruppoDi(m) { return (_ETICHETTE_TIPO_MOVIMENTO[m.tipo_evento] || {}).gruppo || 'manuali'; }
 
-// L'oggetto (carta o sealed) a cui si riferisce il movimento, se esiste
-// ancora. Per le carte serve perché la miniatura apre la carta a schermo
-// intero (regola comune); se non c'è più, il movimento resta ma "rimossa".
 function _varOggetto(m) {
     if (!m.oggetto_id) return null;
     if (m.oggetto_tipo === 'sealed') {
@@ -472,7 +331,6 @@ function _varValoreOggi() {
     return carte + sealed;
 }
 
-// Eventi dentro il periodo scelto + data di partenza.
 function _varPeriodoDati() {
     let inizio = null;
     if (_varPeriodo !== 'tutto') {
@@ -484,7 +342,6 @@ function _varPeriodoDati() {
     return { eventi, inizio };
 }
 
-// "prima → dopo" di un movimento di mercato su una carta (vedi nota in testa).
 function _varPrezzoPrima(m) {
     if (m.tipo_evento !== 'prezzo_automatico' && m.tipo_evento !== 'prezzo_manuale') return null;
     if (m.valore_delta == null || m.prezzo_unitario == null) return null;
@@ -602,7 +459,6 @@ function _varRender() {
     if (!container) return;
     const { eventi, inizio } = _varPeriodoDati();
 
-    // Somme per gruppo (valore_delta NULL = non conta nel valore).
     const somme = {}; _GRUPPI_MOVIMENTO.forEach(g => { somme[g.id] = { somma: 0, n: 0 }; });
     let totale = 0;
     eventi.forEach(m => {
@@ -612,9 +468,6 @@ function _varRender() {
     const oggi = _varValoreOggi();
     const partenza = oggi - totale;
 
-    // Scomposizione a gradini. La scala NON parte da zero (le differenze
-    // sarebbero invisibili): parte un po' sotto il livello più basso, e lo
-    // dice in chiaro sotto il grafico.
     const gr = _GRUPPI_MOVIMENTO.filter(g => somme[g.id].n > 0);
     const livelli = [partenza]; let cum = partenza;
     gr.forEach(g => { cum += somme[g.id].somma; livelli.push(cum); });
@@ -637,7 +490,6 @@ function _varRender() {
     }).join('');
     const etichettaInizio = _varPeriodo === 'tutto' ? 'Valore prima dei movimenti' : `Valore il ${inizio ? _varDataBreve(inizio) : ''}`;
 
-    // Movimenti filtrati, raggruppati per giorno.
     const conteggio = { tutti: eventi.length };
     _GRUPPI_MOVIMENTO.forEach(g => { conteggio[g.id] = somme[g.id].n; });
     const filtriDisponibili = _GRUPPI_MOVIMENTO.filter(g => ['mercato', 'aggiunte', 'scambi', 'manuali'].includes(g.id) || somme[g.id].n > 0);

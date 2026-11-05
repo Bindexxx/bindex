@@ -1,45 +1,7 @@
-// ── ui/binder-flipbook.ui.js ─────────────────────────────────────────────
-// Modulo condiviso: motore del libro sfogliabile pubblico (cerniera 3D,
-// gesti drag, paginazione) — estratto da ui/binder-pubblico.ui.js il
-// 26/08/2026 per essere riusato anche da scambio.ui.js e wishlist.ui.js
-// (Regola d'Oro #1: refactoring multi-file, approvato esplicitamente da
-// Claudio in questa sessione). Origine ultima: ui/binder.ui.js del sito
-// privato (sessione Opus, 2026-08-25) — stesso identico motore.
-//
-// Ogni pagina che lo usa deve, PRIMA di chiamare renderBinderLibro():
-//   - aver popolato `carte` (stesso shape ovunque: id, name, code,
-//     immagine, price, notes, qty/qtyDisponibile)
-//   - aver impostato `_binderId` e `_ownerUserId`
-//   - aver impostato `_binderInfo` = { nome, tipo, location_valore, layout }
-//   - aver dichiarato (con "let", nello state.js della pagina) `_binderPagina`
-//     (numero, default 0) e `_modalita` (stringa, default 'elenco') — LETTE
-//     da questo modulo prima di essere mai scritte su una pagina nuova, un
-//     semplice "let" mancante è un ReferenceError immediato, non un
-//     valore undefined silenzioso (bug reale, trovato e corretto il
-//     26/08/2026 su scambio.html/wishlist.html: mancavano entrambe).
-//     (usato per l'etichetta/icona di copertina)
-//   - definito `apriFlipCard(id)` (chiamata da _libroClickCarta — già
-//     presente in tutte e tre le pagine con firma identica)
-//   - opzionale: impostare `_libroSelezionabile = true` PRIMA di invocare
-//     renderBinderLibro/impostaModalitaBinderPubblico, per mostrare anche
-//     dentro il libro l'overlay di selezione/quantità già usato in
-//     modalità Elenco (scambio.html/wishlist.html). Default false
-//     (binder-pubblico.html non ha selezione, vetrina di sola lettura).
-//     Richiede che la pagina definisca anche `selezioni`, `toggleSelezione`,
-//     `modificaQty` (già in utils/shared-public.js).
-//
-// Dipende da: supabaseClient, utils/shared-public.js
-// (_urlImmagineVisualizzabile, escapeHtml), data/binder-pubblico.repository.js
-// (binderPubblicoLeggiMedia) — quest'ultima va inclusa anche in
-// scambio.html/wishlist.html, non solo binder-pubblico.html.
-//
-// Nota sul nome impostaModalitaBinderPubblico: rimasto invariato nonostante
-// sia ora usato anche da scambio/wishlist — rinominarlo avrebbe richiesto
-// toccare anche il markup (onclick) delle 3 pagine per zero beneficio
-// funzionale (Regola d'Oro #1: stabilità > pulizia del nome).
+// Libro sfogliabile dei binder (cerniera 3D, trascinamento, pagine), condiviso con le pagine
+// pubbliche.
 
 let _libroSelezionabile = false;
-// RESTYLE BINDEX FASE 6b: Wishlist — il bollino sulla tasca mostra "max X" (prezzo obiettivo) invece del prezzo.
 let _libroPrezzoObiettivo = false;
 let _copertinaRisolta = null;
 
@@ -54,8 +16,6 @@ async function _caricaCopertinaBinder(binderId) {
     banner.style.display = 'block';
 }
 
-// Come sopra ma ritorna solo l'url (o null), con cache — riusata sia dal
-// banner in header sia dalla copertina del libro, una sola chiamata RPC.
 async function _risolviCopertinaBinderPubblico(binderId) {
     if (_copertinaRisolta !== null) return _copertinaRisolta || null;
 
@@ -65,11 +25,8 @@ async function _risolviCopertinaBinderPubblico(binderId) {
 
     let url = null;
     if (copertina.source === 'default') {
-        url = binderPubblicoUrlFile('default-assets', copertina.storage_path); // data/binder-pubblico.repository.js (audit 2026-09-25, B8)
+        url = binderPubblicoUrlFile('default-assets', copertina.storage_path);
     } else {
-        // Upload personalizzato: bucket pubblico 'immaginivisibili',
-        // sincronizzato dall'admin all'approvazione — vedi
-        // _sincronizzaCopiaPubblica in ui/admin-requests.ui.js.
         url = binderPubblicoUrlFile('immaginivisibili', `binder/${_ownerUserId}/${binderId}.png`);
     }
     _copertinaRisolta = url || false;
@@ -95,32 +52,10 @@ function impostaModalitaBinderPubblico(modalita) {
     } else {
         if (searchBox) searchBox.style.display = 'none';
         if (lista) lista.style.display = 'none';
-        // Fix 26/08/2026: la paginazione veniva solo NASCOSTA entrando in
-        // 'elenco' (riga sopra), mai MOSTRATA entrando in 'libro' — restava
-        // bloccata al display:none di partenza del markup HTML. Bug
-        // preesistente, mai notato su binder-pubblico.html (origine di
-        // questo codice), diventato visibile ora che scambio.html/
-        // wishlist.html usano lo stesso modulo.
         if (paginazione) paginazione.style.display = '';
         renderBinderLibro();
     }
 }
-// ═══════════════════════════════════════════════════════════════════════
-// LIBRO SFOGLIABILE — porta pubblica di ui/binder.ui.js (sessione Opus,
-// 2026-08-25), estratto qui il 26/08/2026 per essere condiviso da
-// binder-pubblico.ui.js, scambio.ui.js e wishlist.ui.js. Stesso identico
-// motore di animazione/gesti, adattato per un contesto senza
-// autenticazione:
-// - niente _bindersElenco/_binderAttivo/BINDER_LAYOUTS/_binderLayout: un
-//   solo binder per pagina (_binderId/_binderInfo), layout fisso 3×3 (le
-//   pagine pubbliche non hanno selettore layout — vetrina/trattativa, non
-//   gestione).
-// - copertina risolta da _risolviCopertinaBinderPubblico() (bucket
-//   pubblico), non da signed URL privata.
-// - click carta → apriFlipCard() della pagina che lo usa (stessa firma
-//   ovunque), non apriFlipCardHome.
-// - nessuna rimozione: permettiRimozione sempre false, nessun bottone ✕.
-// ═══════════════════════════════════════════════════════════════════════
 
 const LIBRO_SOGLIA_DOPPIA_PX = 620;
 const LIBRO_DURATA_GIRO_MS = 620;
@@ -128,13 +63,6 @@ const LIBRO_SOGLIA_DRAG_PX = 8;
 const LIBRO_PAD_PAGINA = 10;
 const LIBRO_GAP_TASCHE = 6;
 const LIBRO_ALTEZZA_NUMERO = 16;
-// Fix 26/08/2026: layout non più fisso 3×3 — ogni binder ha il proprio
-// (vedi 25_binder_layout_per_binder.sql), letto da _binderInfo.layout
-// impostato dalla pagina chiamante. Stessa identica tabella di
-// state/binder.state.js (duplicata qui perché le pagine pubbliche non
-// caricano quel file) — NON riordinare/rinominare le chiavi: sono nomi
-// storici, i valori cols/rows sono quelli corretti (vedi bug #3 nel
-// compilato: la chiave '3x4' ha cols:4,rows:3, non l'opposto).
 const BINDER_LAYOUTS = {
     '2x2': { cols: 2, rows: 2 },
     '3x3': { cols: 3, rows: 3 },
@@ -157,7 +85,7 @@ function renderBinderLibro() {
     wrap.style.display = 'block';
 
     const layout = BINDER_LAYOUTS[_binderInfo && _binderInfo.layout] || BINDER_LAYOUTS['3x3'];
-    const carteOrdinate = carte; // già ordinate per nome dalla RPC pubblica
+    const carteOrdinate = carte;
 
     _libro = {
         carte: carteOrdinate,
@@ -178,7 +106,7 @@ function renderBinderLibro() {
 
     _libroMisura();
     _libro.facce = _libroCostruisciFacce();
-    _libro.k = _libroKDaPagina(_binderPagina); // conserva la pagina se si torna qui
+    _libro.k = _libroKDaPagina(_binderPagina);
     _libroDisegnaStatico();
     _libroInitGesti();
     _libroOsservaResize();
@@ -365,24 +293,8 @@ function _libroHtmlPagina(indicePagina) {
             continue;
         }
         const idAttr = String(card.id).replace(/'/g, "\\'");
-        // SICUREZZA (2026-09-01): prima qui c'era solo .replace(/"/g,'&quot;'),
-        // cioè le sole virgolette. Bastava per title="..." e alt="...", ma
-        // due righe sotto lo STESSO valore finisce dentro <span>...</span>,
-        // che è testo HTML: un nome carta contenente un tag veniva
-        // interpretato ed eseguito. Su queste pagine i dati sono di chi
-        // condivide il link e la vittima è il visitatore, quindi contava
-        // davvero. escapeHtml() neutralizza &, < e >; il .replace() che
-        // resta aggiunge le virgolette, che escapeHtml da solo non tocca —
-        // insieme il valore è sicuro in ENTRAMBI i contesti (dentro un
-        // testo, &quot; si legge come una normale virgoletta).
-        const nomeAttr = escapeHtml(card.name || '').replace(/"/g, '&quot;'); // SICUREZZA 2026-09-01: escapeHtml PRIMA, vedi nota sotto
+        const nomeAttr = escapeHtml(card.name || '').replace(/"/g, '&quot;');
         const immagineSrc = _urlImmagineVisualizzabile(card.immagine, 300);
-        // Compatibilità di forma: binder-pubblico usa card.qty,
-        // scambio/wishlist usano card.qtyDisponibile — stesso significato.
-        // FASE 5 (2026-09-13): card.qty/qtyDisponibile per lo Scambio è già
-        // il NETTO (offerto − riservato, vedi ui/binder-pubblico.ui.js) —
-        // qtyMax=0 qui significa "tutto riservato altrove", stessa logica
-        // "visibile ma non selezionabile" della vista Elenco.
         const qtyMax = (card.qty !== undefined ? card.qty : card.qtyDisponibile) || 1;
         const bloccata = _libroSelezionabile && qtyMax <= 0;
         const selezionata = _libroSelezionabile && !bloccata && (selezioni[card.id] || 0) > 0;
@@ -401,24 +313,9 @@ function _libroHtmlPagina(indicePagina) {
         <div class="libro-pagina-numero">${indicePagina + 1}</div>`;
 }
 
-// Overlay di selezione/quantità dentro il libro — attivo solo se
-// _libroSelezionabile=true (impostato da scambio.ui.js/wishlist.ui.js).
-// Riusa selezioni/toggleSelezione/modificaQty di utils/shared-public.js,
-// stesso identico stato condiviso con la modalità Elenco: selezionare una
-// carta nel libro e poi passare a Elenco (o viceversa) mostra la stessa
-// selezione, nessuno stato duplicato.
 function _libroHtmlSelezione(card, qtyMax, bloccata) {
     const idAttr = String(card.id).replace(/'/g, "\\'");
-    // FASE 5 (2026-09-13): stesso principio "riservato ma non selezionabile"
-    // della vista Elenco — checkbox disabilitata esplicitamente quando
-    // bloccata, non ci si affida solo al bottone "+" già a 0 (toggleSelezione
-    // in utils/shared-public.js scrive sempre selezioni[id]=1 su una
-    // checkbox spuntata, a prescindere dal massimo — disabilitarla è
-    // l'unica difesa reale).
     const qtyAttuale = bloccata ? 0 : (selezioni[card.id] || 0);
-    // RESTYLE BINDEX FASE 6: tondino "+" quando 0, "− N +" quando > 0, e
-    // bollino prezzo sulla tasca. Stessa logica di prima (modificaQty
-    // limita già al massimo disponibile): cambia solo l'HTML/CSS.
     let prezzo = '';
     if (_libroPrezzoObiettivo) {
         if (card.prezzoObiettivo != null) prezzo = `<span class="bx-slot-prezzo">max ${formattaEuro(card.prezzoObiettivo)}</span>`;
@@ -527,7 +424,7 @@ function _libroPointerMove(e) {
         _libroPreparaFoglio(direzione > 0 ? _libro.k : _libro.k - 1, direzione);
         const foglioNuovo = document.getElementById('binderLibroFoglio');
         foglioNuovo.classList.add('in-trascinamento');
-        try { foglioNuovo.setPointerCapture(e.pointerId); } catch (_) { /* ignorato di proposito */ }
+        try { foglioNuovo.setPointerCapture(e.pointerId); } catch (_) {   }
     }
 
     const progresso = Math.max(0, Math.min(1, Math.abs(dx) / _libro.pw));

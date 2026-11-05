@@ -1,57 +1,14 @@
-// ═══════════════════════════════════════════════════════════════════════
-// NAVIGATION-CONDIVISIONE.UI.JS — link pubblico, QR (CardSync Pro)
-// ═══════════════════════════════════════════════════════════════════════
-// STEP separato dal piano "riduzione accoppiamento" concordato con Claudio
-// il 2026-09-11. Estratto da ui/navigation.ui.js. NESSUNA riscrittura del
-// codice esistente: solo spostamento, zero cambi di comportamento per
-// l'utente finale.
-//
-// Contiene: _paginaPubblicaBinderAttivo, _linkPubblicoCondivisione,
-// copyShareLink, openQrModal, closeQrModal, apriAnteprimaLinkCondiviso,
-// condividiLinkNativo.
-//
-// Nessuna istruzione qui gira a tempo di caricamento script — l'ordine
-// tra i quattro file navigation-*.ui.js è indifferente.
-// ───────────────────────────────────────────────────────────────────────
+// Link pubblico e QR.
 
-        // Costruisce il link pubblico alla pagina condivisa giusta per la tab
-        // attiva (scambio.html o wishlist.html), usando l'id utente come
-        // riferimento. Entrambe le pagine sono pensate per chi NON ha e non
-        // avrà mai un account CardSync Pro: nessun login richiesto — solo i
-        // dati previsti dalla rispettiva RLS pubblica su Supabase.
-        // Multi-Binder (2026-08-25): quando si condivide da dentro il
-        // dettaglio di un binder, currentMode vale 'binder' (impostato da
-        // switchTab) — non basta più a scegliere la pagina, serve sapere
-        // QUALE binder è aperto. Wishlist e Scambio mappano alle pagine
-        // pubbliche reali già esistenti (stesso link di sempre). Per
-        // qualunque altro tipo pubblico (location diversa da SCAMBIO,
-        // extra) ora punta a binder-pubblico.html, la nuova pagina generica
-        // (22_binder_pubblico_generico.sql + leggi_binder_pubblico(p_binder_id)).
-        function _paginaPubblicaBinderAttivo() {
+function _paginaPubblicaBinderAttivo() {
             const binder = (typeof _bindersElenco !== 'undefined' && Array.isArray(_bindersElenco))
                 ? _bindersElenco.find(b => String(b.id) === String(_binderAttivo))
                 : null;
             if (!binder) return null;
-            // FASE 2 CONSOLIDAMENTO (26/08/2026): rimosso anche il caso
-            // speciale per Wishlist -> wishlist.html, stesso trattamento
-            // di SCAMBIO in Fase 1. leggi_binder_pubblico ora copre anche
-            // tipo='wishlist' (27_leggi_binder_pubblico_wishlist.sql) —
-            // trg_binders_forza_condivisione forza SEMPRE
-            // stato_pubblicazione='pubblico' anche per questo tipo, quindi
-            // la condizione sotto è sempre vera anche per Wishlist.
-            // 'tipo' esposto nel risultato: serve a _linkPubblicoCondivisione
-            // per decidere se aggiungere il parametro ?nome= (prima
-            // decideva guardando solo pagina==='wishlist.html').
             if (binder.stato_pubblicazione === 'pubblico') return { pagina: 'binder-pubblico.html', binderId: binder.id, tipo: binder.tipo };
             return null;
         }
 
-        // Gemella per Scaffali — Fase 1.3, Step 5c (2026-09-12). Più
-        // semplice della sorella Binder: un solo tipo di pagina pubblica
-        // (scaffali-pubblico.html), nessun caso 'wishlist'/parametro ?nome=
-        // da gestire (Scaffali non ha un tipo wishlist-equivalente).
-        // apriPaginaScaffali() imposta currentMode = 'scaffali' esplicitamente
-        // (non passa da switchTab(), che ha la whitelist fissa di 5 tab).
         function _paginaPubblicaScaffaleAttivo() {
             const scaffale = (typeof _scaffaliElenco !== 'undefined' && Array.isArray(_scaffaliElenco))
                 ? _scaffaliElenco.find(s => String(s.id) === String(_scaffaleAttivo))
@@ -68,23 +25,16 @@
             let pagina, binderIdExtra, tipoBinderExtra, scaffaleIdExtra;
             if (currentMode === 'binder') {
                 const target = _paginaPubblicaBinderAttivo();
-                if (!target) return null; // binder senza pagina pubblica dedicata, vedi sopra
+                if (!target) return null;
                 pagina = target.pagina;
                 binderIdExtra = target.binderId;
                 tipoBinderExtra = target.tipo;
             } else if (currentMode === 'scaffali') {
                 const target = _paginaPubblicaScaffaleAttivo();
-                if (!target) return null; // scaffale non pubblico, vedi sopra
+                if (!target) return null;
                 pagina = target.pagina;
                 scaffaleIdExtra = target.scaffaleId;
             } else if (currentMode === 'scambio') {
-                // Fase 3, Step 2 (2026-09-12): scambio.html RITIRATO — confluisce
-                // su binder-pubblico.html come 'binder'/'scaffali' sopra.
-                // _binderScambioId è popolato da caricaCarteReali() in
-                // ui/cards.ui.js (get-or-create, sempre pronto quando si è
-                // loggati). Il binder Scambio è SEMPRE pubblico (trigger DB),
-                // quindi qui non serve nemmeno verificare stato_pubblicazione
-                // come fanno gli altri due rami.
                 if (!_binderScambioId) return null;
                 pagina = 'binder-pubblico.html';
                 binderIdExtra = _binderScambioId;
@@ -95,25 +45,9 @@
             const url = new URL(pagina + '?u=' + encodeURIComponent(userId), window.location.href);
             if (binderIdExtra) url.searchParams.set('binder', binderIdExtra);
             if (scaffaleIdExtra) url.searchParams.set('scaffale', scaffaleIdExtra);
-            // Chi apre il link vede lo stesso tema che hai scelto tu sul tuo
-            // dispositivo — non c'è login per chi riceve il link, quindi
-            // niente localStorage da leggere: il tema viaggia nell'URL.
             const temaSalvato = prefSiteThemeGet();
             if (temaSalvato) url.searchParams.set('tema', temaSalvato);
             if (prefDarkModeGet()) url.searchParams.set('scuro', '1');
-            // A16: solo per la Wishlist, passa anche il nome del proprietario
-            // (riusa _nomeDaEmail già esistente) — serve a personalizzare il
-            // testo di "Copia riepilogo" su wishlist.html ("Carte che potrei
-            // procurare a [Nome]"), senza nessuna nuova chiamata a Supabase
-            // né esporre l'email completa, solo un nome leggibile.
-            // FASE 2 CONSOLIDAMENTO (26/08/2026): condizione estesa da
-            // "pagina === 'wishlist.html'" (solo la vecchia pagina
-            // dedicata) a includere anche il nuovo percorso generico
-            // binder-pubblico.html quando il binder aperto è di tipo
-            // wishlist — altrimenti il nome del proprietario non
-            // arriverebbe più a copiaRiepilogo() sul nuovo percorso.
-            // RESTYLE FASE 3e: ?nome= porta il NICKNAME (mai l'email); senza
-            // nickname il parametro non c'è.
             if ((pagina === 'wishlist.html' || tipoBinderExtra === 'wishlist') && sessione?.user?.id) {
                 try {
                     const { data: pref } = await userSettingsGet(sessione.user.id);
@@ -123,7 +57,6 @@
             }
             return url.href;
         }
-
 
         async function copyShareLink() {
             const link = await _linkPubblicoCondivisione();
@@ -135,7 +68,6 @@
                 await chiediTesto({ titolo: 'Copia il link', testo: 'Selezionalo e copialo:', valore: link, conferma: 'Fatto', annulla: 'Chiudi' });
             }
         }
-
 
         async function openQrModal() {
             const link = await _linkPubblicoCondivisione();
@@ -150,39 +82,25 @@
                 colorDark : "#2a2438",
                 colorLight : "#ffffff"
             });
-            // A16: il pulsante di condivisione nativa (foglio di condivisione
-            // del telefono) compare solo dove il browser lo supporta
-            // davvero (navigator.share) — niente pulsante rotto altrove.
             document.getElementById('btnCondividiNativo').style.display = navigator.share ? 'flex' : 'none';
             modal.style.display = 'flex';
         }
-
 
         function closeQrModal() {
             document.getElementById('qrModal').style.display = 'none';
         }
 
-
-        // A16: apre la pagina pubblica reale (con i dati veri di quel
-        // proprietario) in una nuova scheda — scelta di Claudio al posto di
-        // una mini-anteprima dentro il modale, più semplice e affidabile.
         async function apriAnteprimaLinkCondiviso() {
             const link = await _linkPubblicoCondivisione();
             if (!link) { mostraAvviso('Devi essere loggato per generare l\'anteprima.'); return; }
             window.open(link, '_blank');
         }
 
-
-        // A16: foglio di condivisione nativo del sistema (WhatsApp/Messaggi/
-        // Email a scelta dell'utente) — IN AGGIUNTA a "Copia Link", non al
-        // posto. Bottone visibile solo dove il browser lo supporta.
         async function condividiLinkNativo() {
             const link = await _linkPubblicoCondivisione();
             if (!link) { mostraAvviso('Devi essere loggato per condividere il link.'); return; }
             try {
                 await navigator.share({ title: 'Bindex', url: link });
             } catch (e) {
-                // L'utente ha annullato la condivisione, o il browser l'ha
-                // bloccata — nessun errore da mostrare, è un'azione normale.
             }
         }

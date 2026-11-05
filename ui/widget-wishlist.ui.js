@@ -1,33 +1,5 @@
-// ═══════════════════════════════════════════════════════════════════════
-// WIDGET-WISHLIST.UI.JS — tessera + pagina "Wishlist" (id catalogo
-// 'wishlist_obiettivi') (CardSync Pro)
-// ═══════════════════════════════════════════════════════════════════════
-// STEP 22 della ristrutturazione file widget home (vedi
-// Roadmap_Ristrutturazione_Widget_Home_2026-09-11.md). Estratto da
-// ui/phone.ui.js il 2026-09-11. NESSUNA riscrittura: solo spostamento di
-// codice, zero cambi di comportamento per l'utente finale.
-//
-// CATEGORIA A: pagina propria con ricerca + 4 filtri (Tutte/Raggiunte/In
-// corso/Senza obiettivo), ordinamento fisso (raggiunte prima per sconto
-// più grande, poi in corso per vicinanza, poi senza obiettivo alfabetico —
-// deciso da Claudio). "Vai alla Wishlist" salta direttamente al binder di
-// tipo wishlist.
-//
-// COSA RESTA FUORI (non spostato qui, invariato):
-// - apriDettaglioWidget (ui/paginainiziale.ui.js) continua a chiamare
-//   renderPaginaWishlist() per tabId === 'wishlist', e _vaiAlBinderWishlist
-//   qui sotto continua a chiamare apriDettaglioWidget('binder', evt) —
-//   motore home, dispatch generico, non toccato in questo step.
-// - _ballCORPI.wishlist_obiettivi / _ballASPETTO.wishlist_obiettivi /
-//   _ballTITOLI_BREVI.wishlist_obiettivi / _ballRigaBarra / _ballPill
-//   (ui/widget-render-condiviso.ui.js) — motore visivo, non toccato.
-//   Verificato: legge d.raggiunte/d.totale/d.lista dal 'dati' restituito
-//   dal preview() qui sotto — forma confermata coerente.
-// - _bindersElenco, apriBinderDettaglio (ui/binder.ui.js), apriFlipCardHome,
-//   _urlImmagineVisualizzabile, escapeHtml: esterne, non toccate.
-// ───────────────────────────────────────────────────────────────────────
+// Widget e pagina Wishlist.
 
-// ── VOCE DI CATALOGO ──────────────────────────────────────────────────
 CATALOGO_WIDGET.wishlist_obiettivi = {
         titolo: 'Wishlist', icona: 'fa-heart',
         preview: () => {
@@ -51,26 +23,9 @@ CATALOGO_WIDGET.wishlist_obiettivi = {
                 }
             };
         },
-        // MODIFICATO (2026-08-30): prima apriva semplicemente Binder
-        // (tab:'binder') — ora ha una pagina propria dedicata (#wishlist
-        // in index.html, renderPaginaWishlist() sotto). Nessun impatto sul
-        // tracciamento missioni (registrano l'evento su w.id=
-        // 'wishlist_obiettivi', non su def.tab).
         tab: 'wishlist',
 };
 
-// ── PAGINA "WISHLIST" (2026-08-30) ──────────────────────────────────────
-// Secondo widget con pagina di dettaglio propria, stesso pattern di
-// renderPaginaValoreCollezione() sopra. A differenza di quella, qui la
-// pagina mostra TUTTA la wishlist (non solo il preview a 3 carte del
-// widget) — letta direttamente da carteReali (stessa fonte del preview,
-// senza il .slice(0,3)), zero query nuove.
-//
-// Ordinamento: raggiunte prima (le carte con prezzo attuale <= obiettivo,
-// ordinate per sconto più grande), poi le altre con obiettivo impostato
-// (ordinate per vicinanza — prezzo più vicino all'obiettivo prima), infine
-// quelle senza obiettivo impostato in fondo (alfabetico) — deciso da
-// Claudio.
 let _wishlistCarteComputate = [];
 let _wishlistFiltroAttivo = 'tutte';
 let _wishlistRicercaTesto = '';
@@ -88,9 +43,9 @@ function _wishlistClassificaEOrdina() {
     });
 
     const raggiunte = righe.filter(r => r.raggiunta)
-        .sort((a, b) => (b.obiettivo - b.prezzo) - (a.obiettivo - a.prezzo)); // sconto più grande prima
+        .sort((a, b) => (b.obiettivo - b.prezzo) - (a.obiettivo - a.prezzo));
     const inCorso = righe.filter(r => !r.raggiunta && r.obiettivo != null)
-        .sort((a, b) => (a.prezzo - a.obiettivo) - (b.prezzo - b.obiettivo)); // più vicine prima
+        .sort((a, b) => (a.prezzo - a.obiettivo) - (b.prezzo - b.obiettivo));
     const senzaObiettivo = righe.filter(r => r.obiettivo == null)
         .sort((a, b) => a.nome.localeCompare(b.nome));
 
@@ -98,15 +53,9 @@ function _wishlistClassificaEOrdina() {
     return { totale: righe.length, conObiettivo: raggiunte.length + inCorso.length, raggiunte: raggiunte.length };
 }
 
-// RESTYLE (2026-10-01, tavole "Wishlist"): riepilogo "N carte · sotto
-// obiettivo", Carte/Sealed, ricerca con vista Elenco/Libro (Libro = binder
-// Wishlist), filtri e ordinamento; ogni riga con la barra verso
-// l'obiettivo ("mancano X €" / "sotto di X €"). Su PC: tabella con
-// distanza, variazione e "Nel gruppo" (chi ce l'ha in Scambio, dai Match),
-// e a destra il dettaglio con il prezzo nel tempo e la linea dell'obiettivo.
-let _wishlistOrdine = 'vicine';      // 'vicine' | 'prezzo' | 'az'
+let _wishlistOrdine = 'vicine';
 let _wishlistSelId = null;
-let _wishlistNelGruppo = new Map();  // id wishlist -> [{ owner, nickname }]
+let _wishlistNelGruppo = new Map();
 
 function _wishlistEPC() { const s = document.getElementById('wishlist'); return !!s && s.clientWidth >= 780; }
 
@@ -129,12 +78,12 @@ async function renderPaginaWishlist() {
     const container = document.getElementById('wishlistContenuto');
     if (!container) return;
 
-    _wishlistFiltroAttivo = prefFiltroPaginaScegli('wishlist', 'filtro', ['tutte', 'raggiunte', 'in_corso', 'senza_obiettivo'], 'tutte'); // (Q5)
+    _wishlistFiltroAttivo = prefFiltroPaginaScegli('wishlist', 'filtro', ['tutte', 'raggiunte', 'in_corso', 'senza_obiettivo'], 'tutte');
     _wishlistOrdine = prefFiltroPaginaScegli('wishlist', 'ordine', ['vicine', 'prezzo', 'az'], _wishlistOrdine);
     _wishlistRicercaTesto = '';
     _wishlistTabAttiva = 'carte';
     _wishlistSelId = null;
-    _wishlistSealedCaricato = false; // Fase 6, Step 2: ricarica sempre ad ogni apertura pagina
+    _wishlistSealedCaricato = false;
     const { totale, conObiettivo, raggiunte } = _wishlistClassificaEOrdina();
     const perPrenderle = _wishlistCarteComputate.reduce((t, r) => t + (r.prezzo || 0), 0);
     const filtro = (id, t) => `<button type="button" class="wl-chip${id === _wishlistFiltroAttivo ? ' attivo' : ''}" data-filtro="${id}" onclick="_wishlistImpostaFiltro('${id}')">${t}</button>`;
@@ -177,7 +126,6 @@ async function renderPaginaWishlist() {
     if (totale > 0) { await _wishlistCaricaNelGruppo(); _wishlistRenderElenco(); }
 }
 
-// ── TAB CARTE/SEALED (Fase 6, Step 2) ────────────────────────────────────
 let _wishlistTabAttiva = 'carte';
 
 function _wishlistImpostaTab(tab) {
@@ -198,7 +146,7 @@ function _wishlistCondividi(evt) {
 
 function _wishlistImpostaFiltro(filtro) {
     _wishlistFiltroAttivo = filtro;
-    prefFiltroPaginaSet('wishlist', 'filtro', filtro); // (Q5)
+    prefFiltroPaginaSet('wishlist', 'filtro', filtro);
     document.querySelectorAll('#wishlistContenuto .wl-chip[data-filtro]').forEach(el => {
         el.classList.toggle('attivo', el.dataset.filtro === filtro);
     });
@@ -214,12 +162,11 @@ const _WL_ORDINI = { vicine: 'più vicine', prezzo: 'prezzo', az: 'A → Z' };
 function _wishlistCambiaOrdine() {
     const k = Object.keys(_WL_ORDINI);
     _wishlistOrdine = k[(k.indexOf(_wishlistOrdine) + 1) % k.length];
-    prefFiltroPaginaSet('wishlist', 'ordine', _wishlistOrdine); // (Q5)
+    prefFiltroPaginaSet('wishlist', 'ordine', _wishlistOrdine);
     _wishlistRenderElenco();
 }
 function _wishlistOrdinaPer(o) { _wishlistOrdine = o; prefFiltroPaginaSet('wishlist', 'ordine', o); _wishlistRenderElenco(); }
 
-// Distanza dall'obiettivo: negativa = sotto obiettivo (raggiunta).
 function _wlDistanza(r) { return r.obiettivo != null ? r.prezzo - r.obiettivo : null; }
 function _wlBarra(r) {
     if (r.obiettivo == null) return { pct: 0, cls: '', testo: 'nessun obiettivo' };
@@ -294,7 +241,6 @@ function _wishlistRenderElenco() {
     _wishlistDettaglio();
 }
 
-// Telefono ↔ PC (finestra ridimensionata): elenco o tabella.
 (function () {
     let t = null, eraPC = null;
     window.addEventListener('resize', () => {
@@ -369,39 +315,13 @@ async function _wishlistDettaglio() {
     if (ax) ax.innerHTML = `<span>${giorno(serie[0].registrato_il)} · ${formattaEuroTondo(val[0])}</span><span>oggi · ${formattaEuroTondo(val[val.length - 1])}</span>`;
 }
 
-// Salta direttamente al binder di tipo 'wishlist', invece di lasciare
-// l'utente sulla griglia dei contenitori di Binder (2026-08-30). Usa SOLO
-// funzioni reali già esistenti in ui/binder.ui.js, nessuna query nuova
-// inventata:
-//   1) apriDettaglioWidget('binder', evt) — mostra la view-section Binder
-//      (switchTab interno, MAI toccato direttamente qui) E chiama già da
-//      sola apriWidgetBinders() al suo interno, awaited (vedi
-//      apriDettaglioWidget riga ~2733) — _bindersElenco è già garantita
-//      popolata quando questa await finisce, nessuna seconda chiamata
-//      necessaria.
-//   2) apriBinderDettaglio(id) — cerca dentro _bindersElenco.
 async function _vaiAlBinderWishlist(evt) {
     await apriDettaglioWidget('binder', evt);
     const binderWishlist = _bindersElenco.find(b => b.tipo === 'wishlist');
     if (binderWishlist) {
         await apriBinderDettaglio(binderWishlist.id);
     }
-    // Se non trovato (caso limite — binderWishlistGarantisci() dovrebbe
-    // impedirlo sempre, vedi _garantisciTuttiIBinder in ui/binder.ui.js):
-    // resta sulla griglia dei contenitori invece di rompere la pagina.
 }
-
-
-// ═══════════════════════════════════════════════════════════════════════
-// FASE 6, STEP 2 (2026-09-13) — TAB SEALED DELLA WISHLIST
-// ═══════════════════════════════════════════════════════════════════════
-// wishlist_sealed (sql/52) è un dominio a sé, NON fusa dentro carteReali
-// (che tratta solo carte/wishlist carte, vedi ui/cards.ui.js) — stesso
-// principio già applicato a prodottiSealedReali in ui/widget-sealed.ui.js:
-// array in-memory parallelo, caricato con una query dedicata, editor
-// dedicato (i campi sono diversi: integrità invece di condizione, niente
-// posizione/prezzo attuale perché non è ancora posseduto).
-// ───────────────────────────────────────────────────────────────────────
 
 let wishlistSealedReali = [];
 let _wishlistSealedRicercaTesto = '';
@@ -431,7 +351,7 @@ async function caricaWishlistSealedReali() {
         codice: r.codice || '',
         setEspansione: r.set_espansione || '',
         qty: r.qty || 1,
-        lingua: r.lingua || '', // '' = Qualsiasi, stessa convenzione della wishlist carte
+        lingua: r.lingua || '',
         integrita: r.integrita_minima || 'sigillato_integro',
         prezzoObiettivo: r.prezzo_obiettivo != null ? Number(r.prezzo_obiettivo) : null,
         note: r.note || '',
@@ -448,7 +368,7 @@ function _wishlistSealedRenderElenco() {
     const elenco = document.getElementById('wishlistSealedElenco');
     if (!elenco) return;
 
-    const eur = (v) => v != null ? formattaEuro(v) : '—'; // formato unico "12.345,00 €" (decisione Claudio 2026-09-25)
+    const eur = (v) => v != null ? formattaEuro(v) : '—';
 
     let righe = wishlistSealedReali;
     if (_wishlistSealedRicercaTesto) righe = righe.filter(r => r.name.toLowerCase().includes(_wishlistSealedRicercaTesto));
@@ -472,8 +392,6 @@ function _wishlistSealedRenderElenco() {
     }).join('');
 }
 
-
-// ── MODIFICA / ELIMINAZIONE WISHLIST SEALED ──────────────────────────────
 let _wishlistSealedInModifica = null;
 
 async function apriModificaWishlistSealed(id) {
@@ -488,19 +406,12 @@ async function apriModificaWishlistSealed(id) {
     document.getElementById('editWsPrezzoObiettivo').value = prodotto.prezzoObiettivo != null ? prodotto.prezzoObiettivo : '';
     document.getElementById('editWsNote').value = prodotto.note || '';
 
-    // Lingua: stesso elenco completo delle carte + "Qualsiasi" in testa —
-    // ha senso solo qui (preferenza di ricerca per il match, non un dato
-    // posseduto). Ricostruita in JS, non statica nell'HTML — stesso motivo
-    // del fix su #editLingua in ui/cards-modifica.ui.js.
     const selLingua = document.getElementById('editWsLingua');
     const LINGUE = ['IT', 'EN', 'DE', 'FR', 'ES', 'PT', 'JP', 'KOR', 'CHN', 'CHN-T', 'IND', 'THAI', 'RU'];
     selLingua.innerHTML = '<option value="">Qualsiasi lingua</option>' +
         LINGUE.map(l => `<option value="${l}">${l}</option>`).join('');
     selLingua.value = prodotto.lingua || '';
 
-    // Integrità minima: STESSA fonte unica di ui/entry.ui.js
-    // (INTEGRITA_PACKAGING_OPZIONI, dichiarata lì, caricata prima di
-    // questo file — vedi ordine in index.html).
     const selIntegrita = document.getElementById('editWsIntegrita');
     selIntegrita.innerHTML = INTEGRITA_PACKAGING_OPZIONI.map(o =>
         `<option value="${o.value}" ${prodotto.integrita === o.value ? 'selected' : ''}>${o.label}</option>`
@@ -509,12 +420,10 @@ async function apriModificaWishlistSealed(id) {
     document.getElementById('editWishlistSealedModal').style.display = 'flex';
 }
 
-
 function chiudiModificaWishlistSealed() {
     document.getElementById('editWishlistSealedModal').style.display = 'none';
     _wishlistSealedInModifica = null;
 }
-
 
 async function salvaModificaWishlistSealed() {
     if (!_wishlistSealedInModifica) return;
@@ -529,7 +438,7 @@ async function salvaModificaWishlistSealed() {
         nome: document.getElementById('editWsNome').value.trim(),
         codice: document.getElementById('editWsCodice').value.trim() || null,
         set_espansione: document.getElementById('editWsSet').value.trim() || null,
-        lingua: document.getElementById('editWsLingua').value || null, // '' → null = Qualsiasi (sql/52)
+        lingua: document.getElementById('editWsLingua').value || null,
         qty: Math.max(1, parseInt(document.getElementById('editWsQty').value, 10) || 1),
         integrita_minima: document.getElementById('editWsIntegrita').value,
         prezzo_obiettivo: num('editWsPrezzoObiettivo'),
@@ -554,7 +463,6 @@ async function salvaModificaWishlistSealed() {
     await caricaWishlistSealedReali();
     _wishlistSealedRenderElenco();
 }
-
 
 async function eliminaWishlistSealedDaModale() {
     if (!_wishlistSealedInModifica) return;

@@ -1,35 +1,9 @@
-/* ==========================================================================
-   CardSync Pocket — Barra di stato + tendina notifiche
-   File: statusbar.js   —   versione 5.3
-
-   Avvio minimo:
-
-     CSBar.init({
-       onSettings: function () { ... },
-       onProfile:  function () { ... },
-       onNotificationClick: function (n) { ... }
-     });
-
-   Funzioni principali:
-     CSBar.setConnection('online' | 'connecting' | 'offline')
-     CSBar.avvisa('bustina-pronta')            <- via preferita
-     CSBar.notify({ title, text, icon, target })
-     CSBar.setCountdown({ label, startedAt, endsAt, actionLabel, onAction })
-     CSBar.setTheme('chiaro' | 'scuro' | 'retro')   <- scrive data-tema sul body
-     CSBar.setCurrency({ value, glyph, label })
-     CSBar.lock() / CSBar.unlock()
-
-   La barra si costruisce da sola: nel tuo HTML non devi incollare markup.
-   ========================================================================== */
+// Barra di stato e tendina delle notifiche (CSBar).
 
 (function (global) {
   "use strict";
 
   var doc = global.document;
-
-  /* ---------------------------------------------------------------------
-     Stato interno
-     --------------------------------------------------------------------- */
 
   var state = {
     mounted: false,
@@ -70,7 +44,7 @@
     onNotificationClick: null,
     onQuickAction: null,
     onSync: null,
-    onPresence: null,           // clic sulla pillola delle persone collegate
+    onPresence: null,
     quickActions: null,
     notificationTypes: {},
     profileName: "",
@@ -84,34 +58,23 @@
     sound: true,
     haptics: true,
 
-    /* installazione come app e avvisi di sistema */
-    serviceWorker: null,        // es. "service-worker.js" per attivare la PWA
-    installPrompt: true,        // mostra la proposta "Installa l'app"
-    systemNotifications: true,  // avvisi anche a sito chiuso
-    notificationIcon: null,     // es. "icon-192.png"
+    serviceWorker: null,
+    installPrompt: true,
+    systemNotifications: true,
+    notificationIcon: null,
     appName: "CardSync Pocket",
 
-    /* tema: la barra segue il tema del progetto */
-    themeAttribute: "data-tema", // l'attributo che il tuo progetto usa sul <body>
-    persistTheme: false,         // lascia il salvataggio del tema al tuo progetto
-    onThemeChange: null,         // richiamata quando il tema cambia (es. accensioneCrt)
+    themeAttribute: "data-tema",
+    persistTheme: false,
+    onThemeChange: null,
 
-    /* coda offline */
-    onFlushAction: null,        // function (azione) -> Promise
-    watchNetwork: true,         // segue gli eventi online/offline del browser
+    onFlushAction: null,
+    watchNetwork: true,
 
-    /* CardSync Pro (2026-09-01): dove montare la barra. Default invariato
-       (document.body, per compatibilità con l'uso originale a schermo
-       intero). Passando un elemento o un selettore, la barra si monta lì
-       invece che sul body — serve per progetti che, come questo, mostrano
-       un mockup di telefono dentro una pagina desktop più grande: la barra
-       deve restare dentro lo "schermo" del telefono, non coprire tutta la
-       finestra del browser. */
     container: null,
 
-    /* Bindex (2026-10-01): vedi pumpQueue e renderQuick */
-    bannerMode: null,           // function () -> "tutti" | "azioni" | "nessuno"
-    onEditQuick: null           // se c'è, sotto le scorciatoie compare "Scegli le scorciatoie"
+    bannerMode: null,
+    onEditQuick: null
   };
 
   var el = {};
@@ -178,10 +141,6 @@
     '<path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9v.09a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>' +
     "</svg>";
 
-  /* ---------------------------------------------------------------------
-     Utilità
-     --------------------------------------------------------------------- */
-
   function clamp(v, min, max) {
     return v < min ? min : v > max ? max : v;
   }
@@ -198,8 +157,6 @@
     return (n < 10 ? "0" : "") + n;
   }
 
-  /* (V2 velocità, 2026-10-12) un solo formattatore riusato: toLocaleTimeString
-     con le opzioni ne creava uno a ogni chiamata (centinaia all'avvio). */
   var _formatoOraHHMM = null;
   function formatTime(date) {
     try {
@@ -210,7 +167,6 @@
     }
   }
 
-  /* "4h 12m", "12m 30s", "pronta" */
   function formatDuration(ms) {
     if (ms <= 0) return "pronta";
     var totalSec = Math.floor(ms / 1000);
@@ -238,8 +194,6 @@
     return (parts[0][0] + parts[1][0]).toUpperCase();
   }
 
-  /* ev.target non è sempre un elemento (può essere il documento stesso):
-     closest() andrebbe in errore. */
   function closestEl(target, selector) {
     if (!target || typeof target.closest !== "function") return null;
     return target.closest(selector);
@@ -251,10 +205,6 @@
     }
     return null;
   }
-
-  /* ---------------------------------------------------------------------
-     Memoria locale
-     --------------------------------------------------------------------- */
 
   function loadStored() {
     if (!opts.persist) return;
@@ -279,7 +229,6 @@
       if (data && data.pending) state.pending = data.pending;
       if (data && data.ctaDismissed) state.ctaDismissed = data.ctaDismissed;
     } catch (e) {
-      /* memoria non disponibile: si prosegue senza salvataggio */
     }
   }
 
@@ -312,7 +261,6 @@
         })
       );
     } catch (e) {
-      /* spazio pieno o memoria bloccata: si ignora */
     }
   }
 
@@ -325,9 +273,6 @@
     }, 250);
   }
 
-  /* Scrive subito se c'è un salvataggio ancora in attesa. Serve prima di
-     chiudere la pagina e prima di rileggere quanto scritto da un'altra
-     scheda, per non perdere l'ultima modifica fatta qui. */
   function flushSave() {
     if (!state.saveTimer) return false;
     clearTimeout(state.saveTimer);
@@ -336,14 +281,9 @@
     return true;
   }
 
-  /* ---------------------------------------------------------------------
-     Suono e vibrazione
-     --------------------------------------------------------------------- */
-
   var audioCtx = null;
   var customAudio = null;
 
-  /* Suoni disponibili. Ogni nota è [frequenza, ritardo in secondi]. */
   var SOUNDS = {
     pokeball: { label: "Pokeball", wave: "square", gain: 0.05, notes: [[880, 0], [1318, 0.085]] },
     gameboy: { label: "Game Boy", wave: "square", gain: 0.045, notes: [[523, 0], [784, 0.06], [1046, 0.12]] },
@@ -361,7 +301,7 @@
   function soundLabel() {
     var s = currentSound();
     if (SOUNDS[s]) return SOUNDS[s].label;
-    return "Personale"; /* è stato indicato un file audio */
+    return "Personale";
   }
 
   function setSound(name, preview) {
@@ -372,8 +312,6 @@
     if (preview) blip(true);
   }
 
-  /* preview = true suona anche quando il tasto Audio è spento,
-     per far sentire la scelta al momento della selezione */
   function blip(preview) {
     if (!opts.sound) return;
     if (!preview && !state.settings.audio) return;
@@ -381,7 +319,6 @@
     var name = currentSound();
     if (name === "nessuno") return;
 
-    /* file audio personale: qualsiasi nome con un punto o una barra */
     if (!SOUNDS[name]) {
       try {
         if (!customAudio || customAudio.getAttribute("src") !== name) {
@@ -391,7 +328,6 @@
         var playing = customAudio.play();
         if (playing && typeof playing.catch === "function") playing.catch(function () {});
       } catch (e) {
-        /* file non caricabile */
       }
       return;
     }
@@ -418,7 +354,6 @@
         osc.stop(t + 0.1);
       });
     } catch (e) {
-      /* audio non disponibile */
     }
   }
 
@@ -429,18 +364,8 @@
         global.navigator.vibrate(pattern);
       }
     } catch (e) {
-      /* vibrazione non supportata */
     }
   }
-
-  /* ---------------------------------------------------------------------
-     Temi
-
-     La barra NON ha una tavolozza propria: segue il tema del progetto,
-     cioè l'attributo data-tema sul <body>. Il colore arriva dalle
-     variabili CSS del tuo foglio di stile. Qui si tiene solo il colore
-     per la barra di sistema del telefono e il pallino nella tendina.
-     --------------------------------------------------------------------- */
 
   var THEMES = {
     chiaro: { label: "Chiaro", campione: "#EAEAE7", chrome: "#EAEAE7" },
@@ -466,17 +391,12 @@
       }
       meta.setAttribute("content", color);
     } catch (e) {
-      /* niente */
     }
   }
 
-  /* Cambia il tema del progetto. È la stessa strada del tuo tasto "Tema":
-     scrive data-tema sul body, non esiste un secondo posto dove il tema
-     viene deciso. */
   function setTheme(name) {
     if (!THEMES[name]) return;
     doc.body.setAttribute(opts.themeAttribute, name);
-    /* l'observer qui sotto fa il resto (colore di sistema, pallini) */
     if (!state.themeObserver) onThemeChanged();
   }
 
@@ -491,8 +411,6 @@
     if (typeof opts.onThemeChange === "function") opts.onThemeChange(name);
   }
 
-  /* Resta in ascolto: se il tema lo cambia il TUO tasto, la barra si
-     adegua da sola senza che tu debba chiamare niente. */
   function watchProjectTheme() {
     try {
       if (!global.MutationObserver) return;
@@ -504,13 +422,8 @@
         attributeFilter: [opts.themeAttribute]
       });
     } catch (e) {
-      /* niente */
     }
   }
-
-  /* ---------------------------------------------------------------------
-     Costruzione del DOM
-     --------------------------------------------------------------------- */
 
   function build() {
     var root = doc.createElement("div");
@@ -615,10 +528,6 @@
         "</div>" +
       "</header>";
 
-    // CardSync Pro (2026-09-01): monta dentro opts.container se fornito
-    // (elemento o selettore), altrimenti comportamento originale invariato
-    // (document.body). Fallback silenzioso su document.body se il
-    // selettore non trova nulla, per non lasciare la barra "orfana".
     var mountTarget = doc.body;
     if (opts.container) {
       mountTarget = typeof opts.container === "string" ? doc.querySelector(opts.container) : opts.container;
@@ -667,7 +576,7 @@
     el.headsText = q("headstext");
     el.bar = q("bar");
     el.clock = q("clock");
-    el.nbadge = q("nbadge"); // Bindex restyle FASE 1: contatore accanto all'ora
+    el.nbadge = q("nbadge");
     el.ball = q("ball");
     el.pop = q("pop");
     el.popState = q("popstate");
@@ -683,18 +592,8 @@
     el.profile = q("profile");
     el.avatar = q("avatar");
 
-    // CardSync Pro (2026-09-01): questa classe pilota "html.csb-has-bar
-    // body { padding-top: ... }" nel CSS — corretto SOLO quando la barra
-    // vive sul body a schermo intero (uso originale). Con un container
-    // specifico (vedi opts.container sopra) applicarla spingerebbe giù
-    // l'intero sito, non solo lo "schermo" del telefono — lo spazio per la
-    // barra lì è già gestito dal layout del progetto stesso.
     if (!opts.container) doc.documentElement.classList.add("csb-has-bar");
   }
-
-  /* ---------------------------------------------------------------------
-     Orologio
-     --------------------------------------------------------------------- */
 
   function tickClock() {
     var now = new Date();
@@ -703,10 +602,6 @@
     clearTimeout(state.clockTimer);
     state.clockTimer = setTimeout(tickClock, ms);
   }
-
-  /* ---------------------------------------------------------------------
-     Connessione e pannellino diagnostica
-     --------------------------------------------------------------------- */
 
   function setConnection(status) {
     if (!CONNECTION_LABEL[status]) status = "offline";
@@ -738,14 +633,9 @@
     if (next) renderPop();
   }
 
-  /* ---------------------------------------------------------------------
-     Persone collegate che stanno aiutando il gruppo
-     --------------------------------------------------------------------- */
-
   function setPresence(input) {
     if (!state.mounted) return;
 
-    /* setPresence(null) o setPresence(0) nasconde la pillola */
     if (input == null || input === 0) {
       state.presence = null;
       el.presence.classList.remove("is-visible", "is-up");
@@ -774,7 +664,6 @@
     el.presence.setAttribute("title", testo);
     el.presence.setAttribute("aria-label", testo);
 
-    /* qualcuno è appena entrato: la pillola si accende un istante */
     clearTimeout(state.presenceTimer);
     if (prima != null && state.presence.count > prima) {
       el.presence.classList.add("is-up");
@@ -785,10 +674,6 @@
       el.presence.classList.remove("is-up");
     }
   }
-
-  /* ---------------------------------------------------------------------
-     Contatore risorsa (polvere magica)
-     --------------------------------------------------------------------- */
 
   function setCurrency(input) {
     if (!state.mounted) return;
@@ -820,10 +705,6 @@
     }
   }
 
-  /* ---------------------------------------------------------------------
-     Countdown della bustina
-     --------------------------------------------------------------------- */
-
   function setCountdown(input) {
     if (!state.mounted) return;
     if (!input) {
@@ -846,10 +727,6 @@
       actionLabel: input.actionLabel || "Apri ora",
       onAction: input.onAction || null,
       onComplete: input.onComplete || null,
-      /* Se il tempo è già scaduto nel momento in cui imposti il countdown,
-         onComplete NON viene chiamato: altrimenti scatterebbe a ogni
-         ricaricamento della pagina. Metti notifyIfPast: true se invece
-         vuoi che scatti lo stesso. */
       completed: input.notifyIfPast ? false : Date.now() >= endsAt.getTime()
     };
 
@@ -880,10 +757,6 @@
       if (typeof c.onComplete === "function") c.onComplete();
     }
   }
-
-  /* ---------------------------------------------------------------------
-     Installazione come app e avvisi di sistema
-     --------------------------------------------------------------------- */
 
   function supportsNotifications() {
     return typeof global.Notification !== "undefined";
@@ -975,7 +848,7 @@
   function maybeSystemNotify(item) {
     if (!opts.systemNotifications || !state.settings.avvisi) return;
     if (!supportsNotifications() || global.Notification.permission !== "granted") return;
-    if (!doc.hidden) return; /* pagina in primo piano: basta il banner interno */
+    if (!doc.hidden) return;
     try {
       var sysNotif = new global.Notification(displayTitle(item), {
         body: item.text || "",
@@ -988,19 +861,13 @@
         try {
           global.focus();
         } catch (e) {
-          /* niente */
         }
         sysNotif.close();
         openNotification(findNotification(item.id) || item);
       };
     } catch (e) {
-      /* alcuni browser richiedono il service worker: si ignora */
     }
   }
-
-  /* ---------------------------------------------------------------------
-     Coda offline
-     --------------------------------------------------------------------- */
 
   function renderPending() {
     if (!state.mounted) return;
@@ -1068,7 +935,6 @@
 
     return step()
       .catch(function (err) {
-        /* la prima azione fallita ferma la coda: si riproverà più tardi */
         if (global.console && console.warn) {
           console.warn("[CSBar] sincronizzazione interrotta:", err);
         }
@@ -1093,14 +959,8 @@
       });
   }
 
-  /* ---------------------------------------------------------------------
-     Allineamento tra schede aperte
-     --------------------------------------------------------------------- */
-
   function syncFromStorage() {
     if (!state.mounted || !opts.persist) return;
-    /* se qui c'è una modifica non ancora scritta, ha la precedenza:
-       la si salva e si salta la rilettura */
     if (flushSave()) return;
     loadStored();
     renderQuick();
@@ -1111,10 +971,6 @@
     if (state.popOpen) renderPop();
   }
 
-  /* ---------------------------------------------------------------------
-     Centro barra: ticker e contatore
-     --------------------------------------------------------------------- */
-
   function unreadCount() {
     var n = 0;
     for (var i = 0; i < state.notifications.length; i++) {
@@ -1124,14 +980,8 @@
   }
 
   function renderCenter() {
-    /* il badge nel titolo della scheda va aggiornato sempre, anche mentre
-       il ticker sta occupando il centro della barra */
     updateTitleBadge();
     if (state.popOpen) renderPop();
-    // Bindex restyle FASE 1 (2026-09-30): contatore rosso accanto all'ora,
-    // stesso numero del titolo della scheda (da gestire o da leggere, il
-    // maggiore). Aggiornato PRIMA del ritorno anticipato del ticker, così
-    // non resta mai indietro mentre il centro mostra un avviso.
     if (el.nbadge) {
       var nb = Math.max(unreadCount(), interventiAperti().length);
       el.nbadge.textContent = nb > 99 ? "99+" : String(nb);
@@ -1169,7 +1019,6 @@
     try {
       doc.title = n > 0 ? "(" + n + ") " + state.baseTitle : state.baseTitle;
     } catch (e) {
-      /* niente */
     }
   }
 
@@ -1183,10 +1032,6 @@
       renderCenter();
     }, opts.tickerDuration);
   }
-
-  /* ---------------------------------------------------------------------
-     Banner heads-up e coda avvisi
-     --------------------------------------------------------------------- */
 
   function enqueue(item) {
     state.queue.push(item);
@@ -1207,9 +1052,6 @@
     buzz([18, 60, 18]);
     announce(displayTitle(item) + ". " + (item.text || ""));
 
-    /* Bindex (2026-10-01): opts.bannerMode() decide quali avvisi mostrano
-       il banner — "tutti", "azioni" (solo priority high, come prima) o
-       "nessuno". Senza l'opzione resta il comportamento originale. */
     var modo = typeof opts.bannerMode === "function" ? opts.bannerMode() : "azioni";
     var useBanner = !state.locked && (modo === "tutti" || (modo !== "nessuno" && item.priority === "high"));
     if (useBanner) showHeads(item);
@@ -1245,10 +1087,6 @@
       el.live.textContent = text;
     }, 60);
   }
-
-  /* ---------------------------------------------------------------------
-     Tasti rapidi
-     --------------------------------------------------------------------- */
 
   function renderQuick() {
     var html = "";
@@ -1351,10 +1189,6 @@
     setSound(next, true);
   }
 
-  /* ---------------------------------------------------------------------
-     Notifiche
-     --------------------------------------------------------------------- */
-
   function displayTitle(n) {
     if ((n.count || 1) > 1 && n.groupLabel) return n.count + " " + n.groupLabel;
     return n.title;
@@ -1406,7 +1240,6 @@
 
     var html = "";
 
-    /* prima quello che aspetta una mano, sempre in cima */
     if (interventi.length) {
       html += '<p class="csb-sez">' +
         (interventi.length === 1 ? "Richiede il tuo intervento"
@@ -1428,8 +1261,6 @@
     if (!state.mounted) return null;
     var n = input || {};
 
-    /* raggruppamento: se esiste già una notifica non letta dello stesso
-       gruppo, si aggiorna quella invece di aggiungerne una nuova */
     if (n.group) {
       for (var i = 0; i < state.notifications.length; i++) {
         var ex = state.notifications[i];
@@ -1461,7 +1292,6 @@
       group: n.group || null,
       groupLabel: n.groupLabel || null,
       priority: n.priority === "high" ? "high" : "normal",
-      /* true = aspetta una mano dell'utente, non sparisce da sola */
       intervento: !!n.intervento,
       count: 1,
       data: n.data || null,
@@ -1547,8 +1377,6 @@
     renderCenter();
   }
 
-  /* Svuota l'elenco ma lascia in piedi quello che richiede un intervento:
-     quelle spariscono solo quando vengono davvero gestite. */
   function clearAll() {
     state.notifications = interventiAperti();
     save();
@@ -1557,7 +1385,6 @@
     announce("Notifiche eliminate.");
   }
 
-  /* Da chiamare quando l'intervento è stato fatto davvero. */
   function resolveIntervention(id) {
     var n = findNotification(id);
     if (!n) return false;
@@ -1577,7 +1404,6 @@
     openNotification(findNotification(btn.getAttribute("data-notif")));
   }
 
-  /* sparizione con collasso in altezza */
   function dismissNotification(id) {
     var wrap = el.list.querySelector('[data-wrap="' + id + '"]');
     if (!wrap) {
@@ -1600,12 +1426,6 @@
     }, 230);
   }
 
-  /* ---------------------------------------------------------------------
-     Scorrimento laterale per eliminare una notifica
-     --------------------------------------------------------------------- */
-
-  /* La soglia si calcola sulla larghezza della scheda: circa un terzo.
-     Sotto quella, la notifica torna al suo posto. */
   function sogliaEliminazione(node) {
     var largo = node && node.offsetWidth ? node.offsetWidth : 300;
     return Math.max(88, Math.round(largo * 0.34));
@@ -1654,14 +1474,11 @@
 
     if (ev.cancelable) ev.preventDefault();
 
-    /* verso destra fa sempre resistenza; le notifiche da gestire la fanno
-       in tutte e due le direzioni, così si capisce che non si buttano via */
     var x = dx > 0 ? dx * 0.18 : dx;
     if (swipe.bloccata) x = dx * 0.22;
     swipe.dx = x;
     swipe.node.style.transform = "translateX(" + x + "px)";
 
-    /* superata la soglia l'indizio si fa deciso e il telefono lo conferma */
     var armato = !swipe.bloccata && x < -swipe.soglia;
     if (armato !== swipe.armed) {
       swipe.armed = armato;
@@ -1718,11 +1535,6 @@
     global.removeEventListener("pointercancel", onSwipeUp);
   }
 
-  /* ---------------------------------------------------------------------
-     Tutorial: si mostra una volta sola, alla prima apertura della tendina
-     con almeno una notifica dentro.
-     --------------------------------------------------------------------- */
-
   function motoRidotto() {
     try {
       return global.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -1731,7 +1543,6 @@
     }
   }
 
-  /* Mostra una riga di spiegazione in cima all'elenco, poi la ritira. */
   function mostraSuggerimento(testo, durata) {
     if (!state.mounted) return;
     el.tipText.textContent = testo;
@@ -1781,10 +1592,6 @@
     global.removeEventListener("pointercancel", onSwipeUp);
   }
 
-  /* ---------------------------------------------------------------------
-     Blocco dello scorrimento pagina (compatibile Safari iOS)
-     --------------------------------------------------------------------- */
-
   function lockScroll() {
     state.scrollY = global.pageYOffset || doc.documentElement.scrollTop || 0;
     doc.body.style.top = -state.scrollY + "px";
@@ -1797,10 +1604,6 @@
     doc.body.style.top = "";
     global.scrollTo(0, state.scrollY);
   }
-
-  /* ---------------------------------------------------------------------
-     Apertura / chiusura tendina
-     --------------------------------------------------------------------- */
 
   function shadeHeight() {
     return el.shade.offsetHeight || 1;
@@ -1857,7 +1660,6 @@
       try {
         state.lastFocus.focus({ preventScroll: true });
       } catch (e) {
-        /* niente */
       }
       state.lastFocus = null;
     }
@@ -1869,10 +1671,6 @@
       }
     }, 360);
   }
-
-  /* ---------------------------------------------------------------------
-     Trascinamento della tendina (mouse + dito, stesso codice)
-     --------------------------------------------------------------------- */
 
   function onPointerDown(ev) {
     if (state.locked) return;
@@ -1917,7 +1715,6 @@
     setShadeY(y, false);
     el.backdrop.style.opacity = String(clamp(progress, 0, 1));
 
-    /* piccolo colpo di vibrazione quando si supera la soglia di scatto */
     var past = progress > 0.45;
     if (past !== drag.passedThreshold) {
       drag.passedThreshold = past;
@@ -1962,10 +1759,6 @@
     else close(true);
   }
 
-  /* ---------------------------------------------------------------------
-     Trascinamento del banner heads-up (verso l'alto per scartarlo)
-     --------------------------------------------------------------------- */
-
   function onHeadsDown(ev) {
     if (ev.button != null && ev.button !== 0) return;
     headsDrag.active = true;
@@ -2008,10 +1801,6 @@
     }
   }
 
-  /* ---------------------------------------------------------------------
-     Focus dentro la tendina (semplice trappola per il tasto Tab)
-     --------------------------------------------------------------------- */
-
   function trapFocus(ev) {
     if (!state.open || ev.key !== "Tab") return;
     var nodes = el.shade.querySelectorAll("button:not([hidden]):not([disabled])");
@@ -2027,10 +1816,6 @@
     }
   }
 
-  /* ---------------------------------------------------------------------
-     Eventi
-     --------------------------------------------------------------------- */
-
   function bindEvents() {
     el.bar.addEventListener("pointerdown", onPointerDown);
     el.handle.addEventListener("pointerdown", onPointerDown);
@@ -2038,8 +1823,6 @@
     el.countdown.addEventListener("pointerdown", onPointerDown);
     el.cta.addEventListener("pointerdown", onPointerDown);
     el.pending.addEventListener("pointerdown", onPointerDown);
-    /* tutto il pannello e' afferrabile (le singole notifiche hanno il loro
-       gesto di scarto laterale, e l'elenco scorrevole il suo scorrimento: li escludiamo). */
     el.shade.addEventListener("pointerdown", function (ev) {
       if (closestEl(ev.target, ".csb-notif")) return;
       if (el.shade.classList.contains("csb-scrolla") && closestEl(ev.target, ".csb-list")) return;
@@ -2144,18 +1927,15 @@
       if (state.popOpen) renderPop();
     });
 
-    /* ultima occasione per salvare prima che la pagina venga chiusa */
     global.addEventListener("pagehide", flushSave);
     global.addEventListener("beforeunload", flushSave);
 
-    /* allineamento fra più schede aperte dello stesso sito */
     global.addEventListener("storage", function (ev) {
       if (!opts.persist) return;
       if (ev.key && ev.key !== opts.storageKey) return;
       syncFromStorage();
     });
 
-    /* stato della rete del browser */
     if (opts.watchNetwork) {
       global.addEventListener("offline", function () {
         setConnection("offline");
@@ -2167,10 +1947,6 @@
       });
     }
   }
-
-  /* ---------------------------------------------------------------------
-     API pubblica
-     --------------------------------------------------------------------- */
 
   var CSBar = {
     version: "5.3",
@@ -2222,7 +1998,6 @@
       return CSBar;
     },
 
-    /* connessione */
     setConnection: setConnection,
     getConnection: function () { return state.connection; },
     setLastSync: function (date) {
@@ -2231,7 +2006,6 @@
       if (state.popOpen) renderPop();
     },
 
-    /* notifiche */
     notify: notify,
     avvisa: avvisa,
     remove: removeNotification,
@@ -2240,25 +2014,21 @@
     getNotifications: function () { return state.notifications.slice(); },
     getUnreadCount: unreadCount,
 
-    /* tutorial del gesto */
     playTutorial: function () { mostraTutorial(true); },
     resetTutorial: function () {
       state.settings.tutorial = null;
       save();
     },
 
-    /* tema */
     setTheme: setTheme,
     getTheme: currentTheme,
     getThemes: function () { return THEME_ORDER.slice(); },
 
-    /* suono delle notifiche */
     setSound: function (name, preview) { setSound(name, preview !== false); },
     getSound: currentSound,
     getSounds: function () { return SOUND_ORDER.slice(); },
     playSound: function () { blip(true); },
 
-    /* coda offline */
     enqueueAction: enqueueAction,
     flush: flushQueue,
     getPending: function () { return state.pending.slice(); },
@@ -2268,7 +2038,6 @@
       renderPending();
     },
 
-    /* installazione come app e avvisi di sistema */
     canInstall: function () { return !!state.deferredInstall; },
     promptInstall: function () {
       if (!state.deferredInstall) return Promise.resolve("non disponibile");
@@ -2300,23 +2069,19 @@
       }
     },
 
-    /* persone collegate */
     setPresence: setPresence,
     getPresence: function () {
       return state.presence ? state.presence.count : 0;
     },
 
-    /* notifiche che richiedono un intervento manuale */
     resolveIntervention: resolveIntervention,
     getInterventions: interventiAperti,
     countInterventions: function () { return interventiAperti().length; },
 
-    /* countdown e risorsa */
     setCountdown: setCountdown,
     clearCountdown: function () { setCountdown(null); },
     setCurrency: setCurrency,
 
-    /* Bindex (2026-10-01): scorciatoie scelte dall'utente e banner di prova */
     setQuickActions: function (list) {
       state.quickActions = mapQuickActions(list);
       save();
@@ -2330,7 +2095,6 @@
       buzz([18, 60, 18]);
     },
 
-    /* impostazioni dei tasti rapidi */
     getSetting: function (id) { return !!state.settings[id]; },
     setSetting: function (id, value) {
       state.settings[id] = !!value;
@@ -2338,7 +2102,6 @@
       if (state.mounted) renderQuick();
     },
 
-    /* profilo */
     setProfile: function (profile) {
       if (!state.mounted) return;
       var p = profile || {};
@@ -2352,7 +2115,6 @@
       if (p.name) el.profile.setAttribute("aria-label", "Profilo di " + p.name);
     },
 
-    /* tendina */
     open: function () { if (!state.locked) open(); },
     close: function () { close(); },
     toggle: function () {
@@ -2362,7 +2124,6 @@
     },
     isOpen: function () { return state.open; },
 
-    /* blocco durante l'apertura bustina */
     lock: function () {
       state.locked = true;
       if (state.open) close();

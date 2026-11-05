@@ -1,46 +1,7 @@
-// ═══════════════════════════════════════════════════════════════════════
-// WIDGET-RENDER-CORPI.UI.JS — corpo grafico di ogni widget in modalità
-// tessera grande (CardSync Pro)
-// ═══════════════════════════════════════════════════════════════════════
-// STEP separato dal piano "riduzione accoppiamento" concordato con Claudio
-// il 2026-09-11 (secondo giro di taglio, dopo l'estrazione da
-// ui/widget-render-condiviso.ui.js). Estratto da
-// ui/widget-render-tessere-grandi.ui.js. NESSUNA riscrittura del codice
-// esistente: solo spostamento, zero cambi di comportamento per l'utente
-// finale.
-//
-// Contiene: _ballCORPI (un corpo per ogni id di widget — usa i 'dati'
-// prodotti dal preview() del widget corrispondente, definito nel proprio
-// file widget-<nome>.ui.js) e _ballCorpoWidget (dispatcher che sceglie il
-// corpo giusto o ripiega su un corpo generico).
-//
-// Dipende da ui/widget-render-tessere-grandi.ui.js per i componenti
-// visivi condivisi (_ballRiga/_ballPill/_ballSparkline/_ballMiniCarta/
-// _ballPulsante) — chiamati cross-file, stesso meccanismo di sempre.
-// Nessuna istruzione qui gira a tempo di caricamento script — l'ordine tra
-// i tre file widget-render-*.ui.js è indifferente.
-// ───────────────────────────────────────────────────────────────────────
+// Contenuto di ogni widget nelle tessere grandi.
 
-// ── I QUATTRO CORPI ──────────────────────────────────────────────────────
-// ── CORPI DEI TRE WIDGET NATI DALLA HOME FISSA (2026-09-03) ─────────────
-// Claudio, vedendo la prima versione: "non assomigliano per niente a cio'
-// che ho in home e quindi non mi servono a sostituirla". Aveva ragione: i
-// widget non definivano un corpo, quindi _ballCorpoWidget ripiegava su
-// _ballCorpoGenerico (tre righe di testo accanto alla sfera). Qui i corpi
-// ricostruiscono davvero i blocchi della home fissa, con gli stessi
-// mattoni gia' usati dagli altri widget: _ballMiniCarta per le miniature,
-// .ball-strip per le file di carte, .ball-riga per gli elenchi.
-//
-// COME SI COMPORTANO ALLE VARIE TAGLIE: 'inline' sta accanto alla sfera e
-// si vede sempre; 'blocco' sta sotto e il CSS ne mostra sempre meno man
-// mano che la tessera si abbassa (vedi .wf-largo .ball-slot-blocco). Quindi
-// le tre categorie complete si vedono sulle taglie alte, mentre su una
-// tessera bassa resta la prima. Nessun controllo di taglia da scrivere qui.
 function _ballFilaCarte(titolo, carte, origine) {
     if (!carte || !carte.length) return '';
-    // Titolo e fila avvolti insieme: dentro .ball-gruppi ogni figlio e'
-    // una colonna, quindi senza questo involucro il titolo finirebbe in
-    // una colonna e le sue carte in quella accanto.
     return '<div class="ball-gruppo">' +
         `<span class="ball-k-lab">${titolo}</span>` +
         '<div class="ball-strip">' + carte.map(c => _ballMiniCarta(c, undefined, origine)).join('') + '</div>' +
@@ -56,12 +17,9 @@ function _ballElencoRighe(voci) {
 }
 
 const _ballCORPI = {
-    // La frase che Claudio voleva leggere: "valore salito di 45 euro,
-    // aggiunte tre carte ieri dal valore complessivo di 43 euro". La
-    // scomposizione arriva gia' pronta da storicoValoreConfronta().
     variazione_valore: (d) => {
         if (!d) return { inline: '', blocco: '' };
-        const eur = (v) => formattaEuro(Math.abs(Number(v) || 0)); // formato unico, audit 2026-09-25 C2
+        const eur = (v) => formattaEuro(Math.abs(Number(v) || 0));
         const segno = (v) => (Number(v) >= 0 ? '+' : '−');
 
         if (d.soloUnGiorno) {
@@ -72,10 +30,6 @@ const _ballCORPI = {
             };
         }
 
-        // RESTYLE BINDEX FASE 2 (2026-09-30, tavola "Variazione = +X € in 7
-        // giorni + mercato/aggiunte"): se c'è la finestra di 7 giorni
-        // (d.settimana, dal preview) si usa quella, con due righe a barra;
-        // altrimenti resta il corpo di prima (confronto col giorno prima).
         if (d.settimana) {
             const s = d.settimana;
             const col = (v) => (v >= 0 ? 'var(--success)' : 'var(--danger)');
@@ -99,8 +53,6 @@ const _ballCORPI = {
             `<div class="ball-k-big ball-k-mono" style="color:${colore}">${segno(d.variazione)}${eur(d.variazione)}</div>` +
             `<span class="ball-k-lab">${eur(d.valoreOggi)} in totale</span>`;
 
-        // Le due voci della scomposizione. Compaiono solo se hanno
-        // qualcosa da dire: una riga "acquisti: 0,00" e' rumore.
         const voci = [];
         if (d.carteAggiunte > 0) {
             voci.push(`<div class="ball-riga">
@@ -109,11 +61,6 @@ const _ballCORPI = {
             </div>`);
         }
         if (d.rimozioniSospette) {
-            // Limite noto, spiegato nella migration 36: una carta uscita
-            // dalla collezione non lascia traccia, quindi finirebbe nel
-            // residuo e verrebbe letta come "i prezzi sono scesi". Quando
-            // i pezzi calano si dice cosa e' successo invece di attribuire
-            // il calo ai prezzi.
             voci.push(`<div class="ball-riga">
                 <span class="ball-nome">${d.pezziInMeno} pezz${d.pezziInMeno === 1 ? 'o uscito' : 'i usciti'} dalla collezione</span>
                 <span class="ball-dato">—</span>
@@ -132,12 +79,7 @@ const _ballCORPI = {
         return { inline, blocco: grafico + voci.join('') + nota };
     },
 
-    // Disposizione scelta da Claudio: due numeri affiancati in alto, barra
-    // della quota in basso. La barra usa .ball-barra-out/.ball-barra-in,
-    // gli stessi mattoni del corpo 'prezzi' — niente CSS nuovo.
     contributi: (d) => {
-        // La RPC non ha risposto. Non si scrive "0": sarebbe
-        // un'affermazione falsa sul lavoro del gruppo.
         if (!d) {
             return {
                 inline: '<div class="ball-k-mid">\u2014</div><span class="ball-k-lab">dati non disponibili</span>',
@@ -145,10 +87,6 @@ const _ballCORPI = {
             };
         }
 
-        // RESTYLE BINDEX FASE 2 (2026-09-30, tavola "Contributi =
-        // percentuale + numeri"): in alto la quota sul lavoro del gruppo, i
-        // due numeri scendono nel blocco come righe con barra.
-        // 'personeAiutate' ha come massimo 4 (cinque membri, te esclusa).
         const percTop = d.gruppo ? Math.round((d.miei / d.gruppo) * 100) : null;
         const inline =
             '<p class="ball-k-tit">Contributi</p>' +
@@ -158,19 +96,9 @@ const _ballCORPI = {
             _ballRigaBarra('I tuoi controlli', String(d.miei), percTop || 0) +
             _ballRigaBarra('Persone aiutate', `${d.personeAiutate} di 4`, (d.personeAiutate / 4) * 100);
 
-        // GUARDIA SUL DENOMINATORE. Al primo giorno sono tre zeri
-        // legittimi: niente divisione, e nessun "0% del lavoro del gruppo",
-        // che e' vero ma si legge come un rimprovero quando il gruppo non
-        // ha ancora fatto niente.
         if (!d.gruppo) {
             return {
                 inline,
-                // .ball-quota: contenitore che rende la coppia
-                // barra+didascalia un blocco ATOMICO per
-                // _potaContenutoFuoriTessera(). Senza, in una tessera
-                // stretta la didascalia veniva tagliata a meta' dal bordo:
-                // la potatura conosce solo .ball-riga/.ball-gruppo/
-                // .ball-spark/.ball-strip e ignorava questi due elementi.
                 blocco: '<div class="ball-quota">' +
                         '<div class="ball-barra-out"><div class="ball-barra-in" style="width:0%"></div></div>' +
                         '<span class="ball-k-lab ball-attesa">Primi contributi in arrivo.</span>' +
@@ -178,39 +106,17 @@ const _ballCORPI = {
             };
         }
 
-        // Percentuale intera (con numeri piccoli i decimali darebbero una
-        // precisione che il dato non ha); 'gruppo' conta anche le proprie
-        // righe, quindi non supera il 100%. Le due righe con barra sono
-        // blocchi atomici per _potaContenutoFuoriTessera (.ball-riga-set).
         return { inline, blocco: righeNumeri };
     },
 
-    // Le tre categorie della home fissa: valore piu' alto, oscillazione in
-    // su, oscillazione in giu'. Stesse tre carte per categoria.
     primo_piano: (d) => {
-        // 2026-09-19 (riscrittura widget "Primo Piano"): il corpo vive ora in
-        // ui/widget-in-primo-piano.ui.js (_primoPianoCorpo) — carte che
-        // riempiono lo spazio del tile, quarta categoria Box, titoli
-        // cliccabili. Se quella funzione non c'e' (file non ancora
-        // caricato) si ripiega sul corpo di prima, che legge le stesse
-        // chiavi di 'dati' (perValore/su/giu) ed e' quindi compatibile.
         if (typeof _primoPianoCorpo === 'function') return _primoPianoCorpo(d);
         if (!d) return { inline: '', blocco: '' };
         const top = (d.perValore && d.perValore[0]) || null;
-        const eur = (v) => formattaEuro(v); // restyle FASE 2: "12,00 €"
-        // NIENTE ball-k-tit qui: renderWidgetHome stampa gia' il titolo del
-        // widget accanto alla sfera, quindi si leggeva due volte ("In primo
-        // piano" e subito sotto "In vetrina"). Difetto visto in uno
-        // screenshot di Claudio il 2026-09-03.
+        const eur = (v) => formattaEuro(v);
         const inline = top
             ? `<div class="ball-k-big ball-k-mono">${eur(top.prezzo)}</div><span class="ball-k-lab">${escapeHtml(top.nome)}</span>`
             : '<div class="ball-k-mid">—</div><span class="ball-k-lab">nessuna carta ancora</span>';
-        // Le tre categorie AFFIANCATE quando c'e' larghezza, impilate
-        // quando non ce n'e' (Claudio: "dovrebbe estendersi in orizzontale
-        // come nella home"). Il contenitore usa auto-fit nel CSS, quindi
-        // non serve sapere qui quanto e' largo il widget: si dispone da
-        // solo e si comporta bene sia a 3 colonne di griglia sia a tutta
-        // riga in orizzontale.
         const blocco = '<div class="ball-gruppi">' +
             _ballFilaCarte('Valore più alto', d.perValore, 'top_valore') +
             _ballFilaCarte('Oscillazione +', d.su, 'oscillazione_su') +
@@ -219,17 +125,10 @@ const _ballCORPI = {
         return { inline, blocco };
     },
 
-    // Elenco delle ultime aggiunte, nome + data, come il pannello
-    // "Attività recenti" della home fissa.
     carte_recenti: (d) => {
         if (!d || !d.lista || !d.lista.length) {
             return { inline: '<div class="ball-k-mid">—</div><span class="ball-k-lab">nessuna carta ancora</span>', blocco: '' };
         }
-        // RESTYLE BINDEX FASE 2 (2026-09-30, "Ultime aggiunte = una lista"):
-        // prima una fila di miniature E un elenco con gli stessi nomi (due
-        // volte la stessa cosa). Ora una lista sola: miniatura, nome, quando,
-        // prezzo; ogni riga apre la carta (origine 'ultime_aggiunte' come
-        // prima, per le missioni).
         const inline =
             '<p class="ball-k-tit">Ultime aggiunte</p>' +
             `<div class="ball-k-big ball-k-mono">${d.in7 || 0}</div>` +
@@ -244,15 +143,10 @@ const _ballCORPI = {
         return { inline, blocco };
     },
 
-    // Stesso elenco per i controlli prezzo recenti. La variante e' mostrata
-    // accanto al nome come fa la home fissa.
     prezzi_recenti: (d) => {
         if (!d || !d.lista || !d.lista.length) {
             return { inline: '<div class="ball-k-mid">—</div><span class="ball-k-lab">nessun controllo ancora</span>', blocco: '' };
         }
-        // (Audit tessere 2026-10-11) Nome e variante vengono dai dati della carta: si
-        // passano da escapeHtml come negli altri corpi (prima un nome con < o & rompeva
-        // la riga, e un nome con un tag HTML veniva eseguito).
         const inline =
             `<div class="ball-k-mid">${escapeHtml(d.lista[0].nome)}</div>` +
             `<span class="ball-k-lab">controllata il ${escapeHtml(d.lista[0].quando)}</span>`;
@@ -265,12 +159,6 @@ const _ballCORPI = {
         return { inline, blocco };
     },
 
-    // RISCRITTO (2026-09-20, restyle widget SET): stessi mattoni di prima
-    // (_ballRigaBarra, _ballPill, classi ball-k-*), cambia cosa c'è scritto.
-    // Dati da CATALOGO_WIDGET.set_completamento.preview() (ui/widget-set.ui.js):
-    // il set in corso più vicino al completamento e, se c'è una soglia
-    // appena raggiunta e non ancora vista, quella al posto del testo
-    // normale (stessa pill "acceso" che usa il widget Match).
     set_completamento: (d) => {
         if (!d) return { inline: '', blocco: '' };
         const esc = (t) => (typeof escapeHtml === 'function' ? escapeHtml(t) : String(t));
@@ -291,7 +179,6 @@ const _ballCORPI = {
                 `<span class="ball-k-lab">${esc(d.notifica.nome)}</span>` +
                 _ballPill('nuova soglia', true);
         } else if (d.prima) {
-            // RESTYLE BINDEX FASE 2: il set più avanti, un decimale.
             inline =
                 '<p class="ball-k-tit">Set</p>' +
                 `<div class="ball-k-big ball-k-mono">${setPercentuale(d.prima.perc)}</div>` +
@@ -310,14 +197,6 @@ const _ballCORPI = {
         return { inline, blocco };
     },
 
-    // ── SEGNAPOSTO GACHA ─────────────────────────────────────────────────
-    // Stessa forma dello "stato vuoto" del mockup: dice cosa arriverà,
-    // senza numeri finti e senza pulsanti che non portano da nessuna parte.
-    // (Audit tessere 2026-10-11) Prima qui c'era il segnaposto "In arrivo", rimasto da
-    // quando la bustina non esisteva: con la bustina gia' attiva la tessera piccola diceva
-    // "Bustina pronta!" e quella grande "In arrivo". Ora mostra lo stato vero letto da
-    // bustine_stato (giornaliera pronta, bustine guadagnate da aprire, aperte finora).
-    // Senza dati (non loggato, errore) torna vuoto e la tessera ricade sul testo.
     bustina: (d) => {
         if (!d || d.placeholder || d.giornaliera_disponibile == null) return { inline: '', blocco: '' };
         const giornaliera = !!d.giornaliera_disponibile;
@@ -333,21 +212,14 @@ const _ballCORPI = {
             `<span class="ball-k-lab">${aperte.toLocaleString('it-IT')} apert${aperte === 1 ? 'a' : 'e'} finora</span>`;
         return { inline, blocco };
     },
-    // RESTYLE BINDEX FASE 8c (tavola "Foto carte · tessera"): fatte/totale,
-    // barra, le prossime 3 da fotografare e "Inizia sessione foto".
     foto: (d) => {
         if (!d) return { inline: '', blocco: '' };
         const perc = d.totale ? Math.round((d.fatte / d.totale) * 100) : 0;
         const inline = '<p class="ball-k-tit">Foto carte</p>' +
-            // (Audit tessere 2026-10-11) Il totale in piccolo, come nella pagina Foto: con 4 cifre
-            // ("1500 / 3000") il numero usciva dalla colonna accanto alla sfera.
             `<div class="ball-k-big ball-k-mono">${d.fatte}<small class="ball-k-tot"> / ${d.totale}</small></div>` +
             `<span class="ball-k-lab">carte con foto vere${d.daFare ? ` · ${d.daFare} da fare` : ''}</span>` +
             `<div class="ball-barra-out"><div class="ball-barra-in" style="width:${perc}%"></div></div>`;
         if (!d.daFare) return { inline, blocco: '<span class="ball-k-lab">Tutte le carte hanno almeno una foto.</span>' };
-        // (Audit tessere 2026-10-11) data-corto: nelle tessere strette (telefono 4x2-6x2, PC 4x2)
-        // il CSS mostra F / R / S al posto di Fronte / Retro / Scambio, cosi' il nome della carta
-        // resta leggibile (prima finiva in una lettera, oppure il bollino Retro restava tagliato).
         const pill = (testo, corto, acceso) => `<span class="ball-pill${acceso ? ' acceso' : ''}" data-corto="${corto}" title="${testo}">${testo}</span>`;
         const righe = (d.prossime || []).map(c => `
             <div class="ball-riga ball-clic" onclick="_ballAzioneRiga(event,'tab','foto')">
@@ -360,7 +232,6 @@ const _ballCORPI = {
                 _ballPulsante('<i class="fa-solid fa-camera"></i> Inizia sessione foto', 'fotoAvviaSessioneDaTessera(event)'),
         };
     },
-    // Restyle FASE 2: saldo vero (vedi ui/widget-polvere.ui.js).
     polvere: (d) => {
         if (!d || d.saldo == null) return { inline: '', blocco: '' };
         return {
@@ -372,20 +243,9 @@ const _ballCORPI = {
             blocco: '<span class="ball-k-lab">Si guadagna con missioni, traguardi e doppioni della bustina</span>',
         };
     },
-    // Missioni: tessera vera dal 2026-09-26 (prima segnaposto "In
-    // arrivo"). Dati da CATALOGO_WIDGET.missioni.preview()
-    // (ui/widget-missioni.ui.js): fatte/totali di OGGI + le missioni del
-    // giorno. Sopra il conteggio, sotto una riga per missione (✓ se fatta,
-    // altrimenti il premio); ogni riga apre la pagina Missioni. Se i dati
-    // mancano (non loggato/errore → placeholder) si ricade sul testo.
     missioni: (d) => {
         if (!d || d.placeholder || !d.totali) return { inline: '', blocco: '' };
         const tutte = d.fatte >= d.totali;
-        // Niente ball-k-tit: il titolo "Missioni" lo stampa già
-        // renderWidgetHome (widget-tile-titolo) — stesso motivo di
-        // 'primo_piano' e 'ultima_carta', evita il titolo doppio.
-        // Restyle FASE 2 (tavola home pagina 2): titolo "Missioni di oggi",
-        // premi scritti "+5 ✧" (regola comune).
         const inline =
             '<p class="ball-k-tit">Missioni di oggi</p>' +
             `<div class="ball-k-big ball-k-mono${tutte ? ' su' : ''}">${d.fatte}/${d.totali}</div>` +
@@ -407,20 +267,15 @@ const _ballCORPI = {
         return { inline, blocco };
     },
 
-    // ── I CINQUE WIDGET NUOVI ────────────────────────────────────────────
     valore_collezione: (d) => {
         if (!d) return { inline: '', blocco: '' };
-        const eur = (v) => formattaEuroTondo(v); // restyle FASE 2: "1.520 €" nei widget
+        const eur = (v) => formattaEuroTondo(v);
         const inline =
             '<p class="ball-k-tit">Valore collezione</p>' +
             `<div class="ball-k-big ball-k-mono">${eur(d.valore)}</div>` +
             `<span class="ball-k-lab">${d.pezzi} pezzi · media ${eur(d.media)}</span>`;
         let blocco = '';
         if (d.top && d.top.length) {
-            // Missioni #39/#83: origine 'top_valore', SOLO qui — non nel
-            // blocco 'lista' di doppioni sotto né in quello di
-            // 'visualizzazione' più in basso, che riusano la stessa
-            // _ballMiniCarta ma non sono "le carte di maggior valore".
             blocco = '<div class="ball-strip">' + d.top.map(c => _ballMiniCarta(c, undefined, 'top_valore')).join('') + '</div>' +
                 '<span class="ball-k-lab">Le più preziose</span>';
         }
@@ -451,8 +306,6 @@ const _ballCORPI = {
             (d.raggiunte > 0 ? _ballPill('da comprare', true) : '');
         let blocco = '';
         if (d.lista && d.lista.length) {
-            // Barra: quanto è vicino il prezzo attuale all'obiettivo. Piena
-            // quando il prezzo è sceso fino al bersaglio.
             blocco = d.lista.map(c => {
                 const perc = c.prezzo > 0 ? Math.min(100, (c.obiettivo / c.prezzo) * 100) : 0;
                 return _ballRigaBarra(escapeHtml(c.nome), `${formattaEuroTondo(c.prezzo)} / ${formattaEuroTondo(c.obiettivo)}`, perc,
@@ -489,10 +342,6 @@ const _ballCORPI = {
         return { inline, blocco };
     },
 
-    // ── CORPI PER I WIDGET GIÀ ESISTENTI ─────────────────────────────────
-    // RESTYLE BINDEX FASE 2 (2026-09-30, tavola "Inserimento"): in coda,
-    // ultimo invio, Aggiungi carta. Da correggere resta in primo piano
-    // quando c'è (è l'azione).
     inserimento: (d) => {
         if (!d) return { inline: '', blocco: '' };
         const n = d.daCorreggere || 0, q = d.inCoda || 0;
@@ -501,11 +350,6 @@ const _ballCORPI = {
             (n > 0
                 ? `<div class="ball-k-big ball-k-mono" style="color:#d32f2f">${n}</div><span class="ball-k-lab">da correggere${q ? ` · ${q} in coda` : ''}</span>`
                 : `<div class="ball-k-big ball-k-mono">${q}</div><span class="ball-k-lab">in coda · ${q ? 'in lavorazione' : 'tutto inviato'}</span>`);
-        // 2026-10-09 (Claudio: "allargata al massimo si rompe, non sfrutta la
-        // tessera"): il blocco è UN solo contenitore (.ball-ins) con ultimo
-        // invio + barra di esito, tre riquadri (in coda / trovate / da
-        // correggere) e il pulsante, così le regole di taglia in index.css
-        // lo dispongono e lo allargano per intero (vedi .ball-ins).
         const u = d.ultimoInvio;
         let ultimo = '<span class="ball-k-lab">Nessun invio recente</span>';
         let pista = '';
@@ -525,12 +369,6 @@ const _ballCORPI = {
         return { inline, blocco };
     },
 
-    // RESTYLE BINDEX FASE 2 (2026-09-30, tavola "Tessere · Binders"):
-    // conteggio vero + pubblici, e le copertine come binder veri (dorso
-    // scuro, globo sui pubblici). Colore: tinta fissa dal nome finché non
-    // esiste il colore scelto dall'utente (FASE 8a, colonna nuova sul DB).
-    // "Ultimo aperto" delle tavole NON c'è: richiede un dato che oggi il DB
-    // non registra (file 03 § 1.3) — arriverà con la FASE 8.
     binder: (d) => {
         if (!d) return { inline: '', blocco: '' };
         const pubblici = d.pubblici || 0;
@@ -542,7 +380,6 @@ const _ballCORPI = {
         return { inline, blocco };
     },
 
-    // RESTYLE BINDEX FASE 2 (2026-09-30, tavola "Condividi"): prima nessun corpo.
     condividi: (d) => {
         if (!d) return { inline: '', blocco: '' };
         const inline =
@@ -555,8 +392,6 @@ const _ballCORPI = {
         return { inline, blocco };
     },
 
-    // RESTYLE BINDEX FASE 2 (2026-09-30, tavola "Richieste = chi/cosa +
-    // Gestisci"): prima nessun corpo.
     richieste: (d) => {
         if (!d) return { inline: '', blocco: '' };
         const n = d.totale || 0, ris = d.riservate || 0;
@@ -573,8 +408,6 @@ const _ballCORPI = {
         return { inline, blocco };
     },
 
-    // RESTYLE BINDEX FASE 2 (2026-09-30, tavola "Achievement = ultime
-    // medaglie"): prima nessun corpo (solo "N/125 sbloccati").
     achievement: (d) => {
         if (!d || !d.totale) return { inline: '', blocco: '' };
         const ultime = d.ultime || [];
@@ -590,8 +423,6 @@ const _ballCORPI = {
         return { inline, blocco };
     },
 
-    // RESTYLE BINDEX FASE 2 (2026-09-30, tavola "Scaffali = ripiano"):
-    // prima nessun corpo (ricadeva sulle righe di testo).
     scaffali: (d) => {
         if (!d) return { inline: '', blocco: '' };
         const n = d.prodotti || 0;
@@ -604,7 +435,7 @@ const _ballCORPI = {
 
     sealed: (d) => {
         if (!d) return { inline: '', blocco: '' };
-        const eur = (v) => formattaEuroTondo(v); // restyle FASE 2: "1.520 €" nei widget
+        const eur = (v) => formattaEuroTondo(v);
         const inline =
             '<p class="ball-k-tit">Sealed</p>' +
             `<div class="ball-k-big ball-k-mono">${d.totale || 0}</div>` +
@@ -628,11 +459,6 @@ const _ballCORPI = {
         return { inline, blocco: '' };
     },
 
-    // RESTYLE BINDEX FASE 2 (2026-09-30, tavola "Tessera Centro operativo"):
-    // prima leggeva d.testo/d.tab, campi che il preview non restituiva più
-    // dal 2026-08-28 (la tessera grande restava quasi vuota). Ora: schede
-    // cliccabili con icona e freccia (bordo rosso = da fare adesso), poi
-    // Opportunità, in fondo Missioni di oggi e Il gruppo adesso.
     suggerimento: (d) => {
         if (!d) return { inline: '', blocco: '' };
         const esc = (t) => escapeHtml(String(t == null ? '' : t));
@@ -659,11 +485,6 @@ const _ballCORPI = {
         return { inline, blocco };
     },
 
-    // RESTYLE BINDEX FASE 2 (2026-09-30, tavola "Estensione = ● Attiva · vX
-    // · su questo computer + Aggiornamento disponibile"). d.ultima = versione
-    // pubblicata in releases/latest-version.txt (letta dal preview): se è più
-    // nuova di quella installata compare l'avviso con "Aggiorna", che scarica
-    // aggiorna_cardsync.bat come oggi (stesso file di releases/).
     estensione: (d) => {
         if (!d) return { inline: '', blocco: '' };
         if (!d.rilevata) {
@@ -686,8 +507,6 @@ const _ballCORPI = {
         return { inline, blocco };
     },
 
-    // Prezzi: quanti chiedono attenzione, quanto vale la collezione, la
-    // quota di aggiornati come barra e le carte scadute come righe.
     prezzi: (d) => {
         if (!d) return { inline: '', blocco: '' };
         const scaduti = d.scaduti || 0;
@@ -695,25 +514,11 @@ const _ballCORPI = {
         const aggiornati = Math.max(0, totale - scaduti);
         const perc = totale > 0 ? (aggiornati / totale) * 100 : 100;
 
-        // RESTYLE BINDEX FASE 2 (2026-09-30, tavola "Controllo prezzi = da
-        // aggiornare, barra, bottone che apre la pagina"): titolo nuovo,
-        // numero in ambra (da fare, non un errore), niente valore della
-        // collezione (è della tessera Valore).
         const inline =
             '<p class="ball-k-tit">Controllo prezzi</p>' +
             `<div class="ball-k-big ball-k-mono"${scaduti > 0 ? ' style="color:#b8860b"' : ''}>${scaduti > 0 ? scaduti : totale}</div>` +
             `<span class="ball-k-lab">${scaduti > 0 ? 'da aggiornare' : 'tutti aggiornati'}</span>`;
 
-        // .ball-quota (2026-09-06): didascalia e barra sono un blocco
-        // ATOMICO per _potaContenutoFuoriTessera(). Prima erano due figli
-        // diretti sciolti, che la potatura non conosce: in tessera stretta
-        // la riga "Aggiornati N/M" veniva tagliata a meta' dal bordo.
-        // Difetto preesistente, stesso identico caso gia' corretto sul
-        // widget 'contributi'.
-        // 2026-10-09 (Claudio: "alto 1 si rompe, non sfrutta la tessera"):
-        // un unico contenitore .ball-prz (barra + riquadri + pulsante) che le
-        // regole di taglia in index.css dispongono: grande = riempie la
-        // tessera; largo e basso = barra a destra della testata.
         const stat = (v, et) => `<div class="ball-stat"><b>${v}</b><span>${et}</span></div>`;
         const blocco =
             '<div class="ball-prz">' +
@@ -722,17 +527,11 @@ const _ballCORPI = {
             `<div class="ball-barra-out"><div class="ball-barra-in" style="width:${perc.toFixed(1)}%"></div></div>` +
             '</div>' +
             '<div class="ball-stat-griglia">' + stat(aggiornati, 'aggiornati') + stat(scaduti, 'da aggiornare') + stat(totale, 'totale') + '</div>' +
-            // Il bottone apre la pagina Controllo prezzi (tavole approvate); il
-            // tocco sulla tessera fa lo stesso.
             _ballPulsante('Apri Controllo prezzi', `_ballAzioneRiga(event,'tab','prezzi')`) +
             '</div>';
         return { inline, blocco };
     },
 
-    // Visualizzazione: il totale, l'andamento vero degli inserimenti degli
-    // ultimi 14 giorni come sparkline, e le ultime carte entrate.
-    // RESTYLE BINDEX FASE 2 (2026-09-30, tavola "Collezione"): carte ·
-    // valore, le tre schede Carte/Sealed/Wishlist e le ultime 4 entrate.
     visualizzazione: (d) => {
         if (!d) return { inline: '', blocco: '' };
         const inline =
@@ -742,19 +541,12 @@ const _ballCORPI = {
         let blocco = '<div class="ball-chips">' +
             `<span>Carte ${d.totale || 0}</span><span>Sealed ${d.nSealed || 0}</span><span>Wishlist ${d.nWishlist || 0}</span></div>`;
         if (d.ultime && d.ultime.length) {
-            // ball-strip-fill: le carte vanno a capo e riempiono tutto lo spazio della
-            // tessera (larghezza E altezza); quelle che non ci stanno le nasconde
-            // _potaContenutoFuoriTessera, intere, mai tagliate a meta'.
             blocco += '<div class="ball-strip ball-strip-fill">' + d.ultime.map(c => _ballMiniCarta(c)).join('') + '</div>' +
                 (d.aggiunteRecenti ? `<span class="ball-k-lab">+${d.aggiunteRecenti} negli ultimi 14 giorni</span>` : '');
         }
         return { inline, blocco };
     },
 
-    // Location: quante posizioni, e una barra per ciascuna delle più piene,
-    // in scala sulla maggiore. Ogni riga apre la collezione già filtrata.
-    // RESTYLE BINDEX FASE 2 (2026-09-30): le 3 più preziose con il loro
-    // valore e la quota sul totale, e il promemoria delle carte in "?".
     location: (d) => {
         if (!d || !d.voci) return { inline: '', blocco: '' };
         const prima = d.voci[0];
@@ -773,13 +565,6 @@ const _ballCORPI = {
         return { inline, blocco };
     },
 
-    // Match: il totale, e i due tipi come riquadri di statistica separati —
-    // scambio e wishlist sono due cose diverse.
-    // RIPULITO (2026-09-24, estrazione widget Chat): il terzo dato
-    // (chatNonLetti) aggiunto nella sessione precedente è tornato al
-    // widget Chat, che ora ha una tessera propria — vedi 'chat' qui
-    // sotto. Questo corpo è tornato esattamente quello di prima di quella
-    // sessione (solo scambio/wishlist).
     match: (d) => {
         if (!d) return { inline: '', blocco: '' };
         const scambio = d.scambio || 0, wishlist = d.wishlist || 0;
@@ -799,27 +584,8 @@ const _ballCORPI = {
         return { inline, blocco };
     },
 
-    // ── CHAT (id catalogo 'chat') ─────────────────────────────────────
-    // AGGIUNTO (2026-09-24, estrazione da widget-match.ui.js). Opzione B
-    // del mockup approvato da Claudio: totale in grande + le prime 3
-    // conversazioni con non letti nel blocco esteso (nome, puntino,
-    // conteggio) — righe cliccabili, stesso pattern di 'location' qui
-    // sopra. d = { totale, conversazioni: [{ownerAltro, label, count}] },
-    // prodotto da CATALOGO_WIDGET.chat.preview() (ui/widget-chat.ui.js),
-    // popolato da _aggiornaBadgeChat() — zero query qui, tutto già in
-    // memoria, stesso principio degli altri corpi.
-    // Il click sulla riga apre AVVIA il flusso "apri inbox poi apri
-    // questa conversazione" (case 'chat-conversazione' in
-    // _ballAzioneRiga, ui/widget-render-tessere-grandi.ui.js) — non più
-    // solo la lista, vedi commento lì. label passata come 'origine'
-    // (4° parametro), escaping apostrofi come altrove nel progetto.
     chat: (d) => {
         if (!d) return { inline: '', blocco: '' };
-        // AGGIUNTO (2026-09-24): tessera "spenta" per chi è nella lista
-        // vietati (widget-chat.ui.js, _CHAT_EMAIL_VIETATE) — senza
-        // questo caso mostrerebbe comunque "0, nessun messaggio non
-        // letto", che implica che la funzione sia disponibile e solo
-        // vuota, non negata.
         if (d.vietato) {
             return {
                 inline: '<p class="ball-k-tit">Chat</p><span class="ball-k-lab">Non disponibile</span>',
@@ -836,39 +602,20 @@ const _ballCORPI = {
 
         const blocco = conversazioni.map(c => {
             const label = (typeof escapeHtml === 'function' ? escapeHtml(c.label) : c.label);
-            const labelAttr = escapeJsAttr(c.label); // audit 2026-09-25 M2
+            const labelAttr = escapeJsAttr(c.label);
             return `<div class="ball-riga ball-clic" onclick="_ballAzioneRiga(event,'chat-conversazione','${c.ownerAltro}','${labelAttr}')"><span class="ball-nome">${label}</span><span class="ball-dato">${c.count}</span></div>`;
         }).join('');
         return { inline, blocco };
     },
 
-    // ── VETRINA (id catalogo 'ultima_carta') ─────────────────────────────
-    // AGGIUNTO (Claudio, sessione bugfix widget Vetrina — vedi chat). Prima
-    // non c'era nessun caso qui: la tessera grande ricadeva su
-    // _ballCorpoGenerico, lasciando un blocco vuoto sotto stella+titolo e
-    // solo la vecchia miniatura piccola in fondo (vedi screenshot). Foto a
-    // piena larghezza costruita da _ballCorpoFotoCarta
-    // (ui/widget-render-tessere-grandi.ui.js). Se la carta non è ancora
-    // stata scelta (d.vuoto, da widget-vetrina.ui.js) o non ha una foto,
-    // torna vuoto: _ballCorpoWidget ricade sul corpo generico, che per lo
-    // stato "Scegli una carta" tiene la ball/icona classica — comportamento
-    // voluto (Claudio, sessione corrente), non toccato.
-    // NIENTE ball-k-tit nell'inline: il titolo "Vetrina" lo stampa già
-    // renderWidgetHome (widget-tile-titolo), stesso motivo già documentato
-    // sopra per 'primo_piano' — evita la duplicazione vista in uno
-    // screenshot di Claudio il 2026-09-03 su quel widget.
     ultima_carta: (d) => {
         if (!d || d.vuoto) return { inline: '', blocco: '' };
         return { inline: '', blocco: _ballCorpoFotoCarta(d) };
     },
 };
 
-// Ripiego per gli undici widget non ancora convertiti: le righe di testo di
-// sempre, così nessuno perde niente mentre procediamo quattro alla volta.
 function _ballCorpoGenerico(anteprima) {
     return {
-        // (Audit tessere 2026-10-11) Le righe sono testo semplice (nomi di carte, conteggi):
-        // escapeHtml come nella tessera piccola, cosi' un nome con < o un tag non rompe la tessera.
         inline: `<div class="ball-righe-testo">${(anteprima.righe || []).map(r => `<span>${escapeHtml(r)}</span>`).join('')}</div>`,
         blocco: ''
     };
@@ -879,8 +626,6 @@ function _ballCorpoWidget(id, anteprima) {
     if (!f || !anteprima || !anteprima.dati) return _ballCorpoGenerico(anteprima);
     try {
         const c = f(anteprima.dati);
-        // Un corpo vuoto (dati insufficienti) non deve lasciare la tessera
-        // muta: si torna al testo.
         if (!c || (!c.inline && !c.blocco)) return _ballCorpoGenerico(anteprima);
         return c;
     } catch (e) {

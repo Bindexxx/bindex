@@ -1,20 +1,8 @@
-// ═══════════════════════════════════════════════════════════════════════
-// FOTO-PROFILO.UI.JS — foto profilo (Impostazioni → Account) e avatar
-// ═══════════════════════════════════════════════════════════════════════
-// RESTYLE BINDEX (2026-10-01, sql/90). Stesso percorso di retro carta e
-// copertina: file nel bucket privato user-media, riga user_media
-// (slot 'profilo') in attesa, richiesta 'photo_upload' all'admin.
-// La propria foto si vede subito (anche in attesa) nella barra in alto; gli
-// altri la vedono solo dopo l'approvazione (Match, Chat, Richieste).
-//
-// Avatar degli altri: chi disegna un avatar mette data-avatar-utente="<id>"
-// e poi chiama fotoProfiloApplica(contenitore) — una lettura sola per tutti
-// gli id visibili, URL firmati in cache per 50 minuti.
+// Foto profilo e avatar.
 
 const _FP_LATO = 384;
-let _fpCacheUrl = new Map(); // user_id → { url, quando } ('' = nessuna foto)
+let _fpCacheUrl = new Map();
 
-// Ritaglio quadrato centrale, JPEG leggero.
 async function _fpPreparaFoto(file) {
     let img;
     try { img = await createImageBitmap(file, { imageOrientation: 'from-image' }); }
@@ -30,7 +18,6 @@ async function _fpPreparaFoto(file) {
     return new Promise((ok, ko) => c.toBlob(b => b ? ok(b) : ko(new Error('Conversione non riuscita')), 'image/jpeg', 0.85));
 }
 
-// ── Impostazioni → Account ───────────────────────────────────────────────
 async function fotoProfiloRenderImpostazioni() {
     const box = document.getElementById('fotoProfiloBox');
     if (!box) return;
@@ -86,7 +73,6 @@ async function fotoProfiloCarica(input) {
     fotoProfiloAggiornaBarra();
 }
 
-// ── Barra in alto (la mia foto, anche se in attesa) ──────────────────────
 async function fotoProfiloAggiornaBarra() {
     if (typeof CSBar === 'undefined' || !CSBar.setProfile) return;
     try {
@@ -107,7 +93,6 @@ async function fotoProfiloAggiornaBarra() {
     } catch (e) { console.warn('[foto profilo] barra:', e); }
 }
 
-// ── Avatar degli altri ───────────────────────────────────────────────────
 async function fotoProfiloApplica(contenitore) {
     const radice = contenitore || document;
     const nodi = [...radice.querySelectorAll('[data-avatar-utente]')];

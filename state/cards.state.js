@@ -1,12 +1,6 @@
-// ── state/cards.state.js ──────────────────────────────────────────────────
-// Stato della vista Collezione/Wishlist: dati caricati, ordinamento, filtri,
-// carta in modifica, dettaglio foto, controllo prezzi. Stessi valori
-// iniziali del codice originale.
+// Stato di Collezione e Wishlist: dati, ordinamento, filtri, carta in modifica.
 
-        let carteReali = [];
-        // FASE 1 (2026-09-12): array parallelo per i prodotti sealed
-        // (tabella prodotti_sealed, dominio separato da carte). Popolato da
-        // caricaProdottiSealedReali() in ui/widget-sealed.ui.js.
+let carteReali = [];
         let prodottiSealedReali = [];
         let _sortColonna = null;
         let _sortAsc = true;
@@ -14,15 +8,11 @@
         let _filtriTipo = { carte: true, sealed: true, wishlist: false };
         let _fotoDettaglioCartaId = null;
         let _fotoDettaglioTabella = null;
-        let _ambitoControlloPrezzi = prefAmbitoPrezziGet(); // scelta in Impostazioni
+        let _ambitoControlloPrezzi = prefAmbitoPrezziGet();
         let _pollOrdineInterval = null;
         let _pollOrdineWishlistInterval = null;
-        // Fase 1.2 (2026-09-12): stato del pannello Controllo Prezzi Sealed,
-        // separato da quello carte sopra. Fase 1.3 (stesso giorno):
-        // _locationSealedCaricate → _scaffaliSealedCaricati, Scaffali ha
-        // sostituito location come organizzatore dei sealed.
         let _scaffaliSealedCaricati = false;
-        let _ambitoControlloPrezziSealed = prefAmbitoPrezziGet(); // idem (una sola scelta per carte e sealed)
+        let _ambitoControlloPrezziSealed = prefAmbitoPrezziGet();
         let _pollOrdineSealedInterval = null;
         const SOGLIA_GIORNI_PREZZO_SCADUTO = 7;
         let _elencoPrezziScaduti = [];

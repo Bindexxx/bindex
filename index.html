@@ -2,19 +2,13 @@
 <html lang="it">
 <head>
     <meta charset="UTF-8">
-    <!-- (S5 sicurezza, 2026-10-12) Da dove la pagina puo' caricare script, stili,
-         font e immagini e verso dove puo' inviare dati: il browser blocca tutto il
-         resto. 'unsafe-inline' serve agli onclick nell'HTML. Domini: vendor/LEGGIMI.txt. -->
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https://*.supabase.co https://images.weserv.nl https://raw.githubusercontent.com; media-src 'self' data: blob: https://*.supabase.co; connect-src 'self' https://xpfibrzsffurdlypxnrw.supabase.co wss://xpfibrzsffurdlypxnrw.supabase.co; worker-src 'self'; manifest-src 'self'; frame-src 'none'; object-src 'none'; base-uri 'self'; form-action 'self'">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Bindex</title>
 
-    <!-- FAVICON -->
     <link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
     <link rel="icon" href="favicon.ico" type="image/x-icon">
 
-    <!-- (V7, 2026-10-12) App installabile sul telefono: manifest, colore barra,
-         icona per iPhone. Il service worker si registra in fondo alla pagina. -->
     <link rel="manifest" href="manifest.webmanifest">
     <meta name="theme-color" content="#7c4dff">
     <link rel="apple-touch-icon" href="assets/icone/apple-touch-icon.png">
@@ -22,13 +16,6 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-title" content="Bindex">
 
-    <!-- Font, Icone e Libreria QR Code -->
-    <!-- (velocità, 2026-10-15) preconnect: la connessione a Google Fonts parte
-         subito invece che dopo aver letto il CSS. Share Tech Mono è nella
-         stessa richiesta degli altri font: prima arrivava con un @import in
-         cima a index.css, una richiesta in più IN SERIE che bloccava il
-         disegno della pagina finché index.css non era tutto scaricato.
-         QR code con defer: serve solo dopo un clic, non deve bloccare l'apertura. -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Share+Tech+Mono&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -36,20 +23,10 @@
     <link rel="stylesheet" href="statusbar.css">
     <script src="vendor/qrcode-1.0.0.min.js" defer></script>
     
-    <!-- Stili della pagina: spostati in index.css il 2026-09-25 (prima erano
-         un blocco <style> di ~5.400 righe qui). Stessa posizione nella cascata. -->
     <link rel="stylesheet" href="index.css">
 </head>
 <body>
 
-    <!-- OVERLAY DI LOGIN -->
-    <!-- SIDEBAR — CONSEGNA 2 (17/08/2026): sostituisce sia il vecchio header
-         desktop orizzontale sia il vecchio drawer mobile separato. Un'unica
-         lista di voci di navigazione, riusata sia su desktop (sempre visibile,
-         comprimibile) sia su mobile (a scomparsa, aperta dall'hamburger).
-         switchTab() in JS non è stata toccata: cerca ancora elementi con
-         classe "nav-item" dentro un tag <nav> e con id "mNav-{sezione}",
-         quindi qui sotto ogni voce ha entrambi. -->
     <aside class="sidebar" id="sidebar">
         <div class="sidebar-header">
             <div class="logo">
@@ -63,11 +40,6 @@
         </div>
 
         <nav class="sidebar-nav">
-            <!-- A10 (Dashboard e Home) — Stage 1, primo pezzo: solo voce di
-                 navigazione + contenitore vuoto, nessun dato ancora. Diventa
-                 la tab attiva di default al posto di "Visualizzazione" (vedi
-                 anche il fallback nel caricamento iniziale più sotto nel
-                 file). -->
             <a class="nav-item active" id="mNav-home" onclick="switchTab('home', this)">
                 <i class="fa-solid fa-house"></i><span class="nav-label">Home</span>
             </a>
@@ -89,9 +61,6 @@
             <a class="nav-item" id="mNav-wishlist" onclick="switchTab('wishlist', this)">
                 <i class="fa-solid fa-bookmark"></i><span class="nav-label">Wishlist</span><span class="badge-pallino" data-badge-tab="wishlist" style="display:none;"></span>
             </a>
-            <!-- Binder — sezione dei raccoglitori (multi-binder, Fase 2).
-                 Il vecchio commento "TEMPORANEO: mostra tutta la
-                 collezione" era superato: rimosso in audit 2026-09-25. -->
             <a class="nav-item" id="mNav-binder" onclick="switchTab('binder', this)">
                 <i class="fa-solid fa-layer-group"></i><span class="nav-label">Binder</span>
             </a>
@@ -116,10 +85,6 @@
 
     <div class="drawer-overlay" id="drawerOverlay" onclick="closeDrawer()"></div>
 
-    <!-- BARRA MOBILE — voce storica del vecchio menu, ora nascosta via CSS
-         (vedi .sidebar/header#mainHeader/.drawer-overlay {display:none}
-         più sopra) — markup/JS lasciati intatti per non rompere id
-         referenziati altrove, sostituiti dalla home a widget qui sotto. -->
     <header id="mainHeader">
         <button class="hamburger-btn" onclick="openDrawer()" aria-label="Apri menu">
             <i class="fa-solid fa-bars"></i>
@@ -130,36 +95,8 @@
         </div>
     </header>
 
-    <!-- ═══════════════════════════════════════════════════════════════
-         HOME "SMARTPHONE SIMULATO" — sessione 2026-08-23. Cornice
-         placeholder (assets/frame/) + griglia widget personalizzabile
-         (max 10, riordinabile, salvata per-dispositivo). Ogni widget apre
-         a schermo intero, dentro il rettangolo schermo della cornice,
-         esattamente la view-section che apriva il vecchio menu laterale —
-         vedi ui/paginainiziale.ui.js (motore griglia/apertura) e i singoli
-         file ui/widget-<nome>.ui.js (ogni pagina widget, uno per file —
-         ristrutturazione completata 2026-09-11, vedi
-         Roadmap_Ristrutturazione_Widget_Home_2026-09-11.md).
-         #phoneFrameBox ha le proporzioni ESATTE
-         dell'immagine (mai deformata/ritagliata), con un tetto massimo
-         solo su desktop perché resti un mockup e non riempia il monitor
-         (vedi commenti CSS su #phoneFrameBox) — le percentuali
-         --phone-screen-* sono statiche per orientamento. NON aggiungere
-         elementi qui dentro con posizionamento assoluto in px/% assoluti:
-         .container e il tasto Indietro si posizionano leggendo il
-         rettangolo REALE di #phoneScreen via JS (vedi
-         _posizionaContainerNelloSchermo in ui/paginainiziale.ui.js) — fai lo
-         stesso per qualunque nuovo elemento dello stesso tipo. ═══ -->
     <div id="phoneShell">
         <div id="phoneFrameBox">
-            <!-- STEP 2 restyle "cornice Pokédex" (2026-09-17): i due div
-                 immagine (.phone-frame-bg, frame-verticale/orizzontale.png)
-                 e le 3 "luci che respirano" calibrate su quel PNG sono
-                 stati rimossi — la cornice ora è il gradiente CSS dipinto
-                 direttamente su #phoneFrameBox (vedi CSS). #phoneScreen
-                 sotto è INVARIATO (stesse percentuali di inset, stesso
-                 id/z-index): nessun altro punto del sito che dipende da
-                 lui (CSBar, drag/resize, ecc.) ha bisogno di modifiche. -->
             <div id="phoneScreen">
                 <div id="phoneBarraStato">
                     <span class="phone-lcd" id="phoneStatusOra"></span>
@@ -187,13 +124,6 @@
                 </div>
                 <div id="phonePushBanner"><i class="fa-solid fa-bell"></i><span id="phonePushBannerTesto"></span></div>
 
-                <!-- Popup sblocco Achievement (2026-09-25) — badge+confetti,
-                     chiamato da _achievementMostraOverlaySblocco()
-                     (ui/widget-achievement.ui.js) via
-                     _missioniNotificaCompletamenti() (ui/missioni.ui.js).
-                     Vive dentro #phoneScreen come #phonePushBanner qui
-                     sopra: stesso principio, deve restare visibile
-                     qualunque pagina/widget sia aperto sotto. -->
                 <div id="achievementSbloccatoOverlay" class="achievement-popup-overlay">
                     <div class="achievement-popup-card" id="achievementPopupCard">
                         <div class="achievement-popup-confetti" id="achievementPopupConfetti"></div>
@@ -203,34 +133,6 @@
                     </div>
                 </div>
 
-                <!-- Overlay cutscene/apertura Bustina: NON PIÙ QUI dal
-                     2026-09-10. Vive ora come figlio diretto di <body>,
-                     subito prima di </body> — vedi commento lì per il
-                     perché (bug: "schermo nero, il mirino DevTools
-                     seleziona .container invece dell'overlay"). -->
-                <!-- HOME FISSA ELIMINATA (Claudio, 2026-09-03).
-                     Qui c'era #phoneHomePage, la "pagina classica" che
-                     conteneva #home e che si raggiungeva con lo scatto
-                     verticale. Tolta perche' su un telefono vero non
-                     esiste una home sotto la home: finche' restavano
-                     entrambe, l'app somigliava a un sito con dei widget
-                     attaccati sopra invece che a un telefono.
-                     COPERTURA VERIFICATA PRIMA DI TOGLIERLA, blocco per
-                     blocco: le due stat-card stanno nei widget
-                     'valore_collezione' e 'visualizzazione'; gli avvisi in
-                     'suggerimento'; il binder in primo piano in
-                     'primo_piano'; le due attivita' recenti in
-                     'carte_recenti' e 'prezzi_recenti'; la variazione del
-                     valore in 'variazione_valore'. L'unico blocco senza
-                     widget era "ultima sincronizzazione", che pero' non lo
-                     riempiva nessuna funzione del progetto: mostrava
-                     "Caricamento..." per sempre.
-                     #home RESTA nel documento piu' in basso come normale
-                     .view-section nascosta: non e' stato cancellato perche'
-                     e' ancora un bersaglio di switchTab e perche' il suo
-                     markup e' la traccia di cosa i widget devono coprire.
-                     Se un giorno vorrai cancellarlo davvero, quello e' il
-                     punto. -->
                 <div id="phonePagineWrap">
                     <div id="phoneWidgetHomeWrap" class="phone-pagina">
                         <div class="phone-home-header">
@@ -238,12 +140,6 @@
                                 <img src="favicon.ico" alt="Favicon">
                                 <span class="logo-text">Bindex</span>
                             </div>
-                            <!-- RESTYLE BINDEX FASE 1 (2026-09-30): questa riga
-                                 è nascosta (vedi .phone-home-header in
-                                 index.css) e ricompare SOLO in modifica
-                                 come barra "Aggiungi widget / Fatto".
-                                 Si entra in modifica dalla tendina
-                                 ("Modifica home") o col tocco lungo. -->
                             <button type="button" class="btn-aggiungi-widget-home" onclick="_apriPickerAggiungiWidget()">
                                 <i class="fa-solid fa-plus"></i><span>Aggiungi widget</span>
                             </button>
@@ -256,28 +152,9 @@
                 </div>
             </div>
 
-            <!-- Bottone fisico unico — home/indietro, vedi commento CSS su
-                 #btnFisicoTelefono. RIPORTATE fuori da #phoneScreen (STEP 12
-                 fix restyle "cornice Pokédex", 2026-09-17 — lo Step 11 le
-                 aveva spostate dentro per errore: Claudio vuole che siano
-                 "una decorazione del bordo, sopra al bordo", cioè a
-                 cavallo esatto tra cornice e schermo, non chiuse dentro lo
-                 schermo — #phoneScreen ha overflow:hidden per gli angoli
-                 arrotondati, che taglierebbe a metà l'effetto "a cavallo"
-                 voluto. In più: chiudiDettaglioWidget() rimette SEMPRE
-                 #btnFisicoTelefono dentro #phoneFrameBox dopo un dettaglio
-                 aperto (vedi ui/paginainiziale-dettaglio.ui.js, riga con
-                 frameBox.appendChild) — averle spostate dentro #phoneScreen
-                 allo Step 11 avrebbe rotto quel ripristino al primo widget
-                 aperto e richiuso. Tornando qui, tutto torna coerente
-                 senza toccare quella funzione. -->
             <button id="btnFisicoTelefono" class="nascosto pokedex-ball" onclick="_clickTastoFisico()" title="Home">
                 <i class="fa-solid fa-house"></i>
             </button>
-            <!-- RESTYLE BINDEX FASE 1 (2026-09-30): tasti laterali con
-                 funzione (sinistra Cerca, destra Inserisci — vedi
-                 _clickPokeballDecorativa) e nome BINDEX inciso sulla
-                 cornice in basso a sinistra (solo decorazione). -->
             <div id="pokeballSinistra" class="pokedex-ball pokedex-ball-laterale" onclick="_clickPokeballDecorativa('sinistra')" title="Cerca" role="button" aria-label="Cerca"><i class="fa-solid fa-magnifying-glass"></i></div>
             <div id="pokeballDestra" class="pokedex-ball pokedex-ball-laterale" onclick="_clickPokeballDecorativa('destra')" title="Inserisci" role="button" aria-label="Inserisci"><i class="fa-solid fa-plus"></i></div>
             <div id="corniceNomeInciso" aria-hidden="true"><svg width="9" height="12" viewBox="0 0 9 12"><rect x=".6" y=".6" width="7.8" height="10.8" rx="1.6" fill="none" stroke="currentColor" stroke-width="1.2"/><rect x="2.4" y="2.6" width="4.2" height="3" rx=".6" fill="currentColor"/></svg>BINDEX</div>
@@ -286,9 +163,6 @@
 
     <div id="widgetPeekOverlay"></div>
 
-    <!-- MODALE — scelta widget da riaggiungere alla home (solo quelli
-         nascosti dall'utente, vedi _apriPickerAggiungiWidget in
-         ui/paginainiziale.ui.js) -->
     <div id="widgetPickerModal" class="modal-overlay" onclick="_chiudiPickerAggiungiWidget()">
         <div class="modal-content" style="max-width: 360px;" onclick="event.stopPropagation()">
             <button class="close-modal-btn" onclick="_chiudiPickerAggiungiWidget()"><i class="fa-solid fa-xmark"></i></button>
@@ -297,14 +171,7 @@
         </div>
     </div>
 
-    <!-- MODALE — ricerca carte per scegliere quale mostrare in una Vetrina
-         (Claudio, 2026-08-28, vedi _apriRicercaCartaVetrina in
-         ui/widget-vetrina.ui.js). Stessa struttura del picker widget qui sopra;
-         l'input di testo riusa lo stile generico input[type="text"] già
-         definito nel foglio, nessuna CSS nuova per il campo. -->
     <div id="vetrinaRicercaModal" class="modal-overlay" onclick="_chiudiRicercaCartaVetrina()">
-        <!-- Restyle FASE 2 (2026-09-30): un po' più larga per i
-             suggerimenti a griglia (4 per riga), titolo come nella tavola. -->
         <div class="modal-content" style="max-width: 480px;" onclick="event.stopPropagation()">
             <button class="close-modal-btn" onclick="_chiudiRicercaCartaVetrina()"><i class="fa-solid fa-xmark"></i></button>
             <h3 style="font-weight: 800; margin-bottom: 0.8rem;"><i class="fa-solid fa-star" style="color: var(--primary);"></i> Scegli la carta della Vetrina</h3>
@@ -315,7 +182,6 @@
 
     <div class="container">
 
-        <!-- HEADER RISTRETTO PER CONDIVISIONE PUBBLICA -->
         <div id="publicShareHeader" style="display:none; margin-bottom: 1rem; align-items: center; justify-content: space-between;">
             <div class="logo" style="font-size: 1.2rem;">
                 <img src="favicon.ico" alt="Favicon">
@@ -326,10 +192,6 @@
             </div>
         </div>
 
-        <!-- SEZIONE HOME / DASHBOARD — A10, Stage 1. Manca ancora solo il
-             Binder in primo piano (3 carte per categoria + flip-modal),
-             pezzo successivo. Vedi DECISIONI_SESSIONE_BINDER.txt,
-             sez. 3septies per l'elenco completo delle decisioni. -->
         <div id="home" class="view-section active">
             <div class="stats-grid" id="statsGridHome">
                 <div class="stat-card">
@@ -348,8 +210,6 @@
                 </div>
             </div>
 
-            <!-- BINDER IN PRIMO PIANO — posizione prominente, subito sotto
-                 le stat-card, come da decisione confermata da Claudio. -->
             <div class="card-panel home-featured-panel" style="padding: 1.2rem 1.4rem; margin-top: 1rem;">
                 <div style="font-weight: 800; font-size: 0.95rem; color: var(--text-dark); margin-bottom: 0.8rem;">
                     <i class="fa-solid fa-layer-group" style="color:var(--primary);"></i> In primo piano
@@ -364,13 +224,11 @@
                 <div id="avvisiHomeLista"></div>
             </div>
 
-            <!-- ULTIMA SINCRONIZZAZIONE -->
             <div class="card-panel" style="padding: 1rem 1.4rem; margin-top: 1rem; font-size: 0.85rem; color: var(--text-muted);">
                 <i class="fa-solid fa-rotate" style="color: var(--primary);"></i>
                 <span id="ultimaSincronizzazioneHome">Caricamento...</span>
             </div>
 
-            <!-- ATTIVITÀ RECENTI + VARIAZIONE VALORE (placeholder) -->
             <div class="home-activity-grid" style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem; margin-top:1rem;">
                 <div class="card-panel home-activity-panel" style="padding: 1.2rem 1.4rem;">
                     <div class="home-activity-heading" onclick="toggleAttivitaRecentiHome(this)" style="font-weight: 800; font-size: 0.9rem; color: var(--text-dark); margin-bottom: 0.5rem;">
@@ -391,21 +249,14 @@
                 📈 Variazione del valore totale della collezione — arriverà con lo storico del valore totale.
             </div>
 
-            <!-- AIUTA IL GRUPPO / CONTRIBUTI — placeholder onesto, nessun numero finto -->
             <div class="card-panel" style="padding: 1rem 1.4rem; margin-top: 1rem; text-align:center; color: var(--text-muted); font-size: 0.85rem;">
                 <i class="fa-solid fa-people-group" style="color: var(--primary);"></i>
                 I tuoi contributi al gruppo (carte controllate, persone aiutate) — presto disponibili.
             </div>
         </div>
 
-        <!-- SEZIONE TABELLA VISUALIZZAZIONE / SCAMBI / WISHLIST -->
         <div id="visualizzazione" class="view-section">
 
-            <!-- RESTYLE BINDEX (2026-10-01): testata della pagina Collezione,
-                 visibile SOLO nella tab Collezione (body.coll-attiva, vedi
-                 ui/collezione-vista.ui.js). I comandi scrivono nei campi
-                 vecchi qui sotto (#searchInput, #filterLocation, #filterLang),
-                 che restano la fonte letta da filterTable(). -->
             <div id="collTesta" class="coll-testa">
                 <div class="coll-titolo-riga">
                     <h2 class="coll-titolo">Collezione</h2>
@@ -472,7 +323,6 @@
                 </div>
             </div>
 
-            <!-- TOOLBAR E FILTRI -->
             <div class="toolbar">
                 <div class="search-box">
                     <i class="fa-solid fa-magnifying-glass" style="color: var(--text-muted);"></i>
@@ -497,10 +347,8 @@
                 </div>
             </div>
 
-            <!-- MATCH AUTOMATICO TRA AMICI — solo su Scambio/Wishlist -->
             <div id="pannelloMatch" style="display:none; margin-bottom: 1rem;"></div>
 
-            <!-- TOGGLE TIPO — solo nella vista Visualizzazione, multi-selezione -->
             <div class="filters" id="rigaToggleTipo" style="margin: -0.6rem 0 1rem 0; display:none;">
                 <button type="button" class="badge-toggle active" id="toggleTipoCarte" onclick="toggleFiltroTipo('carte')">
                     <i class="fa-solid fa-clone"></i> Carte
@@ -513,7 +361,6 @@
                 </button>
             </div>
 
-            <!-- BARRA AZIONI MULTIPLE — appare solo con righe selezionate -->
             <div class="card-panel" id="barraSelezioneMultipla" style="display:none; padding: 0.8rem 1rem; margin-bottom: 1rem; align-items:center; justify-content:space-between; gap: 0.8rem; flex-wrap: wrap;">
                 <span style="font-weight:700; font-size:0.85rem;" id="conteggioSelezioneMultipla">0 selezionate</span>
                 <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
@@ -523,7 +370,6 @@
                 </div>
             </div>
 
-            <!-- TABELLA DATI CON RIGHE SELEZIONABILI -->
             <div class="card-panel" id="pannelloTabella">
                 <table>
                     <thead>
@@ -533,22 +379,13 @@
                 </table>
             </div>
 
-            <!-- VISTA COMPATTA — solo mobile, solo tab Visualizzazione -->
             <div id="viewCardsCompact" style="display:none;"></div>
 
-            <!-- RESTYLE BINDEX: corpo della pagina Collezione (lista, griglia,
-                 tabella PC + dettagli) — ui/collezione-vista.ui.js -->
             <div id="collCorpo"></div>
 
         </div>
 
-        <!-- SEZIONE 2: INSERIMENTO CARTE (LOCATION DEFAULT: ?) -->
         <div id="inserimento" class="view-section">
-            <!-- RESTYLE BINDEX (2026-10-01, tavole "Inserimento"): righe compatte
-                 (telefono: schede che si aprono; PC: tabella), Collezione/Wishlist
-                 e Carte/Sealed, "Location per tutte", "Ultimo invio". La
-                 struttura delle righe (10 celle) è quella di sempre: salvataggio
-                 e bozza in ui/entry.ui.js leggono le celle per posizione. -->
             <div class="card-panel ins-pagina">
                 <div class="ins-testa">
                     <span class="page-title">Inserimento</span>
@@ -601,8 +438,6 @@
                                 <tbody id="entryTableBody"></tbody>
                             </table>
 
-                            <!-- FASE 1 (2026-09-12): prodotti sealed, inserimento diretto
-                                 in prodotti_sealed (o wishlist_sealed). -->
                             <table id="tabellaInserimentoSealed" style="display:none;">
                                 <thead>
                                     <tr>
@@ -630,7 +465,6 @@
                 </div>
             </div>
 
-            <!-- CARTE CON PROBLEMI — visibile solo se ce ne sono -->
             <div class="settings-card" id="pannelloCarteProblemi" style="display:none; margin-top: 1.5rem;">
                 <h3 style="margin-bottom: 0.3rem; color: var(--text-dark); display: flex; align-items: center; gap: 0.6rem; font-size: 1.15rem; font-weight: 800;">
                     <i class="fa-solid fa-triangle-exclamation" style="color: var(--danger);"></i> Carte con problemi
@@ -640,21 +474,13 @@
             </div>
         </div>
 
-        <!-- SEZIONE 3: CONTROLLO PREZZI -->
         <div id="prezzi" class="view-section">
-            <!-- RESTYLE FASE 3h: tre riquadri (Collezione, Wishlist, Sealed)
-                 spuntabili con UN solo pulsante. Gli id dei controlli e dei
-                 testi di stato sono quelli di sempre (ui/prices.ui.js); i tre
-                 pulsanti originali restano nascosti perché i controlli li
-                 usano per mostrare l'avanzamento. -->
             <div class="pz-pagina">
                 <div class="pz-testa-pagina">
                     <span class="page-title">Controlla prezzi</span>
                     <p class="pz-sottotitolo">Chiedi all'estensione di aggiornare le quotazioni da Cardmarket</p>
                 </div>
                 <div class="pz-stat" id="pzStat"></div>
-                <!-- sql/111: carte di cui il controllo prezzi non ha trovato il
-                     prezzo (carte.esito_controllo) — da sistemare. -->
                 <div id="pzEsiti"></div>
 
                 <div class="pz-layout">
@@ -682,9 +508,6 @@
                                 </div>
                             </div>
 
-                            <!-- 2026-10-09: "Di chi" si sceglie una volta sola in Impostazioni
-                                 (Account e dati). Qui resta solo la scelta attuale. I quattro
-                                 pulsanti nascosti servono a ui/prices.ui.js (stato dei toggle). -->
                             <div class="pz-blocco">
                                 <p class="pz-nota">Controllo: <b id="pzDiChiTesto">solo le tue carte</b> · <a class="pz-link-sotto" onclick="apriDettaglioWidget('impostazioni'); setTimeout(() => _impostazioniApri('account'), 50);">cambia in Impostazioni</a></p>
                                 <div style="display:none;">
@@ -726,19 +549,8 @@
             <div id="prezziaggContenuto"></div>
         </div>
 
-        <!-- SEZIONE 4: IMPOSTAZIONI -->
-        <!-- SEZIONE BINDER — Multi-Binder (2026-08-25). Griglia dei
-             contenitori (uno per location + Wishlist + un binder "extra"
-             personalizzabile) in #bindersContenitoriGrid, popolata da
-             renderGrigliaBinders() in ui/binder.ui.js. Click su un
-             contenitore apre #binderDettaglioWrap (nascosto di default),
-             stesso markup di copertina/sleeve/griglia/paginazione di
-             prima, ora agganciato al binder aperto (_binderAttivo) invece
-             che unico per utente — vedi ui/binder.ui.js per la logica. -->
         <div id="binder" class="view-section">
             <div class="settings-card">
-                <!-- RESTYLE BINDEX FASE 4a: titolo a sinistra, ricerca a destra,
-                     riepilogo sotto (compilato da renderGrigliaBinders). -->
                 <div id="binderTestataHub" class="bn-testata">
                     <div class="bn-testata-riga">
                         <div>
@@ -753,23 +565,9 @@
                     </div>
                 </div>
 
-                <!-- Griglia dei contenitori -->
                 <div id="bindersContenitoriGrid" class="bn-pagina"></div>
 
-                <!-- Dettaglio del binder aperto -->
                 <div id="binderDettaglioWrap" style="display:none;">
-                    <!-- AGGIORNATO (Claudio, 2026-09-18): rinomina/pubblicazione/
-                         condivisione/toggle Immagini-Elenco/Design/layout — prima
-                         tutte qui sopra la griglia carte, ora raccolte nel modale
-                         #binderImpostazioniModal (vicino agli altri modali del
-                         sito, ui/binder.ui.js: apriImpostazioniBinderAttivo) —
-                         "ogni binder ha le sue impostazioni", niente più da
-                         scrollare per arrivare al contenuto. Stessi id di prima,
-                         solo spostati: nessuna funzione JS toccata. -->
-                    <!-- RESTYLE BINDEX FASE 4b: indietro a icona, titolo con
-                         "N carte · valore · globo", condividi (solo se pubblico)
-                         e impostazioni; sotto la scheda Libro | Elenco.
-                         Stessi id di prima per titolo e impostazioni. -->
                     <div id="binderDettaglioHeader" class="bn-det-testa">
                         <button type="button" class="pg-indietro" onclick="tornaAllaGrigliaBinders()" title="Torna a Binders" aria-label="Torna a Binders"><i class="fa-solid fa-chevron-left"></i></button>
                         <div class="bn-det-titoli">
@@ -786,18 +584,6 @@
 
                     <p id="binderSoglioAvviso" style="display:none; font-size:0.75rem; color:var(--text-muted); background:var(--bg-color); border-radius:8px; padding:0.5rem 0.7rem; margin-bottom:0.8rem;"></p>
 
-
-                    <!-- LIBRO SFOGLIABILE (Opus, 2026-08-25) — modalità
-                         "immagini". Tutto il contenuto (facce, tasche,
-                         copertina) è generato da renderBinderLibro() in
-                         ui/binder.ui.js: qui c'è solo lo scheletro. Le
-                         dimensioni di scena/lati/foglio sono impostate in px
-                         via JS leggendo la larghezza REALE del wrap (dentro
-                         la cornice telefono le @media sulla finestra non
-                         valgono), quindi non metterle qui in CSS.
-                         #binderGrid qui sotto resta al suo posto, non più
-                         usato: è il rollback immediato alla vecchia griglia
-                         statica (vedi renderBinderContenuto). -->
                     <div id="binderLibroWrap" class="libro-wrap" style="display:none;">
                         <button type="button" class="binder-page-btn" id="binderPrevBtn" onclick="binderPaginaIndietro()" aria-label="Pagina precedente"><i class="fa-solid fa-chevron-left"></i></button>
                         <div class="libro-scena" id="binderLibroScena">
@@ -818,12 +604,6 @@
                         Nessuna carta in questo binder.
                     </p>
 
-                    <!-- AGGIORNATO (Claudio, 2026-09-18): le frecce prev/next
-                         sono ora dentro #binderLibroWrap sopra (nei lati
-                         liberi del binder aperto) — qui resta solo
-                         l'etichetta pagina, stesso id #binderPaginaLabel,
-                         stessa logica di sincronizzazione
-                         (_libroSincronizzaEtichette in ui/binder.ui.js). -->
                     <div class="binder-pagination" id="binderPagination">
                         <span id="binderPaginaLabel">Pagina 1 di 1</span>
                     </div>
@@ -832,9 +612,6 @@
         </div>
 
         <div id="dafare" class="view-section">
-            <!-- RESTYLE BINDEX FASE 3a (2026-10-01): intestazione comune
-                 (titolo a sinistra) + riepilogo scritto da
-                 renderPaginaDaFare() in ui/widget-dafare.ui.js. -->
             <div class="page-header">
                 <span class="page-title">Centro operativo</span>
             </div>
@@ -843,10 +620,6 @@
         </div>
 
         <div id="match" class="view-section">
-            <!-- Restilizzata (2026-08-30) sulla struttura del mockup —
-                 stessa identica logica di renderPaginaMatch() in
-                 ui/widget-match.ui.js, solo il wrapper e le classi sono cambiate
-                 (da settings-card a page-header/pg-pagina). -->
             <div class="page-header">
                 <span class="page-title">Match</span>
             </div>
@@ -855,12 +628,6 @@
             </div>
         </div>
 
-        <!-- AGGIUNTA 2026-09-24 (estrazione widget Chat) — inbox: elenca
-             TUTTE le conversazioni dell'utente, non solo quelle
-             raggiungibili da un match ancora attivo. renderPaginaChat()
-             in ui/widget-chat.ui.js. Click su una riga apre il modale
-             #chatModal qui sotto (apriChat), stesso meccanismo del
-             bottone "Contatta" di Match. -->
         <div id="chat" class="view-section">
             <div class="page-header">
                 <span class="page-title">Chat</span>
@@ -872,8 +639,6 @@
         </div>
 
         <div id="condividi" class="view-section">
-            <!-- Restilizzata (2026-08-30), stesso principio di #match sopra
-                 — logica di renderPaginaCondividi() invariata. -->
             <div class="page-header">
                 <span class="page-title">Condividi</span>
             </div>
@@ -881,31 +646,10 @@
                 <p class="pg-sotto" id="condividiRiepilogo" style="margin:-6px 0 2px;">Scegli cosa condividere — link, QR o condivisione nativa.</p>
                 <div id="condividiLista"></div>
 
-                <!-- AGGIORNATO 2026-09-18 (Claudio: "con molti binder/scaffali
-                     diventa un po' incastrato" — il vecchio pannello inline
-                     qui sotto spingeva la griglia in basso). Il pannello di
-                     condivisione ora è #condividiShareModal, un modale a
-                     schermo intero DENTRO la cornice — stesso trattamento e
-                     stessa posizione fisica nel file di #binderImpostazioniModal
-                     (vicino agli altri modali globali, subito prima di
-                     #qrModal), non più qui dentro. Vedi
-                     apriCondividiPannelloShare()/_condividiElementoWidget in
-                     ui/widget-condividi.ui.js. -->
             </div>
         </div>
 
         <div id="missioni" class="view-section">
-            <!-- SEMPLIFICATA (2026-09-25, Milestones = Achievement): la
-                 sezione Traguardi (#missioniListaTraguardi) è stata
-                 rimossa da qui — quei dati vivono ora esclusivamente nel
-                 widget Achievement (ui/widget-achievement.ui.js). Restano
-                 solo le missioni giornaliere/settimanali/mensili/una_tantum.
-                 RESTYLE (2026-09-25, Variante C scelta da Claudio dopo
-                 mockup): il sottotitolo statico è stato sostituito dal
-                 riepilogo dinamico (anello + streak) generato da
-                 renderPaginaMissioni() — tutto il contenuto di questa pagina
-                 (riepilogo, tab, elenco) è costruito via JS dentro
-                 #missioniListaOggi, nessun altro markup fisso necessario. -->
             <div class="page-header">
                 <span class="page-title">Missioni</span>
                 <button type="button" class="msn-btn-traguardi" onclick="apriDettaglioWidget('achievement', event)"><i class="fa-solid fa-trophy"></i> Traguardi</button>
@@ -916,62 +660,29 @@
         </div>
 
         <div id="valore" class="view-section">
-            <!-- Pagina di dettaglio "Valore collezione" (2026-08-30) —
-                 prima apriva semplicemente la sezione Prezzi (tab:'prezzi'
-                 nel catalogo widget); ora è una pagina propria, struttura
-                 adottata da cardsync-tutto.html (page-header + pg-*),
-                 colori dal tema reale del sito. Contenuto riempito da
-                 renderPaginaValoreCollezione() in ui/widget-valore-collezione.ui.js. -->
             <div id="valoreContenuto"></div>
         </div>
 
         <div id="variazione" class="view-section">
-            <!-- FASE 8, STEP 3 (2026-09-13): pagina "Variazione valore" —
-                 prima il widget cadeva su Visualizzazione come fallback
-                 silenzioso (nessun tab impostato), stesso bug già noto per
-                 "Contributi al gruppo". Contenuto riempito da
-                 renderPaginaVariazioneValore() in
-                 ui/widget-valore-collezione.ui.js, basato su
-                 movimenti_collezione (sql/54) per spiegare il "perché". -->
             <div id="variazioneContenuto"></div>
         </div>
 
         <div id="achievement" class="view-section">
-            <!-- FASE 9 (2026-09-13). AGGIORNATO 2026-09-18: griglia/tessera
-                 ISOLATE .achievement-grid/.achievement-slot-* (CSS subito
-                 dopo .binder-slot-locked) — non riusa più .binder-grid/
-                 .binder-slot del Binder vero. Contenuto riempito da
-                 renderPaginaAchievement() in ui/widget-achievement.ui.js. -->
             <div id="achievementContenuto"></div>
         </div>
 
         <div id="contributi" class="view-section">
-            <!-- Pagina di dettaglio "Contributi al gruppo" (sessione
-                 2026-09-24) — prima il click ricadeva su Visualizzazione
-                 come fallback silenzioso (nessun tab impostato), stesso bug
-                 già noto e già risolto per "Variazione valore". Contenuto
-                 riempito da renderPaginaContributi() in
-                 ui/widget-contributi.ui.js. Nessuno storico per ora: RPC
-                 leggi_contributi_gruppo() non ha filtro temporale e in
-                 produzione activity_log.action='aiuto_gruppo' è oggi a
-                 zero righe (mai testato con più di un account) — vedi
-                 compilato di sessione per il dettaglio. -->
             <div id="contributiContenuto"></div>
         </div>
 
         <div id="shop" class="view-section">
             <div class="pg-contenuto-pagina">
-                <!-- RESTYLE BINDEX FASE 9: pagina Polvere = Shop (Negozio /
-                     Zaino / Movimenti), disegnata da renderPaginaShop() in
-                     ui/shop.ui.js (sql/91). -->
                 <div id="shopContenuto"></div>
             </div>
         </div>
 
         <div id="foto" class="view-section">
             <div class="pg-contenuto-pagina">
-                <!-- RESTYLE BINDEX FASE 8c: pagina "Foto carte", disegnata da
-                     renderPaginaFoto() in ui/widget-foto.ui.js (sql/89). -->
                 <div class="page-header">
                     <span class="page-title">Foto carte</span>
                 </div>
@@ -980,87 +691,35 @@
         </div>
 
         <div id="wishlist" class="view-section">
-            <!-- Pagina di dettaglio "Wishlist" (2026-08-30) — prima apriva
-                 semplicemente Binder (tab:'binder'); ora pagina propria,
-                 stesso pattern di #valore. Contenuto riempito da
-                 renderPaginaWishlist() in ui/widget-wishlist.ui.js. -->
             <div id="wishlistContenuto"></div>
         </div>
 
         <div id="location" class="view-section">
-            <!-- Pagina di dettaglio "Location" (2026-08-30) — prima il tile
-                 non aveva una destinazione propria (nessun 'tab' nel
-                 catalogo widget); ora pagina propria, stesso pattern di
-                 #valore/#wishlist. Contenuto riempito da
-                 renderPaginaLocation() in ui/widget-location.ui.js. -->
             <div id="locationContenuto"></div>
         </div>
 
         <div id="doppioni" class="view-section">
-            <!-- Pagina di dettaglio "Doppioni" (2026-08-30) — prima apriva
-                 semplicemente Visualizzazione generica (tab:'visualizzazione');
-                 ora pagina propria, stesso pattern di #valore/#wishlist/
-                 #location. Contenuto riempito da renderPaginaDoppioni() in
-                 ui/widget-doppioni.ui.js. -->
             <div id="doppioniContenuto"></div>
         </div>
 
         <div id="primopiano" class="view-section">
-            <!-- Pagina "In primo piano" (2026-09-19) — top 10 di una categoria
-                 (valore, oscillazione +/-, box), aperta dal titolo di
-                 ciascuna categoria nel widget. Stesso pattern di #doppioni/
-                 #sealed. Contenuto riempito da renderPaginaPrimoPiano() in
-                 ui/widget-in-primo-piano.ui.js; registrata in
-                 ui/paginainiziale-dettaglio.ui.js. -->
             <div id="primopianoContenuto"></div>
         </div>
 
         <div id="sealed" class="view-section">
-            <!-- Pagina di dettaglio "Sealed" (2026-08-30) — prima il tile
-                 non aveva una destinazione propria (nessun 'tab' nel
-                 catalogo widget); ora pagina propria, stesso pattern delle
-                 altre. Contenuto riempito da renderPaginaSealed() in
-                 ui/widget-sealed.ui.js. -->
             <div id="sealedContenuto"></div>
         </div>
 
         <div id="set" class="view-section">
-            <!-- Pagina "Set" (2026-08-30; riscritta 2026-09-20): elenco di
-                 tutte le espansioni in 4 schede (In corso/Completati/Non
-                 iniziati/Nascosti) + dettaglio del set con le carte c'è/
-                 manca e "Ignora carte" per il masterset. Contenuto
-                 riempito da renderPaginaSet() in ui/widget-set.ui.js;
-                 logica in ui/set-motore.ui.js. -->
             <div id="setContenuto"></div>
         </div>
 
         <div id="bustina" class="view-section">
-            <!-- Pagina di dettaglio "Bustina" (2026-09-07, sblocco del
-                 segnaposto gacha del 27/08) — stesso pattern minimo di
-                 #valore/#wishlist/#location/#doppioni/#sealed/#set: nessun
-                 markup qui, tutto riempito da renderPaginaBustina() in
-                 ui/widget-bustina.ui.js. AGGIORNATO 2026-09-09: l'apertura ora passa
-                 dall'esperienza completa (cutscene + taglio busta laser +
-                 swipe carte + riepilogo), vedi #bustinaCutsceneOverlay più
-                 sotto nel body — questa pagina resta solo stato/saldo e
-                 bottone "Apri bustina", la vecchia _bustinaMostraRisultato()
-                 (elenco statico) è stata sostituita interamente. -->
             <div id="bustinaContenuto"></div>
         </div>
 
-        <!-- Fase 1.3, Step 5a (2026-09-12): pagina "Scaffali" — organizza i
-             prodotti sealed (sostituisce location per quel dominio, sql/42).
-             Markup statico (non un unico div riempito da innerHTML) perché
-             serve interattività su più livelli (griglia → dettaglio →
-             modale), stesso schema di #binder sopra ma senza copertina/
-             sleeve/pubblicazione-avanzata (Step 5b/5c, non ancora fatti).
-             Riusa le classi CSS .binders-contenitori-grid/.binder-
-             contenitore-* (puro stile, zero dipendenza di comportamento da
-             binder.ui.js) — vedi ui/scaffali.ui.js. -->
         <div id="scaffali" class="view-section scaffale-tema-standard">
             <div class="pg-contenuto-pagina sc-layout">
-                <!-- RESTYLE FASE 3f: elenco a righe + dettaglio a ripiano.
-                     Logica in ui/scaffali.ui.js (id invariati). -->
                 <div id="scaffaliElencoVista">
                     <div class="page-header sc-testa">
                         <span class="page-title">Scaffali</span>
@@ -1071,7 +730,6 @@
                     <p class="sc-nota">Vetrina e Scambio ci sono sempre. Un prodotto può stare in più scaffali.</p>
                 </div>
 
-                <!-- Dettaglio dello scaffale aperto -->
                 <div id="scaffaleDettaglioWrap" style="display:none;">
                     <div class="page-header sc-testa">
                         <button type="button" class="sc-indietro" onclick="tornaAllaGrigliaScaffali()" aria-label="Torna agli scaffali"><i class="fa-solid fa-chevron-left"></i></button>
@@ -1096,9 +754,6 @@
                         Per offrire un prodotto in Scambio, apri la sua scheda e usa "Offri in Scambio".
                     </p>
 
-                    <!-- Pubblicazione: aggiornamento diretto, nessuna moderazione
-                         (solo il NOME è moderato). Nascosta per Scambio (sempre
-                         pubblico). -->
                     <label id="scaffalePubblicazioneRiga" class="sc-interruttore">
                         <input type="checkbox" id="scaffalePubblicazioneCheckbox" onchange="impostaPubblicazioneScaffaleAttivo(this.checked)">
                         <span class="sc-switch"></span>
@@ -1108,7 +763,6 @@
                         <button type="button" class="sc-btn" onclick="openQrModal()"><i class="fa-solid fa-qrcode"></i> QR / Link</button>
                     </div>
 
-                    <!-- Rinomina (moderata) ed Elimina: solo in Modifica. -->
                     <div id="scaffaleAzioniModifica" class="sc-azioni" style="display:none;">
                         <button type="button" class="sc-btn" id="btnRinominaScaffaleAttivo" onclick="proponiRinominaScaffaleAttivo()" title="La rinomina richiede approvazione admin"><i class="fa-solid fa-pen"></i> Rinomina</button>
                         <button type="button" class="sc-btn sc-btn-pericolo" id="btnEliminaScaffaleAttivo" onclick="eliminaScaffaleAttivo()"><i class="fa-solid fa-trash"></i> Elimina</button>
@@ -1117,17 +771,8 @@
             </div>
         </div>
 
-        <!-- Fase 4, Step 3 (2026-09-13): pagina "Richieste" — gestione
-             richieste di scambio ricevute/inviate. Riusa le classi CSS
-             .card-row/.card-thumb/.card-info/.card-name/.card-meta/.badge
-             (definite per la vetrina pubblica selezionabile, ora anche qui
-             — stesso identico stile visivo, nessuna dipendenza di
-             comportamento). Vedi ui/richieste-scambio.ui.js. -->
         <div id="richieste" class="view-section">
             <div class="pg-contenuto-pagina">
-                <!-- RESTYLE FASE 3b: intestazione comune + riepilogo; tutto il
-                     resto (Ricevute/Inviate, filtri, elenco, dettaglio) lo
-                     disegna renderPaginaRichieste() in ui/richieste-scambio.ui.js. -->
                 <div class="page-header">
                     <span class="page-title">Richieste</span>
                 </div>
@@ -1138,36 +783,6 @@
 
         <div id="impostazioni" class="view-section">
 
-            <!-- ═══════════════════════════════════════════════════════════
-                 FASE 10 (2026-09-13): split strutturale — prima era
-                 un'unica card lunghissima, ora un HUB (menu di categorie)
-                 + una pagina propria per modulo, tutte dentro la STESSA
-                 view-section #impostazioni (mai toccare switchTab: ha una
-                 whitelist fissa di 5 tab, segnata come "stabile e
-                 intoccata" nella memoria di progetto — la navigazione tra
-                 hub/sotto-pagine è un router minimo a sé,
-                 _impostazioniApri()/_impostazioniTornaHub() in
-                 ui/impostazioni.ui.js). Contenuto di ogni sotto-pagina
-                 SOLO spostato, non riscritto: stessi id, stesse funzioni
-                 onclick/onchange di prima. Rimossi in questo giro (roadmap
-                 Fase 10): gli shortcut diagnostici "Densità comoda" e
-                 "2×2" dalla tendina CSBar (vedi
-                 ui/paginainiziale-polling-avvio.ui.js) — i layout Binder
-                 reali (2×2/3×3/3×4/4×4) NON sono stati toccati, erano
-                 tutt'altra cosa.
-                 ═══════════════════════════════════════════════════════ -->
-
-            <!-- RESTYLE TAVOLA (2026-10-01, tavole OK-impostazioni /
-                 OK-impostazioni2 / PC-imp*): gli 8 gruppi della tavola
-                 (Profilo, Aspetto, Home, Animazioni, Notifiche e suoni,
-                 Account e dati, Info e segnalazioni; "Gruppo e connessioni" rimosso 2026-10-05).
-                 Telefono: un unico elenco a gruppi, le voci semplici con
-                 l'interruttore in riga, quelle con più campi si aprono al
-                 tocco (.imp-voce.espandibile). PC (>= 780px): menu a
-                 sinistra con ricerca, a destra solo il gruppo scelto, tutto
-                 già aperto. OGNI controllo di prima è rimasto con lo stesso
-                 id e la stessa funzione: cambia solo dove sta. Router in
-                 ui/impostazioni.ui.js (_impostazioniApri/_impostazioniTornaHub). -->
             <div class="page-header"><span class="page-title">Impostazioni</span></div>
             <p class="imp-solo-pc imp-sotto">Tutto quello che cambia l'aspetto e il comportamento di Bindex</p>
             <div class="imp-layout">
@@ -1185,7 +800,6 @@
 
                 <div class="imp-gruppi">
 
-                <!-- ── PROFILO ─────────────────────────────────────────── -->
                 <section class="imp-gruppo" id="impostazioniPagina-profilo" data-gruppo="profilo">
                     <div class="imp-principale">
                     <h3 class="imp-gruppo-titolo">Profilo</h3>
@@ -1196,9 +810,7 @@
                             <i class="fa-solid fa-chevron-right imp-freccia"></i>
                         </div>
                         <div class="imp-corpo">
-                            <!-- Foto profilo (sql/90): disegnata da fotoProfiloRenderImpostazioni() in ui/foto-profilo.ui.js -->
                             <div id="fotoProfiloBox" class="fp-box"></div>
-                            <!-- Nickname (sql/71): salvaNickname()/_nicknameCaricaSeVuoto() in ui/widget-chat.ui.js -->
                             <label class="imp-etichetta">NOME MOSTRATO NEL MATCH E IN CHAT (facoltativo)</label>
                             <div style="display:flex; gap:0.5rem;">
                                 <input type="text" id="nicknameInput" maxlength="30" placeholder="Se vuoto, si vede solo la parte iniziale della tua email" onfocus="_nicknameCaricaSeVuoto()" style="flex:1;">
@@ -1209,7 +821,6 @@
                     </div>
                 </section>
 
-                <!-- ── ASPETTO ─────────────────────────────────────────── -->
                 <section class="imp-gruppo" id="impostazioniPagina-aspetto" data-gruppo="aspetto">
                     <div class="imp-principale">
                     <h3 class="imp-gruppo-titolo">Aspetto</h3>
@@ -1219,9 +830,6 @@
                             <div class="imp-voce-testo"><h4>Tema scuro</h4><p class="imp-solo-pc">Attiva il tema scuro</p></div>
                             <span class="switch"><input type="checkbox" id="darkModeToggle" onchange="toggleDarkMode(this.checked); _scorciatoieAggiorna(); _impAnteprime()"><span class="slider"></span></span>
                         </label>
-                        <!-- Due color-picker liberi (STEP 1 restyle "cornice
-                             Pokédex"): il resto della palette si deriva da
-                             questi due colori, vedi utils/theme-colori.js. -->
                         <label class="imp-voce">
                             <span class="imp-ico"><i class="fa-solid fa-palette"></i></span>
                             <div class="imp-voce-testo"><h4>Colore principale</h4><p>Colore delle sfere e dei widget: decide anche il resto della palette</p></div>
@@ -1244,9 +852,6 @@
                             <i class="fa-solid fa-chevron-right imp-freccia"></i>
                         </div>
                         <div class="imp-corpo">
-                            <!-- STEP 3/11/12 restyle "cornice Pokédex": diametro
-                                 widget = "1 unità" della griglia Home (vedi
-                                 setDiametroWidget in ui/navigation-tema.ui.js). -->
                             <div class="imp-slider">
                                 <div class="imp-voce-testo"><h4>Widget</h4><p>Diametro delle sfere: è anche "1 unità" della griglia</p></div>
                                 <div class="imp-slider-riga">
@@ -1255,8 +860,6 @@
                                 </div>
                                 <p id="temaDiametroAnteprimaTesto" class="imp-nota">Con questa dimensione, per questo dispositivo, ci saranno 0 colonne e 0 righe</p>
                             </div>
-                            <!-- 2026-09-18: slider scollegati da --ball-misura
-                                 (applicaDiametroBinder/applicaDiametroAchievement). -->
                             <div class="imp-slider">
                                 <div class="imp-voce-testo"><h4>Binder e Scaffali</h4><p>Copertine nella griglia Binder, Scaffali e Condividi</p></div>
                                 <div class="imp-slider-riga">
@@ -1279,7 +882,6 @@
                     <aside class="imp-lato"><div class="imp-lato-testa"><b>Anteprima</b><span>si aggiorna mentre cambi</span></div><div class="imp-anteprima" id="impAnteprimaAspetto"></div><p class="imp-nota" id="impAnteprimaAspettoNota"></p></aside>
                 </section>
 
-                <!-- ── HOME ────────────────────────────────────────────── -->
                 <section class="imp-gruppo" id="impostazioniPagina-home" data-gruppo="home">
                     <div class="imp-principale">
                     <h3 class="imp-gruppo-titolo">Home</h3>
@@ -1318,7 +920,6 @@
                     <aside class="imp-lato"><div class="imp-lato-testa"><b>Anteprima</b><span>la tua home</span></div><div class="imp-anteprima" id="impAnteprimaHome"></div><p class="imp-nota">Con "Scritte" spente restano le sfere nude; il badge mostra un numero o solo un pallino.</p></aside>
                 </section>
 
-                <!-- ── ANIMAZIONI ──────────────────────────────────────── -->
                 <section class="imp-gruppo" id="impostazioniPagina-animazioni" data-gruppo="animazioni">
                     <div class="imp-principale">
                     <h3 class="imp-gruppo-titolo">Animazioni</h3>
@@ -1343,7 +944,6 @@
                     <aside class="imp-lato"><div class="imp-lato-testa"><b>Prova</b><span>senza aprire nulla</span></div><div class="imp-anteprima imp-prova-cattura" id="impProvaCattura"></div><button type="button" class="btn-main" onclick="_impProvaCattura()"><i class="fa-solid fa-play"></i> Riproduci la cattura</button><p class="imp-nota">Valgono solo su questo dispositivo.</p></aside>
                 </section>
 
-                <!-- ── NOTIFICHE E SUONI ───────────────────────────────── -->
                 <section class="imp-gruppo" id="impostazioniPagina-notifiche" data-gruppo="notifiche">
                     <div class="imp-principale">
                     <h3 class="imp-gruppo-titolo">Notifiche e suoni</h3>
@@ -1402,7 +1002,6 @@
                     <aside class="imp-lato"><div class="imp-lato-testa"><b>Prova</b><span>così arrivano</span></div><div class="imp-banner-finto"><span class="imp-banner-ico"><i class="fa-solid fa-bell"></i></span><div><b>Irene ti ha scritto</b><span>Ce l'hai ancora il Moonbreon?</span></div><em>ora</em></div><div class="imp-bottoni"><button type="button" class="btn-secondary" onclick="_impProvaBanner()"><i class="fa-solid fa-bell"></i> Mostra un banner</button><button type="button" class="btn-secondary" onclick="_impProvaSuono()"><i class="fa-solid fa-volume-high"></i> Prova suono</button></div></aside>
                 </section>
 
-                <!-- ── ACCOUNT E DATI ──────────────────────────────────── -->
                 <section class="imp-gruppo" id="impostazioniPagina-account" data-gruppo="account">
                     <div class="imp-principale">
                     <h3 class="imp-gruppo-titolo">Account e dati</h3>
@@ -1446,14 +1045,10 @@
                         <div class="imp-voce">
                             <span class="imp-ico"><i class="fa-solid fa-file-import"></i></span>
                             <div class="imp-voce-testo"><h4>Importa da CSV <span class="imp-nuovo">nuovo</span></h4><p>Hai la collezione segnata altrove? Caricala in un colpo solo</p></div>
-                            <!-- ui/import-csv.ui.js: file → colonne → controllo → coda a blocchi da 100 -->
                             <input type="file" id="importCsvFile" accept=".csv,text/csv" style="display:none;" onchange="importaCsvDaFile(this)">
                             <button class="btn-main imp-btn" onclick="importCsvApri()"><i class="fa-solid fa-file-import"></i> Importa</button>
                         </div>
                     </div>
-                    <!-- (S8, 2026-10-12) Cestino: carte e sealed eliminati negli ultimi
-                         30 giorni (sql/98). ui/cestino.ui.js la riempie e la nasconde
-                         finché la tabella non esiste. -->
                     <div id="impCestinoCard" class="imp-card">
                         <div class="imp-voce espandibile" onclick="_impostazioniEspandi(this); cestinoAggiorna();">
                             <span class="imp-ico"><i class="fa-solid fa-trash-can-arrow-up"></i></span>
@@ -1466,10 +1061,6 @@
                             <button type="button" class="btn-secondary imp-btn" id="impCestinoSvuota" onclick="cestinoSvuotaChiedi()" style="display:none;"><i class="fa-solid fa-trash"></i> Svuota il cestino</button>
                         </div>
                     </div>
-                        <!-- Preferenze estensione: visibili solo se
-                             l'estensione risponde (_aggiornaControlliApriApp
-                             in ui/extension.ui.js imposta display). Spostate qui da
-                             'Gruppo e connessioni' (rimosso 2026-10-05). -->
                         <div id="impostazioniEstensioneGroup" class="imp-card" style="display:none;">
                             <label class="imp-voce">
                                 <span class="imp-ico"><i class="fa-solid fa-handshake-angle"></i></span>
@@ -1487,9 +1078,6 @@
                                 <span class="switch"><input type="checkbox" id="chkApriSempreApp" onchange="salvaPreferenzaApriSempreApp(this.checked)"><span class="slider"></span></span>
                             </label>
                         </div>
-                    <!-- FASE 10, STEP 3: "Diagnostica" — SOLO admin, mostrata
-                         da _impostazioniAggiornaDiagnostica() se authGetRuolo()
-                         conferma role='admin'. -->
                     <div id="impostazioniDiagnosticaCard" class="imp-card imp-card-pad" style="display:none;">
                         <h4 class="imp-card-titolo"><i class="fa-solid fa-stethoscope"></i> Diagnostica (admin)</h4>
                         <p class="imp-nota">Log di QUESTA sessione soltanto — riparte vuoto ad ogni refresh, non può leggere retroattivamente la console.</p>
@@ -1502,10 +1090,6 @@
                     </div>
                 </section>
 
-                <!-- ── CODICI (2026-10-14) ──────────────────────────────────
-                     Riscatto dei codici: il controllo e l'accredito li fa il
-                     database (riscatta_codice, sql/102). ui/codici.ui.js.
-                     Finché sql/102 non è eseguito: "non ancora attivi". -->
                 <section class="imp-gruppo" id="impostazioniPagina-codici" data-gruppo="codici">
                     <div class="imp-principale">
                     <h3 class="imp-gruppo-titolo">Codici</h3>
@@ -1527,12 +1111,10 @@
                     </div>
                 </section>
 
-                <!-- ── INFO E SEGNALAZIONI ─────────────────────────────── -->
                 <section class="imp-gruppo" id="impostazioniPagina-info" data-gruppo="info">
                     <div class="imp-principale">
                     <h3 class="imp-gruppo-titolo">Info e segnalazioni</h3>
                     <div class="imp-card">
-                        <!-- CHANGELOG (EASTER EGG) -->
                         <div class="imp-voce" onclick="handleChangelogClick()" style="cursor:pointer; user-select:none;">
                             <span class="imp-ico"><i class="fa-solid fa-scroll"></i></span>
                             <div class="imp-voce-testo"><h4>changeLog</h4><p>Consulta la cronologia degli aggiornamenti dell'applicazione</p></div>
@@ -1553,16 +1135,12 @@
 
                 </div>
             </div>
-            <!-- Importa da CSV (tavole PC-csv / PC-csv-prog): riempita da
-                 _importCsvRender() in ui/import-csv.ui.js; quando è aperta
-                 #impostazioni ha la classe imp-csv-aperto e il resto si nasconde. -->
             <div id="importCsvVista"></div>
 
         </div>
 
     </div>
 
-    <!-- FOOTER CON FAVICON -->
     <footer>
         <div class="footer-content">
             <img src="favicon.ico" alt="Favicon">
@@ -1571,49 +1149,21 @@
         <p>&copy; 2026 Bindex. Tutti i diritti riservati.</p>
     </footer>
 
-    <!-- MODALE POPUP QR CODE -->
-    <!-- Impostazioni per-binder (Claudio, 2026-09-18): rinomina, pubblicazione,
-         condivisione, toggle Immagini/Elenco, design (nome con approvazione +
-         copertina + sleeve) e layout griglia — prima tutte visibili sopra la
-         griglia carte in #binderDettaglioWrap, ora raccolte qui perché "ogni
-         binder ha le sue impostazioni". Aperto dall'icona ingranaggio
-         nell'header del binder (vedi ui/binder.ui.js:
-         apriImpostazioniBinderAttivo/chiudiImpostazioniBinderAttivo). Nessuna
-         funzione JS cambiata: tutti gli id sotto sono identici a prima, solo
-         spostati di posto nel DOM (getElementById non dipende dal
-         contenitore). -->
     <div id="binderImpostazioniModal" class="modal-overlay" onclick="chiudiImpostazioniBinderAttivo()">
         <div class="modal-content" style="text-align:left;" onclick="event.stopPropagation()">
             <button class="close-modal-btn" onclick="chiudiImpostazioniBinderAttivo()"><i class="fa-solid fa-xmark"></i></button>
-            <!-- Contenuto in colonna centrata (Claudio, 2026-09-18): il
-                 modale-overlay è a schermo intero dentro la cornice (vedi
-                 CSS #binderImpostazioniModal più sopra), ma i controlli
-                 stessi (checkbox, tendina, bottoni) restano leggibili in
-                 una colonna di larghezza comoda invece di spargersi su
-                 tutta la larghezza disponibile — stessa larghezza (640px)
-                 già approvata quando il modale era ancora un box piccolo
-                 centrato. Il bottone chiudi resta FUORI da questo wrapper,
-                 sempre ancorato all'angolo vero del modale (position:
-                 absolute su .modal-content, invariato). -->
             <h3 style="font-weight: 800; margin-bottom: 1rem; display:flex; align-items:center; gap:0.5rem;">
                 <i class="fa-solid fa-gear" style="color: var(--primary);"></i> Impostazioni binder
             </h3>
 
-            <!-- Tab (Claudio, 2026-09-18: "raggruppa in tab" — Generali/Design
-                 invece di un'unica pagina lunga da scorrere). Stesso pattern
-                 .binder-modalita-toggle/.binder-modalita-btn già usato altrove
-                 nel sito (Achievement, Immagini/Elenco del binder), nessuno
-                 stile nuovo. _binderImpostazioniTab() in ui/binder.ui.js. -->
             <div class="binder-modalita-toggle" id="binderImpostazioniTabs" style="margin-bottom:1.2rem;">
                 <button type="button" class="binder-modalita-btn active" data-itab="generali" onclick="_binderImpostazioniTab('generali')"><i class="fa-solid fa-sliders"></i> Generali</button>
                 <button type="button" class="binder-modalita-btn" data-itab="design" onclick="_binderImpostazioniTab('design')"><i class="fa-solid fa-wand-magic-sparkles"></i> Design</button>
             </div>
 
-            <!-- ═══════════ TAB GENERALI ═══════════ -->
             <div id="binderImpostazioniTabGenerali">
                 <div class="binder-impostazioni-zone">
 
-                    <!-- RESTYLE BINDEX FASE 8a: colore della copertina (vale finché non carichi una foto). Richiede sql/81. -->
                     <div class="settings-card">
                         <h4 style="margin: 0 0 0.6rem; font-size: 0.9rem; font-weight: 700; display:flex; align-items:center; gap:0.5rem;">
                             <i class="fa-solid fa-palette" style="color: var(--primary);"></i> Colore della copertina
@@ -1622,35 +1172,18 @@
                         <div id="binderColoreMsg" style="font-size:0.75rem; color:var(--text-muted); margin-top:0.5rem; min-height:1em;"></div>
                     </div>
 
-                    <!-- PLACEHOLDER (Claudio, 2026-09-18): solo UI, NESSUN
-                         salvataggio e NESSUNA colonna DB dietro — Regola
-                         d'Oro #3, mai scrivere SQL/repository senza verifica
-                         diretta sullo schema reale. Le due spunte qui sotto
-                         non fanno ancora nulla oltre abilitare/disabilitare
-                         la tendina (puro JS locale, zero chiamate a
-                         supabaseClient). Da collegare a una funzione vera
-                         quando la struttura dati sarà decisa con Claudio —
-                         Claudio, 2026-09-18: contenuto INVARIATO, solo
-                         spostato nella nuova griglia a zone. -->
                     <div class="settings-card">
                         <h4 style="margin: 0 0 0.2rem; font-size: 0.9rem; font-weight: 700; display:flex; align-items:center; gap:0.5rem;">
                             <i class="fa-solid fa-circle-info" style="color: var(--primary);"></i> Informazioni
                             <span style="font-size:0.65rem; font-weight:700; color:var(--text-muted); background:var(--bg-color); border:1px solid var(--border-color); border-radius:6px; padding:0.1rem 0.4rem;">WIP</span>
                         </h4>
 
-                        <!-- Interruttori NON ancora collegati a nessuna colonna DB (Regola
-                             d'Oro #3): prima si potevano accendere ma non salvavano nulla.
-                             Ora sono disabilitati e dichiarati "in arrivo". Stesso stile
-                             .bn-interruttore di "Pubblico". Gli id restano invariati. -->
                         <label class="bn-interruttore bn-int-spento" style="margin-top:0.6rem;">
                             <span class="bn-int-testo"><b>Aggiorna questo binder in automatico</b><small>Ogni 7 giorni · in arrivo</small></span>
                             <input type="checkbox" id="binderAutoAggiornaCheckbox" disabled>
                             <span class="bn-switch"></span>
                         </label>
                         <select id="binderAutoAggiornaGiorni" disabled style="display:none;"><option value="7" selected>7 giorni</option></select>
-                        <!-- sql/95: collegato a binders.escludi_valore_collezione. Le carte
-                             contenute SOLO in binder esclusi non entrano nei totali di valore
-                             (valore collezione, storico, home). Nascosto per il binder Wishlist. -->
                         <label id="binderEscludiValoreRiga" class="bn-interruttore" style="margin-top:0.8rem;">
                             <span class="bn-int-testo"><b>Escludi dal valore della collezione</b><small>Le carte presenti solo in binder esclusi non contano nei totali</small></span>
                             <input type="checkbox" id="binderEscludiValoreCollezioneCheckbox" onchange="impostaEscludiValoreBinderAttivo(this.checked)">
@@ -1659,19 +1192,11 @@
                         <div id="binderEscludiValoreMsg" style="font-size:0.72rem; color:var(--danger); min-height:1em; margin-top:0.3rem;"></div>
                     </div>
 
-                    <!-- Rinomina + Pubblicazione + Condivisione raggruppate
-                         (Claudio, 2026-09-18: "sì vai") in UNA card visiva —
-                         i 3 blocchi interni restano id/logica invariati
-                         (_aggiornaControlliRinominaPubblicazioneCondivisione
-                         in ui/binder.ui.js continua a mostrarli/nasconderli
-                         singolarmente in base al tipo di binder), solo
-                         raggruppati sotto lo stesso titolo invece che sparsi. -->
                     <div class="settings-card">
                         <h4 style="margin: 0 0 0.6rem; font-size: 0.9rem; font-weight: 700; display:flex; align-items:center; gap:0.5rem;">
                             <i class="fa-solid fa-globe" style="color: var(--primary);"></i> Nome pubblico e condivisione
                         </h4>
 
-                        <!-- Rinomina — mostrata via JS solo per il binder tipo 'extra' -->
                         <div id="binderRinominaWrap" style="display:none; margin-bottom:1rem; gap:0.5rem; flex-wrap:wrap;">
                             <input type="text" id="binderRinominaInput" placeholder="Nome del binder" style="flex:1; min-width:160px; padding:0.5rem 0.7rem; border-radius:8px; border:1px solid var(--border-color); font-size:0.85rem;">
                             <button type="button" class="btn-secondary" style="padding:0.5rem 0.9rem; font-size:0.8rem;" onclick="rinominaBinderExtraCorrente(document.getElementById('binderRinominaInput').value)">
@@ -1679,14 +1204,6 @@
                             </button>
                         </div>
 
-                        <!-- Pubblicazione libera (2026-08-25) — nessuna
-                             approvazione admin, vedi
-                             19_binder_pubblicazione_libera.sql. Mostrata via
-                             JS solo per i binder che l'utente può davvero
-                             decidere (location diverse da SCAMBIO, extra) —
-                             Wishlist e Scambio sono sempre pubblici, il
-                             controllo qui non avrebbe senso e resta
-                             nascosto. -->
                         <div id="binderPubblicazioneWrap" style="display:none; margin-bottom:1rem; align-items:center; gap:0.6rem;">
                             <label class="bn-interruttore">
                                 <span class="bn-int-testo"><b>Pubblico</b><small>Chi ha il link può sfogliarlo</small></span>
@@ -1695,13 +1212,6 @@
                             </label>
                         </div>
 
-                        <!-- Condivisione (2026-08-25) — riusa lo stesso
-                             modale QR globale già esistente (#qrModal,
-                             openQrModal/copyShareLink/condividiLinkNativo in
-                             ui/navigation.ui.js), nessun modale nuovo.
-                             Mostrato via JS solo quando il binder è
-                             pubblico E ha una pagina pubblica reale
-                             (Wishlist, Scambio). -->
                         <div id="binderCondivisioneWrap" style="display:none; align-items:center; gap:0.5rem; flex-wrap:wrap;">
                             <button type="button" class="btn-main" style="padding:0.5rem 0.9rem; font-size:0.8rem;" onclick="openQrModal()">
                                 <i class="fa-solid fa-qrcode"></i> Condividi
@@ -1712,9 +1222,6 @@
                         </p>
                     </div>
 
-                    <!-- Toggle immagini/elenco + layout griglia — raggruppati
-                         sotto "Visualizzazione" (stessa area concettuale:
-                         come si vede il binder). Contenuto/id invariati. -->
                     <div class="settings-card">
                         <h4 style="margin: 0 0 0.6rem; font-size: 0.9rem; font-weight: 700; display:flex; align-items:center; gap:0.5rem;">
                             <i class="fa-solid fa-table-cells-large" style="color: var(--primary);"></i> Visualizzazione
@@ -1723,7 +1230,6 @@
                             <button type="button" class="binder-modalita-btn" data-modalita="immagini" onclick="impostaModalitaBinder('immagini')"><i class="fa-solid fa-images"></i> Immagini</button>
                             <button type="button" class="binder-modalita-btn" data-modalita="elenco" onclick="impostaModalitaBinder('elenco')"><i class="fa-solid fa-list"></i> Elenco</button>
                         </div>
-                        <!-- Layout griglia immagini — nascosto via JS in modalità elenco -->
                         <div class="binder-layout-switcher" style="display:flex; align-items:center; gap:0.6rem; flex-wrap:wrap; margin-top:0.8rem;">
                             <div style="display:flex; gap:0.4rem;">
                                 <button type="button" class="binder-layout-btn" data-layout="2x2" onclick="cambiaLayoutBinder('2x2')"><span class="bn-mini bn-mini-2x2"><b></b><b></b><b></b><b></b></span><span>2×2</span></button>
@@ -1739,22 +1245,9 @@
                 </div>
             </div>
 
-            <!-- ═══════════ TAB DESIGN ═══════════ -->
-            <!-- AGGIORNATO 2026-09-18 (Claudio: "sì" a schermata/step
-                 separato invece del vecchio pannello richiudibile) — Nome/
-                 Copertina/Sleeve ora sono una tab a sé invece di un pannello
-                 annidato. "Uniformalo al resto" (Claudio, punto 8): Nome e
-                 Copertina non sono più card strette a parte, stessa griglia
-                 a zone di Informazioni/ecc. -->
             <div id="binderImpostazioniTabDesign" style="display:none;">
 
                 <div id="binderDesignContenutoNormale" class="binder-impostazioni-zone">
-                    <!-- Nome con approvazione admin (2026-08-25) — stessa
-                         metodologia di copertina/sleeve, vedi
-                         21_binder_nome_con_approvazione.sql. NON sostituisce
-                         la rinomina immediata del binder 'extra' più sopra
-                         (#binderRinominaWrap, senza moderazione) — le due
-                         convivono, segnalato a Claudio. -->
                     <div class="settings-card">
                         <h4 style="margin: 0 0 0.5rem; font-size: 0.9rem; font-weight: 700; display:flex; align-items:center; gap:0.5rem;">
                             <i class="fa-solid fa-signature" style="color: var(--primary);"></i> Nome
@@ -1796,14 +1289,6 @@
                         </div>
                     </div>
 
-                    <!-- Sleeve — AGGIORNATO 2026-09-18 (Claudio, punto 10):
-                         card compatta con SOLO anteprima + un bottone
-                         "Modifica sleeve" — il canvas grande (#cardBackStageWrap)
-                         e i bottoni Carica/Galleria si spostano dentro
-                         #binderSleeveEditorZona qui sotto, invisibili finché
-                         non si apre l'editor ("visibili solo quando si vuole
-                         editare la sleeve"). _binderSleeveApriEditor() in
-                         ui/binder.ui.js. -->
                     <div id="binderSleeveCard" class="settings-card">
                         <h4 style="margin: 0 0 0.5rem; font-size: 0.9rem; font-weight: 700; display:flex; align-items:center; gap:0.5rem;">
                             <i class="fa-solid fa-clone" style="color: var(--primary);"></i> Sleeve (retro carta)
@@ -1825,14 +1310,6 @@
                     </div>
                 </div>
 
-                <!-- Editor sleeve immersivo (Claudio, 2026-09-18: "va bene
-                     che si nasconda [il resto] prendendo tutto lo spazio" +
-                     "accanto per sfruttare lo spazio vuoto laterale") —
-                     nascosto finché non aperto da _binderSleeveApriEditor(),
-                     sostituisce interamente la vista normale della tab
-                     Design (tab bar compresa). Canvas e controlli fianco a
-                     fianco su schermo largo, impilati su schermo stretto
-                     (.binder-sleeve-editor-layout, flex-wrap). -->
                 <div id="binderSleeveEditorZona" style="display:none;">
                     <div style="display:flex; align-items:center; gap:0.6rem; margin-bottom:1rem;">
                         <button type="button" class="btn-secondary" style="padding:0.5rem 0.8rem; font-size:0.8rem;" onclick="_binderSleeveChiudiEditor()">
@@ -1940,16 +1417,6 @@
         </div>
     </div>
 
-    <!-- Modale condivisione del widget Condividi (link/QR/nativo) — a
-         schermo intero DENTRO la cornice, aggiunto 2026-09-18 (Claudio:
-         "con molti binder/scaffali diventa incastrato"). Stessa tecnica
-         di #binderImpostazioniModal qui sopra (CSS override subito dopo
-         quello, _rettangoloSchermoCornice() per il posizionamento —
-         nessuna logica di misura duplicata). Non è #qrModal sotto (quello
-         dipende dallo stato globale di navigazione, "il binder che hai
-         aperto ORA"): qui serve condividere un elemento scelto da una
-         lista, senza navigarci dentro — vedi apriCondividiPannelloShare()/
-         _condividiElementoWidget in ui/widget-condividi.ui.js. -->
     <div id="condividiShareModal" class="modal-overlay" onclick="chiudiCondividiPannelloShare()">
         <div class="modal-content" onclick="event.stopPropagation()">
             <div id="condividiShareContenuto"></div>
@@ -1976,23 +1443,13 @@
         </div>
     </div>
 
-    <!-- ═══════════════════════════════════════════════════════════════════
-         PANNELLO A SCHERMO INTERO — controllo estensione + accesso
-         Sostituisce il vecchio popup centrato: essendo grande quanto tutta
-         la finestra, non ha bisogno di essere "centrato" — elimina il
-         problema alla radice invece di continuare a inseguirlo.
-    ═══════════════════════════════════════════════════════════════════ -->
     <div id="cardsyncPanel" style="display:none; position:fixed; inset:0; width:100%; height:100%; z-index:9999999; background:var(--bg-color); overflow-y:auto;">
         <div class="pdx-wrap">
-        <!-- RESTYLE BINDEX FASE 5: tutto dentro un "Bindex" disegnato come un
-             Pokédex (lente, led, BINDEX inciso, croce). Solo aspetto: gli
-             stati, gli id e i TESTI sono quelli di prima. -->
         <div class="pdx">
         <div class="pdx-top"><span class="pdx-lente"></span><i class="pdx-led pdx-led-r"></i><i class="pdx-led pdx-led-g"></i><i class="pdx-led pdx-led-v"></i><span class="pdx-nome">BINDEX</span></div>
         <div class="pdx-schermo">
         <div style="width:100%;">
 
-            <!-- STATO: estensione assente o non aggiornata — prima pagina -->
             <div id="statoNonInstallata" style="display:none; text-align:center;">
                 <div class="cardsync-motivo-tema" id="motivoNonInstallata">⚡</div>
                 <h2 style="font-weight:800; margin-bottom:0.6rem; font-size:1.5rem;" id="statoNonInstallataTitolo">Non hai l'estensione installata</h2>
@@ -2015,7 +1472,6 @@
                 </p>
             </div>
 
-            <!-- STATO: istruzioni di installazione/aggiornamento — pagina unica -->
             <div id="statoIstruzioni" style="display:none; text-align:left;">
                 <div style="text-align:center;"><div class="cardsync-motivo-tema" id="motivoIstruzioni">🔄</div></div>
                 <h2 style="font-weight:800; text-align:center; margin-bottom:1.6rem; font-size:1.5rem;">Aggiorna l'estensione</h2>
@@ -2052,7 +1508,6 @@
                 <button class="btn-main" style="width:100%; justify-content:center; padding:0.9rem; margin-top:0.6rem;" onclick="_ricontrollaEChiudiIstruzioni()">Fatto — ricontrolla <i class="fa-solid fa-arrow-right"></i></button>
             </div>
 
-            <!-- STATO: "beccato" — chiuso senza aver davvero aggiornato -->
             <div id="statoBeccato" style="display:none; text-align:center;">
                 <div class="cardsync-motivo-tema" style="background:var(--danger-bg); border-color:var(--danger); color:var(--danger);">🕴️</div>
                 <h2 style="font-weight:800; margin-bottom:0.6rem; font-size:1.5rem;">Ti ho beccato, furbacchione!</h2>
@@ -2069,7 +1524,6 @@
                 </div>
             </div>
 
-            <!-- STATO: istruzioni disinstallazione -->
             <div id="statoDisinstalla" style="display:none; text-align:center;">
                 <div class="cardsync-motivo-tema">🗑️</div>
                 <h2 style="font-weight:800; margin-bottom:1rem; font-size:1.5rem;">Come disinstallarla</h2>
@@ -2082,18 +1536,15 @@
                 <button class="btn-secondary" style="width:100%; justify-content:center; display:flex; padding:0.9rem;" onclick="_ricontrollaVersioneECambiaStato()">Fatto, torna indietro</button>
             </div>
 
-            <!-- STATO: estensione aggiornata — accesso -->
             <div id="statoBossFiero" class="pdx-login" style="display:none; text-align:center;">
                 <div class="cardsync-motivo-tema" id="motivoBossFiero">🎉</div>
                 <h2 class="pdx-login-tit" id="statoBossFieroTitolo">Il boss è fiero di te!</h2>
                 <p class="pdx-login-txt" id="statoBossFieroTesto">Hai l'estensione installata e aggiornata all'ultima versione — valuta di attivare la funzione "Aiuta il gruppo" per far sì che non sia solo il PC di Bill a fare i calcoli per gli altri. In questo modo l'app sarà più veloce per tutti noi. Bill ringrazia. 🙏</p>
 
-                <!-- Se già loggato -->
                 <div id="bossFieroGiaLoggato" style="display:none;">
                     <button class="btn-main pdx-login-btn" style="width:100%; justify-content:center;" id="btnContinuaComeUtente" onclick="_continuaAlSito()"></button>
                 </div>
 
-                <!-- Se non loggato: stesso form del sito, spostato qui -->
                 <div id="bossFieroLoginForm" style="display:none; text-align:left; max-width:340px; margin:0 auto;">
                     <div class="auth-field">
                         <label>Nome utente</label>
@@ -2133,7 +1584,6 @@
         </div>
     </div>
 
-    <!-- MODALE RECUPERO ACCESSO (reset password) -->
     <div id="resetPasswordModal" class="modal-overlay" style="z-index:10000000;" onclick="chiudiModaleResetPassword()">
         <div class="modal-content" style="max-width: 380px; text-align:left;" onclick="event.stopPropagation()">
             <button class="close-modal-btn" onclick="chiudiModaleResetPassword()"><i class="fa-solid fa-xmark"></i></button>
@@ -2149,9 +1599,6 @@
         </div>
     </div>
 
-    <!-- MODALE CAMBIO USERNAME (Fase 2b, 19/08/2026) — utente già loggato,
-         insert diretto in pending_requests (type: username_change), il
-         dispatcher lato admin applica il cambio solo all'approvazione. -->
     <div id="cambioUsernameModal" class="modal-overlay" style="z-index:10000000;" onclick="chiudiModaleCambioUsername()">
         <div class="modal-content" style="max-width: 380px; text-align:left;" onclick="event.stopPropagation()">
             <button class="close-modal-btn" onclick="chiudiModaleCambioUsername()"><i class="fa-solid fa-xmark"></i></button>
@@ -2167,7 +1614,6 @@
         </div>
     </div>
 
-    <!-- MODALE RICERCA GLOBALE -->
     <div id="ricercaGlobaleModal" class="modal-overlay" onclick="chiudiRicercaGlobale()">
         <div class="modal-content" style="max-width: 440px; text-align:left;" onclick="event.stopPropagation()">
             <button class="close-modal-btn" onclick="chiudiRicercaGlobale()"><i class="fa-solid fa-xmark"></i></button>
@@ -2177,18 +1623,6 @@
         </div>
     </div>
 
-    <!-- Multi-Binder (2026-08-25): il vecchio modale "Aggiungi/gestisci
-         carte nel Binder" (A6) è stato RIMOSSO — era orfano, chiamava 3
-         funzioni mai esistite dopo il refactoring Multi-Binder
-         (chiudiAggiungiCarteBinder, eseguiRicercaAggiungiCarteBinder,
-         applicaModificheBinder), segnalato dalla sessione Opus. Stesso
-         bisogno già coperto dal bottone "Aggiungi al Binder" per singola
-         carta e dall'azione bulk in Visualizzazione (ui/cards.ui.js,
-         toggleBinderMembership/aggiungiSelezionateAlBinder), agganciati al
-         binder 'extra'. Nessuna funzionalità persa, solo markup morto
-         rimosso. -->
-
-    <!-- MODALE FOTO DETTAGLIO -->
     <div id="fotoModal" class="modal-overlay">
         <div class="modal-content" style="max-width: 420px;" onclick="event.stopPropagation()">
             <button class="close-modal-btn" onclick="chiudiFotoDettaglio()"><i class="fa-solid fa-xmark"></i></button>
@@ -2204,17 +1638,12 @@
         </div>
     </div>
 
-    <!-- MODALE IMMAGINE INGRANDITA -->
     <div id="immagineModal" class="modal-overlay" onclick="chiudiImmagineIngrandita()">
         <div class="modal-content" id="immagineModalContent" onclick="event.stopPropagation()">
             <button class="close-modal-btn" onclick="chiudiImmagineIngrandita()"><i class="fa-solid fa-xmark"></i></button>
             <img id="immagineIngranditaImg" src="" alt="" style="width:100%; border-radius:12px; margin-top:0.5rem;" onerror="this.style.display='none'; document.getElementById('immagineErroreMsg').style.display='block';">
             <p id="immagineErroreMsg" style="display:none; color:var(--text-muted); font-size:0.85rem; padding:2rem 0;">Immagine non disponibile al momento.</p>
 
-            <!-- A10 (Dashboard/Home) — scena "gira carta": ESTENDE questo
-                 stesso modale (stesso overlay/pulsante chiudi di
-                 apriImmagineIngrandita), nascosta di default. Attivata solo
-                 da apriFlipCardHome(). -->
             <div id="flipCardScene" style="display:none; margin-top:0.5rem;">
                 <div class="flip-card-inner" id="flipCardInner" onclick="toggleFlipCard()">
                     <div class="flip-card-face flip-card-front">
@@ -2267,33 +1696,15 @@
                             </div>
                         </div>
                         <div class="flip-card-back-overlay">
-                            <!-- Restyle pg-* (2026-08-31), stesso trattamento
-                                 cosmetico già dato a Match/Condividi/Missioni.
-                                 Colori adattati allo scrim scuro (vedi CSS
-                                 .flip-card-back-overlay .pg-* sopra) — la
-                                 struttura pg-riga/pg-stat/pg-bottoni è
-                                 invariata rispetto alle altre pagine. -->
                             <div id="flipCardInfoWrap" style="display:flex; flex-direction:column; gap:8px;">
                                 <div class="pg-riga" id="flipCardStats"></div>
                                 <div class="pg-stat" id="flipCardStatBoxes"></div>
-                                <!-- FASE 8c: "Foto reali di questa copia" (ui/widget-foto.ui.js) -->
                                 <div id="flipCardFotoReali"></div>
                             </div>
                             <div class="pg-bottoni">
                                 <button class="primario" id="flipCardBinderBtn"><i class="fa-solid fa-layer-group"></i> Vai al binder</button>
-                                <!-- Pulsante "Gestisci doppione" (2026-08-30) —
-                                     nascosto di default come flipCardBinderBtn:
-                                     mostrato solo quando apriFlipCardHome() viene
-                                     chiamata con opzioni.doppione=true (dalla
-                                     pagina Doppioni). Stesso pattern esatto:
-                                     style.display e .onclick riscritti ad ogni
-                                     apertura in ui/home.ui.js. -->
                                 <button id="flipCardGestisciDoppioneBtn" style="display:none;"><i class="fa-solid fa-clone"></i> Gestisci doppione</button>
                             </div>
-                            <!-- Popolato via JS al tap del pulsante sopra:
-                                 2 scelte (sposta in Scambio / apri scheda
-                                 modifica) — vedi ui/home.ui.js
-                                 _mostraSceltaGestisciDoppione(). -->
                             <div class="pg-bottoni" id="flipCardDoppioneScelta" style="display:none;"></div>
                         </div>
                     </div>
@@ -2302,16 +1713,9 @@
         </div>
     </div>
 
-    <!-- DOPPIONI — due contenitori a schermo intero (sessione 2026-09-18).
-         Markup NUOVO, indipendente da #immagineModal qui sopra (mai
-         modificato): #doppioniBoxVisualContainer si usa SOLO per i box
-         (niente flip), #doppioniControlliContainer per il pannello
-         posizioni/sposta di ENTRAMBI (carte e box). Popolati/mostrati da
-         ui/widget-doppioni.ui.js, mai da altri file. -->
     <div id="doppioniBoxVisualContainer"></div>
     <div id="doppioniControlliContainer"></div>
 
-    <!-- MODALE GRAFICO PREZZI -->
     <div id="graficoModal" class="modal-overlay">
         <div class="modal-content" style="max-width: 480px;" onclick="event.stopPropagation()">
             <button class="close-modal-btn" onclick="chiudiGraficoPrezzo()"><i class="fa-solid fa-xmark"></i></button>
@@ -2323,10 +1727,6 @@
         </div>
     </div>
 
-    <!-- A10 (Dashboard/Home) — MODALE "PREZZI DA AGGIORNARE" — sola
-         consultazione, nessuna azione diretta da qui (come da vincolo
-         Stage 1: per controllare i prezzi si passa dal bottone già
-         esistente nella tab Prezzi). -->
     <div id="prezziScadutiModal" class="modal-overlay" onclick="chiudiModalePrezziScaduti()">
         <div class="modal-content" style="max-width: 440px;" onclick="event.stopPropagation()">
             <button class="close-modal-btn" onclick="chiudiModalePrezziScaduti()"><i class="fa-solid fa-xmark"></i></button>
@@ -2336,8 +1736,6 @@
         </div>
     </div>
 
-    <!-- MODALE "Prezzo non trovato" (sql/111): carte con esito del controllo
-         prezzi, ognuna con "Sistema" (modifica carta) e il link Cardmarket. -->
     <div id="esitiPrezziModal" class="modal-overlay" onclick="prezziChiudiEsiti()">
         <div class="modal-content" style="max-width: 480px;" onclick="event.stopPropagation()">
             <button class="close-modal-btn" onclick="prezziChiudiEsiti()"><i class="fa-solid fa-xmark"></i></button>
@@ -2347,10 +1745,6 @@
         </div>
     </div>
 
-    <!-- MODALE "Aggiungi prodotti" — Fase 1.3, Step 5a (2026-09-12).
-         Checkbox su tutti i prodotti sealed dell'utente, chiudiModale...
-         ri-renderizza la griglia dello scaffale aperto per riflettere
-         eventuali cambi fatti qui dentro. -->
     <div id="scaffaleAssegnaProdottiModal" class="modal-overlay" onclick="chiudiModaleAssegnaProdotti()">
         <div class="modal-content" style="max-width: 440px;" onclick="event.stopPropagation()">
             <button class="close-modal-btn" onclick="chiudiModaleAssegnaProdotti()"><i class="fa-solid fa-xmark"></i></button>
@@ -2360,10 +1754,6 @@
         </div>
     </div>
 
-    <!-- MODALE QUANTITÀ OFFERTA — Binder Scambio, Fase 3 Step 2 (2026-09-12).
-         A differenza del binder 'extra' (toggle sì/no), qui serve un NUMERO —
-         vedi apriModaleQuantitaScambio/confermaQuantitaScambio in
-         ui/binder.ui.js. -->
     <div id="scambioQuantitaModal" class="modal-overlay" onclick="chiudiModaleQuantitaScambio()">
         <div class="modal-content" style="max-width: 380px;" onclick="event.stopPropagation()">
             <button class="close-modal-btn" onclick="chiudiModaleQuantitaScambio()"><i class="fa-solid fa-xmark"></i></button>
@@ -2383,9 +1773,6 @@
         </div>
     </div>
 
-    <!-- Fase 3, Step 3 (2026-09-12): gemella della modale sopra, per i
-         prodotti sealed (Scaffale Scambio invece di Binder Scambio) — vedi
-         apriModaleQuantitaScambioSealed in ui/scaffali.ui.js. -->
     <div id="scambioSealedQuantitaModal" class="modal-overlay" onclick="chiudiModaleQuantitaScambioSealed()">
         <div class="modal-content" style="max-width: 380px;" onclick="event.stopPropagation()">
             <button class="close-modal-btn" onclick="chiudiModaleQuantitaScambioSealed()"><i class="fa-solid fa-xmark"></i></button>
@@ -2405,7 +1792,6 @@
         </div>
     </div>
 
-    <!-- MODALE MODIFICA CARTA -->
     <div id="editCardModal" class="modal-overlay">
         <div class="modal-content" style="max-width: 380px; text-align: left;" onclick="event.stopPropagation()">
             <button class="close-modal-btn" onclick="chiudiModificaCarta()"><i class="fa-solid fa-xmark"></i></button>
@@ -2472,9 +1858,6 @@
         </div>
     </div>
 
-    <!-- FASE 1 (2026-09-12): modale Modifica per i prodotti sealed — campi
-         diversi dal modale carte (niente condizione/reverse/1st, invece
-         integrità packaging + tre prezzi + data acquisizione). -->
     <div id="editSealedModal" class="modal-overlay">
         <div class="modal-content" style="max-width: 380px; text-align: left;" onclick="event.stopPropagation()">
             <button class="close-modal-btn" onclick="chiudiModificaSealed()"><i class="fa-solid fa-xmark"></i></button>
@@ -2541,10 +1924,6 @@
             <button class="btn-main" id="btnSalvaModificaSealed" style="width: 100%; justify-content:center; margin-top: 0.4rem;" onclick="salvaModificaSealed()">
                 <i class="fa-solid fa-check"></i> Salva Modifiche
             </button>
-            <!-- Fase 3, Step 3 (2026-09-12): apre la stessa modale quantità
-                 dello Scaffale Scambio (ui/scaffali.ui.js) — apriScambioSealedDaModifica()
-                 legge _sealedInModifica.id al momento del click, dato che
-                 questo bottone è markup statico (non rigenerato per prodotto). -->
             <button class="btn-secondary" id="btnOffriScambioSealed" style="width: 100%; justify-content:center; margin-top: 0.5rem;" onclick="apriScambioSealedDaModifica()">
                 <i class="fa-solid fa-right-left"></i> Offri in Scambio
             </button>
@@ -2554,12 +1933,6 @@
         </div>
     </div>
 
-    <!-- FASE 6, STEP 2 (2026-09-13): modale modifica Wishlist Sealed —
-         mirror di editSealedModal sopra, campi ridotti (niente prezzo
-         Cardmarket/acquisto/data acquisizione, nessun senso per un oggetto
-         non ancora posseduto) + prezzo_obiettivo + lingua "Qualsiasi"
-         (opzioni ricostruite in JS da apriModificaWishlistSealed, non
-         statiche qui — stesso motivo del fix su editLingua sopra). -->
     <div id="editWishlistSealedModal" class="modal-overlay">
         <div class="modal-content" style="max-width: 380px; text-align: left;" onclick="event.stopPropagation()">
             <button class="close-modal-btn" onclick="chiudiModificaWishlistSealed()"><i class="fa-solid fa-xmark"></i></button>
@@ -2611,14 +1984,7 @@
         </div>
     </div>
 
-    <!-- FASE 6, STEP 3 (2026-09-13): modale "Richiedi" precompilato dal
-         pannello Match — apriRichiediMatch()/confermaRichiediMatch() in
-         ui/queue.ui.js. Nessun invio automatico: solo dopo conferma
-         manuale, come richiesto esplicitamente da Claudio. -->
     <div id="richiediMatchModal" class="modal-overlay">
-        <!-- RESTYLE FASE 3b (2026-10-01): più oggetti della stessa persona in
-             una sola richiesta. Contenuto disegnato da _renderRichiediMatch()
-             in ui/queue.ui.js. -->
         <div class="modal-content richiedi-modal" onclick="event.stopPropagation()">
             <button class="close-modal-btn" onclick="chiudiRichiediMatch()" aria-label="Chiudi"><i class="fa-solid fa-xmark"></i></button>
             <div class="richiedi-head">
@@ -2638,26 +2004,8 @@
         </div>
     </div>
 
-    <!-- FASE 11 (2026-09-13): modale di blocco Work in Progress —
-         _wipMostraBlocco()/_wipChiudiModale() in ui/wip.ui.js. -->
-    <!-- CHAT — apriChat()/chiudiChat() in ui/widget-chat.ui.js
-         (sql/70_chat_match.sql). Apertura/chiusura via style.display,
-         stesso meccanismo di ogni altro modale qui sotto (.modal-overlay
-         ha display:none di base). RINOMINATO 2026-09-24 (estrazione
-         widget Chat): era #chatMatchModal/chatMatchTitolo/
-         chatMatchMessaggi/chatMatchInput/chiudiChatMatch() — la chat non
-         è più specifica al widget Match, apre dalla tessera Chat, dalla
-         sua inbox, o dal bottone "Contatta" di Match. -->
     <div id="chatModal" class="modal-overlay">
         <div class="modal-content">
-            <!-- RISTRUTTURATO 2026-09-24 (giro di migliorie grafiche —
-                 stile WhatsApp/Messenger): header con avatar+menu ⋮
-                 (prima due bottoni fissi Segnala/Blocca), corpo messaggi
-                 con bolle raggruppate/orario/spunte (vedi
-                 ui/widget-chat.ui.js, _chatBubbleHtml), input a pillola.
-                 CSS dedicato in cima al file (#chatModal .modal-content e
-                 classi .chat-*), zero modifiche a .modal-content/
-                 .modal-overlay condivisi dagli altri modali. -->
             <div class="chat-header">
                 <div class="chat-avatar" id="chatAvatar">?</div>
                 <div class="chat-header-info">
@@ -2673,17 +2021,6 @@
                 <button class="close-modal-btn" onclick="chiudiChat()" style="position:static;"><i class="fa-solid fa-xmark"></i></button>
             </div>
             <div id="chatMessaggi" class="chat-body"></div>
-            <!-- AGGIUNTO 2026-09-24 (giro di migliorie): bottone invio
-                 disabilitato a campo vuoto + contatore caratteri
-                 (maxlength 2000) — _chatSuInputCambiato() in
-                 ui/widget-chat.ui.js, chiamata anche da apriChat() per
-                 partire già nello stato corretto (campo vuoto = bottone
-                 disabilitato) invece di lasciarlo abilitato finché
-                 l'utente non tocca l'input. -->
-            <!-- RESTYLE BINDEX FASE 3i: frasi pronte fisse (tocco = invio
-                 diretto, passa dagli stessi filtri di _chatInviaMessaggioClick).
-                 "Mostra il mio Scambio" con anteprima richiede un tipo di
-                 messaggio nuovo sul DB: rimandato alla FASE 8. -->
             <div class="chat-frasi" id="chatFrasi">
                 <button type="button" onclick="_chatInviaFrase('Ce l\'hai ancora?')">Ce l'hai ancora?</button>
                 <button type="button" onclick="_chatInviaFrase('Mi interessa, come facciamo?')">Mi interessa</button>
@@ -2694,10 +2031,6 @@
                 <button class="btn-main chat-invia-btn" id="chatInviaBtn" onclick="_chatInviaMessaggioClick()" disabled><i class="fa-solid fa-paper-plane"></i></button>
             </div>
             <div id="chatContatore" style="text-align:right; font-size:0.66rem; color:var(--text-muted); padding:0 0.9rem;"></div>
-            <!-- AGGIUNTO 2026-09-24: avviso filtri di moderazione
-                 (parolacce/link esterni — client E server da sql/72),
-                 mostrato da _chatInviaMessaggioClick() quando blocca
-                 l'invio. -->
             <div id="chatAvviso" style="display:none; font-size:0.72rem; color:var(--danger); padding:0.3rem 0.9rem 0.5rem; text-align:center;"></div>
         </div>
     </div>
@@ -2716,34 +2049,19 @@
         </div>
     </div>
 
-    <!-- MODALE POPUP BULBASAUR (EASTER EGG) -->
     <div id="bulbasaurModal" class="modal-overlay" onclick="closeBulbasaurModal()">
         <div class="modal-content" style="max-width: 340px; padding: 2rem 1.2rem 1.2rem 1.2rem;" onclick="event.stopPropagation()">
             <button class="close-modal-btn" onclick="closeBulbasaurModal()"><i class="fa-solid fa-xmark"></i></button>
             
-            <!-- FUMETTO -->
             <div class="speech-bubble">
                 dai che quella roba non la legge nessuno
             </div>
 
-            <!-- IMMAGINE BULBASAUR — loading="lazy" (2026-10-15): ~200 KB da un altro
-                 sito, prima scaricati a ogni apertura anche col popup chiuso. -->
             <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/1.png" alt="Bulbasaur" loading="lazy" style="width: 170px; height: 170px; object-fit: contain; filter: drop-shadow(0 8px 12px rgba(0,0,0,0.15)); margin-top: 5px;">
         </div>
     </div>
 
-    <!-- SUPABASE JS -->
-    <!-- Versione ESATTA (audit 2026-09-25, E1): con "@2" il sito caricava
-         sempre l'ultima release uscita, e un aggiornamento difettoso della
-         libreria poteva rompere il sito senza nessuna modifica nel repo.
-         Stessa versione in tutte le pagine: aggiornarla a mano, tutte
-         insieme. chart.js non è più caricato qui: lo scarica
-         ui/prices.ui.js solo all'apertura del grafico prezzo. -->
-    <script src="vendor/supabase-js-2.117.1.js"></script><!-- copiata nel repo il 2026-10-12 (S4, vedi vendor/LEGGIMI.txt) -->
-    <script src="config/supabase.js" data-client="app"></script>
-    <!-- ui/log-diagnostico.ui.js: Fase 10, Step 3 (2026-09-13) — caricato
-         SUBITO dopo supabase.js, il più presto possibile, così cattura
-         anche gli errori dei primissimi istanti di caricamento pagina. -->
+    <script src="vendor/supabase-js-2.117.1.js"></script>    <script src="config/supabase.js" data-client="app"></script>
     <script src="ui/log-diagnostico.ui.js"></script>
     <script src="data/moderation.repository.js"></script>
     <script src="data/auth.repository.js"></script>
@@ -2752,93 +2070,32 @@
     <script src="data/cards.repository.js"></script>
     <script src="data/queue.repository.js"></script>
     <script src="data/binder.repository.js"></script>
-    <!-- data/scaffali.repository.js: Fase 1.3 (2026-09-12), sostituisce
-         location per l'organizzazione dei prodotti sealed. File minimo per
-         ora (solo scaffaliList), usato da ui/prices.ui.js per il filtro del
-         pannello Controllo Prezzi Sealed — la UI di gestione completa arriva
-         in un secondo momento. Caricato dopo binder.repository.js per
-         vicinanza concettuale (stesso modello ispiratore), nessuna
-         dipendenza di ordine reale tra i due (dichiarazioni pure). -->
     <script src="data/scaffali.repository.js"></script>
-    <!-- data/sealed.repository.js: BUG TROVATO E CORRETTO in Fase 6, Step 2
-         (2026-09-13) — questo tag mancava del tutto, nonostante il file
-         esistesse ed fosse usato attivamente da ui/entry.ui.js (bulk insert
-         sealed) e ui/widget-sealed.ui.js (widget/pagina Sealed): ogni
-         chiamata a sealedListMie/sealedInsertRighe/sealedUpdate/sealedDelete
-         lanciava ReferenceError. Nessun altro file lo ridefinisce (verificato
-         con grep). Caricato qui, vicino a scaffali.repository.js per la
-         stessa vicinanza concettuale. -->
     <script src="data/sealed.repository.js"></script>
-    <!-- data/wishlist-sealed.repository.js: Fase 6, Step 2 (2026-09-13) —
-         mirror di data/sealed.repository.js per la wishlist_sealed
-         (sql/52). Caricato subito dopo per lo stesso motivo. -->
     <script src="data/wishlist-sealed.repository.js"></script>
-    <script src="data/cestino.repository.js"></script><!-- (S8) cestino carte/sealed, sql/98 -->
-    <script src="data/codici.repository.js"></script><!-- codici da riscattare, sql/102 -->
-    <!-- data/movimenti.repository.js: Fase 8, Step 2 (2026-09-13) — log
-         eventi su movimenti_collezione (sql/54), usato da ui/entry.ui.js
-         (log "aggiunta" sealed) e dai prossimi punti di mutazione. -->
-    <script src="data/movimenti.repository.js"></script>
-    <!-- data/achievement.repository.js: Fase 9 (2026-09-13) — sola lettura
-         di achievement_catalogo/achievement_sbloccati (sql/59), scrittura
-         esclusivamente via RPC riscatta_traguardo. -->
+    <script src="data/cestino.repository.js"></script>    <script src="data/codici.repository.js"></script>    <script src="data/movimenti.repository.js"></script>
     <script src="data/achievement.repository.js"></script>
-    <!-- data/segnalazioni.repository.js: Fase 10, Step 3 (2026-09-13) —
-         invio segnalazioni bug con log diagnostico allegato (sql/61). -->
     <script src="data/segnalazioni.repository.js"></script>
-    <!-- data/wip.repository.js: Fase 11 (2026-09-13) — sola lettura qui
-         (scrittura solo su admin.html), stato Work in Progress. -->
     <script src="data/wip.repository.js"></script>
-    <!-- data/richieste-scambio.repository.js: Fase 4, Step 3 (2026-09-13). -->
     <script src="data/richieste-scambio.repository.js"></script>
-    <!-- AGGIUNTO 2026-09-24: chat in-app del widget Match (sql/70, sql/71) —
-         deve caricare prima di ui/widget-match.ui.js (che la usa), dopo
-         config/supabase.js come tutti i repository. -->
     <script src="data/chat.repository.js"></script>
-    <!-- data/bustina.repository.js: usata da renderPaginaBustina()/motore
-         cutscene in ui/widget-bustina.ui.js (widget "Bustina"). I bottoni
-         diagnostici admin che stavano in #impostazioni sono stati tolti
-         il 2026-09-10 (Claudio: la UI vera è ormai completa). -->
     <script src="data/bustina.repository.js"></script>
     <script src="data/photos.repository.js"></script>
     <script src="data/prices.repository.js"></script>
     <script src="data/preferences.repository.js"></script>
     <script src="data/sets.repository.js"></script>
-    <!-- Metriche Missioni/Traguardi Fase 1 (migration 32). Deve caricare
-         DOPO cards/prices/locations/queue/preferences/user-settings
-         repository (li riusa: trovaMatch, correzioniManualiConta,
-         userSettingsGet) e PRIMA di ui/missioni.ui.js. -->
     <script src="data/missioni.repository.js"></script>
     <script src="data/missioni-scrittura.repository.js"></script>
-    <!-- Istantanea giornaliera del valore della collezione (migration 36,
-         2026-09-03). Va fra i repository e PRIMA degli ui/*.js: espone
-         storicoValoreRegistraOggi / storicoValoreUltimiGiorni /
-         storicoValoreConfronta, che serviranno all'avvio e al widget del
-         grafico. Oggi nessuno le chiama ancora: caricarlo non cambia nulla
-         di cio' che vedi, prepara solo il terreno. -->
     <script src="data/storico-valore.repository.js"></script>
-    <!-- Contributi al gruppo (migration 37, 2026-09-03). Sola LETTURA: la
-         scrittura la fa l'estensione dal service worker, non il sito.
-         Espone contributiGruppoLeggi(), usata dal widget 'contributi' in
-         ui/widget-contributi.ui.js. Va qui, fra i repository e prima degli ui/*.js. -->
     <script src="data/contributi.repository.js"></script>
     <script src="data/visite.repository.js"></script>
     <script src="state/app.state.js"></script>
     <script src="state/cards.state.js"></script>
     <script src="state/binder.state.js"></script>
     <script src="utils/comuni.js"></script>
-    <script src="utils/foto-reali.js"></script><!-- FASE 8c: foto reali delle carte (funzioni pure) -->
-    <script src="utils/formatters.js"></script>
+    <script src="utils/foto-reali.js"></script>    <script src="utils/formatters.js"></script>
     <script src="utils/pagination.utils.js"></script>
-    <script src="utils/valore-escluso.js"></script><!-- sql/95: carte escluse dai totali di valore (funzione pura) -->
-    <!-- utils/theme-colori.js: STEP 1 restyle "cornice Pokédex" (2026-09-17)
-         — deriva le variabili CSS del tema e la palette Poké Ball da 2
-         colori liberi (Principale/Secondario). Deve caricarsi PRIMA di
-         ui/navigation-tema.ui.js e ui/widget-render-condiviso.ui.js, che
-         la consumano — nessuna dipendenza propria, va bene qui con gli
-         altri utils/*.js. -->
-    <script src="utils/theme-colori.js"></script>
-    <!-- (Q2) avvisi e finestre del sito al posto di alert/confirm/prompt: prima di ogni ui/*.js -->
+    <script src="utils/valore-escluso.js"></script>    <script src="utils/theme-colori.js"></script>
     <script src="ui/avvisi.ui.js"></script>
     <script src="ui/auth.ui.js"></script>
     <script src="ui/prices.ui.js"></script>
@@ -2851,21 +2108,14 @@
     <script src="ui/home.ui.js"></script>
     <script src="ui/flip-card-detail.ui.js"></script>
     <script src="ui/account.ui.js"></script>
-    <script src="ui/foto-profilo.ui.js"></script><!-- foto profilo (sql/90) -->
-    <script src="ui/import-csv.ui.js"></script>
+    <script src="ui/foto-profilo.ui.js"></script>    <script src="ui/import-csv.ui.js"></script>
     <script src="ui/queue.ui.js"></script>
     <script src="ui/queue-correzioni.ui.js"></script>
     <script src="ui/modals.ui.js"></script>
     <script src="ui/binder.ui.js"></script>
     <script src="ui/binder-design.ui.js"></script>
     <script src="ui/binder-sleeve.ui.js"></script>
-    <!-- ui/scaffali.ui.js: Fase 1.3, Step 5a (2026-09-12). Dipende da
-         data/scaffali.repository.js, data/sealed.repository.js (già
-         caricati sopra) e data/moderation.repository.js
-         (creaRichiestaPendente, per la rinomina). -->
     <script src="ui/scaffali.ui.js"></script>
-    <!-- ui/richieste-scambio.ui.js: Fase 4, Step 3 (2026-09-13). Dipende da
-         data/richieste-scambio.repository.js. -->
     <script src="ui/richieste-scambio.ui.js"></script>
     <script src="ui/extension.ui.js"></script>
     <script src="ui/photos.ui.js"></script>
@@ -2873,34 +2123,10 @@
     <script src="ui/navigation-ricerca.ui.js"></script>
     <script src="ui/navigation-tema.ui.js"></script>
     <script src="ui/navigation-condivisione.ui.js"></script>
-    <!-- Dopo home.ui.js/navigation.ui.js: riusa switchTab/_contaCodaErrori/
-         _elencoPrezziScaduti/caricaAvvisiHome già definite lì sopra. -->
-    <!-- Libreria delle espansioni (generata da genera-libreria-set.html).
-         Va PRIMA di ui/widget-set.ui.js (STEP 18 ristrutturazione,
-         2026-09-11), che la legge al caricamento. Se il file manca il sito
-         funziona lo stesso: il widget Set ricade sulle poche voci scritte
-         a mano. -->
     <script src="data/sets.library.js"></script>
-    <!-- Catalogo missioni/traguardi (Fase 1) + motore di valutazione. Va
-         PRIMA di ui/widget-missioni.ui.js, che legge
-         CATALOGO_MISSIONI/CATALOGO_TRAGUARDI/MOTORE_MISSIONI (pagina/widget
-         dedicati, STEP 14 ristrutturazione 2026-09-11 — qui c'è anche
-         _missioniNotificaCompletamenti, condivisa con
-         ui/missioni-watcher.js). Non chiama supabaseClient direttamente: le
-         funzioni che calcolano i valori delle metriche vivono in
-         data/missioni.repository.js. -->
     <script src="ui/missioni-catalogo.ui.js"></script>
     <script src="ui/missioni.ui.js"></script>
     <script src="statusbar.js"></script>
-    <!-- Motore home a widget (STEP 0 ristrutturazione, 2026-09-11) — va
-         PRIMA di tutti i file ui/widget-<nome>.ui.js sotto: dichiara
-         CATALOGO_WIDGET (registro vuoto, popolato da ciascun widget nel
-         proprio file) e tutte le funzioni di griglia/drag/resize/
-         paginazione/layout/dettaglio/polling che ogni widget richiama.
-         AGGIORNATO 2026-09-11 (STEP 23, pulizia finale): ui/phone.ui.js
-         è stato cancellato — svuotato progressivamente dagli step 0-22,
-         non conteneva più codice funzionante, solo commenti storici. Vedi
-         Roadmap_Ristrutturazione_Widget_Home_2026-09-11.md. -->
     <script src="ui/paginainiziale.ui.js"></script>
     <script src="ui/paginainiziale-dettaglio.ui.js"></script>
     <script src="ui/paginainiziale-cornice-statusbar.ui.js"></script>
@@ -2908,42 +2134,22 @@
     <script src="ui/paginainiziale-drag-resize.ui.js"></script>
     <script src="ui/paginainiziale-polling-avvio.ui.js"></script>
     <script src="ui/paginainiziale-render.ui.js"></script>
-    <!-- Motore visivo condiviso dei widget (STEP 1 ristrutturazione,
-         2026-09-11) — va SUBITO DOPO paginainiziale.ui.js e PRIMA di tutti
-         i widget: disegno sfera/tessere, animazione cattura, semaforo,
-         componenti visivi riusati (_ballRiga, _ballPill, _ballCORPI...).
-         Vedi Roadmap_Ristrutturazione_Widget_Home_2026-09-11.md. -->
     <script src="ui/widget-render-condiviso.ui.js"></script>
     <script src="ui/widget-render-tessere-grandi.ui.js"></script>
     <script src="ui/widget-render-corpi.ui.js"></script>
-    <!-- Funzioni condivise a pagina intera fra più widget (STEP 2, creato
-         vuoto insieme allo STEP 1 come da roadmap) — nasce quasi vuoto,
-         si popola durante l'estrazione dei prossimi widget. -->
     <script src="ui/widget-funzioni-condivise.ui.js"></script>
-    <!-- I 20 widget della home, uno per file, ordine alfabetico sul nome
-         file (ristrutturazione completata 2026-09-11 — STEP 3-22, vedi
-         Roadmap_Ristrutturazione_Widget_Home_2026-09-11.md). Ognuno
-         dichiara la propria CATALOGO_WIDGET.<id> = {...} e, se ha una
-         pagina propria, la funzione che la riempie. -->
     <script src="ui/widget-binder.ui.js"></script>
     <script src="ui/widget-bustina-utils.ui.js"></script>
     <script src="ui/widget-bustina.ui.js"></script>
     <script src="ui/widget-condividi.ui.js"></script>
     <script src="ui/widget-contributi.ui.js"></script>
-    <script src="ui/widget-foto.ui.js"></script><!-- FASE 8c: tessera + pagina Foto carte -->
-    <script src="ui/widget-dafare.ui.js"></script>
+    <script src="ui/widget-foto.ui.js"></script>    <script src="ui/widget-dafare.ui.js"></script>
     <script src="ui/widget-doppioni.ui.js"></script>
     <script src="ui/widget-estensione.ui.js"></script>
     <script src="ui/widget-in-primo-piano.ui.js"></script>
     <script src="ui/widget-inserimento.ui.js"></script>
     <script src="ui/widget-location.ui.js"></script>
     <script src="ui/widget-match.ui.js"></script>
-    <!-- ui/widget-chat.ui.js: ESTRATTO 2026-09-24 da widget-match.ui.js
-         (chat in-app + inbox). Usa data/chat.repository.js (già caricato
-         sopra) e authGetUserId/userSettingsGet/escapeHtml (auth/user-
-         settings.repository.js, già caricati sopra). Ordine rispetto
-         agli altri ui/widget-*.ui.js indifferente, come documentato per
-         gli altri file widget-render-*.ui.js. -->
     <script src="ui/widget-chat.ui.js"></script>
     <script src="ui/widget-missioni.ui.js"></script>
     <script src="ui/widget-polvere.ui.js"></script>
@@ -2953,71 +2159,22 @@
     <script src="ui/widget-richieste.ui.js"></script>
     <script src="ui/widget-scaffali.ui.js"></script>
     <script src="ui/widget-sealed.ui.js"></script>
-    <!-- ui/set-motore.ui.js (2026-09-20, restyle widget SET + masterset):
-         calcolo completamento/soglie/notifiche, solo logica. Va PRIMA di
-         ui/widget-set.ui.js (che lo usa) e dopo data/sets.repository.js. -->
     <script src="ui/set-motore.ui.js"></script>
     <script src="ui/rarita.ui.js"></script>
     <script src="ui/widget-set.ui.js"></script>
     <script src="ui/set-libreria-sigle.ui.js"></script>
     <script src="ui/widget-valore-collezione.ui.js"></script>
-    <!-- ui/widget-achievement.ui.js: Fase 9 (2026-09-13) — widget/pagina
-         Achievement (Binder 4×4 diviso per rarità + Vetrina). Dipende da
-         data/achievement.repository.js e data/user-settings.repository.js
-         (userSettingsUpsertAchievementVetrina), entrambi già caricati sopra. -->
     <script src="ui/widget-achievement.ui.js"></script>
-    <!-- ui/impostazioni.ui.js: Fase 10 (2026-09-13) — router hub/sotto-
-         pagine per #impostazioni. -->
     <script src="ui/impostazioni.ui.js"></script>
-    <script src="ui/cestino.ui.js"></script><!-- (S8) cestino in Impostazioni → Account e dati -->
-    <script src="ui/codici.ui.js"></script><!-- Impostazioni → Codici (sql/102) -->
-    <!-- ui/wip.ui.js: Fase 11 (2026-09-13) — verifica/blocco Work in
-         Progress per widget/pagine (sql/62). -->
-    <script src="ui/wip.ui.js"></script>
+    <script src="ui/cestino.ui.js"></script>    <script src="ui/codici.ui.js"></script>    <script src="ui/wip.ui.js"></script>
     <script src="ui/widget-vetrina.ui.js"></script>
     <script src="ui/widget-visualizzazione.ui.js"></script>
     <script src="ui/widget-wishlist.ui.js"></script>
-    <!-- Notifica missioni/traguardi appena completati, senza dover aprire la
-         pagina Missioni (Claudio 2026-09-03). Va DOPO ui/missioni.ui.js
-         (per MOTORE_MISSIONI e _missioniNotificaCompletamenti) e
-         statusbar.js (per CSBar) — vedi anche STEP 14 ristrutturazione,
-         2026-09-11: _beep() ora vive in ui/paginainiziale.ui.js, caricato
-         ancora prima. Tutte lette al momento della
-         chiamata (primo giro 20s dopo il load), quindi l'ordine è di
-         chiarezza più che di necessità — ma tenendolo per ultimo non c'è
-         modo di sbagliare. Si avvia da solo con un proprio listener di
-         'load': NON tocca l'avvio dell'app qui sotto. -->
     <script src="ui/missioni-watcher.js"></script>
-    <!-- Scrive l'istantanea giornaliera del valore (migration 36) una volta
-         per sessione. Va dopo data/storico-valore.repository.js, di cui usa
-         le funzioni. Si avvia da solo con un proprio listener di 'load':
-         NON tocca l'avvio dell'app piu' sotto. -->
     <script src="ui/storico-valore.avvio.js"></script>
 
     <script>
-        // ── CONFIGURAZIONE SUPABASE ──────────────────────────────────────────────
-        // Dal 2026-09-25 supabaseClient viene creato in config/supabase.js
-        // (data-client="app": sessione in localStorage o sessionStorage a
-        // seconda di "Mantieni accesso", vedi AUTH_STORAGE_SESSIONE lì).
-        // Prima nasceva qui, nell'ultimo script della pagina.
-
-        // ── AVVIO APP — punto d'ingresso unico, eseguito al caricamento pagina ──
-        // (velocità, 2026-10-15) DOMContentLoaded invece di window.onload:
-        // 'load' aspetta che sia scaricata OGNI immagine e ogni font della
-        // pagina (cornici, retro carta, icone...), e fino ad allora né il
-        // pannello di accesso né la home partivano. A DOMContentLoaded tutti
-        // gli script qui sopra sono già eseguiti e il CSS è applicato: è
-        // tutto quello che l'avvio usa. Gli altri avvii in sottofondo
-        // (missioni-watcher, storico-valore, chat, service worker) restano
-        // su 'load', cioè dopo questo, come prima.
         document.addEventListener('DOMContentLoaded', async () => {
-            // Ripristina Dark Mode e Colori tema salvati.
-            // AGGIORNATO (STEP 1 restyle "cornice Pokédex", 2026-09-17):
-            // setSiteTheme(savedTheme) sostituita — applicaColoriTema()
-            // legge da sola Principale/Secondario salvati (o i default) e
-            // applica anche in assenza di dark mode, quindi va chiamata
-            // SEMPRE qui, non solo dentro il ramo savedDark come faceva
-            // prima toggleDarkMode(true) con setSiteTheme.
             const savedDark = prefDarkModeGet();
             if (savedDark) {
                 document.getElementById('darkModeToggle').checked = true;
@@ -3025,86 +2182,24 @@
             }
             applicaColoriTema();
             applicaDiametroWidget();
-            // AGGIUNTI 2026-09-18: diametro Binder/Scaffali + diametro
-            // Achievement, scollegati da applicaDiametroWidget() sopra —
-            // stesso principio, nessuna trasparenza/ritardo (vedi
-            // ui/navigation-tema.ui.js).
             applicaDiametroBinder();
             applicaDiametroAchievement();
-            // STEP 6 restyle "cornice Pokédex" (2026-09-17): sincronizza col
-            // valore salvato su Supabase (se presente) — non blocca il resto
-            // dell'avvio, gira in parallelo.
             sincronizzaColoriConSupabase();
-            // STEP 9 (2026-09-17): _aggiornaScalaCornice() non esiste più —
-            // #phoneFrameBox è puro CSS (width/height:100%), niente da
-            // calcolare all'avvio.
-            // Ripristina la preferenza "Riduci animazioni" (per-dispositivo)
             document.getElementById('riduciAnimazioniToggle').checked = _animazioniRidotte();
 
-            // Ripristina bozza d'inserimento o ne crea una vuota
             if (!restoreEntryDraft()) {
                 initEntryTable();
             }
-            // FASE 1: tabella prodotti sealed — niente bozza salvata per ora
-            // (semplificazione dichiarata, la tabella carte la ha da tempo,
-            // qui si riparte sempre vuota).
             initEntryTableSealed();
 
-            // Estensione + login: un unico punto d'ingresso — mostra il
-            // pannello a schermo intero se manca qualcosa, altrimenti
-            // prosegue direttamente (vedi funzione più sotto per i dettagli
-            // di ciascun caso).
-            // (velocità, 2026-10-15) NON più "await" qui: prima la home
-            // aspettava la fine del controllo (risposta dell'estensione,
-            // fino a 5 s se il suo service worker dorme, + sessione) e solo
-            // dopo iniziava a caricarsi. Ora i due partono insieme, come
-            // diceva già il commento qui sotto.
             const ingresso = controlloIngressoCardsync();
 
-            // Home a widget (sessione 2026-08-23) — parte in parallelo,
-            // non in sequenza dopo il controllo: il pannello #cardsyncPanel
-            // (z-index 9999999) copre comunque tutto lo schermo finché
-            // l'utente non supera login/estensione, quindi non serve
-            // nessuna dipendenza esplicita dall'esito qui. ASSUNZIONE non
-            // ancora verificata su auth.ui.js (non letto in questa
-            // sessione): che la chiusura del pannello non nasconda a sua
-            // volta elementi che qui servono — se noti la home a widget
-            // non comparire dopo il login, è il primo posto da controllare.
             initPhoneShell();
             await ingresso;
         });
     </script>
 
-    <!-- Overlay cutscene/apertura Bustina — SPOSTATO QUI il 2026-09-10.
-         Prima viveva dentro #phoneScreen (quindi dentro #phoneShell,
-         position:fixed + z-index:10 ESPLICITO — e uno z-index esplicito
-         su un elemento position:fixed crea un CONTESTO DI IMPILAMENTO
-         proprio). Per una regola CSS, un discendente non può MAI
-         emergere, col proprio z-index, sopra un fratello di un antenato
-         che ha uno stacking context suo — vale ANCHE per un discendente
-         position:fixed con z-index altissimo (999999 qui): la sua
-         posizione (top/left) sfugge al contenimento del genitore, ma il
-         suo ORDINE DI IMPILAMENTO resta comunque intrappolato dentro
-         quello locale di #phoneShell. Risultato: qualunque z-index gli
-         si desse, restava SEMPRE sotto .container (z-index:11, elemento
-         fratello di #phoneShell, non suo discendente) — bug confermato
-         col "mirino" di Chrome DevTools: cliccando sul rettangolo nero
-         veniva selezionato .container, non l'overlay, nonostante
-         l'overlay fosse aperto con dentro il contenuto giusto.
-         ESATTAMENTE lo stesso problema già risolto in passato per
-         #btnFisicoTelefono (vedi commento su apriDettaglioWidget in
-         ui/paginainiziale.ui.js, "FIX 2026-08-30... non c'è modo di tornare
-         indietro") — stessa soluzione: vive fuori da #phoneShell, come
-         figlio diretto di <body>, così il suo z-index compete
-         finalmente nello stesso contesto di .container e vince
-         davvero. Vuoto: riempito UNA SOLA VOLTA da
-         _bustinaCostruisciOverlay() in ui/widget-bustina.ui.js al primo
-         utilizzo
-         (idempotente — le riaperture successive riusano lo stesso
-         markup, non lo ricreano). -->
     <div id="bustinaCutsceneOverlay"></div>
-    <!-- (V7, 2026-10-12) Service worker (sw.js): sito installabile e piu' rapido.
-         Solo su https (GitHub Pages) o localhost; mai da file locale. -->
     <script>
         if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
             window.addEventListener('load', () => {

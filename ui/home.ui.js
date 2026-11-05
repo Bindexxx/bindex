@@ -1,58 +1,18 @@
-// ── ui/home.ui.js ──────────────────────────────────────────────────────
-// Dashboard Home: statistiche, avvisi ("cosa richiede la tua attenzione"),
-// ultima sincronizzazione, attività recenti, binder in primo piano.
-//
-// STEP separato dal piano "riduzione accoppiamento" concordato con Claudio
-// il 2026-09-11. apriFlipCardHome e tutto il meccanismo di apertura
-// dettaglio carta (gestione doppioni, toggleFlipCard, vaiAllaCartaNelBinder)
-// sono stati spostati in ui/flip-card-detail.ui.js: nonostante il nome,
-// NON sono specifici della Home — apriFlipCardHome è chiamata da 11 altri
-// file in tutto il sito (widget vari, missioni, binder.ui.js). NESSUNA
-// riscrittura del codice esistente in nessuna delle due parti: solo
-// spostamento, zero cambi di comportamento.
-//
-// renderBinderInPrimoPianoHome qui sotto genera markup con
-// onclick="apriFlipCardHome(...)" — chiamata cross-file risolta al click,
-// stesso meccanismo di sempre.
+// Home: statistiche, avvisi, attività recenti.
 
-        // ── A10 (Dashboard/Home) — stat-card duplicate, secondo pezzo ───────────
-        // Stesso identico calcolo di stat-count/stat-value in Visualizzazione
-        // (qty totale e prezzo*qty sommato), ma SEMPRE sulla collezione intera
-        // (stato 'collezione', quindi carte + sealed, esclusa la Wishlist) —
-        // a differenza delle stat in Visualizzazione, qui il numero non deve
-        // cambiare se l'utente ha un filtro/ricerca attivi in un'altra tab.
-        function aggiornaStatCardHome() {
+function aggiornaStatCardHome() {
             const collezione = carteReali.filter(c => c.stato === 'collezione');
             const totalQty = collezione.reduce((somma, c) => somma + (c.qty || 0), 0);
-            const totalSum = collezione.filter(c => !c.esclusoValore).reduce((somma, c) => somma + (c.price || 0) * (c.qty || 0), 0); // sql/95
+            const totalSum = collezione.filter(c => !c.esclusoValore).reduce((somma, c) => somma + (c.price || 0) * (c.qty || 0), 0);
             const elCount = document.getElementById('stat-count-home');
             const elValue = document.getElementById('stat-value-home');
             if (elCount) elCount.innerText = totalQty;
             if (elValue) elValue.innerText = formattaEuro(totalSum);
         }
 
-
-        // ── A10 (Dashboard/Home) — "Cosa richiede la tua attenzione", terzo
-        // pezzo: prima voce, "prezzi da aggiornare". Le prossime (coda con
-        // errori, wishlist sotto target, "Ciao Bill!") si aggiungeranno negli
-        // stessi contenitori nei prossimi passaggi, uno alla volta.
-        //
-        // Soglia: 7 giorni dall'ultimo controllo prezzo registrato in
-        // storico_prezzi. Le carte MAI controllate (nessuna riga in
-        // storico_prezzi) contano come "da aggiornare". Solo collezione
-        // (carte + sealed), esclusa la Wishlist — coerente con le altre
-        // stat della Dashboard.
-        //
-        // storico_prezzi non ha filtro owner_id esplicito nelle query già
-        // esistenti nel sito (vedi apriGraficoPrezzo più sotto): qui
-        // restiamo comunque scoperti da qualunque dettaglio di RLS non
-        // verificato, perché filtriamo esplicitamente sui SOLI id della
-        // propria collezione già caricata (idsCollezione), non su tutta la
-        // tabella.
-
         async function _ultimoControlloPerCarta(idsCollezione) {
             if (idsCollezione.length === 0) return {};
-            const DIMENSIONE_BLOCCO = 500; // stesso spirito di _selectTuttePagine: eviterela URL troppo lunghe con collezioni grandi
+            const DIMENSIONE_BLOCCO = 500;
             const blocchi = [];
             for (let i = 0; i < idsCollezione.length; i += DIMENSIONE_BLOCCO) {
                 blocchi.push(idsCollezione.slice(i, i + DIMENSIONE_BLOCCO));
@@ -66,36 +26,13 @@
             risultati.forEach(({ data, error }) => {
                 if (error) { console.error('Errore lettura storico_prezzi:', error.message); return; }
                 (data || []).forEach(r => {
-                    // Grazie all'ordinamento decrescente, la prima riga vista
-                    // per ogni carta_id è già la più recente.
                     if (!ultimoPerCarta[r.carta_id]) ultimoPerCarta[r.carta_id] = r.registrato_il;
                 });
             });
             return ultimoPerCarta;
         }
 
-
-        // ── A10 (Dashboard/Home) — seconda voce avvisi: coda con errori ─────────
-        // Stesso identico filtro già usato da caricaCarteConProblemi() (righe
-        // di coda_carte finite in stato 'errore' per l'utente corrente), ma
-        // qui serve solo il CONTEGGIO per la Dashboard — query separata e
-        // leggera (head:true, nessun dato scaricato), per non toccare né
-        // rallentare la funzione esistente che gestisce il pannello di
-        // correzione in Inserimento.
-        // FIX (sessione dedicata "correzione manuale per-utente"): le righe
-        // che il worker autonomo dell'estensione non riesce a risolvere dopo
-        // 3 tentativi vengono spostate da 'coda_carte' a
-        // 'correzioni_manuali_carte' (RPC sposta_riga_in_correzione_manuale)
-        // invece di restare in coda_carte con stato='errore' — la coda di
-        // lavoro resta così sempre "pulita" (solo righe vive). Il conteggio
-        // qui passa quindi alla nuova tabella; owner_id la scopa comunque
-        // solo al vero proprietario, stesso identico filtro di prima.
-        // (V5 velocità, 2026-10-12) All'avvio la stessa domanda arrivava da
-        // 5 posti quasi insieme (avvisi home, barra di stato, tessere Da fare
-        // e Inserimento...): 10 richieste identiche. Ora una risposta vale per
-        // 3 secondi ed è condivisa anche mentre è ancora in arrivo — poi si
-        // richiede di nuovo, quindi il conteggio resta fresco.
-        let _contaCodaErroriRecente = null; // { quando, promessa }
+        let _contaCodaErroriRecente = null;
         function _contaCodaErrori() {
             const adesso = Date.now();
             if (_contaCodaErroriRecente && adesso - _contaCodaErroriRecente.quando < 3000) return _contaCodaErroriRecente.promessa;
@@ -114,40 +51,7 @@
             return count || 0;
         }
 
-
-        // ── A10 (Dashboard/Home) — quarta voce avvisi: "Ciao Bill!" ─────────────
-        // Solo presenza/assenza, MAI un conteggio (scelta esplicita di
-        // Claudio per privacy). Stesso identico pattern già usato
-        // dall'estensione in coda_pendente.js (scheda "Controllo prezzi",
-        // "Dispositivi al lavoro"): carte con claimed_by valorizzato di
-        // recente = qualcuno del gruppo sta calcolando prezzi ADESSO.
-        //
-        // RISOLTO (Problema #1, parte SELECT): prima leggeva direttamente
-        // 'carte' con la policy larga "collezione condivisa per controllo
-        // prezzi gruppo", che espone TUTTE le colonne di TUTTI gli owner —
-        // qui bastava sapere se esiste almeno una riga prenotata, non serve
-        // vedere note/prezzo/location di nessuno. Ora passa dalla RPC
-        // leggi_stato_claim_gruppo (SECURITY DEFINER), che restituisce SOLO
-        // le colonne di coordinamento (id/dispositivo/claimed_by/claimed_at)
-        // e applica lei stessa la soglia di 10 minuti — non serve più
-        // calcolarla qui lato client.
-
-        // FASE 10 (2026-09-13), BUG TROVATO E CORRETTO: questa riga
-        // chiamava claimGruppoStato(SOGLIA_MINUTI_CLAIM_PREZZI) — una
-        // costante MAI dichiarata da nessuna parte nel progetto (verificato
-        // con grep su tutto ui/). Ogni chiamata lanciava ReferenceError,
-        // silenziosamente inghiottito perché nessun chiamante la avvolgeva
-        // in try/catch fino al punto giusto — il segnale "il gruppo sta
-        // lavorando" nel Centro operativo (Fase 8) non ha mai funzionato.
-        // Il commento qui sopra spiega da solo il fix giusto: la RPC
-        // applica GIÀ la sua soglia di 10 minuti di default (sql/13,
-        // p_soglia_minuti default 10) — non serve passare nulla.
         async function _dispositiviAttiviOra() {
-            // Senza sessione (schermata di accesso aperta) non si chiama la
-            // RPC: leggi_stato_claim_gruppo è revocata ad anon (sql/77, ACL
-            // verificata sul DB reale: solo postgres/authenticated/service_role),
-            // quindi dava 401 rosso in console a ogni giro del polling lento.
-            // authGetUserId legge la sessione salvata: nessuna richiesta di rete.
             if (!(await authGetUserId())) return false;
 
             const { data, error } = await claimGruppoStato();
@@ -156,22 +60,12 @@
             return (data || []).length > 0;
         }
 
-
-
-        // (V2 velocità, 2026-10-12) Un solo formattatore di date, riusato per
-        // tutte le carte: toLocaleDateString con le opzioni ne creava uno a
-        // ogni carta (~0,8 s di CPU sul telefono con 1000+ carte). Stesso
-        // risultato ("31/12/2026").
         let _formatoDataAvvisiHomeCache = null;
         function _formatoDataAvvisiHome() {
             if (!_formatoDataAvvisiHomeCache) _formatoDataAvvisiHomeCache = new Intl.DateTimeFormat('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' });
             return _formatoDataAvvisiHomeCache;
         }
 
-        // (V5 velocità, 2026-10-12) Chiamate sovrapposte unite: all'avvio
-        // arrivavano 3-4 richieste quasi insieme (switchTab, caricamento carte,
-        // giro automatico), ognuna con 3 letture dello storico prezzi. Se una
-        // è già in corso, se ne fa al massimo UNA dopo, coi dati più recenti.
         let _avvisiHomeInCorso = null;
         let _avvisiHomeDaRifare = false;
         function caricaAvvisiHome() {
@@ -200,24 +94,19 @@
             const adesso = Date.now();
             const carteDaAggiornare = collezione.filter(c => {
                 const ultimo = ultimoPerCarta[c.id];
-                if (!ultimo) return true; // mai controllata
+                if (!ultimo) return true;
                 return (adesso - new Date(ultimo).getTime()) > sogliaMs;
             });
 
-            // Salvato a parte (non solo il conteggio) per il pannello di
-            // dettaglio cliccabile — vedi apriModalePrezziScaduti().
             _elencoPrezziScaduti = carteDaAggiornare.map(c => ({
                 name: c.name,
                 code: c.code,
-                immagine: c.immagine, // RESTYLE FASE 3a: miniature nel Centro operativo
+                immagine: c.immagine,
                 ultimoTesto: ultimoPerCarta[c.id]
                     ? _formatoDataAvvisiHome().format(new Date(ultimoPerCarta[c.id]))
                     : 'mai controllata',
             }));
 
-            // Stessa identica condizione già usata per il badge "🎯
-            // obiettivo!" nella tabella Wishlist (vedi renderViewTable) —
-            // nessuna query nuova, carteReali è già caricato.
             const wishlistSottoTarget = carteReali.filter(c =>
                 c.tabella === 'wishlist' && c.prezzoObiettivo != null && c.price > 0 && c.price <= c.prezzoObiettivo
             );
@@ -225,8 +114,6 @@
             _renderAvvisiHome({ prezziScaduti: carteDaAggiornare.length, codaErrori, wishlistSottoTarget: wishlistSottoTarget.length, qualcunoAlLavoro });
         }
 
-
-        // Punto unico di rendering per tutti gli avvisi Home.
         function _renderAvvisiHome({ prezziScaduti, codaErrori, wishlistSottoTarget, qualcunoAlLavoro }) {
             const contenitore = document.getElementById('avvisiHomeLista');
             if (!contenitore) return;
@@ -271,24 +158,9 @@
             contenitore.innerHTML = voci.join('');
         }
 
-
-        // ── A10 (Dashboard/Home) — "Attività recenti" ────────────────────────────
-        // Due liste da 5 elementi ciascuna: ultime carte aggiunte (per
-        // created_at, dato già letto da caricaCarteReali) e ultimi prezzi
-        // aggiornati (per registrato_il da storico_prezzi, filtrato sui soli
-        // id della propria collezione come già fatto per _ultimoControlloPerCarta).
-        // "Sposta location" ESCLUSO su richiesta di Claudio (non tracciato
-        // da nessuna parte). Variazione valore totale: placeholder testuale,
-        // in attesa di uno storico vero del valore (decisione confermata).
-        // A15 (dopo test su dispositivo): rende collassabili i due pannelli
-        // "Attività recenti" di Home, per ridurre lo scroll su schermi
-        // stretti — funziona anche su desktop, nessuna logica di dati
-        // toccata, solo mostra/nasconde il contenuto già caricato.
         function toggleAttivitaRecentiHome(headerEl) {
             headerEl.closest('.home-activity-panel').classList.toggle('collassato');
         }
-
-
 
         async function _ultimiPrezziAggiornati(idsCollezione, limite) {
             if (idsCollezione.length === 0) return [];
@@ -313,9 +185,6 @@
                 .slice(0, limite);
         }
 
-
-        // (V5 velocità, 2026-10-12) Stesso schema di caricaAvvisiHome: chiamate
-        // sovrapposte unite (ognuna legge lo storico prezzi a blocchi).
         let _attivitaHomeInCorso = null;
         let _attivitaHomeDaRifare = false;
         function caricaAttivitaRecentiHome() {
@@ -354,7 +223,7 @@
             const ultimiPrezzi = await _ultimiPrezziAggiornati(idsCollezione, NUMERO_ATTIVITA_RECENTI);
             const righePrezzi = ultimiPrezzi
                 .map(r => ({ evento: r, card: collezione.find(c => String(c.id) === String(r.carta_id)) }))
-                .filter(x => x.card); // la carta potrebbe essere stata eliminata nel frattempo
+                .filter(x => x.card);
 
             elPrezzi.innerHTML = righePrezzi.length === 0
                 ? '<p style="text-align:center; color:var(--text-muted); font-size:0.8rem; padding:0.5rem 0;">Nessun controllo prezzi ancora.</p>'
@@ -365,14 +234,6 @@
                     </div>`).join('');
         }
 
-
-        // ── A10 (Dashboard/Home) — "Binder in primo piano", ultimo pezzo ────────
-        // Tre categorie di 3 carte: valore più alto, maggiore oscillazione
-        // positiva, maggiore oscillazione negativa. SOLO collezione, ESCLUSE
-        // le Sealed (avranno le loro tre categorie a parte più avanti —
-        // decisione confermata da Claudio). Click su una carta → flip-modal
-        // a schermo intero (vedi apriFlipCardHome più sotto), non apre
-        // nessuna tab.
         function renderBinderInPrimoPianoHome() {
             const container = document.getElementById('binderInPrimoPianoHome');
             if (!container) return;
@@ -406,23 +267,3 @@
                     ${renderGruppo('Oscillazione -', 'fa-arrow-trend-down', 'var(--danger)', perOscillazioneNegativa)}
                 </div>`;
         }
-
-
-        // ── FLIP-MODAL — chiamata direttamente da Home "In primo piano" (vedi
-        // riga sopra) e da Binder (ui/binder-flipbook.ui.js, _libroClickCarta).
-        // CORREZIONE (26/08/2026, segnalato da Opus nel compilato, mai
-        // sistemato prima d'ora): il commento precedente diceva "usata da
-        // ogni click su una carta in tutto il sito (tabella, vista compatta
-        // mobile, Binder, Home)" — non verificato per tabella/vista compatta
-        // mobile (vivono in ui/cards.ui.js, non letto in questa sessione):
-        // probabilmente passano invece da apriImmagineIngrandita(), il
-        // modale più semplice esteso qui sotto, non da questa funzione
-        // direttamente. Non dare per buona l'affermazione originale senza
-        // aver letto cards.ui.js.
-        // ESTENDE lo stesso modale già usato da apriImmagineIngrandita
-        // (#immagineModal / stesso pulsante chiudi), come deciso da Claudio
-        // per Home, ora esteso a tutti i punti di ingresso su richiesta di
-        // Claudio (A15). Animazione: rotazione orizzontale (rotateY), 0.7s
-        // — placeholder ragionevole, da aggiustare se Claudio preferisce
-        // altro.
-

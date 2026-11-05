@@ -1,20 +1,9 @@
-// ── data/prices.repository.js ────────────────────────────────────────────
-// 'ordini' (richieste di controllo prezzi eseguite dall'estensione su un
-// dispositivo del gruppo), 'storico_prezzi' (storico quotazioni), e le due
-// RPC di match automatico tra amici (trova_match_scambio_wishlist /
-// trova_match_wishlist_scambio) + claim di gruppo.
-//
-// Dipende da: supabaseClient.
+// Ordini di controllo prezzi per l'estensione, storico prezzi e match tra amici.
 
 async function ordiniInsert(payload) {
     return supabaseClient.from('ordini').insert(payload).select().single();
 }
 
-// Punto 26 (2026-10-15, sql/108): l'ordine "controlla_prezzi" si crea con
-// una funzione sul DB, che salva le location scelte in una tabella privata
-// (ordini_parametri_privati, la legge solo chi ha creato l'ordine) invece che
-// in ordini.parametri, leggibile da tutto il gruppo. Restituisce l'id
-// dell'ordine (uuid).
 async function ordiniCreaControlloPrezzi(locations, aiutaGruppo) {
     return supabaseClient.rpc('crea_ordine_controllo_prezzi', {
         p_locations: Array.isArray(locations) ? locations : [],
@@ -22,16 +11,10 @@ async function ordiniCreaControlloPrezzi(locations, aiutaGruppo) {
     });
 }
 
-// Location private di un PROPRIO ordine (per "Riprova"): null se l'ordine non
-// ha la riga privata.
 async function ordiniLocationPrivateLeggi(ordineId) {
     return supabaseClient.from('ordini_parametri_privati').select('locations').eq('ordine_id', ordineId).maybeSingle();
 }
 
-// sql/115 (2026-10-15): annulla un PROPRIO ordine ancora 'pending' o
-// 'in_corso' (funzione sul DB: dopo sql/112 chi crea un ordine non può più
-// modificarlo direttamente). Errore ORDINE_NON_ANNULLABILE se non è tuo o è
-// già chiuso.
 async function ordiniAnnulla(ordineId) {
     return supabaseClient.rpc('annulla_ordine', { p_ordine_id: ordineId });
 }
@@ -40,8 +23,6 @@ async function ordiniLeggiStato(ordineId) {
     return supabaseClient.from('ordini').select('stato, risultato, errore_msg').eq('id', ordineId).single();
 }
 
-// RESTYLE BINDEX FASE 8e: i controlli prezzi dell'utente negli ultimi N
-// giorni (solo lettura, policy "utenti autenticati possono leggere ordini").
 async function ordiniControlliRecentiUtente(userId, giorni) {
     const da = new Date(Date.now() - giorni * 86400000).toISOString();
     return supabaseClient
@@ -65,8 +46,6 @@ async function ordiniUltimoCompletato(userId) {
         .limit(1);
 }
 
-// Ritorna il query builder NON risolto (va bene sia per Promise.all diretto
-// che per un await esplicito, esattamente come faceva il codice originale).
 function storicoPrezziQuery(tabella, ids, { limite } = {}) {
     let q = supabaseClient
         .from('storico_prezzi')
@@ -91,9 +70,6 @@ async function claimGruppoStato(sogliaMinuti) {
     return supabaseClient.rpc('leggi_stato_claim_gruppo', { p_soglia_minuti: sogliaMinuti });
 }
 
-// Usata sia con nome funzione fisso sia dinamico (tabId === 'scambio' ?
-// 'trova_match_scambio_wishlist' : 'trova_match_wishlist_scambio') — stessa
-// firma RPC in entrambi i casi, un solo wrapper.
 async function trovaMatch(nomeFunzioneRpc, userId) {
     return supabaseClient.rpc(nomeFunzioneRpc, { p_owner_id: userId });
 }

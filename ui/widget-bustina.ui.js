@@ -1,34 +1,5 @@
-// ═══════════════════════════════════════════════════════════════════════
-// WIDGET-BUSTINA.UI.JS — motore interattivo apertura pacchetti "Bustina"
-// (CardSync Pro)
-// ═══════════════════════════════════════════════════════════════════════
-// STEP separato dal piano "riduzione accoppiamento" concordato con Claudio
-// il 2026-09-11. Il catalogo/anteprima, lo stato del motore, audio, frasi
-// e countdown sono stati spostati in ui/widget-bustina-utils.ui.js —
-// NESSUNA riscrittura del codice esistente in nessuna delle due parti:
-// solo spostamento, zero cambi di comportamento.
-//
-// Contiene: costruzione overlay (idempotente), tap sulla pokéball (avvio
-// RPC), motore cutscene, taglio busta (laser) + rivelazione carte,
-// riepilogo finale, chiusura.
-//
-// Usa estensivamente le variabili di stato dichiarate in
-// ui/widget-bustina-utils.ui.js (_bustinaOverlayCostruito,
-// _bustinaCutsceneData, _bustinaLaserPunti, _bustinaDragCarta, ecc.) —
-// stesso scope globale condiviso di sempre, nessuna istruzione qui gira a
-// tempo di caricamento script, l'ordine tra i due file è indifferente.
-//
-// COSA RESTA FUORI (non spostato, invariato):
-// - apriDettaglioWidget (ui/paginainiziale.ui.js) continua a chiamare
-//   renderPaginaBustina() per tabId === 'bustina' — motore home, dispatch
-//   generico, non toccato in questo step.
-// - _ballCORPI.bustina, _ballASPETTO.bustina, _ballTITOLI_BREVI.bustina
-//   (ui/widget-render-condiviso.ui.js) — motore visivo, non toccato.
-// - Il markup HTML di #bustinaCutsceneOverlay in index.html — non toccato.
-// ───────────────────────────────────────────────────────────────────────
+// Widget Bustina: apertura delle buste.
 
-// ── costruzione overlay (idempotente: markup creato una sola volta,
-//    listener scopati attaccati una sola volta) ─────────────────────────
 function _bustinaCostruisciOverlay() {
     if (_bustinaOverlayCostruito) return;
     const root = document.getElementById('bustinaCutsceneOverlay');
@@ -124,9 +95,6 @@ function _bustinaCostruisciOverlay() {
         </div>
     `;
 
-    // Listener scopati SULL'OVERLAY (mai su document — vedi nota di testa):
-    // equivalenti ai 6 globali del prototipo perché l'overlay copre tutto
-    // lo schermo quando aperto (fixed, inset:0, z-index altissimo).
     root.addEventListener('mousedown', _bustinaLaserStart);
     root.addEventListener('mousemove', _bustinaLaserMove);
     root.addEventListener('mouseup', _bustinaLaserEnd);
@@ -148,27 +116,6 @@ function _bustinaMostraSchermata(id) {
     if (target) target.classList.add('attiva');
 }
 
-// Un solo fattore di scala per TUTTA l'esperienza (countdown, pokéball,
-// cutscene, laser, swipe, riepilogo): #bustinaScreenWrapper è un canvas
-// fisso 480×270 (vedi index.html), qui lo si riduce/ingrandisce in blocco
-// per riempire lo spazio disponibile dentro #bustinaGbFrame.
-// RIVISTO 2026-09-10 (Claudio: "cornice pokedex" — tutto ciò che il sito
-// mostra deve starci dentro, non a tutta la finestra del browser):
-// l'overlay stesso viene ora agganciato al rettangolo REALE di
-// #phoneScreen tramite _rettangoloSchermoCornice() (stessa funzione usata
-// da _posizionaContainerNelloSchermo per .container, unica fonte di
-// verità) invece di riempire l'intero viewport con "inset:0". Resta
-// position:fixed (non absolute) apposta: .container ha un padding
-// (calc(2.6rem + safe-area) 1rem 1rem) che sposterebbe verso l'interno
-// un discendente position:absolute — da fixed l'overlay è un fratello di
-// .container nello stesso contesto di stacking di radice, ignora quel
-// padding e combacia esattamente col rettangolo schermo, bordo a bordo.
-// _bustinaScale resta calcolato sullo spazio DISPONIBILE dentro quel
-// rettangolo (non più tutta la finestra) — richiesta esplicita e non
-// negoziabile di Claudio: la pagina resta "calcolata" a 480×270 e viene
-// solo zoomata, mai ricalcolata per la dimensione reale. _bustinaScale è
-// riusato anche da laser/drag per tradurre le coordinate del tocco in
-// coordinate del canvas 480×270 non scalato — vedi _bustinaLaserStart/Move.
 function _bustinaRicalcolaScale() {
     const overlay = document.getElementById('bustinaCutsceneOverlay');
     if (!overlay || !overlay.classList.contains('aperto')) return;
@@ -189,13 +136,6 @@ function _bustinaRicalcolaScale() {
     wrapper.style.transform = `scale(${_bustinaScale})`;
 }
 
-// ── tap sulla pokéball: la RPC parte SOLO ORA ───────────────────────────
-// Ordine deciso da Claudio 2026-09-10 (opzione B — cambia la decisione
-// del 09/09 che faceva partire apri_bustina() subito al tap sul widget):
-// finché la pokéball non viene toccata, NESSUNA bustina è consumata. Da
-// qui in poi il comportamento è identico a prima: RPC → cutscene/mese →
-// nome utente, tutto in parallelo con un tempo minimo di "carica", poi
-// l'animazione di apertura della pokéball e la cutscene vera.
 async function _bustinaClickPokeball() {
     if (!_bustinaOverlayPronto) return;
     _bustinaOverlayPronto = false;
@@ -209,11 +149,6 @@ async function _bustinaClickPokeball() {
 
     const timerMinimo = new Promise(resolve => setTimeout(resolve, 1500));
 
-    // RPC vera — la bustina è consumata da qui in poi. Se fallisce (es.
-    // rinnovo appena scattato/consumata da un altro dispositivo nel
-    // frattempo) si mostra il messaggio della RPC as-is e si torna alla
-    // schermata corretta rileggendo lo stato reale, MAI si prosegue con
-    // dati inventati.
     let risultato = null;
     let erroreApertura = null;
     const apertura = (async () => {
@@ -226,28 +161,19 @@ async function _bustinaClickPokeball() {
         }
     })();
 
-    // Nome utente reale (stessa fonte di #profiloMenuNome): sessione →
-    // email → _nomeDaEmail() (ui/auth.ui.js). Se per qualunque motivo la
-    // sessione non risponde, resta il fallback 'Allenatore' già impostato.
     const nomeUtente = (async () => {
         try {
             const sessione = await authGetSession();
             if (sessione?.user?.email) _bustinaNomeUtenteCorrente = _nomeDaEmail(sessione.user.email);
-        } catch (e) { /* resta 'Allenatore' */ }
+        } catch (e) {   }
     })();
 
-    // Attende PRIMA il risultato della RPC (il calcolo del mese dipende
-    // da risultato.mesi_completati: non si può partire prima).
     await apertura;
 
     if (erroreApertura) {
         await timerMinimo;
         wrapEl.classList.remove('scuote');
-        // .innerText, non .innerHTML: nessun escaping manuale necessario.
         textEl.innerText = erroreApertura.message || 'Errore durante l\'apertura.';
-        // Ririlegge lo stato vero (niente saldo "inventato") e ridisegna
-        // la schermata giusta dopo una breve pausa, per lasciare leggere
-        // il messaggio.
         setTimeout(async () => {
             const { data, error } = await bustinaStatoLeggi();
             if (!error) _bustinaMostraStatoOverlay(data);
@@ -258,9 +184,6 @@ async function _bustinaClickPokeball() {
     _bustinaRisultatoCorrente = risultato;
 
     const caricamento = (async () => {
-        // Mese da usare: mesi_completati+1, clampato all'ultimo mese
-        // REALMENTE presente nel bucket (decisione di Claudio: se manca
-        // la cartella del mese "in corso", restare sull'ultimo esistente).
         let mese = (risultato.mesi_completati || 0) + 1;
         try {
             const { data: cartelle, error } = await bustinaCutsceneMesiDisponibili();
@@ -273,7 +196,7 @@ async function _bustinaClickPokeball() {
                     if (mese > meseMassimo) mese = meseMassimo;
                 }
             }
-        } catch (e) { /* mese resta quello calcolato, nessun clamp possibile */ }
+        } catch (e) {   }
 
         const giorno = risultato.cutscene_giorno;
         try {
@@ -283,8 +206,6 @@ async function _bustinaClickPokeball() {
         } catch (e) { _bustinaCutsceneData = null; }
 
         if (!_bustinaCutsceneData) {
-            // Fallback identico nello spirito al prototipo: nessun asset,
-            // un solo dialogo di benvenuto.
             _bustinaCutsceneData = {
                 background: '', music: '',
                 actors: [],
@@ -295,7 +216,6 @@ async function _bustinaClickPokeball() {
 
     await Promise.all([caricamento, timerMinimo, nomeUtente]);
 
-    // Ora sì: l'animazione "a scoppio" della pokéball, poi la cutscene.
     const pokeballEl = document.getElementById('bustinaPokeball');
     wrapEl.classList.remove('scuote');
     textEl.innerText = '';
@@ -312,7 +232,6 @@ async function _bustinaClickPokeball() {
     }, 600);
 }
 
-// ── motore cutscene (porta fedele di startCutscenePlayback) ─────────────
 function _bustinaAvviaCutscenePlayback() {
     const bgEl = document.getElementById('bustinaCutsceneBg');
     const audioEl = document.getElementById('bustinaGbMusic');
@@ -352,17 +271,6 @@ function _bustinaAvviaCutscenePlayback() {
     (cd.actors || []).forEach(actor => {
         const img = document.createElement('img');
         img.className = 'bs-actor-sprite';
-        // asset vuoto (2026-09-09, deciso con Claudio):
-        //   1) se actor.type è presente → sprite/{type}/fallback/standing.png
-        //      (campo 'type' = nome cartella 1:1, es. "personaggioprincipale",
-        //      "companion", "png" — l'admin scrive già il valore corretto
-        //      nel tool di creazione cutscene, nessuna traduzione qui)
-        //   2) direzione: SEMPRE 'standing' — lo sprite non cambia con la
-        //      direzione di movimento (rimandato, Claudio ha rinunciato nel
-        //      prototipo; un eventuale campo "direzione" nel json, se mai
-        //      comparirà, va ignorato per ora)
-        //   3) se manca anche actor.type → favicon.ico del sito (nessuna
-        //      categoria nota, non si può indovinare la cartella)
         let assetUrl;
         if (actor.asset) {
             assetUrl = actor.asset.startsWith('http') ? actor.asset : bustinaAssetUrl(actor.asset).data.publicUrl;
@@ -449,14 +357,6 @@ function _bustinaAvviaCutscenePlayback() {
                         textEl.style.fontStyle = 'normal';
                         textEl.style.textAlign = 'left';
                     }
-                    // Placeholder [nome] → nome utente reale, stessa fonte
-                    // già usata dal sito per #profiloMenuNome: sessione →
-                    // email → _nomeDaEmail() (funzione già esistente in
-                    // ui/auth.ui.js, es. "irene@cardsyncpro.local" →
-                    // "Irene") — nessuna colonna profiles inventata.
-                    // Risolto una volta in _bustinaClickPokeball, prima
-                    // che la cutscene parta, e tenuto in
-                    // _bustinaNomeUtenteCorrente per tutta l'esperienza.
                     textEl.innerText = ev.text.replace(/\[nome\]/g, _bustinaNomeUtenteCorrente);
                     boxEl.style.display = 'block';
                 }
@@ -479,7 +379,6 @@ function _bustinaClickCutscene() {
     }
 }
 
-// ── taglio busta (laser) + rivelazione carte REALI (mai sorteggiate qui) ─
 function _bustinaVaiAPack() {
     _bustinaMostraSchermata('bustinaPackScreen');
     document.getElementById('bustinaBoosterContainer').style.display = 'flex';
@@ -527,8 +426,6 @@ function _bustinaVaiAPack() {
         `;
         container.appendChild(wrapper);
 
-        // Testo carta reale se il bucket bustina-testi risponde — stesso
-        // fallback "silenzioso" già usato dal vecchio _bustinaMostraRisultato.
         (async () => {
             try {
                 const { data: txt } = bustinaTestoUrl(carta.rarita, carta.nome_file);
@@ -538,7 +435,7 @@ function _bustinaVaiAPack() {
                     const descEl = document.getElementById(`bustinaCardDesc${index}`);
                     if (descEl && testo) descEl.innerText = `"${testo}"`;
                 }
-            } catch (e) { /* resta il testo di fallback già mostrato */ }
+            } catch (e) {   }
         })();
     });
 }
@@ -570,14 +467,6 @@ function _bustinaLaserStart(e) {
 
     if (clientX !== null && clientY !== null && clientX >= rect.left && clientX <= rect.right && clientY >= rect.top && clientY <= rect.bottom && !_bustinaBustaTagliata) {
         _bustinaLaserDisegno = true;
-        // rect (getBoundingClientRect) è in pixel REALI a schermo, già
-        // scalati dal transform su #bustinaScreenWrapper. Il canvas invece
-        // ha risoluzione = offsetWidth/offsetHeight di .bs-booster-pack,
-        // cioè le dimensioni AUTORATE in CSS (non scalate). Per disegnare
-        // nel posto giusto va quindi convertito: coordinate-schermo /
-        // _bustinaScale = coordinate-canvas. La soglia di taglio (sotto)
-        // resta invece in coordinate-schermo, non va convertita: misura
-        // quanto ha viaggiato il dito sul vetro, indipendente dallo zoom.
         const startX = clientX - rect.left, startY = clientY - rect.top;
         _bustinaLaserPunti = [{ x: startX / _bustinaScale, y: startY / _bustinaScale }];
         _bustinaLaserStartPoint = { x: startX, y: startY };
@@ -618,13 +507,6 @@ function _bustinaLaserMove(e) {
         if (clientY !== null) {
             let dy = clientY - _bustinaDragStartY;
             if (dy > 0) dy = 0;
-            // dy è un delta in pixel REALI (quanto si è mosso il dito):
-            // la traslazione va invece espressa in coordinate-canvas
-            // (dominio 480×270, poi scalato dall'ancestor) perché la
-            // carta segua il dito 1:1 a qualunque livello di zoom —
-            // altrimenti a schermo piccolo la carta si muoverebbe meno
-            // del dito. La rotazione resta su dy "reale": è un effetto
-            // visivo, non deve seguire pixel per pixel.
             _bustinaDragCarta.style.transform = `translateY(${dy / _bustinaScale}px) rotate(${dy / 40}deg)`;
         }
     }
@@ -686,7 +568,6 @@ function _bustinaSwipeCarta(wrapper) {
     }
 }
 
-// ── riepilogo finale (dati reali, senza colonna Qtà — vedi nota di testa) ─
 function _bustinaMostraRiepilogo() {
     const tbody = document.getElementById('bustinaSummaryBody');
     tbody.innerHTML = '';
@@ -703,16 +584,6 @@ function _bustinaMostraRiepilogo() {
     document.getElementById('bustinaSummaryScreen').style.display = 'block';
 }
 
-// ── chiusura: pulizia stato, torna alla home come qualunque altro widget ─
-// RISTRUTTURATO 2026-09-10: non esiste più una "pagina bustina" dietro
-// l'overlay da ridisegnare (era _bustinaAggiornaStato, rimossa insieme
-// alla vecchia pagina pg-*) — l'overlay ORA È l'intera esperienza del
-// widget. Chiudere l'overlay deve quindi chiudere il widget stesso: si
-// riusa chiudiDettaglioWidget() (navigation.ui.js/phone.ui.js, la stessa
-// funzione del tasto fisico/freccia indietro per tutti gli altri widget),
-// così l'animazione di chiusura, il ripristino di #btnFisicoTelefono e il
-// ridisegno della home restano IDENTICI al resto del sito — zero
-// duplicazione, zero rischio di whitelist/stato disallineati.
 function _bustinaChiudiOverlay() {
     const overlay = document.getElementById('bustinaCutsceneOverlay');
     if (overlay) overlay.classList.remove('aperto');

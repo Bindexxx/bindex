@@ -1,13 +1,7 @@
-// ── ui/admin-users.ui.js ─────────────────────────────────────────────
-// Pannello "Utenti": elenco, ricerca/filtro, cambio ruolo, e modale
-// dettaglio utente (anagrafica, ban, password, eliminazione account).
+// Admin, Utenti: elenco, ruoli, dettaglio (ban, password, eliminazione).
 
-// ── MODALE DETTAGLIO UTENTE ───────────────────────────────────
 document.getElementById('modal-close').addEventListener('click', () => modalBackdrop.style.display = 'none');
 modalBackdrop.addEventListener('click', (e) => { if (e.target === modalBackdrop) modalBackdrop.style.display = 'none'; });
-
-
-// ── UTENTI / RUOLI ────────────────────────────────────────────
 
 async function caricaUtenti() {
   const cont = document.getElementById('utenti-list');
@@ -18,7 +12,6 @@ async function caricaUtenti() {
   renderUtenti();
 }
 
-
 function statoUtente(u) {
   if (u.deleted_at) return { key: 'deleted', label: 'eliminato' };
   if (u.banned_until && new Date(u.banned_until) > new Date()) {
@@ -27,7 +20,6 @@ function statoUtente(u) {
   }
   return { key: 'active', label: 'attivo' };
 }
-
 
 function renderUtenti() {
   const cont = document.getElementById('utenti-list');
@@ -86,7 +78,6 @@ function renderUtenti() {
 document.getElementById('utenti-search').addEventListener('input', renderUtenti);
 document.getElementById('utenti-filter').addEventListener('change', renderUtenti);
 
-
 async function apriModaleUtente(userId) {
   const u = ultimaListaUtenti.find(x => x.id === userId);
   if (!u) return;
@@ -104,10 +95,6 @@ async function apriModaleUtente(userId) {
     }
   }
 
-  // AGGIUNTO (2026-09-24, sql/72): checkbox minorenne — renderizzata
-  // disabilitata in renderModaleBody (stato ignoto finché non arriva la
-  // risposta), abilitata e valorizzata qui, stesso pattern del log
-  // attività sopra (mostra la modale subito, riempi dopo).
   const chatCheck = document.getElementById('chat-minorenne-check');
   if (chatCheck) {
     const { data: restrizione, error: errR } = await adminChatRestrizioneGet(userId);
@@ -138,7 +125,6 @@ async function apriModaleUtente(userId) {
     }
   }
 }
-
 
 function renderModaleBody(u) {
   const s = statoUtente(u);
@@ -217,7 +203,6 @@ function renderModaleBody(u) {
     btn.addEventListener('click', () => gestisciAzioneUtente(u, btn.dataset.act));
   });
 }
-
 
 async function gestisciAzioneUtente(u, azione) {
   try {

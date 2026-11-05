@@ -1,70 +1,4 @@
-// ═══════════════════════════════════════════════════════════════════════
-// MISSIONI-CATALOGO.UI.JS — catalogo missioni/traguardi (dati puri) —
-// CardSync Pro
-// ═══════════════════════════════════════════════════════════════════════
-// STEP separato dal piano "riduzione accoppiamento" concordato con
-// Claudio il 2026-09-11 (dopo il taglio di paginainiziale.ui.js). Estratto
-// da ui/missioni.ui.js. NESSUNA riscrittura del codice esistente: solo
-// spostamento, zero cambi di comportamento per l'utente finale.
-//
-// Contiene: CATALOGO_MISSIONI (67 voci), _generaScalaTraguardi + tutte le
-// SCALA_* (traguardi a scala generati), TRAGUARDI_SINGOLI, CATALOGO_TRAGUARDI
-// (concatenazione delle scale + singoli), _totaleTraguardiPerPercentuale,
-// _FRASI_MISSIONE/_FRASI_TRAGUARDO, _finestraTesto, _descrizioneMissione/
-// _descrizioneTraguardo, e le due righe finali che decorano ogni voce del
-// catalogo con .descrizione (CATALOGO_MISSIONI.forEach/CATALOGO_TRAGUARDI.forEach).
-//
-// ⚠ ATTENZIONE ALL'ORDINE DI CARICAMENTO (diverso da paginainiziale-*.ui.js):
-// questo file, a differenza del motore home, ESEGUE codice a tempo di
-// caricamento script (non solo dichiarazioni) — le due righe .forEach in
-// fondo girano SUBITO quando lo script viene parsato, decorando gli oggetti
-// del catalogo con .descrizione. Tutto ciò che serve a quelle due righe
-// (CATALOGO_MISSIONI, CATALOGO_TRAGUARDI, _descrizioneMissione,
-// _descrizioneTraguardo, _FRASI_MISSIONE, _FRASI_TRAGUARDO, _finestraTesto)
-// è dichiarato PRIMA nello stesso file, quindi questo file resta
-// completamente autosufficiente e sicuro da solo — ma deve restare un
-// blocco unico, MAI spezzato ulteriormente senza rifare questa verifica.
-// Non dipende da nulla in ui/missioni.ui.js (motore): l'ordine tra questo
-// file e ui/missioni.ui.js nei <script> tag di index.html è indifferente.
-// ───────────────────────────────────────────────────────────────────────
-
-// ============================================================================
-// MISSIONI.UI.JS — Catalogo missioni/traguardi (Fase 1) + motore di valutazione
-// ============================================================================
-// Contiene SOLO le voci Fase 1 (calcolabili da dati/stato già esistenti,
-// nessun nuovo log eventi necessario). Le voci Fase 2 (aperture, ricerche,
-// visite binder, streak accessi, categorie, azioni doppioni/estensione)
-// sono OMESSE qui e vanno costruite in una sessione dedicata, dopo aver
-// aggiunto la scrittura eventi nel punto giusto del codice (tabella
-// activity_log esiste già ma è vuota/dormiente).
-//
-// Formato dichiarativo (non funzioni per voce): ogni missione/traguardo è
-// un oggetto dati con { metrica, operatore, valore }, valutato dal motore
-// generico _missioniValuta() in fondo al file. Aggiungere una voce = solo
-// editare l'array, zero rischio di rompere logica JS.
-//
-// Tabelle DB di supporto (migration 32, eseguita su Bindexxx):
-//   missioni_completate(owner_id, missione_id, finestra, periodo, origine, completato_il)
-//   traguardi_riscossi(owner_id, traguardo_id, riscosso_il)
-//   inventario_ricompense(owner_id, tipo, riferimento_id, quantita, ottenuto_il)
-//
-// ATTENZIONE COLLISIONE NOMI: verificare che CATALOGO_MISSIONI, CATALOGO_TRAGUARDI,
-// MOTORE_MISSIONI non collidano con altri script già caricati (grep sui 29+ file
-// prima di aggiungere lo <script> in index.html — non verificato in questa sessione,
-// non avevo accesso agli altri file).
-// ============================================================================
-
-
-// ----------------------------------------------------------------------------
-// CATALOGO MISSIONI (Fase 1) — 67 voci
-// ----------------------------------------------------------------------------
-// finestra: 'giornaliera' | 'settimanale' | 'mensile' | 'una_tantum'
-// metrica: chiave interpretata da MOTORE_MISSIONI._metriche (vedi sotto)
-// ricompensa.tipo: 'polvere' | 'stampino' | 'bustina' | 'skip_missione'
-//
-// NOTA: le soglie/ricompense del documento originale sono proposte di game
-// design (nota #2 del documento), non valori tecnici definitivi — Claudio le
-// bilancerà in fase di test.
+// Catalogo di missioni e traguardi (solo dati).
 
 const CATALOGO_MISSIONI = [
     { id: 'm01_primo_accesso', titolo: 'Primo accesso', categoria: 'costanza',
@@ -72,17 +6,6 @@ const CATALOGO_MISSIONI = [
       ricompensa: { tipo: 'polvere', quantita: 1 },
       nota: 'FASE 2 sbloccata (2026-08-29): richiede activity_log, agganciata in ui/auth.ui.js:_avviaSitoDopoAccesso()' },
 
-    // AGGIUNTA (2026-09-25, Claudio): dopo la rimozione di m44/m45/m46
-    // (una_tantum, convertite in traguardi — vedi sopra), 'costanza' era
-    // rimasta con la sola m01 come missione giornaliera, rendendo m96/m98
-    // (copertura di tutte/5 categorie in una settimana) più dipendenti
-    // dall'estrazione casuale di quell'unica missione. Riusa
-    // giorni_consecutivi (stessa metrica già raccolta da raccogliDati(),
-    // zero query nuove) con soglia bassa e finestra giornaliera — a
-    // differenza dei vecchi m44/m45/m46 (una_tantum, premio una tantum al
-    // raggiungimento), questa è ripetibile ogni giorno finché lo streak
-    // resta >=3, premio piccolo, pensata come rinforzo quotidiano per chi
-    // è già in una serie attiva, non come duplicato dei traguardi t_streak_*.
     { id: 'm101_in_serie', titolo: 'In serie', categoria: 'costanza',
       finestra: 'giornaliera', metrica: 'giorni_consecutivi', operatore: '>=', valore: 3,
       ricompensa: { tipo: 'polvere', quantita: 3 } },
@@ -103,10 +26,6 @@ const CATALOGO_MISSIONI = [
       finestra: 'giornaliera', metrica: 'carte_aggiunte_periodo', operatore: '>=', valore: 10,
       ricompensa: { tipo: 'polvere', quantita: 15 } },
 
-    // FASE 2 sbloccate (2026-08-30): prima tranche "aperture sezioni/widget"
-    // — solo le missioni con un widget reale 1:1 nel catalogo, vedi
-    // Catalogo_Missioni_Traguardi_Annotato.md per le rimanenti (ambigue,
-    // rimandate). Aggancio: ui/phone.ui.js:_eseguiAzioneWidget().
     { id: 'm06_occhiata_alla_collezione', titolo: 'Occhiata alla collezione', categoria: 'esplorazione',
       finestra: 'giornaliera', metrica: 'apertura_visualizzazione_periodo', operatore: '>=', valore: 1,
       ricompensa: { tipo: 'polvere', quantita: 2 } },
@@ -132,16 +51,6 @@ const CATALOGO_MISSIONI = [
       ricompensa: { tipo: 'polvere', quantita: 3 },
       nota: 'ridefinita come binaria (non conteggio) — dafare_risolti traccia solo la transizione attivo->risolto del segnale aggregato coda_errori, una volta, non eventi singoli' },
 
-    // m12_pulizia_straordinaria SPOSTATA IN FASE 2: dafare_risolti traccia solo
-    // la transizione attivo->risolto di un segnale aggregato (una volta per
-    // segnale), non un conteggio di eventi singoli — "3 errori risolti" non è
-    // calcolabile da questa fonte. Vedi Catalogo_Missioni_Traguardi_Annotato.md.
-
-    // FASE 2 sbloccata (2026-08-30): apertura dettaglio carta (flip-viewer),
-    // vedi ui/home.ui.js:apriFlipCardHome(). Soglia 10 = valore originale
-    // del documento (Missione #13 "Archivista", 10 carte consultate — vedi
-    // TITOLI RINOMINATI nel catalogo annotato). Stesso evento di m41/m82,
-    // soglie crescenti sulla stessa metrica.
     { id: 'm13_sfoglia_larchivio', titolo: "Sfoglia l'archivio", categoria: 'esplorazione',
       finestra: 'giornaliera', metrica: 'apertura_dettaglio_carta_periodo', operatore: '>=', valore: 10,
       ricompensa: { tipo: 'polvere', quantita: 8 } },
@@ -155,9 +64,6 @@ const CATALOGO_MISSIONI = [
       ricompensa: { tipo: 'polvere', quantita: 2 },
       nota: 'duplicato concettuale di m02_una_carta_in_piu — il motore di assegnazione giornaliera deve evitare di estrarle insieme' },
 
-    // FASE 2 sbloccate (2026-08-29): ricerche eseguite, agganciate in
-    // ui/navigation.ui.js:vaiARisultatoRicerca() — conta solo click su un
-    // risultato trovato (ricerca "riuscita"), non ogni tasto premuto.
     { id: 'm17_completa_una_ricerca', titolo: 'Completa una ricerca', categoria: 'esplorazione',
       finestra: 'giornaliera', metrica: 'ricerche_eseguite_periodo', operatore: '>=', valore: 1,
       ricompensa: { tipo: 'polvere', quantita: 2 } },
@@ -170,17 +76,6 @@ const CATALOGO_MISSIONI = [
       finestra: 'giornaliera', metrica: 'ricerche_eseguite_periodo', operatore: '>=', valore: 5,
       ricompensa: { tipo: 'polvere', quantita: 7 } },
 
-    // FASE 2 sbloccate (2026-08-29), TEMA CAMBIATO da "esplorazione" a
-    // "popolarità": binder-pubblico.html è anonimo per design (nessuna
-    // sessione), impossibile sapere CHI visita — l'evento è quindi
-    // attribuito al PROPRIETARIO del binder aperto, non al visitatore.
-    // Da qui il titolo diverso dall'originale ("Esploratore"/"Viaggiatore"
-    // presumevano un attore-visitatore che qui non possiamo identificare).
-    // Missioni originali #21 "Nuova conoscenza" (nuovo UTENTE mai visitato)
-    // e #22 "Curiosone" (5 CARTE viste dentro un binder) restano FASE 2
-    // permanentemente bloccate anche con questa reinterpretazione: la prima
-    // richiede identità visitatore (impossibile), la seconda richiede
-    // eventi per-singola-carta (non tracciati, solo apertura binder intero).
     { id: 'm18_qualcuno_ti_ha_trovato', titolo: 'Qualcuno ti ha trovato', categoria: 'social',
       finestra: 'giornaliera', metrica: 'binder_aperture_periodo', operatore: '>=', valore: 1,
       ricompensa: { tipo: 'polvere', quantita: 3 } },
@@ -193,8 +88,6 @@ const CATALOGO_MISSIONI = [
       finestra: 'giornaliera', metrica: 'binder_aperture_periodo', operatore: '>=', valore: 3,
       ricompensa: { tipo: 'polvere', quantita: 7 } },
 
-    // FASE 2 sbloccata (2026-08-30): apertura pagina Match, distinta dallo
-    // stato "esiste un match" già coperto da m24/m25 sotto.
     { id: 'm23_match_point', titolo: 'Match point', categoria: 'social',
       finestra: 'giornaliera', metrica: 'apertura_match_periodo', operatore: '>=', valore: 1,
       ricompensa: { tipo: 'polvere', quantita: 2 } },
@@ -211,14 +104,10 @@ const CATALOGO_MISSIONI = [
       finestra: 'giornaliera', metrica: 'binder_pubblicati_periodo', operatore: '>=', valore: 1,
       ricompensa: { tipo: 'polvere', quantita: 3 } },
 
-    // FASE 2 sbloccata (2026-08-30): generazione QR di un binder pubblico.
-    // Aggancio: ui/phone.ui.js:_condividiElementoWidget().
     { id: 'm29_qr_hunter', titolo: 'QR Hunter', categoria: 'social',
       finestra: 'giornaliera', metrica: 'qr_generato_periodo', operatore: '>=', valore: 1,
       ricompensa: { tipo: 'polvere', quantita: 3 } },
 
-    // FASE 2 sbloccata (2026-08-30): apertura widget Location, distinta
-    // dallo stato "location valorizzata" già coperto da m31/m32 sotto.
     { id: 'm30_esplora_una_location', titolo: 'Esplora una location', categoria: 'esplorazione',
       finestra: 'giornaliera', metrica: 'apertura_location_periodo', operatore: '>=', valore: 1,
       ricompensa: { tipo: 'polvere', quantita: 2 } },
@@ -241,7 +130,6 @@ const CATALOGO_MISSIONI = [
       ricompensa: { tipo: 'polvere', quantita: 3 },
       nota: 'duplicato concettuale di m09_controllo_mercato' },
 
-    // FASE 2 sbloccata (2026-08-30): apertura widget Valore collezione.
     { id: 'm38_occhio_al_valore', titolo: 'Occhio al valore', categoria: 'esplorazione',
       finestra: 'giornaliera', metrica: 'apertura_valore_collezione_periodo', operatore: '>=', valore: 1,
       ricompensa: { tipo: 'polvere', quantita: 2 } },
@@ -251,33 +139,17 @@ const CATALOGO_MISSIONI = [
       ricompensa: { tipo: 'polvere', quantita: 3 },
       nota: 'duplicato concettuale di m38 — "consultare il valore medio" e "consultare il totale" sono la stessa apertura widget (la media è testo statico nell\'header, non un elemento cliccabile separato su cui propagare un\'origine come per m39/m83)' },
 
-    // FASE 2 sbloccata (2026-08-30): click su una carta dalla lista "Le più
-    // preziose" nel widget Valore collezione — origine 'top_valore'
-    // propagata da ui/phone.ui.js:_ballMiniCarta()/_ballAzioneRiga(), NON
-    // conta le aperture da altre liste (doppioni, ultime aggiunte) né dalla
-    // tabella. Stessa metrica di m83 sotto, soglia più bassa.
     { id: 'm39_tesori_nascosti', titolo: 'Tesori nascosti', categoria: 'esplorazione',
       finestra: 'giornaliera', metrica: 'apertura_carta_top_valore_periodo', operatore: '>=', valore: 1,
       ricompensa: { tipo: 'polvere', quantita: 4 } },
 
-    // FASE 2 sbloccata (2026-08-30): stessa metrica di m13/m82, soglia più
-    // bassa — coerente col titolo "Prima apertura".
     { id: 'm41_prima_apertura', titolo: 'Prima apertura', categoria: 'esplorazione',
       finestra: 'giornaliera', metrica: 'apertura_dettaglio_carta_periodo', operatore: '>=', valore: 1,
       ricompensa: { tipo: 'polvere', quantita: 2 } },
 
-    // FASE 2 sbloccata (2026-08-30): apertura del widget Vetrina
-    // ('ultima_carta' nel catalogo — titolo interno 'Preferita', riga
-    // ~1092 di ui/phone.ui.js). Già coperta dall'hook generico in
-    // _eseguiAzioneWidget(), nessun nuovo punto di scrittura.
     { id: 'm42_carta_preferita', titolo: 'Carta preferita', categoria: 'esplorazione',
       finestra: 'giornaliera', metrica: 'apertura_ultima_carta_periodo', operatore: '>=', valore: 1,
       ricompensa: { tipo: 'polvere', quantita: 2 } },
-
-    // m50_missione_compiuta: RIMOSSA dal catalogo missioni (decisione
-    // Claudio, 2026-09-25) — duplicato esatto di t_missioni_1 (stessa
-    // metrica missioni_completate_totale, stessa soglia 1). Convertita
-    // in traguardo, ora vive solo in Achievement.
 
     { id: 'm51_inarrestabile', titolo: 'Inarrestabile', categoria: 'meta',
       finestra: 'giornaliera', metrica: 'missioni_completate_periodo', operatore: '>=', valore: 3,
@@ -292,29 +164,10 @@ const CATALOGO_MISSIONI = [
       ricompensa: { tipo: 'polvere', quantita: 15, bonus: 'possibilita_bustina' },
       nota: 'metrica speciale: gestita direttamente dal motore (missioni completate oggi / missioni assegnate oggi), non un conteggio semplice' },
 
-    // m54_cacciatore_di_obiettivi: RIMOSSA dal catalogo missioni (decisione
-    // Claudio, 2026-09-25) — duplicato esatto di t_missioni_3 (stessa
-    // metrica missioni_completate_totale, stessa soglia 10). Convertita
-    // in traguardo, ora vive solo in Achievement.
-
-    // m44_torna_domani / m45_costanza / m46_settimana_attiva: RIMOSSE dal
-    // catalogo missioni (decisione Claudio, 2026-09-25) — tutte e 3 sulla
-    // metrica giorni_consecutivi (streak), sostituite da una nuova scala
-    // di traguardi estesa (t_streak_*, categoria 'costanza') che copre le
-    // stesse soglie 2/3/7 più altre più alte. Vedi SCALA_COSTANZA_STREAK
-    // più sotto.
-
     { id: 'm57_raccoglitore', titolo: 'Raccoglitore', categoria: 'inserimento',
       finestra: 'giornaliera', metrica: 'carte_stessa_espansione_max', operatore: '>=', valore: 2,
       ricompensa: { tipo: 'polvere', quantita: 4 },
       nota: 'stato cumulativo (gruppo più numeroso per espansione), non vincolato a "aggiunte oggi"' },
-
-    // m58_rarita_gemelle e m59_varieta: ELIMINATE dal catalogo (decisione
-    // Claudio, 2026-08-29). Rarità non trovata in nessun file reale: non è
-    // una colonna di 'carte' (verificato via information_schema), non è
-    // in ui/prices.ui.js né in data/sets.library.js (contiene solo
-    // nome/base/totale per set). c.rarita in phone.ui.js è probabilmente
-    // un campo mai popolato. Vedi Catalogo_Missioni_Traguardi_Annotato.md.
 
     { id: 'm63_un_desiderio_in_meno', titolo: 'Un desiderio in meno', categoria: 'prezzi',
       finestra: 'giornaliera', metrica: 'wishlist_obiettivi_raggiunti', operatore: '>=', valore: 1,
@@ -334,88 +187,46 @@ const CATALOGO_MISSIONI = [
       finestra: 'giornaliera', metrica: 'prezzi_scaduti_totale', operatore: '==', valore: 0,
       ricompensa: { tipo: 'polvere', quantita: 10 } },
 
-    // FASE 2 sbloccata (2026-08-30): apertura del PROPRIO widget Binders
-    // (visualizzarlo), distinta dalla "popolarità" m18-20 (che è su chi
-    // apre il TUO binder pubblico — direzione opposta).
     { id: 'm69_binder_aperto', titolo: 'Binder aperto', categoria: 'esplorazione',
       finestra: 'giornaliera', metrica: 'apertura_binder_periodo', operatore: '>=', valore: 1,
       ricompensa: { tipo: 'polvere', quantita: 2 } },
 
-    // FASE 2 sbloccata (2026-08-30): "visitare il binder pubblico di
-    // qualcun altro tramite Match" (confermato da Claudio) — NON il tuo
-    // proprio link. Aggancio: ui/phone.ui.js:_apriBinderAltruiMatch().
     { id: 'm70_binder_pubblico', titolo: 'Binder pubblico', categoria: 'social',
       finestra: 'giornaliera', metrica: 'binder_pubblico_visitato_periodo', operatore: '>=', valore: 1,
       ricompensa: { tipo: 'polvere', quantita: 2 } },
 
-    // m75_matchmaker: RIMOSSA dal catalogo missioni (decisione Claudio,
-    // 2026-09-25) — copre lo stesso concetto di t_match_1 (soglia 1),
-    // che usa correttamente match_trovati_totale (cumulativa) invece di
-    // match_attivi_totale (può diminuire, non adatta a un traguardo
-    // permanente). Nessun nuovo traguardo necessario, già coperta.
-
-    // FASE 2 sbloccata (2026-08-30): "collezione condivisa O sezione
-    // sociale" — OR tra apertura Binders e apertura Match, calcolato in
-    // MOTORE_MISSIONI.raccogliDati() (esplorazione_sociale_oggi).
     { id: 'm78_esplora_il_gruppo', titolo: 'Esplora il gruppo', categoria: 'social',
       finestra: 'giornaliera', metrica: 'esplorazione_sociale_oggi', operatore: '==', valore: true,
       ricompensa: { tipo: 'polvere', quantita: 3 } },
 
-    // FASE 2 sbloccata (2026-08-30): apertura del widget preview Estensione
-    // in Home, trigger diverso da m89 sotto (lancio effettivo dell'app via
-    // apriAppEstensione()) — stessa distinzione già tollerata altrove nel
-    // catalogo tra stato/anteprima ed evento concreto (es. m63/m64).
     { id: 'm79_pokedex_aggiornato', titolo: 'Pokédex aggiornato', categoria: 'estensione',
       finestra: 'giornaliera', metrica: 'apertura_estensione_periodo', operatore: '>=', valore: 1,
       ricompensa: { tipo: 'polvere', quantita: 2 } },
 
-    // FASE 2 sbloccata (2026-08-30): duplicato concettuale di m06 —
-    // "controlla il numero totale di carte" è la stessa apertura di
-    // Visualizzazione, nessun bersaglio distinto in Home (vedi discussione:
-    // Home non passa da apriDettaglioWidget).
     { id: 'm80_numeri_alla_mano', titolo: 'Numeri alla mano', categoria: 'esplorazione',
       finestra: 'giornaliera', metrica: 'apertura_visualizzazione_periodo', operatore: '>=', valore: 1,
       ricompensa: { tipo: 'polvere', quantita: 1 } },
 
-    // FASE 2 sbloccata (2026-08-30, decisione b): "controlla carte, valore
-    // e location — 3 statistiche" = 3 widget specifici (visualizzazione/
-    // valore_collezione/location) aperti almeno una volta oggi, non un
-    // evento nuovo — calcolato in raccogliDati() (statistiche_distinte_periodo).
     { id: 'm81_conta_tutto', titolo: 'Conta tutto', categoria: 'esplorazione',
       finestra: 'giornaliera', metrica: 'statistiche_distinte_periodo', operatore: '>=', valore: 3,
       ricompensa: { tipo: 'polvere', quantita: 5 } },
 
-    // FASE 2 sbloccata (2026-08-30, CORREZIONE 2026-08-30): il documento
-    // originale dice "tre carte DIVERSE" — a differenza di m13/m41/m83
-    // (semplice conteggio di aperture), qui conta i cardId distinti, non i
-    // tap. Vedi missioniDettaglioCarteDistintePeriodo() nel repository.
     { id: 'm82_occhio_ai_dettagli', titolo: 'Occhio ai dettagli', categoria: 'esplorazione',
       finestra: 'giornaliera', metrica: 'carte_distinte_dettaglio_periodo', operatore: '>=', valore: 3,
       ricompensa: { tipo: 'polvere', quantita: 4 } },
 
-    // FASE 2 sbloccata (2026-08-30): stessa metrica di m39, soglia più alta.
     { id: 'm83_tre_tesori', titolo: 'Tre tesori', categoria: 'esplorazione',
       finestra: 'giornaliera', metrica: 'apertura_carta_top_valore_periodo', operatore: '>=', valore: 3,
       ricompensa: { tipo: 'polvere', quantita: 6 } },
 
-    // FASE 2 sbloccata (2026-08-30): duplicato concettuale di m41 —
-    // "consultare una carta inserita in precedenza" è la stessa apertura
-    // dettaglio carta, nessun modo di distinguere "storica" da "nuova"
-    // senza il flag 'vecchia' usato da m87 sotto (qui non richiesto dal
-    // testo originale).
     { id: 'm86_archivio_digitale', titolo: 'Archivio digitale', categoria: 'esplorazione',
       finestra: 'giornaliera', metrica: 'apertura_dettaglio_carta_periodo', operatore: '>=', valore: 1,
       ricompensa: { tipo: 'polvere', quantita: 2 } },
 
-    // FASE 2 sbloccata (2026-08-30): apertura di una carta NON aggiunta
-    // oggi — flag 'vecchia' calcolato in ui/home.ui.js:apriFlipCardHome()
-    // (confronto card.createdAt vs oggi), salvato in 'details'.
     { id: 'm87_ritorno_al_passato', titolo: 'Ritorno al passato', categoria: 'esplorazione',
       finestra: 'giornaliera', metrica: 'carta_vecchia_aperta_periodo', operatore: '>=', valore: 1,
       ricompensa: { tipo: 'polvere', quantita: 3 } },
 
-    // FASE 2 sbloccata (2026-08-30): duplicato esatto di m79 — "controllare
-    // lo stato dell'estensione" è la stessa apertura del widget preview.
     { id: 'm88_estensione_pronta', titolo: 'Estensione pronta', categoria: 'estensione',
       finestra: 'giornaliera', metrica: 'apertura_estensione_periodo', operatore: '>=', valore: 1,
       ricompensa: { tipo: 'polvere', quantita: 2 } },
@@ -424,18 +235,10 @@ const CATALOGO_MISSIONI = [
       finestra: 'giornaliera', metrica: 'estensione_aperta_periodo', operatore: '>=', valore: 1,
       ricompensa: { tipo: 'polvere', quantita: 3 } },
 
-    // FASE 2 sbloccata (2026-08-30): uso REALE di una funzione
-    // dell'estensione (avvio controllo prezzi), distinta da m79/m88 (solo
-    // apertura/controllo stato) e da m89 (lancio app). Aggancio:
-    // ui/prices.ui.js:triggerExtensionPriceCheck()/...Wishlist().
     { id: 'm90_collega_il_mondo', titolo: 'Collega il mondo', categoria: 'estensione',
       finestra: 'giornaliera', metrica: 'estensione_funzione_usata_periodo', operatore: '>=', valore: 1,
       ricompensa: { tipo: 'polvere', quantita: 5 } },
 
-    // FASE 2 sbloccate (2026-08-30): "apri N widget diversi" — riusa gli
-    // eventi generici di apertura widget già scritti da _eseguiAzioneWidget
-    // per OGNI widget, contati distinti in
-    // data/missioni.repository.js:missioniWidgetDistintiPeriodo().
     { id: 'm91_widget_explorer', titolo: 'Widget explorer', categoria: 'home',
       finestra: 'giornaliera', metrica: 'widget_distinti_periodo', operatore: '>=', valore: 3,
       ricompensa: { tipo: 'polvere', quantita: 3 } },
@@ -444,11 +247,6 @@ const CATALOGO_MISSIONI = [
       finestra: 'giornaliera', metrica: 'widget_distinti_periodo', operatore: '>=', valore: 5,
       ricompensa: { tipo: 'polvere', quantita: 6 } },
 
-    // FASE 2 sbloccata (2026-08-30): titolo originale "Tutto sotto
-    // controllo", rinominato "Panoramica completa" per conflitto con
-    // missione #56 (vedi TITOLI RINOMINATI nel catalogo annotato). "Tutti i
-    // widget informativi" = tutti tranne i segnaposto gacha (bloccato:true
-    // in CATALOGO_WIDGET — bustina/polvere/missioni), contati a runtime.
     { id: 'm93_panoramica_completa', titolo: 'Panoramica completa', categoria: 'home',
       finestra: 'giornaliera', metrica: 'tutti_widget_informativi_periodo', operatore: '==', valore: true,
       ricompensa: { tipo: 'polvere', quantita: 8 } },
@@ -456,11 +254,6 @@ const CATALOGO_MISSIONI = [
     { id: 'm94_personalizza', titolo: 'Personalizza', categoria: 'home',
       finestra: 'giornaliera', metrica: 'layout_modificato_periodo', operatore: '>=', valore: 1,
       ricompensa: { tipo: 'polvere', quantita: 3 } },
-
-    // m95_il_tuo_telefono RIMOSSA (2026-09-26, Claudio: "Traguardo") —
-    // era l'ultima missione una_tantum, invisibile da quando non c'è più la
-    // tab "Permanenti". Ora è il traguardo t_il_tuo_telefono (vedi
-    // TRAGUARDI_SINGOLI sotto), stessa ricompensa, sql/79.
 
     { id: 'm99_super_giornata', titolo: 'Super giornata', categoria: 'meta',
       finestra: 'giornaliera', metrica: 'missioni_completate_periodo', operatore: '>=', valore: 7,
@@ -471,11 +264,6 @@ const CATALOGO_MISSIONI = [
       ricompensa: { tipo: 'polvere', quantita: 20, bonus: 'possibilita_stampino' },
       nota: 'duplicato concettuale di m53, stessa metrica speciale' },
 
-    // FASE 2 sbloccate (2026-08-29): categorie missione. #96 ridefinita
-    // 'settimanale' (Claudio, 2026-08-30): con solo 4 missioni/giorno
-    // estratte a caso, coprire le 8 categorie esistenti in un solo giorno
-    // è strutturalmente impossibile — in una settimana è realistico. #97
-    // resta giornaliera (richiede solo 2 categorie specifiche).
     { id: 'm96_una_giornata_cardsync', titolo: 'Una giornata CardSync', categoria: 'meta',
       finestra: 'settimanale', metrica: 'tutte_categorie_coperte_settimana', operatore: '==', valore: true,
       ricompensa: { tipo: 'polvere', quantita: 12 } },
@@ -484,29 +272,12 @@ const CATALOGO_MISSIONI = [
       finestra: 'giornaliera', metrica: 'collezione_e_social_oggi', operatore: '==', valore: true,
       ricompensa: { tipo: 'polvere', quantita: 8 } },
 
-    // #98 SPOSTATA a settimanale (2026-08-30): stessa identica logica di
-    // #96 — con un pool di 4 missioni giornaliere, coprire 5 categorie
-    // diverse in UN giorno richiede che tutte e 4 le estratte siano di
-    // categorie diverse (non garantito dall'estrazione casuale) PIÙ che
-    // una settimanale/una_tantum scatti per la prima volta proprio quel
-    // giorno — nella pratica, su un account già avviato, sostanzialmente
-    // mai raggiungibile. In una settimana è ampiamente realistico.
     { id: 'm98_tuttofare', titolo: 'Tuttofare', categoria: 'meta',
       finestra: 'settimanale', metrica: 'categorie_distinte_settimana', operatore: '>=', valore: 5,
       ricompensa: { tipo: 'polvere', quantita: 12 } },
 ];
 
-
-// ----------------------------------------------------------------------------
-// CATALOGO TRAGUARDI (Fase 1) — generato da scale + voci singole
-// ----------------------------------------------------------------------------
-// I traguardi sono PERMANENTI: una volta in traguardi_riscossi restano
-// sbloccati anche se lo stato scende dopo (es. si vendono doppioni).
-// Generatore di scala: stessa metrica, soglie crescenti, titoli reali dal
-// documento originale (CardSync_100_Missioni_100_Traguardi.txt).
-
 function _generaScalaTraguardi(prefissoId, metrica, categoria, voci) {
-    // voci: [{ soglia, titolo, ricompensa }, ...]
     return voci.map((v, i) => ({
         id: `${prefissoId}_${i + 1}`,
         titolo: v.titolo,
@@ -518,11 +289,6 @@ function _generaScalaTraguardi(prefissoId, metrica, categoria, voci) {
     }));
 }
 
-// Categoria per scala (2026-08-30, per traguardo #98 "Collezionista
-// completo"): riusa la stessa tassonomia già in uso su CATALOGO_MISSIONI,
-// una categoria per scala intera. 5 categorie distinte risultanti tra tutti
-// i traguardi (inserimento/prezzi/meta/costanza/social) — mai
-// esplorazione/estensione/home, nessuna scala traguardi copre quei domini.
 const SCALA_CARTE = _generaScalaTraguardi('t_carte', 'carte_totali', 'inserimento', [
     { soglia: 1,      titolo: 'Primo passo',            ricompensa: { tipo: 'stampino', riferimento: 'primo_passo' } },
     { soglia: 5,      titolo: 'Inizia la collezione',   ricompensa: { tipo: 'polvere', quantita: 5 } },
@@ -557,7 +323,7 @@ const SCALA_VALORE = _generaScalaTraguardi('t_valore', 'valore_collezione', 'ins
 const SCALA_LOCATION = _generaScalaTraguardi('t_location', 'location_distinte', 'inserimento', [
     { soglia: 1,   titolo: 'Prima tappa',            ricompensa: { tipo: 'polvere', quantita: 5 } },
     { soglia: 3,   titolo: 'Viaggiatore',            ricompensa: { tipo: 'stampino', riferimento: 'viaggiatore' } },
-    { soglia: 5,   titolo: 'Girovago',               ricompensa: { tipo: 'polvere', quantita: 15 } }, // era 'Esploratore', doppione di t_binder_visitati_6 (rinominato 2026-09-26, Claudio)
+    { soglia: 5,   titolo: 'Girovago',               ricompensa: { tipo: 'polvere', quantita: 15 } },
     { soglia: 10,  titolo: 'Globetrotter',           ricompensa: { tipo: 'bustina', quantita: 1 } },
     { soglia: 20,  titolo: 'Cartografo',             ricompensa: { tipo: 'stampino', riferimento: 'cartografo' } },
     { soglia: 30,  titolo: 'Viaggiatore esperto',    ricompensa: { tipo: 'polvere', quantita: 30 } },
@@ -592,8 +358,6 @@ const SCALA_DOPPIONI = _generaScalaTraguardi('t_doppioni', 'doppioni_totali', 'i
     { soglia: 1000, titolo: 'Montagna di doppioni',  ricompensa: { tipo: 'bustina', quantita: 2 } },
     { soglia: 2500, titolo: 'Tesoro duplicato',      ricompensa: { tipo: 'stampino', riferimento: 'leggendario' } },
 ]);
-// NOTA: "Fai scorta" (titolo originale soglia 5) rinominato "Riserva" per
-// conflitto con missione m03_fai_scorta — vedi Catalogo_Missioni_Traguardi_Annotato.md
 
 const SCALA_MISSIONI_TOTALI = _generaScalaTraguardi('t_missioni', 'missioni_completate_totale', 'meta', [
     { soglia: 1,    titolo: 'Prima missione',          ricompensa: { tipo: 'stampino', riferimento: 'recluta' } },
@@ -607,11 +371,7 @@ const SCALA_MISSIONI_TOTALI = _generaScalaTraguardi('t_missioni', 'missioni_comp
     { soglia: 1000, titolo: 'Leggenda delle quest',    ricompensa: { tipo: 'stampino', riferimento: 'leggendario' } },
     { soglia: 2500, titolo: 'Instancabile',            ricompensa: { tipo: 'polvere', quantita: 250 } },
 ]);
-// NOTA: "Inarrestabile" (titolo originale soglia 2500) rinominato "Instancabile"
-// per conflitto con missione m51_inarrestabile.
 
-// FASE 2 sbloccata (2026-08-29): traguardi #76-85, Accessi — richiede
-// activity_log, vedi missioniAccessiTotali() in data/missioni.repository.js.
 const SCALA_ACCESSI = _generaScalaTraguardi('t_accessi', 'accessi_totali', 'costanza', [
     { soglia: 1,    titolo: 'Benvenuto',            ricompensa: { tipo: 'polvere', quantita: 3 } },
     { soglia: 3,    titolo: 'Abitudine',            ricompensa: { tipo: 'polvere', quantita: 5 } },
@@ -625,13 +385,6 @@ const SCALA_ACCESSI = _generaScalaTraguardi('t_accessi', 'accessi_totali', 'cost
     { soglia: 5000, titolo: 'Sempre qui',           ricompensa: { tipo: 'polvere', quantita: 250 } },
 ]);
 
-// Scala traguardi "streak" (decisione Claudio, 2026-09-25): sostituisce le
-// 3 missioni una_tantum m44_torna_domani/m45_costanza/m46_settimana_attiva
-// (rimosse sopra, stesse soglie 2/3/7) con una scala estesa sulla stessa
-// metrica giorni_consecutivi, per dare progressione oltre i 7 giorni. Prime
-// 3 soglie/ricompense identiche alle missioni originali per continuità;
-// soglie 14+ nuove. Titoli scelti evitando conflitti con quelli già in uso
-// nelle altre scale (es. 'Instancabile' è già t_missioni_10).
 const SCALA_COSTANZA_STREAK = _generaScalaTraguardi('t_streak', 'giorni_consecutivi', 'costanza', [
     { soglia: 2,   titolo: 'Torna domani',          ricompensa: { tipo: 'polvere', quantita: 4 } },
     { soglia: 3,   titolo: 'Costanza',              ricompensa: { tipo: 'polvere', quantita: 7 } },
@@ -644,11 +397,6 @@ const SCALA_COSTANZA_STREAK = _generaScalaTraguardi('t_streak', 'giorni_consecut
     { soglia: 365, titolo: 'Un anno intero',        ricompensa: { tipo: 'stampino', riferimento: 'leggendario' } },
 ]);
 
-// FASE 2 sbloccata (2026-08-29), TEMA CAMBIATO da "binder visitati" a
-// "binder aperti" — stesso motivo delle missioni #18-20 sopra (nessuna
-// identità visitatore disponibile, evento attribuito al proprietario).
-// Titoli originali (#56-65: Prima visita, Curioso, Esploratore...)
-// sostituiti — presumevano un attore-visitatore.
 const SCALA_BINDER_APERTURE = _generaScalaTraguardi('t_binder_aperture', 'binder_aperture_totale', 'social', [
     { soglia: 1,    titolo: 'Prima scoperta',        ricompensa: { tipo: 'polvere', quantita: 3 } },
     { soglia: 5,    titolo: 'Piccola fama',          ricompensa: { tipo: 'polvere', quantita: 5 } },
@@ -661,21 +409,7 @@ const SCALA_BINDER_APERTURE = _generaScalaTraguardi('t_binder_aperture', 'binder
     { soglia: 1000, titolo: 'Leggenda condivisa',    ricompensa: { tipo: 'bustina', quantita: 2 } },
     { soglia: 2500, titolo: 'Il binder più visto',   ricompensa: { tipo: 'stampino', riferimento: 'leggendario' } },
 ]);
-// NOTA: traguardi #56-65 originali (binder visitati da TE) restano FASE 2
-// permanentemente bloccati, stesso motivo delle missioni #21/#22 sopra.
 
-// FASE 2 sbloccata (2026-09-01): traguardi #46-55 "Match" — cumulativo
-// storico vero (missioniMatchTrovatiRegistraNuovi/Totale in
-// data/missioni.repository.js, dedup in scrittura), non più il conteggio
-// "istantaneo" match_attivi_totale (quello resta riservato alle missioni
-// giornaliere m24/m25/m75, dove ha senso un valore che sale e scende nel
-// tempo — un traguardo permanente non può basarsi su una metrica che può
-// diminuire). Categoria 'social': già esistente (SCALA_BINDER_APERTURE),
-// nessun impatto sulla soglia di t_collezionista_completo (resta 5).
-// Scaglioni 2/3/4 aggiunti su richiesta di Claudio (2026-09-01): soglie
-// alte del documento originale (fino a 2500) NON ridotte — "sarà usato da
-// tanti utenti" — solo aggiunti scaglioni bassi iniziali per rendere il
-// progresso visibile subito anche con un gruppo piccolo.
 const SCALA_MATCH_TROVATI = _generaScalaTraguardi('t_match', 'match_trovati_totale', 'social', [
     { soglia: 1,    titolo: 'Prima connessione',    ricompensa: { tipo: 'polvere', quantita: 5 } },
     { soglia: 2,    titolo: 'Doppia occasione',     ricompensa: { tipo: 'polvere', quantita: 5 } },
@@ -692,15 +426,6 @@ const SCALA_MATCH_TROVATI = _generaScalaTraguardi('t_match', 'match_trovati_tota
     { soglia: 2500, titolo: 'Leggenda sociale',     ricompensa: { tipo: 'polvere', quantita: 250 } },
 ]);
 
-// FASE 2 sbloccata (2026-09-01): traguardi #56-65 "binder visitati (da
-// TE)" — DIVERSO da SCALA_BINDER_APERTURE sopra (quella è "aperti dagli
-// ALTRI", pivot necessario per mancanza di identità visitatore sulla
-// pagina pubblica anonima binder-pubblico.html). Qui l'identità c'è
-// davvero: evento loggato da ui/phone.ui.js:_apriBinderAltruiMatch(),
-// utente autenticato, dal pannello Match del sito. Conteggio binder
-// DISTINTI (non visite totali — vedi missioniBinderVisitatiDistintiTotale,
-// dedup solo in lettura). Stessa logica di scaglioni bassi di
-// SCALA_MATCH_TROVATI sopra.
 const SCALA_BINDER_VISITATI = _generaScalaTraguardi('t_binder_visitati', 'binder_visitati_distinti_totale', 'social', [
     { soglia: 1,    titolo: 'Prima visita',        ricompensa: { tipo: 'polvere', quantita: 3 } },
     { soglia: 2,    titolo: 'Seconda tappa',       ricompensa: { tipo: 'polvere', quantita: 4 } },
@@ -717,17 +442,7 @@ const SCALA_BINDER_VISITATI = _generaScalaTraguardi('t_binder_visitati', 'binder
     { soglia: 2500, titolo: 'Conosci tutti',       ricompensa: { tipo: 'stampino', riferimento: 'leggendario' } },
 ]);
 
-// Traguardi singoli (non in scala)
 const TRAGUARDI_SINGOLI = [
-    // 2026-09-26 (Claudio: m95 → "Traguardo"): ex missione una_tantum
-    // m95_il_tuo_telefono. Sbloccato SOLO dall'aggancio diretto
-    // _missioneAggancioPersonalizzaLayout() in ui/paginainiziale.ui.js
-    // (stesso punto che assegnava m95), mai dal motore: la metrica
-    // layout_personalizzato_mai è fissata a false in raccogliDati()
-    // (ui/missioni.ui.js), perché nessun dato sul DB dice se il layout è
-    // mai stato cambiato. Ricompensa e sblocco già dato a chi aveva
-    // completato m95: sql/79. Categoria 'home': una categoria in più tra i
-    // traguardi (6 invece di 5) — t_collezionista_completo resta a soglia 5.
     { id: 't_il_tuo_telefono', titolo: 'Il tuo telefono', categoria: 'home',
       metrica: 'layout_personalizzato_mai', operatore: '==', valore: true,
       ricompensa: { tipo: 'polvere', quantita: 5 } },
@@ -737,34 +452,10 @@ const TRAGUARDI_SINGOLI = [
       ricompensa: { tipo: 'bustina', quantita: 1 },
       nota: 'ex "Giornata perfetta" — rinominato per conflitto con missione m53. Sbloccato la prima volta che percentuale_missioni_giorno raggiunge 100%.' },
 
-    // FASE 2 sbloccata (2026-08-30): traguardo #98 "Collezionista completo".
-    // Soglia 5 = numero di categorie distinte tra TUTTE le scale traguardi
-    // (inserimento/prezzi/meta/costanza/social — vedi _generaScalaTraguardi
-    // sopra). Permanente come ogni traguardo: conta categorie mai sbloccate,
-    // non un range temporale (a differenza di m96 "categorie_distinte_settimana",
-    // che è sulle MISSIONI e resettabile per finestra).
     { id: 't_collezionista_completo', titolo: 'Collezionista completo', categoria: 'meta',
       metrica: 'categorie_traguardi_distinte_totale', operatore: '>=', valore: 5,
       ricompensa: { tipo: 'bustina', quantita: 2 } },
 
-    // #99/#100 (2026-09-01, DECISIONE RIBALTATA rispetto alla sessione
-    // precedente — lì si era deciso "soglie fisse, mai percentuale
-    // dinamica": Claudio ha esplicitamente richiesto il cambio per poter
-    // aggiungere/togliere traguardi in futuro senza dover ritoccare due
-    // numeri hardcoded ogni volta. Motivo per cui ora ha senso: prima il
-    // catalogo doveva ancora stabilizzarsi (100 voci "vere" del documento
-    // di design); ora che si prevede crescita libera nel tempo (obiettivo
-    // dichiarato: arrivare anche a 150+), una soglia fissa richiederebbe
-    // manutenzione perenne — la percentuale no.
-    //
-    // metrica 'percentuale_traguardi_sbloccati' = riscossi / totale * 100,
-    // calcolata in MOTORE_MISSIONI.raccogliDati(). Il totale ESCLUDE questi
-    // due traguardi stessi (vedi _totaleTraguardiPerPercentuale sotto,
-    // filtro per metrica — non per id: qualunque futuro traguardo
-    // auto-referenziale con la stessa metrica verrebbe escluso allo stesso
-    // modo, automaticamente), altrimenti il 100% non sarebbe mai
-    // raggiungibile per davvero (non puoi contare te stesso prima di
-    // sbloccarti).
     { id: 't_maestro_cardsync', titolo: 'Maestro CardSync', categoria: 'meta',
       metrica: 'percentuale_traguardi_sbloccati', operatore: '>=', valore: 50,
       ricompensa: { tipo: 'stampino', riferimento: 'maestro_cardsync' } },
@@ -790,57 +481,7 @@ const CATALOGO_TRAGUARDI = [
     ...TRAGUARDI_SINGOLI,
 ];
 
-// Denominatore per #99/#100 (percentuale_traguardi_sbloccati) — esclude i
-// traguardi che usano QUESTA STESSA metrica (t_maestro_cardsync,
-// t_leggenda_cardsync), non per id ma per metrica: qualunque futuro
-// traguardo auto-referenziale con la stessa metrica verrebbe escluso allo
-// stesso modo senza bisogno di aggiornare questa riga. Calcolato una sola
-// volta al caricamento del catalogo (statico per la durata della sessione
-// del browser — cambia solo se il codice cambia, non a runtime in base ai
-// dati dell'utente).
 const _totaleTraguardiPerPercentuale = CATALOGO_TRAGUARDI.filter(t => t.metrica !== 'percentuale_traguardi_sbloccati').length;
-// AGGIORNATO (2026-09-01): #46-55 (Match) e #56-65 (binder visitati) ora
-// INCLUSI (vedi SCALA_MATCH_TROVATI/SCALA_BINDER_VISITATI sopra). #98
-// (Collezionista completo) era già incluso in TRAGUARDI_SINGOLI con
-// criterio ridotto (5 categorie, non "tutte") — nessuna modifica alla
-// soglia necessaria: entrambe le nuove scale sono categoria 'social', già
-// esistente (SCALA_BINDER_APERTURE), quindi il numero di categorie
-// distinte resta 5.
-// Traguardi #99/#100: CHIUSI (2026-09-01) con soglia dinamica (percentuale,
-// non numero fisso) — vedi t_maestro_cardsync/t_leggenda_cardsync in
-// TRAGUARDI_SINGOLI sopra e _totaleTraguardiPerPercentuale sopra. Decisione
-// esplicita di Claudio: si vuole poter aggiungere/togliere traguardi in
-// futuro (es. crescita del catalogo verso 150) senza dover ritoccare due
-// soglie hardcoded ogni volta — ribalta la decisione "soglie fisse, mai
-// percentuale" presa in una sessione precedente, qui documentata per
-// evitare che una sessione futura la annulli per errore pensando fosse
-// ancora valida.
-
-
-// ----------------------------------------------------------------------------
-// DESCRIZIONI (2026-08-31) — generate da due mappe metrica→frase, non
-// scritte a mano voce per voce (il catalogo ha ~58 missioni + ~90
-// traguardi: 150 descrizioni scritte singolarmente sarebbero enormi e a
-// rischio di incoerenza/dimenticanze). Un solo punto da mantenere per
-// metrica: se cambia la frase, si aggiorna automaticamente ovunque quella
-// metrica è usata.
-//
-// DUE mappe separate, non una sola condivisa: un primo tentativo con
-// un'unica mappa "Raggiungi {frase}" per entrambe produceva frasi
-// sgrammaticate per le missioni ("Raggiungi una carta alla collezione"
-// invece di "Aggiungi", singolare/plurale che non concordava) — le
-// missioni sono AZIONI (verbo diverso a seconda del tipo: Aggiungi/Apri/
-// Genera/Completa...), i traguardi sono SOGLIE cumulative (sempre
-// "Raggiungi {n} ..."). Solo 2 metriche sono usate in entrambi i
-// cataloghi (location_distinte, missioni_completate_totale) — overlap
-// minimo, verificato via script, non vale la pena forzare un'astrazione
-// condivisa che comprometta la grammatica.
-//
-// _FRASI_MISSIONE: { frase: (valore) => string } — frase completa già col
-// verbo giusto, MAIUSCOLA iniziale, senza punto finale (aggiunto dal
-// compositore insieme al qualificatore temporale). { testo: (valore) =>
-// string } per le poche già complete a sé (booleane/speciali).
-// ----------------------------------------------------------------------------
 
 const _FRASI_MISSIONE = {
     accesso_oggi: { testo: () => 'Accedi al sito.' },
@@ -868,10 +509,6 @@ const _FRASI_MISSIONE = {
     collezione_e_social_oggi: { testo: () => 'Fai qualcosa in Inserimento/Collezione E qualcosa nella sezione sociale (Binder o Match), nello stesso giorno.' },
     errori_coda_vuota: { testo: () => 'Non avere nessuna carta in errore in coda.' },
     esplorazione_sociale_oggi: { testo: () => 'Apri il widget Binders o il widget Match.' },
-    // testo fisso (non frase+_finestraTesto): usata solo da missioni
-    // giornaliere (m101_in_serie) — "frase" avrebbe prodotto "...consecutivi
-    // oggi", ridondante/confuso visto che il concetto è già "una serie", non
-    // un evento di oggi isolato.
     giorni_consecutivi: { testo: v => `Sei in una serie di accessi di almeno ${v} ${v === 1 ? 'giorno' : 'giorni'} consecutivi.` },
     estensione_aperta_periodo: { frase: () => `Apri il widget Estensione` },
     estensione_funzione_usata_periodo: { frase: () => `Usa davvero una funzione dell'estensione (es. avvia un controllo prezzi)` },
@@ -894,10 +531,6 @@ const _FRASI_MISSIONE = {
     wishlist_obiettivi_raggiunti: { frase: v => `Raggiungi ${v === 1 ? 'un obiettivo' : v + ' obiettivi'} di prezzo in Wishlist` },
 };
 
-// _FRASI_TRAGUARDO: { frase: (soglia) => string } — sostantivo/oggetto da
-// comporre come "Raggiungi {frase(soglia)}." (sempre '>=' su un totale
-// cumulativo, mai legato a un periodo). { testo } per i pochi casi
-// speciali (giorno_perfetto_mai, categorie_traguardi_distinte_totale).
 const _FRASI_TRAGUARDO = {
     accessi_totali: { frase: v => `${v} ${v === 1 ? 'accesso totale' : 'accessi totali'} al sito` },
     binder_aperture_totale: { frase: v => `${v} ${v === 1 ? 'visita totale' : 'visite totali'} al tuo binder da parte del gruppo` },
@@ -916,18 +549,16 @@ const _FRASI_TRAGUARDO = {
     binder_visitati_distinti_totale: { frase: v => `${v} ${v === 1 ? 'binder diverso visitato' : 'binder diversi visitati'}` },
 };
 
-// "oggi"/"questa settimana"/ecc. — solo per le missioni (i traguardi sono
-// sempre cumulativi, mai legati a una finestra).
 function _finestraTesto(finestra) {
     if (finestra === 'giornaliera') return ' oggi';
     if (finestra === 'settimanale') return ' questa settimana';
     if (finestra === 'mensile') return ' questo mese';
-    return ''; // una_tantum: nessun qualificatore temporale, è un traguardo a vita
+    return '';
 }
 
 function _descrizioneMissione(m) {
     const voce = _FRASI_MISSIONE[m.metrica];
-    if (!voce) return m.titolo; // rete di sicurezza: metrica non mappata, mai deve rompere il render
+    if (!voce) return m.titolo;
     if (voce.testo) return voce.testo(m.valore);
     return `${voce.frase(m.valore)}${_finestraTesto(m.finestra)}.`;
 }
@@ -939,7 +570,5 @@ function _descrizioneTraguardo(t) {
     return `Raggiungi ${voce.frase(t.valore)}.`;
 }
 
-// Applicate una sola volta qui, non scritte nei singoli oggetti letterali
-// del catalogo sopra — un solo passaggio, impossibile dimenticarne una.
 CATALOGO_MISSIONI.forEach(m => { m.descrizione = _descrizioneMissione(m); });
 CATALOGO_TRAGUARDI.forEach(t => { t.descrizione = _descrizioneTraguardo(t); });

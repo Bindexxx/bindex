@@ -1,25 +1,4 @@
-// ── ui/import-csv.ui.js ──────────────────────────────────────────────────
-// RESTYLE BINDEX FASE 8e: "Importa da CSV" (Impostazioni → Account e dati).
-// RIFATTO 2026-10-01 come nelle tavole PC-imp-acc / PC-csv / PC-csv-prog:
-// tre passi nella stessa vista (#importCsvVista, dentro #impostazioni) —
-//   1. File: trascina o scegli il CSV, oppure scarica un modello;
-//   2. Colonne: ogni colonna del file abbinata a un campo (riconosciute da
-//      sole, si possono cambiare); più "Dove vanno" (Collezione/Wishlist,
-//      Carte/Sealed), le stesse due scelte di Inserimento;
-//   3. Controllo: ogni riga segnata come pronta / già presente (stessa
-//      carta già in collezione, si può saltare) / da controllare (valore non
-//      riconosciuto, sostituito con quello predefinito) / saltata (senza
-//      nome); poi "Metti in coda N carte" invia a blocchi da 100 con barra,
-//      e un blocco che non parte si riprova da lì senza rimandare i primi.
-// Le righe finiscono nella stessa coda unica 'coda_carte' dell'inserimento
-// manuale (queueInsertRighe), con gli stessi campi di _rigaEntryToRigheDb in
-// ui/entry.ui.js: l'estensione le elabora come sempre. Nessuna chiamata
-// Supabase qui.
-//
-// Dipende da: authGetUserId (data/auth.repository.js), queueInsertRighe
-// (data/queue.repository.js), locationsList/locationInsert
-// (data/locations.repository.js, dal 2026-10-23), carteReali (ui/cards.ui.js, solo lettura per
-// i "già presenti"), escapeHtml, insAggiornaPagina (facoltativa).
+// Impostazioni → Importa da CSV: in blocchi alla coda dell'estensione.
 
 const _IMPORT_CSV_BLOCCO = 100;
 const _IMPORT_CSV_MAX_RIGHE = 2000;
@@ -44,13 +23,12 @@ const _IMPORT_CSV_ALIAS = {
     url: ['link', 'url', 'cardmarket', 'link_cardmarket', 'url_cardmarket'],
 };
 const _IMPORT_CSV_LINGUE = { IT: 'IT', ITA: 'IT', ITALIANO: 'IT', EN: 'EN', ENG: 'EN', INGLESE: 'EN', ENGLISH: 'EN', JP: 'JP', JPN: 'JP', JAP: 'JP', GIAPPONESE: 'JP', KOR: 'KOR', KO: 'KOR', KR: 'KOR', COREANO: 'KOR' };
-// Le stesse 7 condizioni di Cardmarket usate da Modifica carta e dall'estensione.
 const _IMPORT_CSV_COND = {
     MT: 'MT', MINT: 'MT', NM: 'NM', 'NEAR MINT': 'NM', EX: 'EX', EXCELLENT: 'EX', GD: 'GD', GOOD: 'GD',
     LP: 'LP', 'LIGHT PLAYED': 'LP', PL: 'PL', PLAYED: 'PL', PO: 'PO', POOR: 'PO',
 };
 
-let _impCsv = null; // { file, tabella, mappa[], dest, tipo, saltaGia, righe[], inviate, errore, invio }
+let _impCsv = null;
 
 function _importCsvParse(testo) {
     if (testo.charCodeAt(0) === 0xFEFF) testo = testo.slice(1);
@@ -78,14 +56,9 @@ function _importCsvParse(testo) {
     return righe;
 }
 
-// Link a una carta di Cardmarket: l'estensione lo legge direttamente invece
-// di cercare per nome. Lingua e condizione le applica lei dai campi della
-// riga, quindi i parametri del link si tolgono; reverse/prima edizione si
-// leggono da lì se il file non ha la colonna apposita.
 function _importCsvLink(v) {
     let u;
     try { u = new URL(String(v || '').trim()); } catch (e) { return null; }
-    // Stessa regola del database (sql/96): solo https://(www.)cardmarket.com.
     if (u.protocol !== 'https:' || !/^(www\.)?cardmarket\.com$/i.test(u.hostname) || !/\/Products\//i.test(u.pathname)) return null;
     return {
         url: u.origin + u.pathname,
@@ -98,8 +71,6 @@ function _importCsvBool(v) {
     return ['true', '1', 'si', 'sì', 'x', 'yes', 'y', 'vero'].includes(String(v || '').trim().toLowerCase());
 }
 
-// Abbinamento automatico: intestazione ripulita (minuscole, senza punti/
-// spazi agli estremi) confrontata con gli alias; ogni campo una volta sola.
 function _importCsvMappaAuto(intest) {
     const usati = new Set();
     return intest.map(h => {
@@ -110,8 +81,6 @@ function _importCsvMappaAuto(intest) {
     });
 }
 
-// Carte già in collezione con lo stesso nome (stesso criterio di
-// "hai già" in Inserimento): totale pezzi e location.
 function _importCsvGia(nome) {
     const n = String(nome || '').toLowerCase();
     if (n.length < 3 || typeof carteReali === 'undefined' || !Array.isArray(carteReali)) return null;
@@ -124,19 +93,13 @@ function _importCsvGia(nome) {
     };
 }
 
-// Righe del file → righe da controllare, con stato e avvisi.
 function _importCsvValuta() {
     const s = _impCsv;
     const col = (campo) => s.mappa.indexOf(campo);
     const idx = {}; Object.keys(_IMPORT_CSV_ALIAS).forEach(k => { idx[k] = col(k); });
     const val = (r, k) => (idx[k] >= 0 ? String(r[idx[k]] || '').trim() : '');
-    // Un'intestazione ripetuta sotto la prima (fogli con due righe di
-    // titoli) non è una carta: si riconosce dal nome uguale al titolo.
     const titoloNome = idx.nome >= 0 ? String(s.tabella[0][idx.nome] || '').trim().toLowerCase() : '';
     s.righe = s.tabella.slice(1).filter(r => !titoloNome || val(r, 'nome').toLowerCase() !== titoloNome).map(r => {
-        // Il codice (es. "OBF 125") identifica la carta: va in coda attaccato
-        // al nome, come in Inserimento ("Charizard ex OBF 125"), salvo che il
-        // nome lo contenga già.
         const nomeGrezzo = val(r, 'nome');
         const codice = val(r, 'codice');
         const nome = nomeGrezzo && codice && !nomeGrezzo.toLowerCase().includes(codice.toLowerCase())
@@ -184,7 +147,6 @@ function _importCsvDaInviare() {
     return _impCsv.righe.filter(r => r.stato !== 'saltata' && !(r.stato === 'gia' && _impCsv.saltaGia));
 }
 
-// ── Apertura / chiusura della vista ─────────────────────────────────────
 function importCsvApri() {
     if (!_impCsv || !_impCsv.invio) _impCsv = { file: '', tabella: null, mappa: [], dest: 'collezione', tipo: 'carta', saltaGia: true, righe: null, inviate: 0, errore: '', invio: false, mostraTutte: false };
     document.getElementById('impostazioni')?.classList.add('imp-csv-aperto');
@@ -194,7 +156,7 @@ function importCsvApri() {
 }
 
 function importCsvChiudi() {
-    if (_impCsv && _impCsv.invio) return; // durante l'invio resta aperta
+    if (_impCsv && _impCsv.invio) return;
     document.getElementById('impostazioni')?.classList.remove('imp-csv-aperto');
     const v = document.getElementById('importCsvVista');
     if (v) v.innerHTML = '';
@@ -206,7 +168,6 @@ function importCsvIndietro() {
     _importCsvRender();
 }
 
-// Chiamata dall'<input type=file id="importCsvFile"> (stesso nome di prima).
 async function importaCsvDaFile(input) {
     const file = input && input.files && input.files[0];
     if (input) input.value = '';
@@ -261,7 +222,6 @@ function importCsvScaricaModello() {
 
 function _importCsvCambiaColonna(i, campo) {
     if (!_impCsv || _impCsv.invio) return;
-    // Un campo può stare su una sola colonna: chi lo aveva prima lo perde.
     if (campo) _impCsv.mappa = _impCsv.mappa.map((c, k) => (k !== i && c === campo ? '' : c));
     _impCsv.mappa[i] = campo;
     _importCsvValuta();
@@ -275,20 +235,6 @@ function _importCsvImposta(chiave, valore) {
     _importCsvRender();
 }
 
-// ── Location del CSV (FIX 2026-10-23) ───────────────────────────────────
-// Sul sito una location esiste solo se ha una riga nella tabella 'location':
-// da lì escono la pagina Location, le tendine di Inserimento/Modifica e i
-// binder-location (creati da binder.ui.js all'apertura di Binders). L'import
-// metteva il nome solo sulla riga di coda: le carte arrivavano con una
-// location "fantasma" (caso reale: BULK BORDO GIALLO, 642 carte).
-// Qui, PRIMA di mandare i blocchi, ogni location del CSV che manca viene
-// creata con lo stesso tipo dell'import ('carta' o 'sealed'), come fa
-// aggiungiNuovaLocationComune() in ui/entry.ui.js. Se esiste già con
-// maiuscole diverse ("bulk" vs "BULK") si riusa quella, riscrivendo il nome
-// sulle righe: niente doppioni che differiscono solo per le maiuscole.
-// I nomi di sistema (SCAMBIO, "?"…) non si creano mai (_locRiservata in
-// ui/widget-location.ui.js, usata solo se caricata).
-// Restituisce null se tutto ok, altrimenti { nome, messaggio }.
 async function _importCsvCreaLocation(userId, righe) {
     const tipo = _impCsv && _impCsv.tipo === 'sealed' ? 'sealed' : 'carta';
     const nomi = [...new Set(righe.map(r => r.location).filter(Boolean))];
@@ -310,7 +256,6 @@ async function _importCsvCreaLocation(userId, righe) {
     return null;
 }
 
-// ── Invio a blocchi ─────────────────────────────────────────────────────
 async function importCsvInvia() {
     const s = _impCsv;
     if (!s || s.invio) return;
@@ -320,9 +265,6 @@ async function importCsvInvia() {
     if (!righe.length) return;
     s.invio = true; s.errore = ''; s.totale = righe.length;
     _importCsvRender();
-    // FIX 2026-10-23: le location del CSV vanno create anche nella tabella
-    // 'location' (vedi _importCsvCreaLocation): prima finivano solo come
-    // testo sulle carte, fuori da elenco Location, tendine e binder.
     const errLoc = await _importCsvCreaLocation(userId, righe);
     if (errLoc) {
         s.invio = false;
@@ -347,7 +289,6 @@ async function importCsvInvia() {
     if (typeof insAggiornaPagina === 'function') insAggiornaPagina();
 }
 
-// ── Disegno ─────────────────────────────────────────────────────────────
 function _importCsvPassi(attivo) {
     const passi = ['File', 'Colonne', 'Controllo'];
     return `<div class="csv-passi">${passi.map((p, i) => {

@@ -1,41 +1,12 @@
-// ── ui/binder-pubblico.ui.js ─────────────────────────────────────────────
-// Logica UI di binder-pubblico.html — la pagina pubblica GENERICA per
-// binder di tipo 'location' (inclusa SCAMBIO dalla Fase 1, 26/08/2026) ed
-// 'extra'. Wishlist non passa ancora da qui (Fase 2, richiede prima
-// un'estensione della RPC leggi_binder_pubblico — vedi nota su
-// _binderPubblicoESelezionabile più sotto).
-//
-// FASE 1 CONSOLIDAMENTO (26/08/2026): selezione/quantità/"copia riepilogo"
-// ora condizionali — attivi SOLO per binder SCAMBIO (location_valore ===
-// 'SCAMBIO'), stesso comportamento che prima viveva solo su scambio.html
-// (ora ritirata). Per ogni altro tipo resta la vetrina in sola lettura di
-// sempre. La sleeve del retro carta è letta qui direttamente
-// (leggi_media_binder_pubblico), NON tramite ui/card-back-viewer.ui.js:
-// quel file non è stato verificato in questa sessione (probabilmente
-// precede il Multi-Binder), meglio autosufficiente.
-//
-// Dipende da: data/binder-pubblico.repository.js, state/binder-pubblico.state.js,
-// utils/shared-public.js (applicaTemaCondiviso, _urlImmagineVisualizzabile, escapeHtml,
-// toggleSelezione, modificaQty, aggiornaTotale), ui/binder-flipbook.ui.js
-// (motore del libro sfogliabile, estratto da qui il 26/08/2026 — vedi
-// commento in quel file per l'elenco completo delle funzioni spostate:
-// copertina, toggle Elenco/Sfoglia, motore libro).
+// Pagina pubblica di un binder (binder-pubblico.html).
 
-// Vero per i tipi di binder che supportano selezione/riepilogo — Scambio
-// (Fase 1, poi Fase 3 Step 2 2026-09-12: tipo='scambio' al posto di
-// location='SCAMBIO', scambio.html ritirato) e Wishlist (Fase 2,
-// 26/08/2026: leggi_binder_pubblico estesa, vedi
-// 27_leggi_binder_pubblico_wishlist.sql).
 function _binderPubblicoESelezionabile() {
     if (!_binderInfo) return false;
     if (_binderInfo.tipo === 'wishlist') return true;
     if (_binderInfo.tipo === 'scambio') return true;
-    return _binderInfo.tipo === 'location' && _binderInfo.location_valore === 'SCAMBIO'; // difesa storica, non dovrebbe più capitare (sql/45b)
+    return _binderInfo.tipo === 'location' && _binderInfo.location_valore === 'SCAMBIO';
 }
 
-// Stesse posizioni di default dell'editor privato (state/binder.state.js:
-// DEFAULT_STATE_CARD_BACK) — copiate qui perché questa pagina non carica
-// quel file. Usate solo se la sleeve non ha un metadata salvato.
 const DEFAULT_STATE_CARD_BACK = {
     pokemon:    { left: 13.48, top: 9.33,  scale: 1 },
     condition:  { left: 27.19, top: 31.82, scale: 1 },
@@ -68,19 +39,11 @@ async function caricaCatalogo() {
     _binderInfo = { nome: nomeBinder, tipo: info[0].tipo, location_valore: info[0].location_valore, layout: info[0].layout, colore: info[0].colore || null, nickname: info[0].nickname || null };
     document.title = 'Bindex — ' + nomeBinder;
     document.getElementById('titoloBinder').textContent = nomeBinder;
-    // RESTYLE BINDEX FASE 8: "di <nickname>" (mai l'email) — campo restituito da sql/82; assente prima dello SQL.
     const elProprietario = document.getElementById('proprietarioBinder');
     if (elProprietario && info[0].nickname) { elProprietario.textContent = 'di ' + info[0].nickname; elProprietario.style.display = ''; }
 
-    // Missioni/Traguardi Fase 2 — fire-and-forget, non deve mai bloccare o
-    // rallentare il caricamento della pagina per il visitatore. La RPC
-    // stessa rivalida che il binder sia pubblico (vedi migration 33), non
-    // c'è bisogno di controllarlo di nuovo qui.
-    binderPubblicoRegistraApertura(binderId).catch(() => { /* silenzioso, mai visibile al visitatore */ });
+    binderPubblicoRegistraApertura(binderId).catch(() => {   });
 
-    // FASE 1 CONSOLIDAMENTO: selezione+riepilogo attivi solo per Scambio —
-    // vedi _binderPubblicoESelezionabile in cima al file. _libroSelezionabile
-    // è già dichiarata in ui/binder-flipbook.ui.js (assegnazione, non "let").
     const selezionabile = _binderPubblicoESelezionabile();
     _libroSelezionabile = selezionabile;
     _libroPrezzoObiettivo = _binderInfo.tipo === 'wishlist';
@@ -92,18 +55,12 @@ async function caricaCatalogo() {
         ? 'Seleziona le carte che ti interessano — il totale si aggiorna da solo.'
         : 'Vetrina pubblica — sola lettura.';
 
-    // Fase 4, Step 4 (2026-09-13): "Richiedi" ha senso SOLO per lo Scambio
-    // vero (crea una richiesta transazionale, sql/48) — non per la
-    // Wishlist, che è selezionabile per lo stesso "copia riepilogo" ma non
-    // ha un binder proprietario da cui prelevare nulla. Bottone nascosto
-    // per tipo='wishlist', anche se la barra totale resta visibile.
     _tipoOggettoRichiesta = 'carta';
     const btnRichiedi = document.getElementById('btnRichiediScambio');
     if (btnRichiedi) btnRichiedi.style.display = (_binderInfo.tipo === 'scambio') ? '' : 'none';
-    // FASE 8b: "Hai un codice richiesta? Controlla" (ui/richiesta-ospite.ui.js)
     if (_binderInfo.tipo === 'scambio' && typeof ospiteMostraControllo === 'function') ospiteMostraControllo();
 
-    _caricaCopertinaBinder(binderId); // non bloccante, si aggiorna da sola quando pronta
+    _caricaCopertinaBinder(binderId);
 
     const { data, error } = await binderPubblicoLeggiCarte(binderId);
     if (error) {
@@ -117,24 +74,8 @@ async function caricaCatalogo() {
         code: r.codice || '',
         lang: r.lingua || 'IT',
         cond: r.condizione || 'NM',
-        // FASE 1 CONSOLIDAMENTO (26/08/2026): rinominato da 'qty' a
-        // 'qtyDisponibile' — stessa convenzione di scambio.ui.js/
-        // wishlist.ui.js. Necessario perché modificaQty() in
-        // utils/shared-public.js legge carta.qtyDisponibile SENZA
-        // fallback (a differenza di binder-flipbook.ui.js, che già
-        // gestisce entrambi i nomi) — con 'qty' il bottone "+" avrebbe
-        // silenziosamente prodotto NaN quando la selezione è attiva.
-        // FASE 5 (2026-09-13): r.qty resta il totale OFFERTO (invariato),
-        // qtyDisponibile ora è il NETTO reale (offerto − già riservato da
-        // richieste accettate, sql/51) — governa anche il libro sfogliabile
-        // via ui/binder-flipbook.ui.js (stesso campo, un solo punto di
-        // verità). riservato tenuto a parte solo per il badge informativo.
         qtyDisponibile: Math.max(0, (r.qty || 1) - (r.riservato || 0)),
         riservato: r.riservato || 0,
-        // FASE 2 CONSOLIDAMENTO: prezzo_obiettivo ora restituito da
-        // leggi_binder_pubblico per qualunque tipo (null per location/
-        // extra, valorizzato per wishlist) — vedi
-        // 27_leggi_binder_pubblico_wishlist.sql.
         prezzoObiettivo: r.prezzo_obiettivo != null ? Number(r.prezzo_obiettivo) : null,
         price: r.prezzo != null ? Number(r.prezzo) : 0,
         notes: r.note || '',
@@ -151,11 +92,9 @@ async function caricaCatalogo() {
         `${carte.length} cart${carte.length === 1 ? 'a' : 'e'}`;
 
     renderLista();
-    impostaModalitaBinderPubblico('libro'); // RESTYLE BINDEX FASE 6: si apre sul Libro
+    impostaModalitaBinderPubblico('libro');
 }
 
-
-// RESTYLE BINDEX FASE 6: "N carte · N pz." nella barra in fondo.
 function _testoConteggioSelezione(distinte, pezzi) {
     return `${distinte} cart${distinte === 1 ? 'a' : 'e'} · ${pezzi} pz.`;
 }
@@ -176,21 +115,9 @@ function renderLista() {
     const selezionabile = _binderPubblicoESelezionabile();
     const eWishlist = _binderInfo && _binderInfo.tipo === 'wishlist';
 
-    // FASE 1/2 CONSOLIDAMENTO: stesso markup di scambio.ui.js/wishlist.ui.js
-    // quando selezionabile — checkbox + qty-control al posto del semplice
-    // badge ×N della vetrina di sola lettura. Wording del badge quantità e
-    // badge obiettivo prezzo differenziati per tipo (eWishlist).
     container.innerHTML = filtrate.map(c => {
         const immagineSrc = _urlImmagineVisualizzabile(c.immagine);
         if (selezionabile) {
-            // FASE 5 (2026-09-13): "Riservato ma non selezionabile" — una
-            // riga con disponibile=0 (tutto l'offerto già accettato altrove)
-            // resta VISIBILE ma bloccata (checkbox disabilitata), come
-            // richiesto dalla roadmap. Il parziale (offerto=5, riservato=2)
-            // resta selezionabile ma limitato a c.qtyDisponibile (già netto)
-            // e mostra un badge informativo in più. Wishlist non ha mai
-            // riservato > 0 (sempre 0 da sql/51), bloccata resta sempre
-            // false lì — nessuna regressione.
             const bloccata = c.qtyDisponibile <= 0;
             const selezionata = !bloccata && selezioni[c.id] > 0;
             const qtyAttuale = bloccata ? 0 : (selezioni[c.id] || 0);
@@ -239,12 +166,6 @@ function renderLista() {
     }).join('');
 }
 
-// FASE 1 CONSOLIDAMENTO: porta di copiaRiepilogo() da scambio.ui.js —
-// FASE 1/2 CONSOLIDAMENTO: porta di copiaRiepilogo() da scambio.ui.js/
-// wishlist.ui.js — stesso identico testo per tipo, stesso comportamento
-// (clipboard + fallback alert). Chiamata solo dal bottone
-// #btnCopiaRiepilogo, mostrato solo quando _binderPubblicoESelezionabile()
-// è vero (vedi caricaCatalogo/binder-pubblico.html).
 function copiaRiepilogo() {
     const righe = [];
     let totale = 0;
@@ -260,10 +181,6 @@ function copiaRiepilogo() {
     const eWishlist = _binderInfo && _binderInfo.tipo === 'wishlist';
     let intestazione;
     if (eWishlist) {
-        // Stesso identico testo di copiaRiepilogo() in wishlist.ui.js —
-        // _nomeProprietarioWishlist arriva dal parametro ?nome= dell'URL
-        // (state/binder-pubblico.state.js), impostato da
-        // _linkPubblicoCondivisione() in ui/navigation.ui.js.
         intestazione = _nomeProprietarioWishlist
             ? `Carte che potrei procurare a ${_nomeProprietarioWishlist}:`
             : `Carte dalla wishlist che potrei procurargli/le:`;
@@ -278,11 +195,10 @@ function copiaRiepilogo() {
         btn.innerHTML = '<i class="fa-solid fa-check"></i> Copiato!';
         setTimeout(() => { btn.innerHTML = originale; }, 1800);
     }).catch(() => {
-        alert(testo); // fallback se il clipboard non è disponibile (es. http non sicuro)
+        alert(testo);
     });
 }
 
-// ── Flip-card con sleeve del binder (autosufficiente, vedi banner in cima) ─
 async function apriFlipCard(id) {
     const card = carte.find(c => String(c.id) === String(id));
     if (!card) return;
@@ -296,9 +212,6 @@ async function apriFlipCard(id) {
     frontImg.src = immagineSrc || '';
     if (!immagineSrc) frontImg.style.display = 'none';
 
-    // FASE 2 CONSOLIDAMENTO: riga "Vuole: N" sul fronte carta per Wishlist
-    // (stesso testo di apriFlipCard in wishlist.ui.js) — assente per gli
-    // altri tipi, come prima.
     const eWishlist = _binderInfo && _binderInfo.tipo === 'wishlist';
     document.getElementById('flipCardStats').innerHTML = `
         <div style="font-weight:800; font-size:0.95rem; margin-bottom:0.2rem;">${escapeHtml(card.name)}</div>
@@ -311,14 +224,12 @@ async function apriFlipCard(id) {
     document.getElementById('immagineModal').style.display = 'flex';
     _flipCardIdAperta = card.id;
     _flipCardAggiornaAggiungi();
-    _bxFotoReali(card.id); // FASE 8c (non blocca)
+    _bxFotoReali(card.id);
 
     if (_flipCardTimeout) clearTimeout(_flipCardTimeout);
     _flipCardTimeout = setTimeout(() => inner.classList.add('flipped'), 500);
 }
 
-// RESTYLE BINDEX FASE 6: "Aggiungi alla scelta" sulla carta a tutto schermo
-// (solo binder selezionabili, carta non del tutto riservata).
 let _flipCardIdAperta = null;
 function _flipCardAggiornaAggiungi() {
     const btn = document.getElementById('flipCardAggiungi');
@@ -342,9 +253,6 @@ function toggleFlipCard() {
     document.getElementById('flipCardInner').classList.toggle('flipped');
 }
 
-// Risolta una sola volta per pagina (il binder non cambia durante la
-// navigazione) e tenuta in _sleeveRisolta — evita di richiamare la RPC ad
-// ogni singola carta aperta.
 async function _renderSleeve(card) {
     const wrap = document.getElementById('cbdWrap');
     wrap.style.display = 'none';
@@ -353,24 +261,17 @@ async function _renderSleeve(card) {
         const { data: media, error } = await binderPubblicoLeggiMedia(_binderId);
         const riga = (!error && media) ? media.find(m => m.slot === 'card_back') : null;
         if (!riga) {
-            _sleeveRisolta = false; // niente sleeve, non ritentare ad ogni carta
+            _sleeveRisolta = false;
         } else if (riga.source === 'default') {
-            const urlPub = binderPubblicoUrlFile('default-assets', riga.storage_path); // data/binder-pubblico.repository.js (audit 2026-09-25, B8)
+            const urlPub = binderPubblicoUrlFile('default-assets', riga.storage_path);
             _sleeveRisolta = urlPub ? { url: urlPub, metadata: riga.metadata } : false;
         } else {
-            // Upload personalizzato: bucket pubblico 'immaginivisibili',
-            // cartella 'carta' (stessa convenzione di _sincronizzaCopiaPubblica
-            // in ui/admin-requests.ui.js). Se non è mai stata sincronizzata
-            // (mai approvata prima di questa modifica), il file semplicemente
-            // non esiste nel bucket — l'onerror sull'<img> del retro carta
-            // (già gestito dal fallback var(--primary) di sempre) copre quel
-            // caso senza bisogno di verificarlo qui.
             const urlPub = binderPubblicoUrlFile('immaginivisibili', `carta/${_ownerUserId}/${_binderId}.png`);
             _sleeveRisolta = urlPub ? { url: urlPub, metadata: riga.metadata } : false;
         }
     }
 
-    if (!_sleeveRisolta) return; // resta il semplice sfondo var(--primary), nessuna regressione
+    if (!_sleeveRisolta) return;
 
     const cbdBgImg = document.getElementById('cbdBgImg');
     cbdBgImg.onerror = () => { wrap.style.display = 'none'; };
@@ -379,10 +280,6 @@ async function _renderSleeve(card) {
 
     _cbdScrivi('pokemon', card.name || '');
     _cbdScrivi('condition', card.cond || '');
-    // FASE 1/2 CONSOLIDAMENTO: campo "variazione" della sleeve differenziato
-    // per tipo — Scambio: quantità disponibile (_cbdTestoVariazione di
-    // scambio.ui.js), Wishlist: prezzo obiettivo (_cbdTestoVariazione di
-    // wishlist.ui.js), altri tipi: note, come da sempre.
     let testoVariazione;
     if (_binderInfo && _binderInfo.tipo === 'wishlist') {
         testoVariazione = card.prezzoObiettivo != null ? ('Obiettivo: ' + formattaEuro(card.prezzoObiettivo)) : '';
@@ -423,9 +320,6 @@ function chiudiImmagineIngrandita() {
     if (_flipCardTimeout) { clearTimeout(_flipCardTimeout); _flipCardTimeout = null; }
 }
 
-// RESTYLE BINDEX FASE 8c (sql/89): "Foto reali di questa copia" sotto la
-// carta a tutto schermo. La funzione del DB restituisce solo le foto delle
-// carte di un binder pubblico (la Wishlist non ne ha: id di wishlist).
 async function _bxFotoReali(cartaId) {
     const box = document.getElementById('flipCardFotoReali');
     if (!box) return;
