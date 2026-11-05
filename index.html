@@ -2208,6 +2208,12 @@
         if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('sw.js').catch(e => console.warn('[sw] registrazione non riuscita:', e));
+                navigator.serviceWorker.ready.then(async () => {
+                    const c = await caches.open('bindex-file');
+                    const urls = [...document.querySelectorAll('script[src*="?v="], link[rel="stylesheet"][href*="?v="]')]
+                        .map(e => e.src || e.href).filter(u => u.startsWith(location.origin));
+                    for (const u of urls) { if (!(await c.match(u))) await c.add(u).catch(() => {}); }
+                }).catch(() => {});
             });
         }
     </script>
