@@ -4136,10 +4136,6 @@
         .pg-riga[data-tocca] { cursor: pointer; }
         .pg-riga[data-tocca]:active { background: var(--row-hover); }
 
-.btn-* condivisa toccata, stesso principio già seguito per
-           #chatModal (vedi Compilato_2026-09-24_widget-chat-server.txt).
-           Vive qui e non in un file a sé perché tutto il resto del CSS
-           di pagina (.pg-*, .btn-*) è già in questo blocco unico. */
         #match { container-type: inline-size; }
         #match .match-riepilogo { margin: 0 0 12px; font-size: 0.9rem; }
         #match .match-riepilogo b { color: var(--text-dark); }
