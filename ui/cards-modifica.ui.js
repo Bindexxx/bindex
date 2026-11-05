@@ -49,6 +49,7 @@ function toggleMenuCompatto(id) {
             document.getElementById('editQty').value = card.qty;
             document.getElementById('editPrezzo').value = card.price || '';
             document.getElementById('editNote').value = card.notes;
+            document.getElementById('editLink').value = card.link && card.link !== '#' ? card.link : '';
 
             const inputLocation = document.getElementById('editLocation');
             inputLocation.value = isWishlist ? '' : card.location;
@@ -94,6 +95,24 @@ function toggleMenuCompatto(id) {
                 prezzo: document.getElementById('editPrezzo').value !== '' ? parseFloat(document.getElementById('editPrezzo').value) : null,
                 note: document.getElementById('editNote').value.trim() || null,
             };
+            const linkScritto = document.getElementById('editLink').value.trim();
+            const linkPrecedente = _cartaInModifica.link && _cartaInModifica.link !== '#' ? _cartaInModifica.link : '';
+            if (linkScritto !== linkPrecedente) {
+                let linkPulito = null;
+                try {
+                    const indirizzo = new URL(linkScritto);
+                    if (indirizzo.protocol === 'https:' && /(^|\.)cardmarket\.com$/i.test(indirizzo.hostname)) linkPulito = indirizzo.href;
+                } catch (_) {}
+                if (linkScritto && !linkPulito) {
+                    mostraAvviso('Il link deve essere una pagina di cardmarket.com.');
+                    return;
+                }
+                aggiornamento.url = linkPulito;
+                if (!isWishlist && _cartaInModifica.esitoControllo) {
+                    aggiornamento.esito_controllo = null;
+                    aggiornamento.esito_controllo_il = null;
+                }
+            }
             if (!isWishlist) {
                 aggiornamento.location = document.getElementById('editLocation').value.trim() || null;
                 aggiornamento.sigillata_originale = document.getElementById('editSigillata').checked;
