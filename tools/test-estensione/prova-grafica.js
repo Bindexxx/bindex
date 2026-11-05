@@ -8,7 +8,9 @@
 //    soglia come tendina, "Ultime controllate", Ferma dall'app;
 // 4) auth_ui.js: stile di "Esci" sempre caricato (B14), "Esci" nel menu dell'app,
 //    messaggio "estensione aggiornata" una volta per versione;
-// 5) background.js: i Cloudflare del giorno contati per la home.
+// 5) background.js: i Cloudflare del giorno contati per la home;
+// 6) login (dalla 5.50): cornice del sito, colori dal tema (mai bianco fisso), campi
+//    con sfondo e testo propri (in scuro Chrome li faceva grigi), occhio della password.
 const fs = require('fs');
 const path = require('path');
 const { JSDOM, VirtualConsole } = require('jsdom');
@@ -217,6 +219,29 @@ function swCoda(msg, sender, sendResponse) {
     controlla('nell\'app: niente bottone fisso, "Esci" nel menu utente', !app.w.document.getElementById('cardsync-logout-btn') && !!app.w.document.getElementById('menuEsci'));
     controlla('pagine senza errori', errori.length === 0 && seconda.errori.length === 0 && app.errori.length === 0, [errori, seconda.errori, app.errori]);
     app.w.close();
+  }
+
+  // ── 6) login con la grafica del sito (dalla 5.50) ──
+  {
+    const env = creaAmbiente({ version: manifest.version, loggato: false, store: { toastAggiornataVersione: manifest.version, cardsyncDarkMode: true } });
+    const { w, errori } = apriPagina('popup.html', env);
+    await attendi(500);
+    const d = w.document;
+    const card = d.getElementById('cardsync-auth-card');
+    controlla('login: finestra con la cornice del sito', !!card && !!card.querySelector('.cs-pdx-schermo') && /BINDEX/.test(card.textContent));
+    const stile = (d.getElementById('cardsync-auth-ui-style') || {}).textContent || '';
+    const regola = (sel) => { const i = stile.indexOf(sel + ' {'); return i < 0 ? '' : stile.slice(i, stile.indexOf('}', i)); };
+    controlla('login: schermo e campi coi colori del tema, niente bianco fisso',
+      /var\(--card/.test(regola('.cs-pdx-schermo')) && /background:[^;]*var\(--card/.test(regola('#cardsync-auth-card input')) && /color: var\(--text/.test(regola('#cardsync-auth-card input')) && !/background: *#fff/.test(regola('.cs-pdx-schermo')),
+      [regola('.cs-pdx-schermo'), regola('#cardsync-auth-card input')]);
+    controlla('login: riquadri di aggiornamento e messaggio coi colori del tema', /var\(--card/.test(regola('#cardsync-update-card')) && /var\(--card/.test(regola('#cardsync-toast-ok')));
+    const pw = d.getElementById('cardsync-auth-password');
+    d.querySelector('.cs-occhio').click();
+    const visibile = pw.type;
+    d.querySelector('.cs-occhio').click();
+    uguale('login: occhio mostra e nasconde la password', [visibile, pw.type], ['text', 'password']);
+    controlla('login: pagina senza errori', errori.length === 0, errori);
+    w.close();
   }
 
   // ── 5) Cloudflare del giorno ──
