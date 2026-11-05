@@ -1,0 +1,12 @@
+{
+  "name": "bindex-test-sito",
+  "private": true,
+  "description": "Prove del sito Bindex fuori dal browser vero: script delle pagine, nomi doppi, regole del progetto, pagine caricate in Chromium con Supabase finto.",
+  "scripts": {
+    "test": "node prova-statica.js && node prova-pagine.js"
+  },
+  "dependencies": {
+    "acorn": "^8.12.0",
+    "acorn-walk": "^8.3.0"
+  }
+}
