@@ -492,7 +492,7 @@ async function prezziRiepilogo() {
 }
 
 function _pzCarteConEsito(carte) {
-    return (carte || _pzCarteColl()).filter(c => c.esitoControllo)
+    return (carte || _pzCarteColl()).filter(c => c.esitoControllo && !/^Timeout/i.test(c.esitoControllo))
         .sort((a, b) => (a.name || '').localeCompare(b.name || '', 'it'));
 }
 
