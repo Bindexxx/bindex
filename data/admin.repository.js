@@ -89,6 +89,18 @@ async function adminMediaApprovatiDaSincronizzare() {
         .in('slot', ['card_back', 'binder_cover']);
 }
 
+async function adminDispositiviEstensione() {
+    return supabaseClient.from('dispositivi_estensione').select('owner_id, dispositivo, versione, visto_il').order('visto_il', { ascending: false });
+}
+async function adminVersioneMinimaEstensione() {
+    return supabaseClient.from('configurazione_app').select('valore').eq('chiave', 'versione_minima').maybeSingle();
+}
+async function adminUltimaVersioneEstensione() {
+    try {
+        const r = await fetch('releases/latest-version.txt?t=' + Date.now(), { cache: 'no-store' });
+        return r.ok ? (await r.text()).trim() || null : null;
+    } catch (_) { return null; }
+}
 async function adminListaUtenti() {
     return supabaseClient.from('profiles').select('*').order('created_at', { ascending: true });
 }
