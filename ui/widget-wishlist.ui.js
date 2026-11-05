@@ -167,6 +167,16 @@ function _wishlistCambiaOrdine() {
 }
 function _wishlistOrdinaPer(o) { _wishlistOrdine = o; prefFiltroPaginaSet('wishlist', 'ordine', o); _wishlistRenderElenco(); }
 
+function _wlPillVarianti(link) {
+    if (!link || link === '#') return '';
+    let p;
+    try { p = new URL(link).searchParams; } catch (_) { return ''; }
+    const v = [];
+    if (p.get('isReverseHolo') === 'Y') v.push(['RH', 'Reverse holo']);
+    if (p.get('isFirstEd') === 'Y') v.push(['1ª ed.', 'Prima edizione']);
+    return v.map(([t, tit]) => ` <span title="${tit}" style="display:inline-block; font-size:0.68em; font-weight:800; line-height:1; padding:0.2em 0.45em; border-radius:6px; vertical-align:0.15em; background:var(--primary-light); color:var(--primary-text, var(--primary)); white-space:nowrap;">${t}</span>`).join('');
+}
+
 function _wlDistanza(r) { return r.obiettivo != null ? r.prezzo - r.obiettivo : null; }
 function _wlBarra(r) {
     if (r.obiettivo == null) return { pct: 0, cls: '', testo: 'nessun obiettivo' };
@@ -211,7 +221,7 @@ function _wishlistRenderElenco() {
             <div class="wl-riga" onclick="apriFlipCardHome('${id(r)}', { origine: 'wishlist_pagina' })">
                 ${fig(r)}
                 <div class="wl-riga-corpo">
-                    <div class="wl-riga-testa"><b>${escapeHtml(r.nome)}</b><b>${r.prezzo > 0 ? eur(r.prezzo) : '—'}</b></div>
+                    <div class="wl-riga-testa"><b>${escapeHtml(r.nome)}${_wlPillVarianti(r.link)}</b><b>${r.prezzo > 0 ? eur(r.prezzo) : '—'}</b></div>
                     <div class="wl-pista"><div class="${b.cls}" style="width:${b.pct}%"></div></div>
                     <div class="wl-riga-piede"><span>${r.obiettivo != null ? 'obiettivo ' + eur(r.obiettivo) : 'nessun obiettivo'}</span><span class="${b.cls ? 'wl-ok' : ''}">${r.obiettivo != null ? (b.cls ? 'sotto obiettivo' : b.testo) : ''}</span></div>
                 </div>
@@ -229,7 +239,7 @@ function _wishlistRenderElenco() {
             const chi = _wishlistNelGruppo.get(String(r.id)) || [];
             return `<tr class="${String(r.id) === String(_wishlistSelId) ? 'sel' : ''}" onclick="_wishlistSeleziona('${id(r)}')">
                 <td><span class="bx-lente" onclick="event.stopPropagation(); apriFlipCardHome('${id(r)}', { origine: 'wishlist_pagina' })">${fig(r)}</span></td>
-                <td class="wl-td-nome"><b>${escapeHtml(r.nome)}</b><span>${escapeHtml(r.codice || '')}</span></td>
+                <td class="wl-td-nome"><b>${escapeHtml(r.nome)}${_wlPillVarianti(r.link)}</b><span>${escapeHtml(r.codice || '')}</span></td>
                 <td class="wl-num"><b>${r.prezzo > 0 ? eur(r.prezzo) : '—'}</b></td>
                 <td class="wl-num">${r.obiettivo != null ? eur(r.obiettivo) : '—'}</td>
                 <td class="wl-td-dist">${r.obiettivo != null ? `<div class="wl-pista"><div class="${b.cls}" style="width:${b.pct}%"></div></div><span class="${b.cls ? 'wl-ok' : ''}">${b.testo}</span>` : '<span>—</span>'}</td>
@@ -280,7 +290,7 @@ async function _wishlistDettaglio() {
         <div class="wl-det">
             <div class="wl-det-testa">
                 <span class="bx-lente wl-det-fig" onclick="apriFlipCardHome('${idA}', { origine: 'wishlist_pagina' })">${src ? `<img src="${src}" alt="">` : ''}</span>
-                <div><div class="wl-det-nome">${escapeHtml(r.nome)}</div><div class="wl-det-sotto">${escapeHtml([r.codice, r.obiettivo != null ? 'obiettivo ' + formattaEuroTondo(r.obiettivo) : null].filter(Boolean).join(' · '))}</div></div>
+                <div><div class="wl-det-nome">${escapeHtml(r.nome)}${_wlPillVarianti(r.link)}</div><div class="wl-det-sotto">${escapeHtml([r.codice, r.obiettivo != null ? 'obiettivo ' + formattaEuroTondo(r.obiettivo) : null].filter(Boolean).join(' · '))}</div></div>
             </div>
             <div class="wl-det-prezzo"><b>${r.prezzo > 0 ? formattaEuro(r.prezzo) : '—'}</b><span class="${d != null && d <= 0 ? 'wl-ok' : ''}">${distTxt}</span></div>
             <div class="wl-det-grafico wl-det-carico">Carico lo storico…</div>
