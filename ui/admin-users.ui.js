@@ -3,13 +3,68 @@
 document.getElementById('modal-close').addEventListener('click', () => modalBackdrop.style.display = 'none');
 modalBackdrop.addEventListener('click', (e) => { if (e.target === modalBackdrop) modalBackdrop.style.display = 'none'; });
 
+let _estPcPerUtente = {};
+let _estUltima = null;
+let _estMinima = null;
+
 async function caricaUtenti() {
   const cont = document.getElementById('utenti-list');
-  const { data, error } = await adminListaUtenti();
+  const [{ data, error }, pc, minima, ultima] = await Promise.all([
+    adminListaUtenti(), adminDispositiviEstensione(), adminVersioneMinimaEstensione(), adminUltimaVersioneEstensione(),
+  ]);
 
   if (error) { cont.innerHTML = `<div class="empty-state">Errore: ${error.message}</div>`; return; }
   ultimaListaUtenti = data || [];
+  _estPcPerUtente = {};
+  if (pc.error) console.error('caricaUtenti: PC dell\'estensione:', pc.error.message);
+  (pc.data || []).forEach(d => { (_estPcPerUtente[d.owner_id] = _estPcPerUtente[d.owner_id] || []).push(d); });
+  _estMinima = minima.data ? minima.data.valore : null;
+  _estUltima = ultima;
+  renderRiepilogoEstensione(pc.data || [], !!pc.error);
   renderUtenti();
+}
+
+function _estConfronta(a, b) {
+  const pa = String(a).split('.').map(Number), pb = String(b).split('.').map(Number);
+  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+    const x = pa[i] || 0, y = pb[i] || 0;
+    if (x !== y) return x > y ? 1 : -1;
+  }
+  return 0;
+}
+
+function _estStatoPc(versione) {
+  if (_estMinima && _estConfronta(versione, _estMinima) < 0) return { cls: 'bloccata', label: 'bloccata, deve aggiornare' };
+  if (_estUltima && _estConfronta(versione, _estUltima) < 0) return { cls: 'vecchia', label: 'da aggiornare' };
+  return { cls: 'ok', label: 'aggiornata' };
+}
+
+function _estQuando(d) {
+  const min = Math.round((Date.now() - new Date(d).getTime()) / 60000);
+  if (min < 2) return 'adesso';
+  if (min < 60) return min + ' min fa';
+  if (min < 48 * 60) return Math.round(min / 60) + ' h fa';
+  return Math.round(min / 1440) + ' giorni fa';
+}
+
+function renderRiepilogoEstensione(pc, errore) {
+  const el = document.getElementById('utenti-estensione');
+  if (!el) return;
+  if (errore) { el.innerHTML = '<span>Estensione: non riesco a leggere i PC.</span>'; return; }
+  const daAggiornare = pc.filter(d => _estStatoPc(d.versione).cls !== 'ok').length;
+  el.innerHTML = `
+    <span>Estensione: ultima <b>${escAttr(_estUltima || '—')}</b></span>
+    <span>minima <b>${escAttr(_estMinima || '—')}</b></span>
+    <span><b>${pc.length}</b> PC${daAggiornare ? ` · <b style="color:var(--danger)">${daAggiornare}</b> da aggiornare` : ' · tutti aggiornati'}</span>`;
+}
+
+function _estPcUtenteHtml(userId) {
+  const lista = _estPcPerUtente[userId] || [];
+  if (!lista.length) return '';
+  return '<div class="est-pc">' + lista.map(d => {
+    const st = _estStatoPc(d.versione);
+    return `<span class="${st.cls}" title="${escAttr(st.label)} · visto il ${escAttr(fmtData(d.visto_il))}">${escAttr(d.dispositivo)} · v${escAttr(d.versione)} · ${escAttr(_estQuando(d.visto_il))}</span>`;
+  }).join('') + '</div>';
 }
 
 function statoUtente(u) {
@@ -45,6 +100,7 @@ function renderUtenti() {
       <div class="main clickable" data-open="${u.id}">
         <div class="name">${escAttr(u.username) || '(senza nome)'} <span class="badge ${u.role}">${u.role}</span> <span class="badge ${s.key}">${s.label}</span></div>
         <div class="meta mono">${u.id}</div>
+        ${_estPcUtenteHtml(u.id)}
       </div>
       <button class="btn-small btn-toggle-role" data-role="${u.role}" data-id="${u.id}">
         ${u.role === 'admin' ? 'Rendi utente' : 'Rendi admin'}
