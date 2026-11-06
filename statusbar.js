@@ -87,8 +87,19 @@
     height: 0,
     moved: false,
     passedThreshold: false,
+    apertaAllInizio: false,
+    soglia: 0.45,
     samples: []
   };
+
+  var TENDINA_TRATTO_PX = 90;
+  var TENDINA_TRATTO_QUOTA = 0.2;
+  var TENDINA_SCATTO = 0.25;
+
+  function sogliaTendina(altezza, apertaAllInizio) {
+    var quota = Math.min(TENDINA_TRATTO_QUOTA, TENDINA_TRATTO_PX / Math.max(altezza, 1));
+    return apertaAllInizio ? 1 - quota : quota;
+  }
 
   var swipe = {
     active: false,
@@ -1686,6 +1697,8 @@
     drag.startY = ev.clientY;
     drag.height = shadeHeight();
     drag.baseY = state.open ? 0 : -drag.height;
+    drag.apertaAllInizio = !!state.open;
+    drag.soglia = sogliaTendina(drag.height, drag.apertaAllInizio);
     drag.samples = [{ y: ev.clientY, t: performance.now() }];
 
     hideHeads();
@@ -1715,7 +1728,7 @@
     setShadeY(y, false);
     el.backdrop.style.opacity = String(clamp(progress, 0, 1));
 
-    var past = progress > 0.45;
+    var past = progress > drag.soglia;
     if (past !== drag.passedThreshold) {
       drag.passedThreshold = past;
       if (past) buzz(10);
@@ -1737,6 +1750,7 @@
     var last = drag.samples[drag.samples.length - 1];
     var dt = last.t - first.t;
     var velocity = dt > 12 ? (last.y - first.y) / dt : 0;
+    if (performance.now() - last.t > 120) velocity = 0;
 
     var currentY = parseFloat(el.shade.style.getPropertyValue("--csb-y"));
     if (isNaN(currentY)) currentY = drag.baseY;
@@ -1750,10 +1764,11 @@
       return;
     }
 
+    var spostamento = last.y - drag.startY;
     var shouldOpen;
-    if (velocity > 0.35) shouldOpen = true;
-    else if (velocity < -0.35) shouldOpen = false;
-    else shouldOpen = progress > 0.45;
+    if (velocity > TENDINA_SCATTO && spostamento > 20) shouldOpen = true;
+    else if (velocity < -TENDINA_SCATTO && spostamento < -20) shouldOpen = false;
+    else shouldOpen = progress > drag.soglia;
 
     if (shouldOpen) open(true);
     else close(true);
