@@ -6,6 +6,8 @@ let _collSelId = null;
 let _collAzioniId = null;
 let _collOrdine = 'prezzo_giu';
 let _collUltimiDati = [];
+const _collSelTel = new Map();
+let _collPressioneLunga = false;
 
 const _COLL_ORDINI = {
     prezzo_giu: { etichetta: 'prezzo ↓', chiave: c => Number(c.price) || 0, giu: true },
@@ -134,7 +136,7 @@ function _collMiniatura(card, classe) {
     const src = _urlImmagineVisualizzabile(card.immagine);
     const segnaposto = card.tipo === 'sealed' ? 'fa-box' : 'fa-clone';
     const apri = _collEdSealed(card) ? `apriModificaSealed('${id}')` : `apriImmagineIngrandita('${id}')`;
-    return `<button type="button" class="${classe}" onclick="event.stopPropagation(); ${apri}" aria-label="Apri la carta a tutto schermo">
+    return `<button type="button" class="${classe}" onclick="event.stopPropagation(); if (_collToccoSelezione('${id}')) return; ${apri}" aria-label="Apri la carta a tutto schermo">
         ${src ? `<img src="${src}" alt="" loading="lazy" onerror="this.remove()">` : ''}
         <i class="fa-solid ${segnaposto} coll-segnaposto"></i>
         <span class="coll-lente"><i class="fa-solid fa-magnifying-glass-plus"></i></span></button>`;
@@ -203,8 +205,9 @@ function _collPillVarianti(link) {
 
 function _collRigaTelefonoHtml(card) {
     const id = _collAttr(card.id);
-    const aperta = String(_collAzioniId) === String(card.id);
-    return `<div class="coll-riga${aperta ? ' aperta' : ''}${card.tabella === 'wishlist' ? ' e-wish' : ''}" data-coll-id="${escapeHtml(String(card.id))}" onclick="collToccaRiga('${id}')">
+    const aperta = String(_collAzioniId) === String(card.id) && !_collInSelezione();
+    return `<div class="coll-riga${aperta ? ' aperta' : ''}${card.tabella === 'wishlist' ? ' e-wish' : ''}${_collSelTel.has(String(card.id)) ? ' scelta' : ''}" data-coll-id="${escapeHtml(String(card.id))}" onclick="collToccaRiga('${id}')">
+            ${_collCheckTel(card)}
             <div class="coll-riga-top">
                 ${_collMiniatura(card, 'coll-mini')}
                 <div class="coll-riga-testo">
@@ -261,7 +264,77 @@ function _collAggiornaSelezionePC(corpo, primaSel) {
     return true;
 }
 
+function _collCheckTel(card) {
+    if (_collEdSealed(card)) return '';
+    const sc = _collSelTel.has(String(card.id));
+    return `<input type="checkbox" class="riga-checkbox coll-check-tel" tabindex="-1" aria-hidden="true" data-id="${escapeHtml(String(card.id))}" data-tabella="${card.tabella}"${sc ? ' checked' : ''}><span class="coll-sel-segno" aria-hidden="true"><i class="fa-solid fa-check"></i></span>`;
+}
+
+function _collInSelezione() {
+    return _collSelTel.size > 0 && !_collEPC();
+}
+
+function _collToccoSelezione(id) {
+    if (_collPressioneLunga) { _collPressioneLunga = false; return true; }
+    if (!_collInSelezione()) return false;
+    collCambiaSelezioneTel(id);
+    return true;
+}
+
+function collCambiaSelezioneTel(id) {
+    const chiave = String(id);
+    const card = (_collUltimiDati || []).find(c => String(c.id) === chiave);
+    if (!card || _collEdSealed(card)) return;
+    if (_collSelTel.has(chiave)) _collSelTel.delete(chiave); else _collSelTel.set(chiave, card.tabella);
+    if (_collSelTel.size && _collAzioniId != null) {
+        const corpo = document.getElementById('collCorpo');
+        const prima = _collAzioniId;
+        _collAzioniId = null;
+        if (corpo) _collAggiornaRigheTelefono(corpo, prima);
+    }
+    const sel = '[data-coll-id="' + (window.CSS && CSS.escape ? CSS.escape(chiave) : chiave.replace(/"/g, '\\"')) + '"]';
+    document.querySelectorAll('#collCorpo ' + sel).forEach(el => {
+        el.classList.toggle('scelta', _collSelTel.has(chiave));
+        const cb = el.querySelector('.coll-check-tel');
+        if (cb) cb.checked = _collSelTel.has(chiave);
+    });
+    document.body.classList.toggle('coll-selezione', _collSelTel.size > 0);
+    _aggiornaBarraSelezioneMultipla();
+}
+
+function collSvuotaSelezioneTel() {
+    _collSelTel.clear();
+    document.body.classList.remove('coll-selezione');
+    document.querySelectorAll('#collCorpo .scelta').forEach(el => el.classList.remove('scelta'));
+    document.querySelectorAll('#collCorpo .coll-check-tel').forEach(cb => { cb.checked = false; });
+}
+
+(function () {
+    let timer = null, x0 = 0, y0 = 0;
+    const ferma = () => { clearTimeout(timer); timer = null; };
+    document.addEventListener('pointerdown', (e) => {
+        const el = e.target.closest && e.target.closest('#collCorpo [data-coll-id]');
+        if (!el || _collEPC() || (e.button != null && e.button !== 0)) return;
+        if (e.target.closest('.coll-azioni')) return;
+        x0 = e.clientX; y0 = e.clientY;
+        ferma();
+        timer = setTimeout(() => {
+            timer = null;
+            _collPressioneLunga = true;
+            setTimeout(() => { _collPressioneLunga = false; }, 800);
+            if (navigator.vibrate) { try { navigator.vibrate(15); } catch (_) {   } }
+            collCambiaSelezioneTel(el.dataset.collId);
+        }, 500);
+    }, { passive: true });
+    document.addEventListener('pointermove', (e) => { if (timer && (Math.abs(e.clientX - x0) > 10 || Math.abs(e.clientY - y0) > 10)) ferma(); }, { passive: true });
+    ['pointerup', 'pointercancel', 'scroll'].forEach(ev => document.addEventListener(ev, ferma, { passive: true, capture: ev === 'scroll' }));
+    document.addEventListener('contextmenu', (e) => {
+        if (!_collEPC() && e.target.closest && e.target.closest('#collCorpo [data-coll-id]')) e.preventDefault();
+    });
+})();
+
 function collToccaRiga(id) {
+    if (_collToccoSelezione(id)) return;
     const corpo = document.getElementById('collCorpo');
     const parziale = corpo && _collVista !== 'griglia' && !_collRenderInSospeso;
     if (_collEPC()) {
@@ -287,7 +360,8 @@ function collVaiACarta(id) {
 function _collTesseraHtml(card) {
     const id = _collAttr(card.id);
     const src = _urlImmagineVisualizzabile(card.immagine);
-    return `<button type="button" class="coll-tessera${card.tipo === 'sealed' ? ' e-sealed' : ''}${card.tabella === 'wishlist' ? ' e-wish' : ''}" onclick="${_collEdSealed(card) ? `apriModificaSealed('${id}')` : `apriImmagineIngrandita('${id}')`}">
+    return `<button type="button" class="coll-tessera${card.tipo === 'sealed' ? ' e-sealed' : ''}${card.tabella === 'wishlist' ? ' e-wish' : ''}${_collSelTel.has(String(card.id)) ? ' scelta' : ''}" data-coll-id="${escapeHtml(String(card.id))}" onclick="if (_collToccoSelezione('${id}')) return; ${_collEdSealed(card) ? `apriModificaSealed('${id}')` : `apriImmagineIngrandita('${id}')`}">
+            ${_collCheckTel(card)}
             <span class="coll-tessera-img">${src ? `<img src="${src}" alt="" loading="lazy" onerror="this.remove()">` : ''}<i class="fa-solid ${card.tipo === 'sealed' ? 'fa-box' : 'fa-clone'} coll-segnaposto"></i></span>
             <span class="coll-tessera-nome">${escapeHtml(card.name || '(senza nome)')}${_collPillVarianti(card.link)}</span>
             <span class="coll-tessera-sotto"><span>${card.tabella === 'wishlist' ? 'Wishlist' : (_collEdSealed(card) ? 'Sealed' : escapeHtml(card.location || '—'))}</span><b>${formattaEuro(card.price)}</b></span>
@@ -452,7 +526,7 @@ function _collFirma(data, pc) {
     const statoRiga = id => id == null ? null
         : [_idsNelBinder.has(String(id)), _idsInScambio.has(String(id)), _quantitaOfferteScambio[String(id)] ?? null];
     try {
-        return JSON.stringify([_collVista, pc, _collOrdine, _collSelId, _collAzioniId, statoRiga(_collSelId), statoRiga(_collAzioniId), data]);
+        return JSON.stringify([_collVista, pc, _collOrdine, _collSelId, _collAzioniId, statoRiga(_collSelId), statoRiga(_collAzioniId), [..._collSelTel.keys()], data]);
     } catch (_) { return null; }
 }
 function collezioneRender(data) {
@@ -468,6 +542,8 @@ function collezioneRender(data) {
     if (tbody) tbody.innerHTML = '';
 
     const pc = _collEPC();
+    if (pc && _collSelTel.size) collSvuotaSelezioneTel();
+    document.body.classList.toggle('coll-selezione', _collSelTel.size > 0);
     _collUltimoPC = pc;
     const corpo = document.getElementById('collCorpo');
     const firma = _collFirma(data, pc);
