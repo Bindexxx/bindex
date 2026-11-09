@@ -31,3 +31,11 @@ async function locationSpostaCarte(userId, nomiDa, nomeA) {
         .eq('stato', 'collezione')
         .in('location', nomiDa);
 }
+
+async function locationsScambioAutomatico(userId) {
+    return supabaseClient.from('location').select('nome, scambio_automatico').eq('owner_id', userId).eq('tipo', 'carta');
+}
+
+async function locationImpostaScambioAutomatico(nome, attivo) {
+    return supabaseClient.rpc('imposta_location_scambio_automatico', { p_nome: nome, p_attivo: !!attivo });
+}

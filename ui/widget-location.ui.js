@@ -26,7 +26,7 @@ CATALOGO_WIDGET.location = {
 };
 
 const _LOC_SISTEMA = ['?', 'SCAMBIO', 'WISHLIST'];
-let _locDati = { voci: [], binder: {}, copertine: {} };
+let _locDati = { voci: [], binder: {}, copertine: {}, scambioAuto: new Set(), scambioAutoPronto: false };
 let _locSelezione = new Set();
 let _locModale = null;
 let _locOccupato = false;
@@ -148,6 +148,13 @@ function _locAssicuraStile() {
         .loc-p-riga div span { font-size:.74rem; color:var(--text-muted); }
         .loc-p-riga > b { font-size:.85rem; color:var(--text-dark); font-variant-numeric:tabular-nums; }
         .loc-p-nota { font-size:.74rem; color:var(--text-muted); margin-top:12px; }
+        .loc-scambio-auto { display:flex; align-items:flex-start; gap:10px; margin:12px 0 4px; padding:10px 12px; border:1px solid var(--border-color); border-radius:12px; cursor:pointer; text-align:left; }
+        .loc-scambio-auto input { width:auto; margin-top:3px; accent-color:var(--primary); flex:0 0 auto; }
+        .loc-scambio-auto b { display:block; font-size:.85rem; color:var(--text-dark); }
+        .loc-scambio-auto span { display:block; font-size:.74rem; color:var(--text-muted); margin-top:2px; }
+        .loc-scambio-auto.attivo { border-color:var(--primary); background:var(--primary-light); }
+        .loc-auto-segno { position:absolute; top:4px; right:4px; width:22px; height:22px; border-radius:50%; background:var(--primary); color:#fff; display:flex; align-items:center; justify-content:center; font-size:.66rem; z-index:2; }
+        .loc-grid.loc-rest .loc-auto-segno { top:10px; right:10px; }
         #locGestisciModal.modal-overlay { align-items:stretch; justify-content:stretch; padding:0; }
         #locGestisciModal .modal-content { max-width:none; width:100%; height:100%; max-height:none; }
         #locGestisciModal .loc-mcover { width:120px; margin:0 auto 0.8rem; aspect-ratio:63 / 88; border-radius:12px; background:var(--border-color); display:flex; align-items:center; justify-content:center; overflow:hidden; box-shadow:0 4px 14px rgba(0,0,0,.2); position:relative; }
@@ -271,8 +278,35 @@ function _locModaleDisegna() {
     corpo.innerHTML = `
         <div class="loc-mcover">${cover}</div>
         <div style="font-size:0.85rem; color:var(--text-muted);">${meta}</div>
-        ${inAttesa}${nota}
+        ${inAttesa}${_locScambioAutoHtml(nome)}${nota}
         <div style="margin-top:0.8rem;">${azioni}</div>`;
+}
+
+function _locScambioAutoHtml(nome) {
+    if (!_locDati.scambioAutoPronto || !_locModificabile(nome)) return '';
+    const attivo = _locDati.scambioAuto.has(nome);
+    return `<label class="loc-scambio-auto${attivo ? ' attivo' : ''}">
+        <input type="checkbox" ${attivo ? 'checked' : ''} onchange="_locCambiaScambioAuto('${escapeJsAttr(nome)}', this)">
+        <div><b><i class="fa-solid fa-right-left"></i> Va in Scambio da sola</b>
+        <span>${attivo ? 'Le carte di questa location sono in Scambio con tutte le copie, anche quelle che arrivano.' : 'Le carte che stanno qui vanno in Scambio con tutte le copie; quelle che escono ne escono.'}</span></div>
+    </label>`;
+}
+
+async function _locCambiaScambioAuto(nome, casella) {
+    const attivo = !!casella.checked;
+    if (_locOccupato) { casella.checked = !attivo; return; }
+    const n = _locConteggioLive(nome);
+    const ok = await chiediConferma(attivo
+        ? { titolo: `Mandare "${nome}" in Scambio?`, testo: `${_locCarte(n)} vanno in Scambio con tutte le copie. Da ora ci andranno anche le carte che arrivano in "${nome}", e ne usciranno quelle che sposti altrove.`, conferma: 'Attiva' }
+        : { titolo: `Togliere "${nome}" dallo Scambio?`, testo: `${_locCarte(n)} escono dallo Scambio, anche quelle che avevi messo a mano.`, conferma: 'Togli', pericolo: true });
+    if (!ok) { casella.checked = !attivo; return; }
+    _locOccupato = true;
+    try {
+        const { error } = await locationImpostaScambioAutomatico(nome, attivo);
+        if (error) { casella.checked = !attivo; mostraAvviso('❌ Non sono riuscito a cambiare la location: ' + error.message); return; }
+        await _locDopoModificaCarte();
+        avvisoBreve(attivo ? `"${nome}" va in Scambio da sola.` : `"${nome}" non va più in Scambio.`, { tipo: 'ok' });
+    } finally { _locOccupato = false; }
 }
 
 function _locApriGestione(i) {
@@ -571,6 +605,7 @@ function _locPannelloDisegna() {
                 ${b ? `<div class="loc-p-meta"><i class="fa-solid fa-book"></i> collegata al binder “${escapeHtml(b.nome || nome)}”${b.nome_in_attesa ? ` (in attesa: ${escapeHtml(b.nome_in_attesa)})` : ''}</div>` : ''}</div>
         </div>
         <div class="loc-p-azioni">${btn.join('')}</div>
+        ${_locScambioAutoHtml(nome)}
         ${carte.length ? `<div class="loc-p-titolo"><b>Carte in questa location</b><span>per valore</span></div><div class="loc-p-lista">${righe}</div>` : ''}
         <p class="loc-p-nota">${nota}</p>`;
 }
@@ -614,7 +649,8 @@ function _locDisegna() {
             : (sistema ? '<span class="loc-lock" title="Contenitore di sistema"><i class="fa-solid fa-lock"></i></span>' : '');
         const attesa = (b && b.nome_in_attesa)
             ? `<span class="loc-attesa" title="${_locAttr(`Binder: ${b.nome} (${b.nome_in_attesa} — in attesa di approvazione)`)}"><i class="fa-solid fa-hourglass-half"></i></span>` : '';
-        const badge = vuota ? '<span class="loc-badge-vuota">VUOTA</span>' : '';
+        const badge = (vuota ? '<span class="loc-badge-vuota">VUOTA</span>' : '')
+            + (_locDati.scambioAuto.has(nome) ? '<span class="loc-auto-segno" title="Va in Scambio da sola"><i class="fa-solid fa-right-left"></i></span>' : '');
         const meta = vuota
             ? '<div class="loc-meta">0 carte</div>'
             : (nome === '?' && n === 0
@@ -689,8 +725,18 @@ async function renderPaginaLocation(opzioni) {
 
     const binder = {};
     const copertine = {};
+    const scambioAuto = new Set();
+    let scambioAutoPronto = false;
     const userId = await authGetUserId();
     if (userId) {
+        try {
+            const { data, error } = await locationsScambioAutomatico(userId);
+            if (error) throw error;
+            (data || []).forEach(r => { if (r.scambio_automatico) scambioAuto.add(r.nome); });
+            scambioAutoPronto = true;
+        } catch (e) {
+            console.error('renderPaginaLocation (scambio automatico):', e && e.message);
+        }
         try {
             const { data: tutte, error } = await locationsList(userId);
             if (error) throw error;
@@ -723,7 +769,7 @@ async function renderPaginaLocation(opzioni) {
         || b.n - a.n
         || String(a.nome).localeCompare(String(b.nome)));
 
-    _locDati = { voci, binder, copertine };
+    _locDati = { voci, binder, copertine, scambioAuto, scambioAutoPronto };
     const nomi = new Set(voci.map(v => v.nome));
     _locSelezione = new Set([..._locSelezione].filter(n => nomi.has(n)));
     if (_locModale) {
