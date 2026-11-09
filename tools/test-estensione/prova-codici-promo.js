@@ -240,6 +240,65 @@ const paginaCarta = (nome, codice, url) => `<html><head><meta property="og:url" 
     uguale('scheda "ba a42": carta accettata', [slug(db.urlSingles), db.codice], ['Fuecoco-BA24A42', 'BA24 A42']);
   }
 
+  if (maj > 5 || (maj === 5 && min >= 57)) {
+    // Dalla 5.57: WCD senza anno o senza set ("gardevoir wcd 061", "gardevoir wcd cre 061",
+    // "gardevoir wcd23 061"). Su Cardmarket nome + "wcd" + numero non trova niente: si cerca
+    // "gardevoir wcd" e si sceglie per numero. Risultati di Cardmarket del 09/11.
+    console.log('');
+    const GARDEVOIR = L('WCD-2025/Live-Code-Card-WCD-2025-Riley-McKay-Flutter-Devo-Gardevoir-WCD25', 'WCD-2025/Gardevoir-ex-WCD25086',
+      'WCD-2023/Gardevoir-WCD23CRE-061', 'WCD-2023/Gardevoir-ex-WCD23SVI-086', 'WCD-2008/Gardevoir-LVX-WCD08SW-131',
+      'WCD-2017/Gardevoir-GX-WCD17BUS-093', 'WCD-2004/Gardevoir-ex-WCD04SS-96', 'WCD-2004/Gardevoir-WCD04RS-7',
+      'WCD-2008/Gardevoir-Lv55-WCD08SW-007', 'WCD-2010/Gardevoir-Lv55-WCD10SW-007', 'WCD-2010/Gardevoir-LVX-WCD10SW-131');
+    const WCD_RICERCHE = [
+      ['gardevoir wcd 061', 'gardevoir wcd'], ['Gardevoir ex WCD 086', 'Gardevoir ex wcd'], ['gardevoir wcd cre 061', 'gardevoir wcd CRE'],
+      ['gardevoir wcd23 061', 'gardevoir wcd'], ['wcd 062', 'wcd 062'], ['WCD22 BRS 123', null], ['Gardevoir 061', null],
+    ];
+    for (const [q, atteso] of WCD_RICERCHE) { const w = ctx._wcdDaQuery(q); uguale(`WCD: testo cercato per "${q}"`, w ? w.testoRicerca : null, atteso); }
+    uguale('WCD: "gardevoir wcd23 061" non si attacca (WCD23061 non esiste)', new URL(ctx._urlRicercaAutonoma('gardevoir wcd23 061')).searchParams.get('searchString'), 'gardevoir wcd23 061');
+    uguale('WCD: "wcd22 brs 123" si attacca come prima', new URL(ctx._urlRicercaAutonoma('wcd22 brs 123')).searchParams.get('searchString'), 'WCD22BRS123');
+    uguale('WCD: "gardevoir wcd 061" nessun codice attaccato', ctx._codiceRicercaCompatto('gardevoir wcd 061'), null);
+    const WCD_CASI = [
+      ['gardevoir wcd 061', GARDEVOIR, 'Gardevoir-WCD23CRE-061'],
+      ['gardevoir wcd 61', GARDEVOIR, 'Gardevoir-WCD23CRE-061'],
+      ['gardevoir wcd 086', GARDEVOIR, ['Gardevoir-ex-WCD25086', 'Gardevoir-ex-WCD23SVI-086']],
+      ['gardevoir wcd25 086', GARDEVOIR, 'Gardevoir-ex-WCD25086'],
+      ['gardevoir wcd svi 086', GARDEVOIR, 'Gardevoir-ex-WCD23SVI-086'],
+      ['gardevoir wcd 7', GARDEVOIR, ['Gardevoir-WCD04RS-7', 'Gardevoir-Lv55-WCD08SW-007', 'Gardevoir-Lv55-WCD10SW-007']],
+      ['gardevoir wcd 062', GARDEVOIR, null],
+      ['wcd 062', L('WCD-2009/Gastly-Lv14-WCD09STF-062', 'WCD-2013/Sableye-WCD13DEX-062', 'WCD-2004/Magnemite-WCD04DR-62', 'WCD-2018/Evosoda-WCD18GEN-062'),
+        ['Gastly-Lv14-WCD09STF-062', 'Sableye-WCD13DEX-062', 'Magnemite-WCD04DR-62', 'Evosoda-WCD18GEN-062']],
+      ['charizard wcd 20', L('WCD-2019/Reshiram-Charizard-GX-V2-WCD19UNB-020', 'Unbroken-Bonds/Reshiram-Charizard-GX-V1-s8aUNB-020'), 'Reshiram-Charizard-GX-V2-WCD19UNB-020'],
+    ];
+    for (const [q, links, atteso] of WCD_CASI) uguale(`WCD: "${q}" con ${links.length} link`, esito(ctx._trovaMatchCartaSingola(links, q)), atteso);
+    const WCD_PAGINE = [
+      ['gardevoir wcd 061', 'Gardevoir', 'WCD23 CRE 061', 'Gardevoir-WCD23CRE-061', true],
+      ['gardevoir wcd cre 061', 'Gardevoir', 'CRE 061', 'Gardevoir-CRE061', false],
+      ['gardevoir wcd cre 061', 'Gardevoir', 'WCD23 CRE 061', 'Gardevoir-WCD23CRE-061', true],
+      ['gardevoir wcd 086', 'Gardevoir ex', 'WCD25 086', 'Gardevoir-ex-WCD25086', true],
+      ['gardevoir wcd23 086', 'Gardevoir ex', 'WCD25 086', 'Gardevoir-ex-WCD25086', false],
+      ['zeraora gx wcd 86', 'Zeraora GX', 'WCD19 LOT 086', 'Zeraora-GX-WCD19LOT-086', true],
+    ];
+    for (const [q, nome, codice, sl, atteso] of WCD_PAGINE) uguale(`WCD: pagina "${nome} (${codice})" per "${q}"`, ctx._paginaCombaciaConQuery(q, nome, codice, sl), atteso);
+
+    // giro completo: si cerca "gardevoir wcd", si prende la 061 e si legge la sua pagina
+    const ric = (t) => `${CM}/it/Pokemon/Products/Search?searchMode=v2&searchString=${encodeURIComponent(t).replace(/%20/g, '+')}`;
+    const lista = (links) => `<html><head><meta property="og:url" content="${CM}/it/Pokemon/Products/Search"><title>Risultati</title></head><body><h1>Risultati Di Ricerca</h1>${links.map(x => `<a href="${x.replace(CM, '')}">x</a>`).join('')}</body></html>`;
+    const G061 = B + 'WCD-2023/Gardevoir-WCD23CRE-061';
+    const prezzoRiga = `<div class="article-row"><div class="product-attributes"><span aria-label="Italiano"></span></div><div class="price-container"><span class="fw-bold">1,00 €</span></div><a class="btn btn-sm btn-primary" role="button"><span class="fonticon-cart"></span></a></div>`;
+    const pagG061 = paginaCarta('Gardevoir', 'WCD23 CRE 061', G061).replace('</body>', prezzoRiga + '<a id="account-dropdown">u</a></body>');
+    const mappa = { [ric('gardevoir wcd')]: lista(GARDEVOIR), [G061]: pagG061 };
+    const chiesti = [];
+    const { ctx: c } = caricaBackground({ version: versione, accelera: 10, pagine: { [G061]: pagG061 }, fetch: async (url) => { chiesti.push(url); return mappa[url] ? rispostaFinta(mappa[url]) : null; } });
+    const r = await c._leggiNomeDaCardmarket(c._urlRicercaAutonoma('gardevoir wcd 061'), 'IT', 'NM', '', false, 0, null, null, null);
+    uguale('WCD: giro "gardevoir wcd 061" → la carta WCD23 CRE 061, una sola ricerca',
+      [slug(r.urlSingles), chiesti.filter(u => u.includes('/Search?')).map(u => new URL(u).searchParams.get('searchString'))],
+      ['Gardevoir-WCD23CRE-061', ['gardevoir wcd']]);
+    const chiesti2 = [];
+    const { ctx: c2 } = caricaBackground({ version: versione, accelera: 10, fetch: async (url) => { chiesti2.push(url); return mappa[url] ? rispostaFinta(mappa[url]) : null; } });
+    const r2 = await c2._leggiNomeDaCardmarket(c2._urlRicercaAutonoma('gardevoir wcd 086'), 'IT', 'NM', '', false, 0, null, null, null);
+    uguale('WCD: giro "gardevoir wcd 086" → scelta tra WCD25 e WCD23', [r2.disambiguation, (r2.opzioni || []).map(o => slug(o.urlSingles))], [true, ['Gardevoir-ex-WCD25086', 'Gardevoir-ex-WCD23SVI-086']]);
+  }
+
   // Lettura leggera: la ricerca porta direttamente alla pagina della carta.
   console.log('');
   const RIC = (q) => ctx._urlRicercaAutonoma(q);
