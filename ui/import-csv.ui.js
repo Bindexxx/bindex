@@ -22,7 +22,10 @@ const _IMPORT_CSV_ALIAS = {
     destinazione: ['destinazione', 'dest'],
     url: ['link', 'url', 'cardmarket', 'link_cardmarket', 'url_cardmarket'],
 };
-const _IMPORT_CSV_LINGUE = { IT: 'IT', ITA: 'IT', ITALIANO: 'IT', EN: 'EN', ENG: 'EN', INGLESE: 'EN', ENGLISH: 'EN', JP: 'JP', JPN: 'JP', JAP: 'JP', GIAPPONESE: 'JP', KOR: 'KOR', KO: 'KOR', KR: 'KOR', COREANO: 'KOR' };
+const _IMPORT_CSV_LINGUE = { IT: 'IT', ITA: 'IT', ITALIANO: 'IT', EN: 'EN', ENG: 'EN', INGLESE: 'EN', ENGLISH: 'EN', JP: 'JP', JA: 'JP', JPN: 'JP', JAP: 'JP', GIAPPONESE: 'JP', JAPANESE: 'JP', KOR: 'KOR', KO: 'KOR', KR: 'KOR', COREANO: 'KOR', KOREAN: 'KOR',
+    DE: 'DE', DEU: 'DE', GER: 'DE', TEDESCO: 'DE', GERMAN: 'DE', FR: 'FR', FRA: 'FR', FRANCESE: 'FR', FRENCH: 'FR', ES: 'ES', ESP: 'ES', SPA: 'ES', SPAGNOLO: 'ES', SPANISH: 'ES',
+    PT: 'PT', POR: 'PT', PORTOGHESE: 'PT', PORTUGUESE: 'PT', CHN: 'CHN', 'CHN-S': 'CHN', ZH: 'CHN', CN: 'CHN', CINESE: 'CHN', CHINESE: 'CHN', 'CHN-T': 'CHN-T', 'CINESE-T': 'CHN-T', TW: 'CHN-T',
+    IND: 'IND', ID: 'IND', INDONESIANO: 'IND', INDONESIAN: 'IND', THAI: 'THAI', TH: 'THAI', TAILANDESE: 'THAI', RU: 'RU', RUS: 'RU', RUSSO: 'RU', RUSSIAN: 'RU' };
 const _IMPORT_CSV_COND = {
     MT: 'MT', MINT: 'MT', NM: 'NM', 'NEAR MINT': 'NM', EX: 'EX', EXCELLENT: 'EX', GD: 'GD', GOOD: 'GD',
     LP: 'LP', 'LIGHT PLAYED': 'LP', PL: 'PL', PLAYED: 'PL', PO: 'PO', POOR: 'PO',
@@ -109,8 +112,11 @@ function _importCsvValuta() {
         let lingua = _IMPORT_CSV_LINGUE[linguaGrezza.toUpperCase()] || 'IT';
         if (linguaGrezza && !_IMPORT_CSV_LINGUE[linguaGrezza.toUpperCase()]) avvisi.push(`lingua "${linguaGrezza}" non riconosciuta → IT`);
         const condGrezza = val(r, 'condizione');
-        const cond = _IMPORT_CSV_COND[condGrezza.toUpperCase()] || 'NM';
-        if (condGrezza && !_IMPORT_CSV_COND[condGrezza.toUpperCase()]) avvisi.push(`condizione "${condGrezza}" non riconosciuta → NM`);
+        const condSu = condGrezza.toUpperCase().replace(/\s+([+-])$/, '$1');
+        const condSegno = /[+-]$/.test(condSu) ? condSu.slice(-1) : '';
+        const condBase = _IMPORT_CSV_COND[condSegno ? condSu.slice(0, -1).trim() : condSu];
+        const cond = condBase ? (condSegno && condBase !== 'MT' && !(condBase === 'PO' && condSegno === '-') ? condBase + condSegno : condBase) : 'NM';
+        if (condGrezza && !condBase) avvisi.push(`condizione "${condGrezza}" non riconosciuta → NM`);
         const qtyGrezza = val(r, 'qty');
         const qty = Math.max(1, parseInt(qtyGrezza, 10) || 1);
         if (qtyGrezza && String(qty) !== qtyGrezza) avvisi.push(`quantità "${qtyGrezza}" → ${qty}`);
