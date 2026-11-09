@@ -193,6 +193,53 @@ const paginaCarta = (nome, codice, url) => `<html><head><meta property="og:url" 
     uguale('"Charizard ex 125" (nome + numero): nessun codice attaccato, ricerca di prima', g5.chiesti, ['Charizard ex 125']);
   }
 
+  if (maj > 5 || (maj === 5 && min >= 56)) {
+    // Dalla 5.56: Battle Academy senza l'anno ("ba a42", "fuecoco a42", "cinderace v c60").
+    // Risultati di Cardmarket del 09/11: "fuecoco a42" e "ba a42" portano dritto alla carta,
+    // "ba c30"/"ba c60"/"ba p60" danno più carte (anni diversi; alcune BA20/BA22 hanno nello
+    // slug il codice del set originale, es. Cinderace-V-FST043 = BA22 C60).
+    console.log('');
+    const BA_PAGINE = [
+      ['fuecoco a42', 'Fuecoco', 'BA24 A42', 'Fuecoco-BA24A42', true],
+      ['FUECOCO A42', 'Fuecoco', 'BA24 A42', 'Fuecoco-BA24A42', true],
+      ['ba a42', 'Fuecoco', 'BA24 A42', 'Fuecoco-BA24A42', true],
+      ['fuecoco ba a42', 'Fuecoco', 'BA24 A42', 'Fuecoco-BA24A42', true],
+      ['ba24 a42', 'Fuecoco', 'BA24 A42', 'Fuecoco-BA24A42', true],
+      ['cinderace v c60', 'Cinderace V', 'BA22 C60', 'Cinderace-V-FST043', true],
+      ['charmeleon c30', 'Charmeleon', 'BA20 C30', 'Charmeleon-V2-BA20C30', true],
+      ['pikachu a42', 'Fuecoco', 'BA24 A42', 'Fuecoco-BA24A42', false],
+      ['ba a41', 'Fuecoco', 'BA24 A42', 'Fuecoco-BA24A42', false],
+      ['fuecoco a42', 'Fuecoco', 'SVI 036', 'Fuecoco-SVI036', false],
+      ['ba c30', 'Centiskorch', 'BA22 C30', 'Centiskorch-V2-BA22C30', true],
+    ];
+    for (const [q, nome, codice, s, atteso] of BA_PAGINE) {
+      uguale(`Battle Academy: pagina "${nome} (${codice})" per "${q}"`, ctx._paginaCombaciaConQuery(q, nome, codice, s), atteso);
+    }
+    const BA_CASI = [
+      ['ba c30', L('Battle-Academy-2020/Charmeleon-V2-BA20C30', 'Battle-Academy-2022/Centiskorch-V2-BA22C30'), ['Charmeleon-V2-BA20C30', 'Centiskorch-V2-BA22C30']],
+      ['centiskorch c30', L('Battle-Academy-2020/Charmeleon-V2-BA20C30', 'Battle-Academy-2022/Centiskorch-V2-BA22C30'), 'Centiskorch-V2-BA22C30'],
+      ['ba c60', L('Battle-Academy-2020/Charizard-GX-HIF9', 'Battle-Academy-2022/Cinderace-V-FST043'), ['Charizard-GX-HIF9', 'Cinderace-V-FST043']],
+      ['cinderace v c60', L('Battle-Academy-2020/Charizard-GX-HIF9', 'Battle-Academy-2022/Cinderace-V-FST043'), 'VERIFICA'],
+      ['ba p60', L('Battle-Academy-2022/Pikachu-V-VIV43', 'Battle-Academy-2020/Raichu-GX-HIF20', 'Battle-Academy-2024/Pikachu-ex-BA24P60'), ['Pikachu-ex-BA24P60', 'Pikachu-V-VIV43', 'Raichu-GX-HIF20']],
+      ['pikachu ex p60', L('Battle-Academy-2022/Pikachu-V-VIV43', 'Battle-Academy-2020/Raichu-GX-HIF20', 'Battle-Academy-2024/Pikachu-ex-BA24P60'), 'Pikachu-ex-BA24P60'],
+      ['ba a14', L('Battle-Academy-2024/Fuecoco-BA24A14', 'Battle-Academy-2024/Fuecoco-BA24A17', 'Battle-Academy-2024/Crocalor-BA24A15', 'SM-Trainer-Kit-Lycanroc-Alolan-Raichu/Zubat-TK10A11'), 'Fuecoco-BA24A14'],
+      // senza "ba" né nome resta tutto come prima; nome + numero normale non cambia
+      ['Pikachu 25', L('Base-Set/Pikachu-V1-BS58', 'Battle-Academy-2024/Pikachu-ex-BA24P60'), ['Pikachu-V1-BS58', 'Pikachu-ex-BA24P60']],
+    ];
+    for (const [q, links, atteso] of BA_CASI) {
+      uguale(`Battle Academy: "${q}" con ${links.length} link`, esito(ctx._trovaMatchCartaSingola(links, q)), atteso);
+    }
+    uguale('"ba a42": nessun codice attaccato (BAA42 su Cardmarket non trova niente)', ctx._codiceRicercaCompatto('ba a42'), null);
+    uguale('"ba24 a42": codice attaccato', ctx._codiceRicercaCompatto('ba24 a42'), 'BA24A42');
+
+    const FUECOCO = B + 'Battle-Academy-2024/Fuecoco-BA24A42';
+    const fb = caricaBackground({ fetch: async (url) => (url === ctx._urlRicercaAutonoma('fuecoco a42') ? rispostaFinta(paginaCarta('Fuecoco', 'BA24 A42', FUECOCO)) : null) }).ctx;
+    const ff = await fb._risolviSinglesENomeFetch(ctx._urlRicercaAutonoma('fuecoco a42'), '');
+    uguale('fetch "fuecoco a42" rimandata alla carta', [ff.urlSingles, ff.codice], [FUECOCO, 'BA24 A42']);
+    const db = ctx._decidiRisoluzioneDaScheda({ tipo: 'singles', url: FUECOCO, testoH1: 'Fuecoco (BA24 A42)', hrefs: [] }, 'ba a42', true, '');
+    uguale('scheda "ba a42": carta accettata', [slug(db.urlSingles), db.codice], ['Fuecoco-BA24A42', 'BA24 A42']);
+  }
+
   // Lettura leggera: la ricerca porta direttamente alla pagina della carta.
   console.log('');
   const RIC = (q) => ctx._urlRicercaAutonoma(q);
