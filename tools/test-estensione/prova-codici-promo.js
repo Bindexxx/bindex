@@ -36,6 +36,25 @@ const CASI = [
   ['MAGIKARP HS 72', L('HeartGold-SoulSilver/Magikarp-V1-HS72', 'HeartGold-SoulSilver/Magikarp-V2-HS72'), ['Magikarp-V1-HS72', 'Magikarp-V2-HS72']],
 ];
 
+// Carte senza numero (My First Battle: codice "MFB"), dalla 5.54. Risposte di Cardmarket del 09/11.
+const CASI_SENZA_NUMERO = [
+  ['electabuzz MFB', L('My-First-Battle/Electabuzz-MFB', 'My-First-Battle/Electrode-MFB'), 'Electabuzz-MFB'],
+  ['Raichu MFB', L('My-First-Battle/Raichu-MFB'), 'Raichu-MFB'],
+  ['Bulbasaur MFB', L('My-First-Battle/Bulbasaur-V1-MFB', 'My-First-Battle/Bulbasaur-V2-MFB'), ['Bulbasaur-V1-MFB', 'Bulbasaur-V2-MFB']],
+  ['Switch MFB', L('My-First-Battle/Switch-V2-MFB', 'My-First-Battle/Switch-V4-MFB', 'My-First-Battle/Switch-V3-MFB', 'My-First-Battle/Switch-V1-MFB'), ['Switch-V2-MFB', 'Switch-V4-MFB', 'Switch-V3-MFB', 'Switch-V1-MFB']],
+  ['Energia base Fuoco MFB', L('My-First-Battle/Basic-Fire-Energy-V2-MFB', 'My-First-Battle/Basic-Fire-Energy-V1-MFB'), ['Basic-Fire-Energy-V2-MFB', 'Basic-Fire-Energy-V1-MFB']],
+  ['Pozione MFB', L('My-First-Battle/Potion-V1-MFB'), 'VERIFICA'],
+];
+const PAGINE_SENZA_NUMERO = [
+  ['electabuzz MFB', 'Electabuzz', 'MFB', 'Electabuzz-MFB', true],
+  ['ELECTABUZZ MFB', 'Electabuzz', 'MFB', 'Electabuzz-MFB', true],
+  ['pikachu MFB', 'Electabuzz', 'MFB', 'Electabuzz-MFB', false],
+  ['Energia base Fuoco MFB', 'Energia base Fuoco', 'MFB', 'Basic-Fire-Energy-V1-MFB', true],
+  ['Basic Fire Energy MFB', 'Energia base Fuoco', 'MFB', 'Basic-Fire-Energy-V1-MFB', true],
+  ['electabuzz MFB', 'Electabuzz', 'BS 20', 'Electabuzz-V1-BS20', false],
+  ['Pikachu ex', 'Pikachu ex', 'SVI 063', 'Pikachu-ex-SVI063', false],
+];
+
 const PAGINE = [
   ['PPS6 MEW 132', 'Ditto', 'PPS6 MEW 132', 'Ditto-PPS6MEW-132', true],
   ['WCD22 BRS 123', 'Arceus V ASTRO', 'WCD22 BRS 123', 'Arceus-VSTAR-WCD22BRS-123', true],
@@ -86,6 +105,23 @@ const paginaCarta = (nome, codice, url) => `<html><head><meta property="og:url" 
   console.log('');
   for (const [testo, atteso] of RICERCHE) {
     uguale(`ricerca per "${testo}"`, new URL(ctx._urlRicercaAutonoma(testo)).searchParams.get('searchString'), atteso);
+  }
+
+  if (maj > 5 || (maj === 5 && min >= 54)) {
+    console.log('');
+    for (const [q, links, atteso] of CASI_SENZA_NUMERO) {
+      uguale(`senza numero: "${q}" con ${links.length} link`, esito(ctx._trovaMatchCartaSingola(links, q)), atteso);
+    }
+    for (const [q, nome, codice, s, atteso] of PAGINE_SENZA_NUMERO) {
+      uguale(`senza numero: pagina "${nome} (${codice})" per "${q}"`, ctx._paginaCombaciaConQuery(q, nome, codice, s), atteso);
+    }
+    const electabuzz = B + 'My-First-Battle/Electabuzz-MFB';
+    const pagineMfb = { [ctx._urlRicercaAutonoma('electabuzz MFB')]: paginaCarta('Electabuzz', 'MFB', electabuzz) };
+    const fetchMfb = caricaBackground({ fetch: async (url) => (pagineMfb[url] ? rispostaFinta(pagineMfb[url]) : null) }).ctx;
+    const fm = await fetchMfb._risolviSinglesENomeFetch(ctx._urlRicercaAutonoma('electabuzz MFB'), '');
+    uguale('fetch "electabuzz MFB" rimandata alla carta', [fm.urlSingles, fm.nome, fm.codice], [electabuzz, 'Electabuzz', 'MFB']);
+    const dm = ctx._decidiRisoluzioneDaScheda({ tipo: 'singles', url: electabuzz, testoH1: 'Electabuzz (MFB)', hrefs: [] }, 'electabuzz MFB', true, '');
+    uguale('scheda "electabuzz MFB": carta accettata', [slug(dm.urlSingles), dm.codice], ['Electabuzz-MFB', 'MFB']);
   }
 
   // Lettura leggera: la ricerca porta direttamente alla pagina della carta.
