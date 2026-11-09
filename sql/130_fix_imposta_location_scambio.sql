@@ -52,4 +52,4 @@ end;
 $function$;
 
 -- Verifica: deve dire false (la funzione non chiama più _binder_scambio_di).
-select position('_binder_scambio_di' in pg_get_functiondef('public.imposta_location_scambio_automatico(text, boolean)'::regprocedure)) > 0 as chiama_ancora_binder_scambio_di;
+select position('_binder_scambio_di(v_uid)' in pg_get_functiondef('public.imposta_location_scambio_automatico(text, boolean)'::regprocedure)) > 0 as chiama_ancora_binder_scambio_di;
