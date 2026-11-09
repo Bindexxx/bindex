@@ -11,6 +11,12 @@ function toggleSelezionaTutte(checked) {
             }));
         }
 
+        function svuotaSelezioneMultipla() {
+            document.querySelectorAll('.riga-checkbox:checked').forEach(cb => { cb.checked = false; });
+            if (typeof collSvuotaSelezioneTel === 'function') collSvuotaSelezioneTel();
+            _aggiornaBarraSelezioneMultipla();
+        }
+
         function aggiornaSelezioneMultipla() {
             _aggiornaBarraSelezioneMultipla();
         }
@@ -44,6 +50,7 @@ function toggleSelezionaTutte(checked) {
                 const { error } = await cardsDeleteBatch(tabella, ids);
                 if (error) { mostraAvviso(`❌ Errore nell'eliminazione (${tabella}): ` + error.message); await caricaCarteReali(); return; }
             }
+            svuotaSelezioneMultipla();
             await caricaCarteReali();
             const testo = `${righe.length} cart${righe.length === 1 ? 'a eliminata' : 'e eliminate'}.`;
             if (nCarte) cestinoOffriAnnulla('carte', (idsPerTabella.carte || []).map(id => ({ id })), testo);
@@ -80,8 +87,7 @@ function toggleSelezionaTutte(checked) {
                 _aggiornaBottoniBinderToggle(id);
             });
 
-            document.querySelectorAll('.riga-checkbox:checked').forEach(cb => { cb.checked = false; });
-            _aggiornaBarraSelezioneMultipla();
+            svuotaSelezioneMultipla();
         }
 
         async function mettiSelezionateIn() {
@@ -153,8 +159,7 @@ function toggleSelezionaTutte(checked) {
                 _quantitaOfferteScambio[String(c.id)] = Number(c.qty) || 1;
                 _aggiornaBottoniScambioToggle(c.id);
             });
-            document.querySelectorAll('.riga-checkbox:checked').forEach(cb => { cb.checked = false; });
-            _aggiornaBarraSelezioneMultipla();
+            svuotaSelezioneMultipla();
             if (typeof filterTable === 'function') filterTable();
             const copie = daMettere.reduce((t, c) => t + (Number(c.qty) || 1), 0);
             const saltate = righe.length - daMettere.length;
@@ -189,6 +194,7 @@ function toggleSelezionaTutte(checked) {
                 const { error } = await cardsUpdateLocationBatch(tabella, ids, valore);
                 if (error) { mostraAvviso(`❌ Errore nello spostare la location (${tabella}): ` + error.message); await caricaCarteReali(); return; }
             }
+            svuotaSelezioneMultipla();
             await caricaCarteReali();
             avvisoBreve(`${righe.length} cart${righe.length === 1 ? 'a spostata' : 'e spostate'} in "${valore || '(vuota)'}".`, {
                 tipo: 'ok', durata: 6000,
