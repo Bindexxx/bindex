@@ -296,7 +296,7 @@ async function caricaSelectLocationComune() {
                     <div class="ins-sommario"></div>
                     <div class="ins-gia"></div>
                 </td>
-                <td data-label="Lingua" class="ins-td-sel"><select onchange="handleEntryInput(this)">${opz(['IT', 'EN', 'KOR', 'JP'], langVal)}</select></td>
+                <td data-label="Lingua" class="ins-td-sel"><select onchange="handleEntryInput(this)">${opz(_INS_LINGUE, langVal)}</select></td>
                 <td data-label="Cond." class="ins-td-sel"><select onchange="handleEntryInput(this)">${opz(['NM', 'EX', 'GD'], condVal)}</select></td>
                 <td data-label="REV" class="ins-td-chip"><label class="ins-chip"><input type="checkbox" ${revVal} onchange="handleEntryInput(this)">Reverse</label></td>
                 <td data-label="1st" class="ins-td-chip"><label class="ins-chip"><input type="checkbox" ${firstVal} onchange="handleEntryInput(this)">1ª ed.</label></td>
@@ -321,6 +321,7 @@ async function caricaSelectLocationComune() {
         }
 
         let _insLocationNomi = [];
+        const _INS_LINGUE = ['IT', 'EN', 'DE', 'FR', 'ES', 'PT', 'JP', 'KOR', 'CHN', 'CHN-T', 'IND', 'THAI', 'RU'];
 
         function _insOpzioniLocation(valore) {
             const nomi = ['?', ..._insLocationNomi.filter(n => n !== '?')];
@@ -536,10 +537,7 @@ async function caricaSelectLocationComune() {
                 <td data-label="Nome"><input type="text" placeholder="Nome come su Cardmarket (italiano o inglese)" title="Nome del prodotto come su Cardmarket, in italiano o in inglese — es. Booster Box Obsidian Flames, Set Allenatore Fuoriclasse Evoluzioni Prismatiche" value="${escapeHtml(nameVal)}" oninput="handleEntryInputSealed(this)"></td>
                 <td data-label="Lingua">
                     <select onchange="handleEntryInputSealed(this)">
-                        <option value="IT" ${langVal === 'IT' ? 'selected' : ''}>IT</option>
-                        <option value="EN" ${langVal === 'EN' ? 'selected' : ''}>EN</option>
-                        <option value="KOR" ${langVal === 'KOR' ? 'selected' : ''}>KOR</option>
-                        <option value="JP" ${langVal === 'JP' ? 'selected' : ''}>JP</option>
+                        ${_INS_LINGUE.map(l => `<option value="${l}" ${langVal === l ? 'selected' : ''}>${l}</option>`).join('')}
                     </select>
                 </td>
                 <td data-label="Integrità">
