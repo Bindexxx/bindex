@@ -6731,6 +6731,12 @@ textarea.avviso-campo { resize: vertical; font-size: 0.8rem; line-height: 1.4; f
 .avviso-campo:focus { outline: none; border-color: var(--primary, #7c4dff); }
 .avviso-bottoni { display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
 .avviso-bottoni .btn-main.avviso-pericolo { background: var(--danger, #d32f2f); color: #fff; }
+.metti-in-lista { display: flex; flex-direction: column; gap: 6px; margin: 0 0 14px; max-height: min(55vh, 420px); overflow: auto; }
+.metti-in-sezione { font-size: 0.72rem; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; color: var(--text-muted, #7a7290); margin: 6px 2px 0; }
+.metti-in-voce { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; width: 100%; text-align: left; padding: 10px 12px; border-radius: 12px; border: 1.5px solid var(--border-color, #e2d9f3); background: var(--card-bg, #fff); color: var(--text-dark, #2a2438); font: inherit; font-weight: 700; font-size: 0.9rem; cursor: pointer; }
+.metti-in-voce i { width: 18px; text-align: center; color: var(--primary, #7c4dff); }
+.metti-in-voce small { flex-basis: 100%; padding-left: 28px; font-weight: 500; font-size: 0.75rem; color: var(--text-muted, #7a7290); }
+.metti-in-voce:hover, .metti-in-voce:focus-visible { border-color: var(--primary, #7c4dff); outline: none; }
 @keyframes avvisoFondo { from { opacity: 0; } to { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .avviso-bolla, .avviso-fondo { animation: none; } .avviso-esce { transition: none; } }
 
