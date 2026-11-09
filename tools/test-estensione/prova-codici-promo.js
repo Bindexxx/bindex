@@ -124,6 +124,75 @@ const paginaCarta = (nome, codice, url) => `<html><head><meta property="og:url" 
     uguale('scheda "electabuzz MFB": carta accettata', [slug(dm.urlSingles), dm.codice], ['Electabuzz-MFB', 'MFB']);
   }
 
+  if (maj > 5 || (maj === 5 && min >= 55)) {
+    // Dalla 5.55: se il testo finisce con un codice, prima si cerca il codice attaccato ("DR60"),
+    // che su Cardmarket porta dritto alla carta (controllato dal vivo il 09/11 su 15 codici);
+    // se non trova niente si rifà la ricerca di prima.
+    console.log('');
+    const COMPATTI = [
+      ['Magikarp DR 60', 'DR60'], ['CRE 059', 'CRE059'], ['SHF SV12', 'SHFSV12'], ['Falinks V SHF SV115', 'SHFSV115'],
+      ['Jynx SIT TG04', 'SITTG04'], ['VENUSAUR CEL BS 15', 'CELBS15'], ['BA22 C31', 'BA22C31'], ['Luxio Lv.25 AR 43', 'AR43'],
+      ['PIKACHU TK10 A29', 'TK10A29'], ['Eevee SV2A 133', 'SV2A133'], ['Ditto PPS6 MEW 132', 'PPS6MEW132'],
+      ['Charizard ex 125', null], ['Pikachu V 43', null], ['Pikachu', null], ['electabuzz MFB', null], ['Ducklett TK9 S-24', null],
+      // codice già attaccato dopo il nome (ultima parola con 3+ lettere, o 2 lettere senza sigla davanti)
+      ['CUBONE CBB3C04', 'CBB3C04'], ['FALENAFERREA PAR028', 'PAR028'], ['FUECOCO SVI036', 'SVI036'], ['BLISSEY V S8B127', 'S8B127'],
+      ['Gastly XASC123', 'XASC123'], ['Eevee sv2a133', 'SV2A133'], ['Lapras MCD19 5', 'MCD195'], ['EEVEE CSV9.5C 139', 'CSV95C139'],
+      ['Pikachu 25', null], ['Zacian V 95', null],
+    ];
+    for (const [testo, atteso] of COMPATTI) uguale(`codice attaccato per "${testo}"`, ctx._codiceRicercaCompatto(testo), atteso);
+    uguale('"DET 1" da solo: la sigla non è un pezzo di nome (niente Detective Pikachu)',
+      esito(ctx._trovaMatchCartaSingola(L('Sun-Moon-Indonesian-Promos/Detective-Pikachu-SM-PID001', 'Ancient-Origins/Goodra-AOR1'), 'DET 1')),
+      ['Detective-Pikachu-SM-PID001', 'Goodra-AOR1']);
+
+    const ric = (t) => `${CM}/it/Pokemon/Products/Search?searchMode=v2&searchString=${encodeURIComponent(t).replace(/%20/g, '+')}`;
+    const lista = (...sl) => `<html><head><meta property="og:url" content="${CM}/it/Pokemon/Products/Search"><title>Risultati</title></head><body><h1>Risultati Di Ricerca</h1>${sl.map(x => `<a href="/it/Pokemon/Products/Singles/${x}">x</a>`).join('')}</body></html>`;
+    const vuota = lista();
+    const prezzoRiga = `<div class="article-row"><div class="product-attributes"><span aria-label="Italiano"></span></div><div class="price-container"><span class="fw-bold">1,00 €</span></div><a class="btn btn-sm btn-primary" role="button"><span class="fonticon-cart"></span></a></div>`;
+    const conPrezzo = (nome, codice, url) => paginaCarta(nome, codice, url).replace('</body>', prezzoRiga + '<a id="account-dropdown">u</a></body>');
+    const giro = async (testo, mappa) => {
+      const chiesti = [];
+      const pagine = {};
+      for (const [u, h] of Object.entries(mappa)) if (u.includes('/Singles/')) pagine[u] = h;
+      const { ctx: c } = caricaBackground({ version: versione, accelera: 10, pagine, fetch: async (url) => { chiesti.push(url); return mappa[url] ? rispostaFinta(mappa[url]) : null; } });
+      const r = await c._leggiNomeDaCardmarket(c._urlRicercaAutonoma(testo), 'IT', 'NM', '', false, 0, null, null, null);
+      return { r, chiesti: chiesti.filter(u => u.includes('/Search?')).map(u => new URL(u).searchParams.get('searchString')) };
+    };
+
+    const MAGIKARP = B + 'EX-Dragon/Magikarp-DR60';
+    const g1 = await giro('Magikarp DR 60', {
+      [ric('DR60')]: paginaCarta('Magikarp', 'DR 60', MAGIKARP),
+      [ric('Magikarp DR 60')]: lista('Stellar-Crown/Drifloon-SCR060', 'Silver-Tempest/Drowzee-SIT060'),
+      [MAGIKARP]: conPrezzo('Magikarp', 'DR 60', MAGIKARP),
+    });
+    uguale('"Magikarp DR 60": trovata col codice attaccato, una sola ricerca', [slug(g1.r.urlSingles), g1.chiesti], ['Magikarp-DR60', ['DR60']]);
+
+    const ZUBAT = B + 'Silver-Tempest/Zubat-SIT053';
+    const g2 = await giro('Zubat SIT 53', {
+      [ric('SIT53')]: vuota,
+      [ric('Zubat SIT 53')]: paginaCarta('Zubat', 'SIT 053', ZUBAT),
+      [ZUBAT]: conPrezzo('Zubat', 'SIT 053', ZUBAT),
+    });
+    uguale('"Zubat SIT 53" (zeri mancanti): codice attaccato senza risultati, poi la ricerca di prima', [slug(g2.r.urlSingles), g2.chiesti], ['Zubat-SIT053', ['SIT53', 'Zubat SIT 53']]);
+
+    const g3 = await giro('Zubat SIT 53', {
+      [ric('SIT53')]: lista('Sword-Shield/Snom-SSH063', 'Lost-Origin/Gloom-LOR053'),
+      [ric('Zubat SIT 53')]: paginaCarta('Zubat', 'SIT 053', ZUBAT),
+      [ZUBAT]: conPrezzo('Zubat', 'SIT 053', ZUBAT),
+    });
+    uguale('codice attaccato con carte di altri codici: si scartano, poi la ricerca di prima', [slug(g3.r.urlSingles), g3.chiesti], ['Zubat-SIT053', ['SIT53', 'Zubat SIT 53']]);
+
+    const g4 = await giro('Cubone CBB3C 04', {
+      [ric('CBB3C04')]: lista('Gem-Pack-Vol-3/Cubone-V7-CBB3C04', 'Gem-Pack-Vol-3/Cubone-V1-CBB3C04', 'Gem-Pack-Vol-3/Cubone-V3-CBB3C04'),
+    });
+    uguale('"Cubone CBB3C 04": scelta tra le versioni di quel codice', [g4.r.disambiguation, (g4.r.opzioni || []).length, g4.chiesti], [true, 3, ['CBB3C04']]);
+
+    const g5 = await giro('Charizard ex 125', {
+      [ric('Charizard ex 125')]: paginaCarta('Charizard ex', 'OBF 125', B + 'Obsidian-Flames/Charizard-ex-OBF125'),
+      [B + 'Obsidian-Flames/Charizard-ex-OBF125']: conPrezzo('Charizard ex', 'OBF 125', B + 'Obsidian-Flames/Charizard-ex-OBF125'),
+    });
+    uguale('"Charizard ex 125" (nome + numero): nessun codice attaccato, ricerca di prima', g5.chiesti, ['Charizard ex 125']);
+  }
+
   // Lettura leggera: la ricerca porta direttamente alla pagina della carta.
   console.log('');
   const RIC = (q) => ctx._urlRicercaAutonoma(q);

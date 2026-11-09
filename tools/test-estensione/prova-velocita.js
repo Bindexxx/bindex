@@ -212,6 +212,8 @@ function caricaPagina(file, chromeFinto, supabaseFinto) {
       fetch: async (url) => {
         richieste.push(url);
         if (url === RIC) return rispostaFinta(`<html><head><title>Risultati Di Ricerca | Cardmarket</title></head><body><h1>Risultati</h1>${link('Silver-Tempest/Zubat-SIT103')}${link('Trainer-Gallery/Zubat-BOO23SIT-103')}</body></html>`);
+        // Dalla 5.55 si cerca prima il codice attaccato: su Cardmarket "SIT103" porta dritto alla carta.
+        if (url === CM + '/it/Pokemon/Products/Search?searchMode=v2&searchString=SIT103') return rispostaFinta(`<html><head><meta property="og:url" content="${ZUBAT}"><title>Zubat | Cardmarket</title></head><body><h1>Zubat (SIT 103)<span> Silver Tempest - Singles</span></h1></body></html>`);
         return null;
       },
     });
