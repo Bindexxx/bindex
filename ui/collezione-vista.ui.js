@@ -11,12 +11,13 @@ const _COLL_ORDINI = {
     prezzo_giu: { etichetta: 'prezzo ↓', chiave: c => Number(c.price) || 0, giu: true },
     prezzo_su: { etichetta: 'prezzo ↑', chiave: c => Number(c.price) || 0, giu: false },
     nome: { etichetta: 'nome A-Z', chiave: c => String(c.name || '').toLowerCase(), giu: false },
+    nome_za: { etichetta: 'nome Z-A', chiave: c => String(c.name || '').toLowerCase(), giu: true },
     recenti: { etichetta: 'più recenti', chiave: c => String(c.createdAt || ''), giu: true },
     variazione: { etichetta: 'variazione ↓', chiave: c => Number(c.variazioneNumerica) || 0, giu: true },
     location: { etichetta: 'location', chiave: c => String(c.location || '').toLowerCase(), giu: false },
     qty: { etichetta: 'quantità ↓', chiave: c => Number(c.qty) || 0, giu: true },
 };
-const _COLL_CICLO = ['prezzo_giu', 'prezzo_su', 'nome', 'recenti'];
+const _COLL_CICLO = ['prezzo_giu', 'prezzo_su', 'nome', 'nome_za', 'recenti'];
 _collOrdine = prefFiltroPaginaScegli('collezione', 'ordine', Object.keys(_COLL_ORDINI), _collOrdine);
 (function _collRipristinaFiltri() {
     const lang = document.getElementById('filterLang');
@@ -66,6 +67,7 @@ function collCambiaOrdine() {
 
 function collOrdinaColonna(chiave) {
     if (chiave === 'prezzo') _collOrdine = _collOrdine === 'prezzo_giu' ? 'prezzo_su' : 'prezzo_giu';
+    else if (chiave === 'nome') _collOrdine = _collOrdine === 'nome' ? 'nome_za' : 'nome';
     else _collOrdine = chiave;
     prefFiltroPaginaSet('collezione', 'ordine', _collOrdine);
     filterTable();
@@ -328,8 +330,8 @@ function _collDisegnaABlocchi(corpo, dati, rigaHtml, apri, chiudi, selContenitor
 }
 
 function _collTh(etichetta, chiave, classe) {
-    const attiva = chiave && (_collOrdine === chiave || (chiave === 'prezzo' && _collOrdine.startsWith('prezzo')));
-    const freccia = !chiave ? '' : (attiva ? (chiave === 'prezzo' && _collOrdine === 'prezzo_su' ? ' ↑' : ' ↓') : ' <span class="coll-th-pigro">↕</span>');
+    const attiva = chiave && (_collOrdine === chiave || (chiave === 'prezzo' && _collOrdine.startsWith('prezzo')) || (chiave === 'nome' && _collOrdine === 'nome_za'));
+    const freccia = !chiave ? '' : (attiva ? ((chiave === 'prezzo' && _collOrdine === 'prezzo_su') || _collOrdine === 'nome' ? ' ↑' : ' ↓') : ' <span class="coll-th-pigro">↕</span>');
     return `<th class="${classe || ''}${attiva ? ' attiva' : ''}"${chiave ? ` onclick="collOrdinaColonna('${chiave}')"` : ''}>${etichetta}${freccia}</th>`;
 }
 
