@@ -39,11 +39,13 @@ function toggleMenuCompatto(id) {
             const selLingua = document.getElementById('editLingua');
             selLingua.innerHTML = (isWishlist ? '<option value="">Qualsiasi lingua</option>' : '') +
                 LINGUE.map(l => `<option value="${l}">${l}</option>`).join('');
+            if (card.lang && !LINGUE.includes(card.lang)) selLingua.insertAdjacentHTML('afterbegin', `<option value="${escapeHtml(card.lang)}">${escapeHtml(card.lang)}</option>`);
             selLingua.value = card.lang || '';
 
-            const CONDIZIONI = ['MT', 'NM', 'EX', 'GD', 'LP', 'PL', 'PO'];
+            const CONDIZIONI = ['MT', 'NM+', 'NM', 'NM-', 'EX+', 'EX', 'EX-', 'GD+', 'GD', 'GD-', 'LP+', 'LP', 'LP-', 'PL+', 'PL', 'PL-', 'PO+', 'PO'];
+            if (card.cond && !CONDIZIONI.includes(card.cond)) CONDIZIONI.unshift(card.cond);
             const selCondizione = document.getElementById('editCondizione');
-            selCondizione.innerHTML = CONDIZIONI.map(c => `<option value="${c}">${c}</option>`).join('');
+            selCondizione.innerHTML = CONDIZIONI.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
             selCondizione.value = card.cond;
             document.getElementById('labelEditCondizione').textContent = isWishlist ? 'Condizione minima accettata' : 'Condizione';
             document.getElementById('editQty').value = card.qty;
@@ -300,10 +302,11 @@ function toggleMenuCompatto(id) {
         function modificaCondizioneInline(event, id, tabella, valoreAttuale) {
             const span = event.target.closest('span');
             _apriSelectInline(span, id, tabella, 'condizione', valoreAttuale,
-                ['MT', 'NM', 'EX', 'GD', 'LP', 'PL', 'PO']);
+                ['MT', 'NM+', 'NM', 'NM-', 'EX+', 'EX', 'EX-', 'GD+', 'GD', 'GD-', 'LP+', 'LP', 'LP-', 'PL+', 'PL', 'PL-', 'PO+', 'PO']);
         }
 
         function _apriSelectInline(elemento, id, tabella, campo, valoreAttuale, opzioni) {
+            if (valoreAttuale && !opzioni.includes(valoreAttuale)) opzioni = [valoreAttuale, ...opzioni];
             const select = document.createElement('select');
             select.style.cssText = 'font-size:0.75rem; padding:0.25rem; border-radius:6px; border:1px solid var(--primary); font-weight:700;';
             opzioni.forEach(opt => {

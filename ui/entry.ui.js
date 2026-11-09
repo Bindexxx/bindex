@@ -297,7 +297,7 @@ async function caricaSelectLocationComune() {
                     <div class="ins-gia"></div>
                 </td>
                 <td data-label="Lingua" class="ins-td-sel"><select onchange="handleEntryInput(this)">${opz(_INS_LINGUE, langVal)}</select></td>
-                <td data-label="Cond." class="ins-td-sel"><select onchange="handleEntryInput(this)">${opz(['NM', 'EX', 'GD'], condVal)}</select></td>
+                <td data-label="Cond." class="ins-td-sel"><select onchange="handleEntryInput(this)">${opz(_INS_CONDIZIONI, condVal)}</select></td>
                 <td data-label="REV" class="ins-td-chip"><label class="ins-chip"><input type="checkbox" ${revVal} onchange="handleEntryInput(this)">Reverse</label></td>
                 <td data-label="1st" class="ins-td-chip"><label class="ins-chip"><input type="checkbox" ${firstVal} onchange="handleEntryInput(this)">1ª ed.</label></td>
                 <td data-label="SIG" class="ins-td-chip" title="Ancora sigillata nella bustina originale"><label class="ins-chip"><input type="checkbox" ${sigVal} onchange="handleEntryInput(this)">Sigillata</label></td>
@@ -322,6 +322,7 @@ async function caricaSelectLocationComune() {
 
         let _insLocationNomi = [];
         const _INS_LINGUE = ['IT', 'EN', 'DE', 'FR', 'ES', 'PT', 'JP', 'KOR', 'CHN', 'CHN-T', 'IND', 'THAI', 'RU'];
+        const _INS_CONDIZIONI = ['MT', 'NM+', 'NM', 'NM-', 'EX+', 'EX', 'EX-', 'GD+', 'GD', 'GD-', 'LP+', 'LP', 'LP-', 'PL+', 'PL', 'PL-', 'PO+', 'PO'];
 
         function _insOpzioniLocation(valore) {
             const nomi = ['?', ..._insLocationNomi.filter(n => n !== '?')];
