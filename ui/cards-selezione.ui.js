@@ -84,6 +84,83 @@ function toggleSelezionaTutte(checked) {
             _aggiornaBarraSelezioneMultipla();
         }
 
+        async function mettiSelezionateIn() {
+            const righe = _righeSelezionate();
+            if (righe.length === 0) return;
+            const scelta = await _scegliDestinazioneSelezionate(righe.length);
+            if (!scelta) return;
+            if (scelta.tipo === 'extra') return aggiungiSelezionateAlBinder();
+            if (scelta.tipo === 'scambio') return _mettiSelezionateInScambio();
+            if (scelta.tipo === 'nuova') return spostaLocationSelezionate();
+            if (scelta.tipo === 'location') return _spostaLocationSelezionateIn(righe, scelta.valore);
+        }
+
+        async function _scegliDestinazioneSelezionate(n) {
+            const extra = (_bindersElenco || []).find(b => b.tipo === 'extra');
+            const nomeExtra = (extra && extra.nome) || 'Il mio binder';
+            const locations = typeof _locationDisponibili === 'function' ? await _locationDisponibili() : [];
+            return _avvisoFinestra((box, chiudi) => {
+                _avvisoTitolo(box, `Metti ${n} cart${n === 1 ? 'a' : 'e'} in…`, null);
+                const lista = document.createElement('div');
+                lista.className = 'metti-in-lista';
+                const voce = (icona, testo, nota, valore) => {
+                    const b = document.createElement('button');
+                    b.type = 'button';
+                    b.className = 'metti-in-voce';
+                    const i = document.createElement('i');
+                    i.className = 'fa-solid ' + icona;
+                    i.setAttribute('aria-hidden', 'true');
+                    const t = document.createElement('span');
+                    t.textContent = testo;
+                    b.append(i, t);
+                    if (nota) { const s = document.createElement('small'); s.textContent = nota; b.appendChild(s); }
+                    b.addEventListener('click', () => chiudi(valore));
+                    lista.appendChild(b);
+                    return b;
+                };
+                const sezione = (testo) => { const h = document.createElement('div'); h.className = 'metti-in-sezione'; h.textContent = testo; lista.appendChild(h); };
+                sezione('Binder');
+                const primo = voce('fa-star', nomeExtra, 'restano nella loro location', { tipo: 'extra' });
+                voce('fa-right-left', 'Scambio', 'tutte le copie, restano nella loro location', { tipo: 'scambio' });
+                sezione('Location (sposta le carte)');
+                locations.filter(l => l && l !== '?').forEach(l => voce('fa-warehouse', l, '', { tipo: 'location', valore: l }));
+                voce('fa-plus', 'Nuova location…', '', { tipo: 'nuova' });
+                box.appendChild(lista);
+                _avvisoBottoni(box, [{ etichetta: 'Annulla', classe: 'btn-secondary avviso-annulla', fn: () => chiudi(null) }]);
+                return { conferma: () => null, annulla: () => null, fuoco: primo };
+            });
+        }
+
+        async function _mettiSelezionateInScambio() {
+            const righe = _righeSelezionate();
+            const userId = await authGetUserId();
+            if (!userId) return;
+            if (!_binderScambioId) { mostraAvviso('❌ Il tuo binder Scambio non è ancora pronto — riprova tra un istante.'); return; }
+            const carte = righe
+                .filter(r => r.tabella === 'carte')
+                .map(r => carteReali.find(c => String(c.id) === String(r.id) && c.tabella === 'carte'))
+                .filter(c => c && c.stato === 'collezione');
+            const daMettere = carte.filter(c => _quantitaOfferteScambio[String(c.id)] !== (Number(c.qty) || 1));
+            if (daMettere.length === 0) {
+                mostraAvviso(carte.length ? 'Le carte selezionate erano già tutte in Scambio con tutte le copie.' : 'Nessuna carta da mettere in Scambio: le righe della Wishlist non si possono offrire.');
+                return;
+            }
+            const { error } = await binderCarteImpostaQuantitaScambioBatch(userId, _binderScambioId,
+                daMettere.map(c => ({ cartaId: c.id, quantita: Number(c.qty) || 1 })));
+            if (error) { mostraAvviso('❌ Errore nel mettere le carte in Scambio: ' + error.message); return; }
+            daMettere.forEach(c => {
+                _idsInScambio.add(String(c.id));
+                _quantitaOfferteScambio[String(c.id)] = Number(c.qty) || 1;
+                _aggiornaBottoniScambioToggle(c.id);
+            });
+            document.querySelectorAll('.riga-checkbox:checked').forEach(cb => { cb.checked = false; });
+            _aggiornaBarraSelezioneMultipla();
+            if (typeof filterTable === 'function') filterTable();
+            const copie = daMettere.reduce((t, c) => t + (Number(c.qty) || 1), 0);
+            const saltate = righe.length - daMettere.length;
+            avvisoBreve(`${daMettere.length} cart${daMettere.length === 1 ? 'a' : 'e'} in Scambio (${copie} copi${copie === 1 ? 'a' : 'e'})${saltate ? ` · ${saltate} già dentro o non offribil${saltate === 1 ? 'e' : 'i'}` : ''}.`, { tipo: 'ok' });
+        }
+
         async function spostaLocationSelezionate() {
             const righe = _righeSelezionate();
             if (righe.length === 0) return;
@@ -94,7 +171,10 @@ function toggleSelezionaTutte(checked) {
                 conferma: 'Avanti',
             });
             if (nuovo === null) return;
-            const valore = nuovo.trim();
+            return _spostaLocationSelezionateIn(righe, nuovo.trim());
+        }
+
+        async function _spostaLocationSelezionateIn(righe, valore) {
             if (!(await chiediConferma({ titolo: 'Spostare le carte?', testo: `${righe.length} cart${righe.length === 1 ? 'a' : 'e'} in "${valore || '(vuota)'}".`, conferma: 'Sposta' }))) return;
 
             const primaDi = righe.map(r => {

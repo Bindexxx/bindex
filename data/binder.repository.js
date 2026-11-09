@@ -93,6 +93,11 @@ async function binderProponiNome(userId, binderId, nomeProposto) {
         .eq('owner_id', userId);
 }
 
+async function binderCarteImpostaQuantitaScambioBatch(userId, binderId, righe) {
+    return supabaseClient.from('binder_carte')
+        .upsert(righe.map(r => ({ owner_id: userId, binder_id: binderId, carta_id: r.cartaId, quantita_offerta: r.quantita })), { onConflict: 'owner_id,binder_id,carta_id' });
+}
+
 function binderLocationQueryCarte(userId, locationValore) {
     return supabaseClient.from('carte').select('*').eq('owner_id', userId).eq('location', locationValore).eq('stato', 'collezione').order('nome');
 }
