@@ -439,6 +439,50 @@ const paginaCarta = (nome, codice, url) => `<html><head><meta property="og:url" 
     uguale('numero da "SI8"', ctx._numeroDaUltimoSegmento('SI8'), '8');
   }
 
+  if (maj > 5 || (maj === 5 && min >= 61)) {
+    // Dalla 5.61: BOO senza set ("mismagius boo 059"). Prima diventava "BOO059" e Cardmarket non trovava
+    // niente; ora si cerca "mismagius boo" e si sceglie per numero. Risultati di Cardmarket del 10/11.
+    console.log('');
+    const BOO_RICERCHE = [
+      ['mismagius boo 059', 'mismagius boo', 'mismagius boo 059'], ['mismagius boo23 088', 'mismagius boo', 'mismagius boo23 088'],
+      ['boo evs 076', null, 'BOOEVS076'], ['Pumpkaboo BOO EVS 076', null, 'BOOEVS076'], ['boo23 sit 103', null, 'BOO23SIT103'],
+    ];
+    for (const [q, attesoW, attesoUrl] of BOO_RICERCHE) {
+      const w = ctx._promoSenzaSerieDaQuery(q);
+      uguale(`BOO: "${q}" → ricerca senza numero / testo cercato`, [w ? w.testoRicerca : null, new URL(ctx._urlRicercaAutonoma(q)).searchParams.get('searchString')], [attesoW, attesoUrl]);
+    }
+    const MISMA = L('Trick-or-Trade-2023/Mismagius-BOO23PAL-088', 'Trick-or-Trade/Mismagius-BOOASR-059');
+    const PUMPKA = L('Chaos-Rising/Pumpkaboo-CRI040', 'Evolving-Skies/Pumpkaboo-EVS076', 'Paradox-Rift/Pumpkaboo-PAR077', 'Trick-or-Trade-2024/Pumpkaboo-BOO24PAR-077',
+      'Trick-or-Trade/Pumpkaboo-BOOEVS-076', 'WCD-2023/Pumpkaboo-WCD23EVS-076', 'Play-Pokemon-Prize-Pack-Series-One/Pumpkaboo-PPS1EVS-076');
+    const BOO_CASI = [
+      ['mismagius boo 059', MISMA, 'Mismagius-BOOASR-059'], ['mismagius boo 59', MISMA, 'Mismagius-BOOASR-059'],
+      ['mismagius boo 088', MISMA, 'Mismagius-BOO23PAL-088'], ['mismagius boo23 088', MISMA, 'Mismagius-BOO23PAL-088'],
+      ['mismagius boo24 088', MISMA, null], ['mismagius boo 100', MISMA, null],
+      ['pumpkaboo boo 076', PUMPKA, 'Pumpkaboo-BOOEVS-076'], ['pumpkaboo boo 077', PUMPKA, 'Pumpkaboo-BOO24PAR-077'],
+    ];
+    for (const [q, links, atteso] of BOO_CASI) uguale(`BOO: "${q}" con ${links.length} link`, esito(ctx._trovaMatchCartaSingola(links, q)), atteso);
+    const BOO_PAGINE = [
+      ['mismagius boo 059', 'Mismagius', 'BOO ASR 059', 'Mismagius-BOOASR-059', true],
+      ['mismagius boo 059', 'Mismagius', 'ASR 059', 'Mismagius-ASR059', false],
+      ['mismagius boo23 088', 'Mismagius', 'BOO23 PAL 088', 'Mismagius-BOO23PAL-088', true],
+      ['mismagius boo23 059', 'Mismagius', 'BOO ASR 059', 'Mismagius-BOOASR-059', false],
+    ];
+    for (const [q, nome, codice, sl, atteso] of BOO_PAGINE) uguale(`BOO: pagina "${nome} (${codice})" per "${q}"`, ctx._paginaCombaciaConQuery(q, nome, codice, sl), atteso);
+
+    const ric = (t) => `${CM}/it/Pokemon/Products/Search?searchMode=v2&searchString=${encodeURIComponent(t).replace(/%20/g, '+')}`;
+    const lista = (links) => `<html><head><meta property="og:url" content="${CM}/it/Pokemon/Products/Search"><title>Risultati</title></head><body><h1>Risultati Di Ricerca</h1>${links.map(x => `<a href="${x.replace(CM, '')}">x</a>`).join('')}</body></html>`;
+    const M059 = B + 'Trick-or-Trade/Mismagius-BOOASR-059';
+    const prezzoRiga = `<div class="article-row"><div class="product-attributes"><span aria-label="Italiano"></span></div><div class="price-container"><span class="fw-bold">1,00 €</span></div><a class="btn btn-sm btn-primary" role="button"><span class="fonticon-cart"></span></a></div>`;
+    const pagM = paginaCarta('Mismagius', 'BOO ASR 059', M059).replace('</body>', prezzoRiga + '<a id="account-dropdown">u</a></body>');
+    const mappa = { [ric('mismagius boo')]: lista(MISMA), [M059]: pagM };
+    const chiesti = [];
+    const { ctx: c } = caricaBackground({ version: versione, accelera: 10, pagine: { [M059]: pagM }, fetch: async (url) => { chiesti.push(url); return mappa[url] ? rispostaFinta(mappa[url]) : null; } });
+    const r = await c._leggiNomeDaCardmarket(c._urlRicercaAutonoma('mismagius boo 059'), 'IT', 'NM', '', false, 0, null, null, null);
+    uguale('BOO: giro "mismagius boo 059" → Mismagius BOO ASR 059, una sola ricerca',
+      [slug(r.urlSingles), chiesti.filter(u => u.includes('/Search?')).map(u => new URL(u).searchParams.get('searchString'))],
+      ['Mismagius-BOOASR-059', ['mismagius boo']]);
+  }
+
   // Lettura leggera: la ricerca porta direttamente alla pagina della carta.
   console.log('');
   const RIC = (q) => ctx._urlRicercaAutonoma(q);
