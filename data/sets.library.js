@@ -2,6 +2,7 @@
 // strumento quando esce un'espansione.
 
 const CARDSYNC_SET_LIBRARY = {
+    DLR: { nome: "Dominio Delta", base: 103, totale: 141 },
     PBL: { nome: "Buio Pesto", base: 84, totale: 120 },
     CRI: { nome: "Caos Nascente", base: 86, totale: 122 },
     POR: { nome: "Equilibrio Perfetto", base: 88, totale: 124 },
