@@ -404,6 +404,41 @@ const paginaCarta = (nome, codice, url) => `<html><head><meta property="og:url" 
     uguale('giro "heracross 1" in giapponese → scelta come prima', [!!gJp.disambiguation, (gJp.opzioni || []).map(o => slug(o.urlSingles))], [true, ['Heracross-CSV2C001', 'Heracross-DLR001']]);
   }
 
+  if (maj > 5 || (maj === 5 && min >= 60)) {
+    // Dalla 5.60: McDonald's con nome e numero. Lo slug ha l'anno attaccato al numero
+    // ("Jigglypuff-MCD168" = MCD16 n. 8): prima si leggeva 168 e la carta spariva.
+    // Risultati di Cardmarket del 10/11: "jigglypuff 8" → MCD168 e Southern Islands SI8.
+    console.log('');
+    const JIGGLY = L('McDonalds-Collection-2016/Jigglypuff-MCD168', 'Southern-Islands/Jigglypuff-SI8');
+    const MCD_CASI = [
+      ['jigglypuff 8', JIGGLY, ['Jigglypuff-MCD168', 'Jigglypuff-SI8']],
+      ['jigglypuff 08', JIGGLY, ['Jigglypuff-MCD168', 'Jigglypuff-SI8']],
+      // nessuna col numero 168: come prima si propongono tutte
+      ['jigglypuff 168', JIGGLY, ['Jigglypuff-MCD168', 'Jigglypuff-SI8']],
+      ['lapras 5', L('McDonalds-Collection-2019/Lapras-MCD195', 'Base-Set/Lapras-BS10'), 'Lapras-MCD195'],
+      ['pikachu 12', L('McDonalds-Collection-2011/Pikachu-MCD1112', 'Base-Set/Pikachu-V1-BS58'), 'Pikachu-MCD1112'],
+      ['zubat 53', L('Plasma-Storm/Zubat-PLS53'), 'Zubat-PLS53'],
+    ];
+    for (const [q, links, atteso] of MCD_CASI) {
+      const r = ctx._trovaMatchCartaSingola(links, q);
+      const e = r.match ? slug(r.match) : r.disambiguation ? r.opzioni.map(slug) : r.verificaCandidato ? 'VERIFICA' : null;
+      uguale(`McDonald's: "${q}" con ${links.length} link`, e, atteso);
+    }
+    const MCD_PAGINE = [
+      ['jigglypuff 8', 'Jigglypuff', 'MCD16 8', 'Jigglypuff-MCD168', true],
+      ['jigglypuff 168', 'Jigglypuff', 'MCD16 8', 'Jigglypuff-MCD168', false],
+      ['jigglypuff 6', 'Jigglypuff', 'MCD16 8', 'Jigglypuff-MCD168', false],
+      ['jigglypuff 8', 'Jigglypuff', null, 'Jigglypuff-MCD168', true],
+      ['electabuzz 30', 'Electabuzz', 'DLR 030', 'Electabuzz-DLR030', true],
+      ['charizard ex 125', 'Charizard ex', 'OBF 125', 'Charizard-ex-OBF125', true],
+    ];
+    for (const [q, nome, codice, sl, atteso] of MCD_PAGINE) uguale(`McDonald's: pagina "${nome} (${codice})" per "${q}"`, ctx._paginaCombaciaConQuery(q, nome, codice, sl), atteso);
+    uguale('numero da "MCD168"', ctx._numeroDaUltimoSegmento('MCD168'), '8');
+    uguale('numero da "MCD2412"', ctx._numeroDaUltimoSegmento('MCD2412'), '12');
+    uguale('numero da "DLR030"', ctx._numeroDaUltimoSegmento('DLR030'), '30');
+    uguale('numero da "SI8"', ctx._numeroDaUltimoSegmento('SI8'), '8');
+  }
+
   // Lettura leggera: la ricerca porta direttamente alla pagina della carta.
   console.log('');
   const RIC = (q) => ctx._urlRicercaAutonoma(q);
