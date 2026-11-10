@@ -355,6 +355,55 @@ const paginaCarta = (nome, codice, url) => `<html><head><meta property="og:url" 
       ['Dragapult-ex-PPS6TWM-130', ['pps TWM', 'pps TWM2']]);
   }
 
+  if (maj > 5 || (maj === 5 && min >= 59)) {
+    // Dalla 5.59: quando c'è da scegliere, restano solo le carte nella lingua della carta
+    // (giapponesi = codice minuscolo, cinesi = ...C + numero). Risultati di Cardmarket del 10/11.
+    console.log('');
+    const LINGUE_SLUG = [
+      ['Storm-Emeralda/Heracross-m6001', 'giapponese'], ['Miracle-Journey/Heracross-CSV2C001', 'cinese'], ['Delta-Reign/Heracross-DLR001', 'internazionale'],
+      ['Ruler-of-the-Black-Flame/Charizard-ex-V2-sv3125', 'giapponese'], ['Primordial-Arts-Torrent/Gardevoir-V1-CS3bC061', 'cinese'],
+      ['Darkness-that-Consumes-Light/Gardevoir-GX-V3-sm3n061', 'giapponese'], ['Pokemon-GO-Enhanced-Expansion-Pack/Radiant-Eevee-s10b055', 'giapponese'],
+      ['151/Mew-ex-V1-MEW151', 'internazionale'], ['151/Mew-ex-V1-151C151', 'cinese'], ['Play-Pokemon-Prize-Pack-Series-Six/Charizard-ex-PPS6OBF-125', 'internazionale'],
+      ['Chilling-Reign/Gardevoir-V1-CRE061', 'internazionale'], ['Team-Rocket/Eevee-TR55', 'internazionale'], ['Celebrations/Mew-V1', 'internazionale'],
+      ['Battle-Academy-2024/Fuecoco-BA24A42', 'internazionale'], ['WCD-2023/Gardevoir-WCD23CRE-061', 'internazionale'], ['Crown-Zenith/Pikachu-CRZGG30', 'internazionale'],
+    ];
+    for (const [sl, atteso] of LINGUE_SLUG) uguale(`lingua del prodotto "${sl.split('/').pop()}"`, ctx._linguaProdottoDaSlug(B + sl), atteso);
+    const op = (...sl) => L(...sl).map(u => ({ urlSingles: u, label: slug(u) }));
+    const HERA = op('Storm-Emeralda/Heracross-m6001', 'Miracle-Journey/Heracross-CSV2C001', 'Delta-Reign/Heracross-DLR001');
+    const GARD = op('Chilling-Reign/Gardevoir-V1-CRE061', 'Chilling-Reign/Gardevoir-V2-CRE061', 'Primordial-Arts-Torrent/Gardevoir-V1-CS3bC061',
+      'Darkness-that-Consumes-Light/Gardevoir-GX-V3-sm3n061', 'Night-Unison/Gardevoir-Sylveon-GX-V3-sm9a061');
+    const PERLINGUA = [
+      ['heracross, IT', HERA, 'IT', ['Heracross-DLR001']],
+      ['heracross, EN', HERA, 'EN', ['Heracross-DLR001']],
+      ['heracross, JP', HERA, 'JP', ['Heracross-m6001']],
+      ['heracross, JA', HERA, 'JA', ['Heracross-m6001']],
+      ['heracross, CHN', HERA, 'CHN', ['Heracross-CSV2C001']],
+      ['heracross, lingua vuota', HERA, '', ['Heracross-DLR001']],
+      ['gardevoir 61, IT (restano Gardevoir-GX e le V1/V2? no: solo internazionali)', GARD, 'IT', ['Gardevoir-V1-CRE061', 'Gardevoir-V2-CRE061']],
+      ['gardevoir 61, JP', GARD, 'JP', ['Gardevoir-GX-V3-sm3n061', 'Gardevoir-Sylveon-GX-V3-sm9a061']],
+      ['solo giapponesi, carta IT: restano tutte', op('Storm-Emeralda/Heracross-m6001', 'Ruler-of-the-Black-Flame/Charizard-ex-V2-sv3125'), 'IT', ['Heracross-m6001', 'Charizard-ex-V2-sv3125']],
+      ['solo internazionali, carta JP: restano tutte', op('Paldea-Evolved/Pikachu-ex-V1-PAL063', 'Paldea-Evolved/Pikachu-ex-V2-PAL063'), 'JP', ['Pikachu-ex-V1-PAL063', 'Pikachu-ex-V2-PAL063']],
+    ];
+    for (const [nome, opz, lingua, atteso] of PERLINGUA) uguale(`scelta per lingua: ${nome}`, ctx._opzioniPerLingua(opz, lingua).map(o => slug(o.urlSingles)), atteso);
+
+    // giro completo: "heracross 1" in italiano → resta solo la Dominio Delta e si legge quella
+    const ric = (t) => `${CM}/it/Pokemon/Products/Search?searchMode=v2&searchString=${encodeURIComponent(t).replace(/%20/g, '+')}`;
+    const lista = (links) => `<html><head><meta property="og:url" content="${CM}/it/Pokemon/Products/Search"><title>Risultati</title></head><body><h1>Risultati Di Ricerca</h1>${links.map(x => `<a href="${x.replace(CM, '')}">x</a>`).join('')}</body></html>`;
+    const DLR = B + 'Delta-Reign/Heracross-DLR001';
+    const prezzoRiga = `<div class="article-row"><div class="product-attributes"><span aria-label="Italiano"></span></div><div class="price-container"><span class="fw-bold">1,00 €</span></div><a class="btn btn-sm btn-primary" role="button"><span class="fonticon-cart"></span></a></div>`;
+    const pagDlr = paginaCarta('Heracross', 'DLR 001', DLR).replace('</body>', prezzoRiga + '<a id="account-dropdown">u</a></body>');
+    const mappa = { [ric('heracross 1')]: lista(HERA.map(o => o.urlSingles)), [DLR]: pagDlr };
+    const giro = async (lingua) => {
+      const { ctx: c } = caricaBackground({ version: versione, accelera: 10, pagine: { [DLR]: pagDlr }, fetch: async (url) => (mappa[url] ? rispostaFinta(mappa[url]) : null) });
+      return c._leggiNomeDaCardmarket(c._urlRicercaAutonoma('heracross 1'), lingua, 'NM', '', false, 0, null, null, null);
+    };
+    const gIt = await giro('IT');
+    uguale('giro "heracross 1" in italiano → Heracross DLR 001 senza chiedere', [slug(gIt.urlSingles), !!gIt.disambiguation], ['Heracross-DLR001', false]);
+    // la giapponese (m6001) la scarta già la scelta per nome e numero: in giapponese resta la scelta di prima
+    const gJp = await giro('JP');
+    uguale('giro "heracross 1" in giapponese → scelta come prima', [!!gJp.disambiguation, (gJp.opzioni || []).map(o => slug(o.urlSingles))], [true, ['Heracross-CSV2C001', 'Heracross-DLR001']]);
+  }
+
   // Lettura leggera: la ricerca porta direttamente alla pagina della carta.
   console.log('');
   const RIC = (q) => ctx._urlRicercaAutonoma(q);
