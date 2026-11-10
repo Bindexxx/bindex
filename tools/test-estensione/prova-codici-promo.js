@@ -253,7 +253,7 @@ const paginaCarta = (nome, codice, url) => `<html><head><meta property="og:url" 
       ['gardevoir wcd 061', 'gardevoir wcd'], ['Gardevoir ex WCD 086', 'Gardevoir ex wcd'], ['gardevoir wcd cre 061', 'gardevoir wcd CRE'],
       ['gardevoir wcd23 061', 'gardevoir wcd'], ['wcd 062', 'wcd 062'], ['WCD22 BRS 123', null], ['Gardevoir 061', null],
     ];
-    for (const [q, atteso] of WCD_RICERCHE) { const w = ctx._wcdDaQuery(q); uguale(`WCD: testo cercato per "${q}"`, w ? w.testoRicerca : null, atteso); }
+    for (const [q, atteso] of WCD_RICERCHE) { const w = (ctx._promoSenzaSerieDaQuery || ctx._wcdDaQuery)(q); uguale(`WCD: testo cercato per "${q}"`, w ? w.testoRicerca : null, atteso); }
     uguale('WCD: "gardevoir wcd23 061" non si attacca (WCD23061 non esiste)', new URL(ctx._urlRicercaAutonoma('gardevoir wcd23 061')).searchParams.get('searchString'), 'gardevoir wcd23 061');
     uguale('WCD: "wcd22 brs 123" si attacca come prima', new URL(ctx._urlRicercaAutonoma('wcd22 brs 123')).searchParams.get('searchString'), 'WCD22BRS123');
     uguale('WCD: "gardevoir wcd 061" nessun codice attaccato', ctx._codiceRicercaCompatto('gardevoir wcd 061'), null);
@@ -297,6 +297,62 @@ const paginaCarta = (nome, codice, url) => `<html><head><meta property="og:url" 
     const { ctx: c2 } = caricaBackground({ version: versione, accelera: 10, fetch: async (url) => { chiesti2.push(url); return mappa[url] ? rispostaFinta(mappa[url]) : null; } });
     const r2 = await c2._leggiNomeDaCardmarket(c2._urlRicercaAutonoma('gardevoir wcd 086'), 'IT', 'NM', '', false, 0, null, null, null);
     uguale('WCD: giro "gardevoir wcd 086" → scelta tra WCD25 e WCD23', [r2.disambiguation, (r2.opzioni || []).map(o => slug(o.urlSingles))], [true, ['Gardevoir-ex-WCD25086', 'Gardevoir-ex-WCD23SVI-086']]);
+  }
+
+  if (maj > 5 || (maj === 5 && min >= 58)) {
+    // Dalla 5.58: PPS senza serie ("pps twm 130", "morpeko pps twm 72"). Su Cardmarket "pps twm 72" non trova
+    // niente (i numeri sotto 100 non funzionano) e prima si cercava "TWM130", cioè la carta normale di
+    // Twilight Masquerade. Ora si cerca "pps twm" (40 carte, 2 pagine) e si sceglie per numero.
+    // Risultati di Cardmarket del 09/11.
+    console.log('');
+    const PPS_RICERCHE = [
+      ['pps twm 130', 'pps TWM'], ['morpeko pps twm 72', 'morpeko pps TWM'], ['giratina v pps 130', 'giratina v pps'],
+      ['pps 130', 'pps 130'], ['pps6 130', 'pps 130'], ['pps6 twm 131', null], ['Ditto PPS6 MEW 132', null],
+    ];
+    for (const [q, atteso] of PPS_RICERCHE) { const w = ctx._promoSenzaSerieDaQuery(q); uguale(`PPS: testo cercato per "${q}"`, w ? w.testoRicerca : null, atteso); }
+    uguale('PPS: "pps twm 130" non si cerca più come TWM130', ctx._codiceRicercaCompatto('pps twm 130'), null);
+    uguale('PPS: "pps6 130" non si attacca (PPS6130 non esiste)', new URL(ctx._urlRicercaAutonoma('pps6 130')).searchParams.get('searchString'), 'pps6 130');
+    const PP = (n, s) => 'Play-Pokemon-Prize-Pack-Series-' + n + '/' + s;
+    const TWM1 = L(PP('Seven', 'Tatsugiri-PPS7TWM-131'), PP('Seven', 'Froslass-PPS7TWM-053'), PP('Six', 'Morpeko-PPS6TWM-072'), PP('Six', 'Tatsugiri-PPS6TWM-131'),
+      PP('Six', 'Fezandipiti-PPS6TWM-096'), PP('Seven', 'Munkidori-PPS7TWM-095'), PP('Six', 'Munkidori-PPS6TWM-095'));
+    const TWM2 = L(PP('Six', 'Dragapult-ex-PPS6TWM-130'), PP('Six', 'Okidogi-PPS6TWM-111'), PP('Six', 'Teal-Mask-Ogerpon-ex-PPS6TWM-025'));
+    const PPS_CASI = [
+      ['pps twm 130', TWM1.concat(TWM2), 'Dragapult-ex-PPS6TWM-130'],
+      ['pps twm 72', TWM1, 'Morpeko-PPS6TWM-072'],
+      ['pps twm 131', TWM1, ['Tatsugiri-PPS7TWM-131', 'Tatsugiri-PPS6TWM-131']],
+      ['pps7 95', TWM1, 'Munkidori-PPS7TWM-095'],
+      ['pps lor 130', L(PP('Three', 'Giratina-V-PPS3LOR-130'), PP('Four', 'Giratina-V-PPS4LOR-130')), ['Giratina-V-PPS3LOR-130', 'Giratina-V-PPS4LOR-130']],
+      ['pps twm 130', L('Twilight-Masquerade/Dragapult-ex-TWM130'), null],
+    ];
+    for (const [q, links, atteso] of PPS_CASI) uguale(`PPS: "${q}" con ${links.length} link`, esito(ctx._trovaMatchCartaSingola(links, q)), atteso);
+    const PPS_PAGINE = [
+      ['pps twm 130', 'Dragapult ex', 'PPS6 TWM 130', 'Dragapult-ex-PPS6TWM-130', true],
+      ['pps twm 130', 'Dragapult ex', 'TWM 130', 'Dragapult-ex-TWM130', false],
+      ['pps7 twm 130', 'Dragapult ex', 'PPS6 TWM 130', 'Dragapult-ex-PPS6TWM-130', false],
+      ['pps7 130', 'Dragapult ex', 'PPS6 TWM 130', 'Dragapult-ex-PPS6TWM-130', false],
+      ['morpeko pps twm 72', 'Morpeko', 'PPS6 TWM 072', 'Morpeko-PPS6TWM-072', true],
+    ];
+    for (const [q, nome, codice, sl, atteso] of PPS_PAGINE) uguale(`PPS: pagina "${nome} (${codice})" per "${q}"`, ctx._paginaCombaciaConQuery(q, nome, codice, sl), atteso);
+
+    // giro completo: "pps twm" su due pagine, Dragapult è nella seconda
+    const ric = (t) => `${CM}/it/Pokemon/Products/Search?searchMode=v2&searchString=${encodeURIComponent(t).replace(/%20/g, '+')}`;
+    const lista = (links) => `<html><head><meta property="og:url" content="${CM}/it/Pokemon/Products/Search"><title>Risultati</title></head><body><h1>Risultati Di Ricerca</h1>${links.map(x => `<a href="${x.replace(CM, '')}">x</a>`).join('')}</body></html>`;
+    const riempi = (n) => Array.from({ length: n }, (_, k) => B + PP('Six', `Riempitivo-PPS6TWM-${String(200 + k)}`));
+    const DRAGAPULT = B + PP('Six', 'Dragapult-ex-PPS6TWM-130');
+    const prezzoRiga = `<div class="article-row"><div class="product-attributes"><span aria-label="Italiano"></span></div><div class="price-container"><span class="fw-bold">1,00 €</span></div><a class="btn btn-sm btn-primary" role="button"><span class="fonticon-cart"></span></a></div>`;
+    const pagD = paginaCarta('Dragapult ex', 'PPS6 TWM 130', DRAGAPULT).replace('</body>', prezzoRiga + '<a id="account-dropdown">u</a></body>');
+    const mappa = {
+      [ric('pps TWM')]: lista(TWM1.concat(riempi(23))),
+      [ric('pps TWM') + '&site=2']: lista(TWM2),
+      [ric('TWM130')]: paginaCarta('Dragapult ex', 'TWM 130', B + 'Twilight-Masquerade/Dragapult-ex-TWM130'),
+      [DRAGAPULT]: pagD,
+    };
+    const chiesti = [];
+    const { ctx: c } = caricaBackground({ version: versione, accelera: 10, pagine: { [DRAGAPULT]: pagD }, fetch: async (url) => { chiesti.push(url); return mappa[url] ? rispostaFinta(mappa[url]) : null; } });
+    const r = await c._leggiNomeDaCardmarket(c._urlRicercaAutonoma('pps twm 130'), 'IT', 'NM', '', false, 0, null, null, null);
+    uguale('PPS: giro "pps twm 130" → Dragapult ex PPS6 (seconda pagina), mai la TWM normale',
+      [slug(r.urlSingles), chiesti.filter(u => u.includes('/Search?')).map(u => new URL(u).searchParams.get('searchString') + (new URL(u).searchParams.get('site') || ''))],
+      ['Dragapult-ex-PPS6TWM-130', ['pps TWM', 'pps TWM2']]);
   }
 
   // Lettura leggera: la ricerca porta direttamente alla pagina della carta.
