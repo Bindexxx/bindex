@@ -146,14 +146,24 @@ function caricaPagina(file, env, { prima } = {}) {
   const schedePrima = env.log.tabs.filter(t => t[0] === 'create').length;
   const silenziosa = await interno({ type: 'VERIFICA_LOGIN_SILENZIOSA', kind: 'carte' });
   uguale('login confermato da poco: risposta senza aprire Cardmarket', [silenziosa && silenziosa.loggato, env.log.tabs.filter(t => t[0] === 'create').length - schedePrima], [true, 0]);
-  delete env.store.cardsyncLoginCheckToast;
-  await esterno({ type: 'CARDSYNC_OPEN_APP' });
-  await attendi(100);
-  controlla('app aperta dal sito, login confermato: niente popup a tutto schermo', env.store.cardsyncLoginCheckToast === undefined);
-  env.store.statoLoginCardmarket = { loggato: false, quando: Date.now() };
-  await esterno({ type: 'CARDSYNC_OPEN_APP' });
-  await attendi(100);
-  controlla('app aperta dal sito, login mancante: popup', typeof env.store.cardsyncLoginCheckToast === 'number', env.store.cardsyncLoginCheckToast);
+  if (maj === 5 && min < 63) {
+    delete env.store.cardsyncLoginCheckToast;
+    await esterno({ type: 'CARDSYNC_OPEN_APP' });
+    await attendi(100);
+    controlla('app aperta dal sito, login confermato: niente popup a tutto schermo', env.store.cardsyncLoginCheckToast === undefined);
+    env.store.statoLoginCardmarket = { loggato: false, quando: Date.now() };
+    await esterno({ type: 'CARDSYNC_OPEN_APP' });
+    await attendi(100);
+    controlla('app aperta dal sito, login mancante: popup', typeof env.store.cardsyncLoginCheckToast === 'number', env.store.cardsyncLoginCheckToast);
+  } else {
+    // dalla 5.63 il controllo all'apertura lo fa l'app (finestra di blocco): il sito apre solo l'app
+    env.store.statoLoginCardmarket = { loggato: false, quando: Date.now() };
+    const schedeCm = () => env.log.tabs.filter(t => t[0] === 'create' && /cardmarket/.test(t[1])).length;
+    const prima = schedeCm();
+    await esterno({ type: 'CARDSYNC_OPEN_APP' });
+    await attendi(100);
+    uguale('app aperta dal sito senza login: nessuna scheda di Cardmarket aperta dal service worker', schedeCm() - prima, 0);
+  }
   controlla('service worker: nessun errore', env.log.errori.length === 0, env.log.errori);
 
   // ═══ PAGINE ═══════════════════════════════════════════════════════════════
