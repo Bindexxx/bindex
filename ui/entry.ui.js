@@ -471,9 +471,23 @@ async function caricaSelectLocationComune() {
             handleEntryInput(input);
         }
 
+        // Le carte BOO (Trick or Trade) esistono solo in inglese: scrivendo un codice BOO la lingua passa a EN
+        // ("mismagius boo 059", "BOO24PAL054"; non "Pumpkaboo" né "Booster"). Se la lingua l'hai scelta tu, resta la tua.
+        function _insLinguaPerBoo(row, element) {
+            const sel = row.querySelector('td:nth-child(2) select');
+            const input = row.querySelector('td:nth-child(1) input');
+            if (!sel || !input) return;
+            if (element === sel) { sel.dataset.manuale = '1'; delete sel.dataset.auto; return; }
+            if (sel.dataset.manuale) return;
+            const boo = String(input.value || '').split(/[\s,]+/).some(t => /^BOO(?:\d{2})?(?:[A-Z]{2,4}-?\d{1,3})?$/i.test(t));
+            if (boo && sel.value !== 'EN') { sel.value = 'EN'; sel.dataset.auto = '1'; }
+            else if (!boo && sel.dataset.auto) { sel.value = 'IT'; delete sel.dataset.auto; }
+        }
+
         function handleEntryInput(element) {
             const row = element.closest('tr');
             const tbody = document.getElementById('entryTableBody');
+            _insLinguaPerBoo(row, element);
             _insSommario(row);
             if (row === tbody.lastElementChild && row.querySelector('td:nth-child(1) input').value.trim()) {
                 addNewEntryRow();
