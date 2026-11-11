@@ -536,6 +536,21 @@ const paginaCarta = (nome, codice, url) => `<html><head><meta property="og:url" 
       ['Cetitan-BOO24PAL-054', ['BOOPAL054', 'BOO23PAL054', 'BOO24PAL054']]);
   }
 
+  if (maj > 5 || (maj === 5 && min >= 64)) {
+    // Dalla 5.64: "30C" è 30th Celebration (internazionale), non un codice cinese; CBB…C (Gem Pack) sì.
+    console.log('');
+    const ss = (q) => new URL(ctx._urlRicercaAutonoma(q)).searchParams.get('searchString');
+    uguale('30C: slug di 30th Celebration internazionale', ctx._linguaProdottoDaSlug(B + '30th-Celebration/Mewtwo-ex-V2-30C151'), 'internazionale');
+    uguale('151C: slug di Collect 151 cinese', ctx._linguaProdottoDaSlug(B + '151/Mew-ex-V1-151C151'), 'cinese');
+    uguale('CBB: slug di Gem Pack cinese', ctx._linguaProdottoDaSlug(B + 'Gem-Pack-Vol-2/Pikachu-CBB2C009'), 'cinese');
+    uguale('30C: "mewtwo ex 30C151" non si stacca', ss('mewtwo ex 30C151'), 'mewtwo ex 30C151');
+    uguale('151C: "mew 151C151" si stacca ancora', ss('mew 151C151'), 'mew 151C 151');
+    uguale('30C: nessuna lingua dal codice scritto', ctx._linguaProdottoDaQuery('mewtwo ex 30C 151'), null);
+    uguale('CBB2C: lingua cinese dal codice scritto', ctx._linguaProdottoDaQuery('pikachu CBB2C 009'), 'cinese');
+    const MEWTWO = L('30th-Celebration/Mewtwo-ex-V2-30C151', 'Pokemon-Card-151/Mewtwo-ex-sv2a151').map(u => ({ urlSingles: u }));
+    uguale('scelta, carta italiana: la 30th Celebration resta', ctx._opzioniPerLingua(MEWTWO, 'IT').map(o => slug(o.urlSingles)), ['Mewtwo-ex-V2-30C151']);
+  }
+
   // Lettura leggera: la ricerca porta direttamente alla pagina della carta.
   console.log('');
   const RIC = (q) => ctx._urlRicercaAutonoma(q);
