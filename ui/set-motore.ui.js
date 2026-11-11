@@ -76,8 +76,10 @@ function setMPossedute() {
         if (c.stato !== 'collezione' || c.tabella !== 'carte') return;
         const letto = _ballLeggiCodice(c.code);
         if (!letto) return;
-        let s = per.get(letto.set);
-        if (!s) { s = { numeri: new Map(), carte: 0, senzaNumero: 0 }; per.set(letto.set, s); }
+        // la lingua della carta sceglie il set (giapponese, coreano, cinese o internazionale)
+        const sigla = _ballSiglaPerLingua(letto.set, c.lang);
+        let s = per.get(sigla);
+        if (!s) { s = { numeri: new Map(), carte: 0, senzaNumero: 0 }; per.set(sigla, s); }
         s.carte++;
         if (letto.numero == null) { s.senzaNumero++; return; }
         let v = s.numeri.get(letto.numero);
@@ -178,6 +180,7 @@ function setMCalcolaTutti() {
 function _setMVoce(sigla, nome, totale, hai, catalogo, nascosto, provvisorio) {
     return {
         sigla, nome, totale, hai,
+        lingua: _ballLinguaSet(sigla),
         mancanti: totale - hai,
         perc: totale > 0 ? (hai / totale) * 100 : 0,
         catalogo, nascosto, provvisorio,

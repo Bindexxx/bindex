@@ -3,6 +3,8 @@
 
 const CARDSYNC_SET_LIBRARY = {
     DLR: { nome: "Dominio Delta", base: 103, totale: 141 },
+    '30C': { nome: "30° Anniversario", base: 128, totale: 161 },
+    '30C-CC': { nome: "30° Anniversario Collezione Classica", base: 30, totale: 30 },
     PBL: { nome: "Buio Pesto", base: 84, totale: 120 },
     CRI: { nome: "Caos Nascente", base: 86, totale: 122 },
     POR: { nome: "Equilibrio Perfetto", base: 88, totale: 124 },

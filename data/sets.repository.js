@@ -7,7 +7,7 @@ async function setEspansioniLeggiTutte() {
 
     const { data, error } = await supabaseClient
         .from('set_espansioni')
-        .select('sigla, nome, carte_base, carte_totali');
+        .select('*'); // con "lingua" (sql/131); '*' regge anche prima che la colonna esista
 
     if (error) {
         console.error('Lettura set_espansioni:', error.message);
