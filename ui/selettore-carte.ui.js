@@ -67,15 +67,21 @@ function _selLeggiTesto(testo, indice) {
         const m = P.match(/^(\d{1,4})\/(\d{1,4})$/);
         if (m) { if (parseInt(m[1], 10) > 0) q.numero = parseInt(m[1], 10); q.totale = parseInt(m[2], 10) || null; return; }
         if (/^\d{1,4}$/.test(P)) { if (parseInt(P, 10) > 0) q.numero = parseInt(P, 10); return; }
+        const famiglia = (P.match(/^(BOO|PPS|WCD|BA|MFB|MCD|TK)(?=\d|$)/) || [])[1];
+        // "boo" da solo è la famiglia (non sai l'anno), anche se il Trick or Trade 2022 ha proprio la sigla BOO
+        if (famiglia && P === famiglia) { q.famiglia = famiglia; return; }
         if (indice.codici.has(P)) {
+            // "boo24", "mcd16": un set di una famiglia promo, scritto con l'anno
+            if (famiglia && (indice.famiglie[famiglia] || []).includes(P)) { q.famiglia = famiglia; q.codici.push(P); return; }
             q.codici.push(P); sigleScritte.push(pezzo); tutte.push(pezzo);
             if (!parole.length) sigleInTesta.push(P);
             return;
         }
-        if (/^(?:BOO|PPS|WCD|BA|MFB|MCD|TK)\d{0,2}$/.test(P)) { q.famiglia = P.replace(/\d+$/, ''); return; }
+        if (famiglia && /^[A-Z]+\d{0,2}$/.test(P)) { q.famiglia = famiglia; return; }
         const attaccato = _selCodiceAttaccato(P, indice);
         if (attaccato) { q.codici.push(attaccato.codice); q.numero = attaccato.numero; return; }
-        if (/^[A-C]\d{1,3}$/.test(P) && q.famiglia === 'BA') { q.icona = P; return; }
+        // "a42": l'icona delle Battle Academy (lettera del mazzo + numero), anche senza scrivere "ba"
+        if (/^[A-D]\d{1,3}$/.test(P) && (q.famiglia === 'BA' || (indice.famiglie.BA || []).length)) { q.famiglia = 'BA'; q.icona = P; q.numero = parseInt(P.slice(1), 10); return; }
         parole.push(pezzo); tutte.push(pezzo);
     });
     const pulisci = (lista) => lista.join(' ').toLowerCase().replace(/[%_\\"()\[\]]/g, ' ').replace(/\s+/g, ' ').trim();
@@ -93,7 +99,14 @@ function _selLeggiTesto(testo, indice) {
         q.alternativa = pulisci(tutte) || null;
         q.alternativaSempre = !parole.length;
     }
-    q.preciso = q.codici.length === 1 && !q.famiglia && q.numero != null;
+    // Preciso = basta a indicare una carta sola: "svi 054", "mcd16 8", "boo24 pal 050", ma anche
+    // "boo pal 050" e "ba a42" (famiglia + set d'origine o icona + numero, senza sapere l'anno).
+    const dellaFamiglia = q.famiglia ? q.codici.filter(c => (indice.famiglie[q.famiglia] || []).includes(c)) : [];
+    const origine = q.famiglia ? q.codici.filter(c => !dellaFamiglia.includes(c)) : [];
+    q.serie = origine.length === 1 ? origine[0] : null;
+    q.preciso = q.numero != null && (q.famiglia
+        ? (dellaFamiglia.length === 1 || !!q.serie || !!q.icona)
+        : q.codici.length === 1);
     return q;
 }
 
@@ -134,17 +147,20 @@ function _selCarta(r) {
         nome: r.nome || '', immagine: r.immagine || null, link,
         setNome: r.set_nome || siglaVista, lingua: r.lingua || 'INT',
         base: r.base !== false, versioni: r.versioni || 1, carteBase: r.carte_base ?? null,
-        versione: _selEtichettaVariante(r.variante),
+        // la stessa carta può esserci più volte (mazzi diversi dei WCD, holo e non holo delle PPS): V1, V2…
+        versione: _selEtichettaVariante(r.variante) || ((/-V(\d+)-[^/]*$/.exec(r.cardmarket_url || '') || [])[1] ? 'V' + /-V(\d+)-[^/]*$/.exec(r.cardmarket_url)[1] : ''),
+        codice: r.codice || null,      // masterset promo: "PAL 050" in BOO24, "A42" in BA24
     };
 }
 
 function _selCodiceVisibile(c) {
+    if (c.codice) return `${c.siglaVista} · ${c.codice}`;
     return `${c.siglaVista} · ${c.numeroTesto}${c.carteBase ? '/' + c.carteBase : ''}`;
 }
 
 // Il testo che va in coda: nome + codice come lo scriveresti a mano (serve se il link manca).
 function _selTestoCoda(c) {
-    return `${c.nome ? c.nome + ' ' : ''}${c.siglaVista} ${c.numeroTesto}`.trim();
+    return `${c.nome ? c.nome + ' ' : ''}${c.siglaVista} ${c.codice || c.numeroTesto}`.trim();
 }
 
 async function _selChiama(parametri) {
@@ -160,17 +176,25 @@ async function _selChiama(parametri) {
     return { carte: righe.map(_selCarta), trovate: righe.length ? Number(righe[0].trovate) || righe.length : 0, errore: false };
 }
 
+function _selChiaveCodice(codice) {
+    return String(codice || '').toUpperCase().replace(/[\s\-_]/g, '').replace(/^(.*?)0*(\d+)$/, '$1$2');
+}
+
 // q = quello che esce da _selLeggiTesto (o dal modulo di Indovino); linguaRiga = IT, EN, JP…
 async function _selEsegui(q, linguaRiga, indice, { limite = 12 } = {}) {
     const linguaSet = _SEL_LINGUA_SET[String(linguaRiga || '').toUpperCase()] || 'INT';
-    const esito = { carte: [], trovate: 0, errore: false, fuoriCatalogo: null, poco: false };
+    const esito = { carte: [], trovate: 0, errore: false, fuoriCatalogo: null, poco: false, sigle: null };
     let sigle = null;
+    let serie = null;
     if (q.famiglia) {
         // "mcd 8" cerca in tutti i McDonald's; "mcd16 8" solo in quello scritto
         const tutta = indice.famiglie[q.famiglia] || [];
         if (!tutta.length) { esito.fuoriCatalogo = q.famiglia; return esito; }
         const scritti = tutta.filter(c => q.codici.includes(c));
         sigle = _selSiglePerCodici(scritti.length ? scritti : tutta, linguaSet, indice);
+        // quello che resta è il set d'origine della carta ("pal" in "boo pal 050")
+        const origine = q.codici.filter(c => !tutta.includes(c));
+        if (origine.length === 1) serie = origine[0];
     } else if (q.codici.length) {
         sigle = _selSiglePerCodici(q.codici, linguaSet, indice);
     }
@@ -178,10 +202,15 @@ async function _selEsegui(q, linguaRiga, indice, { limite = 12 } = {}) {
     if (!sigle && !haNome && !(q.numero != null && q.totale != null)) { esito.poco = true; return esito; }
     const parametri = {
         nome: q.nome || null, numero: q.numero, sigle,
-        lingue: sigle ? null : [linguaSet], totale: q.totale, limite,
+        lingue: sigle ? null : [linguaSet], totale: q.totale, limite, serie,
     };
     const primo = await _selChiama(parametri);
-    esito.carte = primo.carte; esito.trovate = primo.trovate; esito.errore = primo.errore;
+    esito.carte = primo.carte; esito.trovate = primo.trovate; esito.errore = primo.errore; esito.sigle = sigle;
+    // Battle Academy: "a42" è lettera del mazzo + numero; il DB cerca il numero, qui si tiene la lettera giusta
+    if (q.icona) {
+        esito.carte = esito.carte.filter(c => _selChiaveCodice(c.codice) === _selChiaveCodice(q.icona));
+        esito.trovate = esito.carte.length;
+    }
     if (q.alternativa && !primo.errore && (q.alternativaSempre || !primo.carte.length)) {
         const secondo = await _selChiama({ nome: q.alternativa, numero: q.numero, sigle: null, lingue: [linguaSet], totale: null, limite: 6 });
         const gia = new Set(esito.carte.map(c => c.sigla + '|' + c.numero + '|' + c.variante));
@@ -197,7 +226,8 @@ async function _selEsegui(q, linguaRiga, indice, { limite = 12 } = {}) {
 // una pagina Cardmarket loro (Poké Ball, timbri) e le carte trovate "per nome" non contano.
 function _selUnicaPrecisa(esito) {
     if (!esito || !esito.q || !esito.q.preciso || esito.errore) return null;
-    const basi = esito.carte.filter(c => c.base && esito.q.codici.includes(c.siglaVista.toUpperCase()));
+    const cercate = esito.sigle || [];
+    const basi = esito.carte.filter(c => c.base && cercate.includes(c.sigla));
     return basi.length === 1 ? basi[0] : null;
 }
 
@@ -619,7 +649,12 @@ async function _selIndovinoCerca() {
         nome: c.nome.toLowerCase().replace(/[%_\\"()\[\]]/g, ' ').replace(/\s+/g, ' ').trim() || null,
         numero: c.numero, totale: c.totale, codici: noti,
         famiglia: stato.simbolo !== 'nessuno' ? stato.simbolo : null, alternativa: null,
+        icona: null,
     };
+    if (stato.simbolo === 'BA' && c.icona != null) {
+        q.numero = c.icona;
+        if (stato.mazzo) q.icona = stato.mazzo + c.icona;
+    }
     const testa = document.getElementById('selIndTesta');
     const griglia = document.getElementById('selIndGriglia');
     const conferma = document.getElementById('selIndConferma');
