@@ -38,15 +38,24 @@ async function setCatalogoConteggiLeggi() {
     return supabaseClient.rpc('set_carte_conteggi');
 }
 
+// "codice" è il codice della carta nei masterset promo (sql/135: "PAL 050" in BOO24, "A42" in BA24).
+// Finché la colonna non c'è sul DB si legge senza, come prima.
+let _setCarteConCodice = true;
+
 async function setCatalogoRigheLeggi(sigle) {
     const tutte = [];
     for (let i = 0; i < sigle.length; i += 40) {
         const blocco = sigle.slice(i, i + 40);
-        const { data, error } = await _setLeggiPaginato(() =>
+        const leggi = () => _setLeggiPaginato(() =>
             supabaseClient.from('set_carte')
-                .select('sigla, numero, variante, nome, rarita, immagine, cardmarket_id')
+                .select('sigla, numero, variante, nome, rarita, immagine, cardmarket_id' + (_setCarteConCodice ? ', codice' : ''))
                 .in('sigla', blocco)
                 .order('sigla').order('numero').order('variante'));
+        let { data, error } = await leggi();
+        if (error && _setCarteConCodice && (error.code === '42703' || /codice/.test(error.message || ''))) {
+            _setCarteConCodice = false;
+            ({ data, error } = await leggi());
+        }
         if (error) return { data: null, error };
         tutte.push(...data);
     }

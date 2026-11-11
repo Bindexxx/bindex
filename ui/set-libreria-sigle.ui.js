@@ -95,6 +95,20 @@ function _ballLinguaSet(sigla) {
     return i > 0 ? String(sigla).slice(i + 1) : 'INT';
 }
 
+// Masterset promo (BOO, PPS, WCD, Battle Academy): la carta "BOO24 PAL 012" conta per BOO24, non per
+// PAL; "BA24 A19" per BA24; "WCD25 086" per WCD25. Dentro quei set la carta si riconosce dal codice
+// ("PAL 012" → chiave "PAL12"), perché due carte possono avere lo stesso numero.
+function _ballPromo(testa, numero) {
+    const m = testa.match(/^(BOO\d{0,2}|PPS\d{1,2}|WCD\d{2}|BA\d{2})(?:-(.+))?$/);
+    if (!m) return null;
+    return { set: m[1], codice: (m[2] || '').replace(/-/g, '') + String(numero) };
+}
+
+// "PAL 050" → "PAL50", "A42" → "A42", "086" → "86": stessa chiave per il catalogo e per le tue carte.
+function _ballChiaveCodice(codice) {
+    return String(codice || '').toUpperCase().replace(/[\s\-_]/g, '').replace(/^(.*?)0*(\d+)$/, '$1$2');
+}
+
 function _ballLeggiCodice(codice) {
     if (!codice) return null;
     const t = String(codice).trim().toUpperCase();
@@ -104,7 +118,9 @@ function _ballLeggiCodice(codice) {
         const testa = m[1].trim().replace(/^[\s\-_]+|[\s\-_]+$/g, '').replace(/[\s\-_]+/g, '-');
         if (testa && /[A-Z]/.test(testa)) {
             const b = _ballSetBaseConAlias(testa);
-            return { set: b.set, variante: b.variante, numero: parseInt(m[2], 10) };
+            const numero = parseInt(m[2], 10);
+            const promo = _ballPromo(testa, numero);
+            return { set: b.set, variante: b.variante, numero, ...(promo ? { promo } : {}) };
         }
     }
 

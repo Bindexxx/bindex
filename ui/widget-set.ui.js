@@ -404,7 +404,7 @@ async function _setUiRenderDettaglio(container, inline) {
         const classe = v.ignorata ? 'ignorata' : (v.posseduta ? 'ce-l-ho' : 'manca');
         return `<div class="set-carta ${classe}" data-n="${v.numero}" data-v="${_setUiAttr(v.variante)}" onclick="_setUiClickCarta(this)">
             <span class="set-carta-badge">${stato}</span>
-            <div class="set-carta-img">${src ? `<img loading="lazy" src="${src}" alt="" onerror="this.remove()">` : ''}<span class="set-carta-num">${v.numero}</span></div>
+            <div class="set-carta-img">${src ? `<img loading="lazy" src="${src}" alt="" onerror="this.remove()">` : ''}<span class="set-carta-num">${v.codice ? _setUiAttr(v.codice) : v.numero}</span></div>
             <div class="set-carta-nome">${_setUiAttr(v.nome)}</div>
             ${v.variante !== 'normale' ? `<div class="set-carta-var">${_setUiAttr(setMEtichettaVariante(v.variante))}</div>` : ''}
         </div>`;
