@@ -16,14 +16,20 @@ function setDi(slug) {
 const dataIso = (t) => { const m = String(t || '').match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/); return m ? `${m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}` : null; };
 const sql = (v) => (v == null ? 'null' : "'" + String(v).replace(/'/g, "''") + "'");
 
+// Sigle scritte male su Cardmarket (controllate una per una l'11/11/2026): nel codice va quella vera,
+// che è quella stampata sulla carta.
+const CORREZIONI = { PPS1: { BTS: 'BST' }, PPS9: { PLF: 'PFL' }, WCD13: { DXR: 'DRX' } };
+// Set d'origine che nel catalogo hanno un'altra sigla: servono solo per trovare la miniatura.
+const ALIAS_MINIATURE = { SM: 'SMP', SWSH: 'SWSHP', TM: 'TRI', UD: 'UND' };
+
 const set = []; const carte = []; const note = [];
 for (const slugEsp of Object.keys(dati.carte)) {
   const s = setDi(slugEsp);
   if (!s) { note.push(`fuori: ${slugEsp} (${dati.carte[slugEsp].length} carte)`); continue; }
   // i "Live Code Card" sono i codici per il gioco online, non carte
-  const codiciOnline = dati.carte[slugEsp].filter(x => /^(?:Live-)?Code-Card/i.test(x)).length;
+  const codiciOnline = dati.carte[slugEsp].filter(x => /Code-Card/i.test(x)).length;
   if (codiciOnline) note.push(`${s.sigla}: ${codiciOnline} "Code Card" lasciate fuori`);
-  const righe = dati.carte[slugEsp].filter(x => !/^(?:Live-)?Code-Card/i.test(x)).map(x => {
+  const righe = dati.carte[slugEsp].filter(x => !/Code-Card/i.test(x)).map(x => {
     const [slug, id, ...resto] = x.split('|');
     const nome = resto.join('|').trim();
     // il codice è quello che viene dopo la sigla in fondo all'indirizzo: Darkrai-BOO24OBF-136 → "OBF 136"
@@ -32,7 +38,11 @@ for (const slugEsp of Object.keys(dati.carte)) {
     if (i >= 0) {
       const pezzi = slug.slice(i + 1 + s.sigla.length).toUpperCase().split('-').filter(Boolean);
       const ultimo = pezzi[pezzi.length - 1] || '';
-      if (pezzi.length > 1 && /^\d+[A-Z]?$/.test(ultimo)) codice = pezzi.slice(0, -1).join('') + ' ' + ultimo;   // OBF-136 → "OBF 136"
+      if (pezzi.length > 1 && /^\d+[A-Z]?$/.test(ultimo)) {                                                       // OBF-136 → "OBF 136"
+        let origine = pezzi.slice(0, -1).join('');
+        if ((CORREZIONI[s.sigla] || {})[origine]) { note.push(`${s.sigla}: ${origine} ${ultimo} corretto in ${CORREZIONI[s.sigla][origine]} ${ultimo}`); origine = CORREZIONI[s.sigla][origine]; }
+        codice = origine + ' ' + ultimo;
+      }
       else if (pezzi.length) codice = pezzi.join('');                                                              // 086, A14
     }
     if (codice && !/^[A-Z0-9]+( [A-Z0-9]+)?$/.test(codice)) codice = null;
@@ -51,7 +61,9 @@ for (const slugEsp of Object.keys(dati.carte)) {
 set.sort((a, b) => a.sigla.localeCompare(b.sigla, 'en', { numeric: true }));
 
 // mappa delle immagini TCGdex (la stessa della 134)
-const mappa = [...fs.readFileSync(new URL('../../sql/134_catalogo_miniature_tcgdex.sql', import.meta.url).pathname, 'utf8').matchAll(/^    \('([A-Z0-9-]+)', '([^']+)', (\d)\)/gm)].map(m => `('${m[1]}', '${m[2]}', ${m[3]})`);
+const mappaBase = [...fs.readFileSync(new URL('../../sql/134_catalogo_miniature_tcgdex.sql', import.meta.url).pathname, 'utf8').matchAll(/^    \('([A-Z0-9-]+)', '([^']+)', (\d)\)/gm)].map(m => [m[1], m[2], m[3]]);
+const mappa = mappaBase.concat(Object.entries(ALIAS_MINIATURE).map(([alias, vera]) => { const r = mappaBase.find(x => x[0] === vera); if (!r) throw new Error('alias senza set: ' + vera); return [alias, r[1], r[2]]; }))
+  .map(r => `('${r[0]}', '${r[1]}', ${r[2]})`);
 
 const elencoSigle = set.map(s => `'${s.sigla}'`).join(', ');
 const su = `-- 136 — Catalogo: le carte dei masterset promo, lette da Cardmarket l'11/11/2026.
@@ -63,7 +75,13 @@ const su = `-- 136 — Catalogo: le carte dei masterset promo, lette da Cardmark
 --     link = la pagina Cardmarket della carta; cardmarket_id = il suo numero di prodotto;
 --     immagine = quella della carta d'origine su TCGdex (stessa figura senza il timbro), quando il
 --     set d'origine è tra quelli della 134. Per le Battle Academy e i WCD senza set d'origine resta vuota.
--- Fuori: My First Battle (più avanti) e "Scarlet & Violet Battle Academy" (è il prodotto giapponese).
+-- Fuori: My First Battle (più avanti), "Scarlet & Violet Battle Academy" (è il prodotto giapponese)
+-- e le "Code Card" (i codici per il gioco online, non sono carte).
+-- Lo stesso codice può stare su più carte dello stesso set (la stessa carta in più mazzi dei WCD,
+-- holo e non holo nelle PPS; nei WCD 2025 anche carte diverse): per questo il sito riconosce le tue
+-- carte dalla pagina Cardmarket prima che dal codice.
+-- Tre sigle scritte male su Cardmarket sono corrette nel codice: PPS1 "BTS" → BST, PPS9 "PLF" → PFL,
+-- WCD13 "DXR" → DRX (il link resta quello di Cardmarket).
 -- Si può rieseguire. Rollback: 136_catalogo_carte_promo_ROLLBACK.sql.
 
 do $$
