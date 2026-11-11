@@ -551,6 +551,52 @@ const paginaCarta = (nome, codice, url) => `<html><head><meta property="og:url" 
     uguale('scelta, carta italiana: la 30th Celebration resta', ctx._opzioniPerLingua(MEWTWO, 'IT').map(o => slug(o.urlSingles)), ['Mewtwo-ex-V2-30C151']);
   }
 
+  if (maj > 5 || (maj === 5 && min >= 65)) {
+    // Dalla 5.65: Trainer Kit da un elenco fisso (555 carte lette da Cardmarket l'11/11/2026),
+    // senza ricerca: nome + "tk"/"trainer kit" + numero, kit e mazzo non servono.
+    console.log('');
+    const sl = (l) => (l || []).map(u => u.split('/').pop());
+    const TK_CASI = [
+      ['zubat tk 11', ['Zubat-TK10A11']],
+      ['Zubat Trainer Kit 11', ['Zubat-TK10A11']],
+      ['zubat tk10 11', ['Zubat-TK10A11']],
+      ['zubat tk4 11', []],
+      ['pikachu tk 2', ['Pikachu-V1-TK4yellow-2']],
+      ['pikachu tk 16', ['Pikachu-V2-TK4R16']],
+      ['geodude tk 1', ['Geodude-Lv12-TK31-Gold']],
+      ['charmander tk 2', ['Charmander-TK2M2']],
+      ['latios tk 2', ['Latios-TK1Latios-2']],
+      ['lotad tk 11', ['Lotad-01-TK811A']],
+      ['pikachu libre tk 30', ['Pikachu-Libre-V2-TK9P-30']],
+      ['zoroark tk 30', ['Zoroark-TK530Z']],
+      ['energia lotta tk 20', ['Fighting-Energy-TK520E', 'Fighting-Energy-V10-TK10L20']],
+      ['fighting energy tk 20', ['Fighting-Energy-TK520E', 'Fighting-Energy-V10-TK10L20']],
+      ['pozione tk 8', ['Potion-TK1Latias-8', 'Potion-TK1Latios-8']],
+      ['eevee tk 104', ['Eevee-UPR104']],
+      ['staravia tk 82', ['Staravia-TK1182']],
+      ['hau tk 120', ['Hau-V1-TK11SUM-120', 'Hau-V4-SUM120', 'Hau-V2-TK11SUM-120', 'Hau-V3-SUM120']],
+    ];
+    for (const [q, atteso] of TK_CASI) uguale(`Trainer Kit: "${q}"`, sl(ctx._linkTrainerKitPerQuery(q)), atteso);
+    uguale('Trainer Kit: "tk 30" senza nome → tutte le 30 dei kit', (ctx._linkTrainerKitPerQuery('tk 30') || []).length, 14);
+    uguale('Trainer Kit: "pikachu 25" non è un Trainer Kit', ctx._linkTrainerKitPerQuery('pikachu 25'), null);
+    uguale('Trainer Kit: "zubat tk" senza numero non è un Trainer Kit', ctx._linkTrainerKitPerQuery('zubat tk'), null);
+    const tutte = Object.values(ctx._TRAINER_KIT_CARDMARKET || {}).flat();
+    if (tutte.length) uguale('Trainer Kit: 555 carte nell\'elenco', tutte.length, 555);
+
+    // giro: "zubat tk 11" → nessuna ricerca, si legge direttamente la pagina della carta
+    const ZUBAT = B + 'SM-Trainer-Kit-Lycanroc-Alolan-Raichu/Zubat-TK10A11';
+    const prezzoRiga = `<div class="article-row"><div class="product-attributes"><span aria-label="Italiano"></span></div><div class="price-container"><span class="fw-bold">1,00 €</span></div><a class="btn btn-sm btn-primary" role="button"><span class="fonticon-cart"></span></a></div>`;
+    const pagZ = paginaCarta('Zubat', 'TK10A 11', ZUBAT).replace('</body>', prezzoRiga + '<a id="account-dropdown">u</a></body>');
+    const chiesti = [];
+    const { ctx: c } = caricaBackground({ version: versione, accelera: 10, pagine: { [ZUBAT]: pagZ }, fetch: async (url) => { chiesti.push(url); return url === ZUBAT ? rispostaFinta(pagZ) : null; } });
+    const r = await c._leggiNomeDaCardmarket(c._urlRicercaAutonoma('zubat tk 11'), 'IT', 'NM', '', false, 0, null, null, null);
+    uguale('Trainer Kit: giro "zubat tk 11" → Zubat TK10A 11 senza nessuna ricerca su Cardmarket',
+      [slug(r.urlSingles), chiesti.filter(u => u.includes('/Search?')).length], ['Zubat-TK10A11', 0]);
+    const { ctx: c2 } = caricaBackground({ version: versione, accelera: 10, fetch: async () => null });
+    const r2 = await c2._leggiNomeDaCardmarket(c2._urlRicercaAutonoma('energia lotta tk 20'), 'IT', 'NM', '', false, 0, null, null, null);
+    uguale('Trainer Kit: giro "energia lotta tk 20" → scelta tra BW ed SM', [r2.disambiguation, (r2.opzioni || []).map(o => slug(o.urlSingles))], [true, ['Fighting-Energy-TK520E', 'Fighting-Energy-V10-TK10L20']]);
+  }
+
   // Lettura leggera: la ricerca porta direttamente alla pagina della carta.
   console.log('');
   const RIC = (q) => ctx._urlRicercaAutonoma(q);
