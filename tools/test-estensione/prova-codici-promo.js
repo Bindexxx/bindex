@@ -103,8 +103,11 @@ const paginaCarta = (nome, codice, url) => `<html><head><meta property="og:url" 
   }
 
   console.log('');
+  // dalla 5.62 "BOO" senza anno non si attacca più (BOOPAL054 non esiste: è BOO24PAL054): si provano gli anni
+  const dalla562 = maj > 5 || (maj === 5 && min >= 62);
   for (const [testo, atteso] of RICERCHE) {
-    uguale(`ricerca per "${testo}"`, new URL(ctx._urlRicercaAutonoma(testo)).searchParams.get('searchString'), atteso);
+    const a = dalla562 && /\bBOO\s/i.test(testo) ? testo : atteso;
+    uguale(`ricerca per "${testo}"`, new URL(ctx._urlRicercaAutonoma(testo)).searchParams.get('searchString'), a);
   }
 
   if (maj > 5 || (maj === 5 && min >= 54)) {
@@ -445,8 +448,9 @@ const paginaCarta = (nome, codice, url) => `<html><head><meta property="og:url" 
     console.log('');
     const BOO_RICERCHE = [
       ['mismagius boo 059', 'mismagius boo', 'mismagius boo 059'], ['mismagius boo23 088', 'mismagius boo', 'mismagius boo23 088'],
-      ['boo evs 076', null, 'BOOEVS076'], ['Pumpkaboo BOO EVS 076', null, 'BOOEVS076'], ['boo23 sit 103', null, 'BOO23SIT103'],
+      ['boo23 sit 103', null, 'BOO23SIT103'],
     ];
+    if (min < 62 && maj === 5) BOO_RICERCHE.push(['boo evs 076', null, 'BOOEVS076'], ['Pumpkaboo BOO EVS 076', null, 'BOOEVS076']);
     for (const [q, attesoW, attesoUrl] of BOO_RICERCHE) {
       const w = ctx._promoSenzaSerieDaQuery(q);
       uguale(`BOO: "${q}" → ricerca senza numero / testo cercato`, [w ? w.testoRicerca : null, new URL(ctx._urlRicercaAutonoma(q)).searchParams.get('searchString')], [attesoW, attesoUrl]);
@@ -481,6 +485,55 @@ const paginaCarta = (nome, codice, url) => `<html><head><meta property="og:url" 
     uguale('BOO: giro "mismagius boo 059" → Mismagius BOO ASR 059, una sola ricerca',
       [slug(r.urlSingles), chiesti.filter(u => u.includes('/Search?')).map(u => new URL(u).searchParams.get('searchString'))],
       ['Mismagius-BOOASR-059', ['mismagius boo']]);
+  }
+
+  if (maj > 5 || (maj === 5 && min >= 62)) {
+    // Dalla 5.62: BOO col set ma senza anno ("boo pal054", "boo pal 054"): prima diventava "PAL054"
+    // (la carta normale di Paldea Evolved) o "BOOPAL054" (non esiste). Ora si prova il codice attaccato
+    // per ogni anno (BOOPAL054, BOO23PAL054, BOO24PAL054, BOO25PAL054) e si tiene solo la BOO giusta.
+    // Poi: BOO → lingua inglese; codici giapponesi/cinesi attaccati staccati per la ricerca.
+    console.log('');
+    const ss = (q) => new URL(ctx._urlRicercaAutonoma(q)).searchParams.get('searchString');
+    const TESTI = [
+      ['boo pal054', 'boo pal054'], ['boo pal 054', 'boo pal 054'], ['boo24 pal054', 'BOO24PAL054'], ['boo23 pal 054', 'BOO23PAL054'],
+      ['heracross m6001', 'heracross m6 001'], ['M6001', 'M6 001'], ['mew ex sv2a151', 'mew ex sv2a 151'], ['Radiant Eevee s10b055', 'Radiant Eevee s10b 055'],
+      ['pikachu CSV2C001', 'pikachu CSV2C 001'], ['Gardevoir CS3bC061', 'Gardevoir CS3bC 061'], ['mew ex 151C151', 'mew ex 151C 151'],
+      ['Cubone CBB3C04', 'Cubone CBB3C04'], ['charizard ex OBF125', 'charizard ex OBF125'], ['SVI036', 'SVI036'], ['Lapras MCD195', 'Lapras MCD195'],
+      ['pikachu SWSH020', 'pikachu SWSH020'], ['zubat SV107', 'zubat SV107'], ['PPS6TWM130', 'PPS6TWM130'], ['BOO24PAL054', 'BOO24PAL054'], ['ditto pps6 mew 132', 'PPS6MEW132'],
+    ];
+    for (const [q, atteso] of TESTI) uguale(`testo cercato per "${q}"`, ss(q), atteso);
+    const PROMO = [
+      ['boo pal054', 'BOO||PAL|54'], ['boo pal 054', 'BOO||PAL|54'], ['mismagius boo pal054', 'BOO||PAL|54'], ['boo evs 076', 'BOO||EVS|76'],
+      ['pps twm130', 'PPS||TWM|130'], ['boo24 pal054', null],
+    ];
+    for (const [q, atteso] of PROMO) { const w = ctx._promoSenzaSerieDaQuery(ss(q)); uguale(`promo da "${q}"`, w ? [w.prefisso, w.anno, w.set, w.numero].join('|') : null, atteso); }
+    const LQ = [['heracross m6 001', 'giapponese'], ['heracross m6001', 'giapponese'], ['mew ex sv2a 151', 'giapponese'], ['pikachu CSV2C 001', 'cinese'],
+      ['mew 151C 151', 'cinese'], ['heracross DLR 001', null], ['pikachu 25', null], ['ditto pps6 132', null], ['lapras mcd19 5', null], ['porygon2 50', null]];
+    for (const [q, atteso] of LQ) uguale(`lingua dal codice scritto "${q}"`, ctx._linguaProdottoDaQuery(q), atteso);
+    const HERA = L('Storm-Emeralda/Heracross-m6001', 'Miracle-Journey/Heracross-CSV2C001', 'Delta-Reign/Heracross-DLR001').map(u => ({ urlSingles: u }));
+    uguale('scelta: carta IT ma codice giapponese scritto → resta la giapponese', ctx._opzioniPerLingua(HERA, 'IT', ctx._linguaProdottoDaQuery('heracross m6 001')).map(o => slug(o.urlSingles)), ['Heracross-m6001']);
+    const BOO_SI = [['mismagius boo 059', true], ['BOO24PAL054', true], ['boo23 sit 103', true], ['boo pal054', true], ['BOOEVS-076', true],
+      ['Pumpkaboo EVS 076', false], ['Booster Energy Capsule PAR 164', false], ['pumpkaboo 076', false], ['Bounsweet 12', false]];
+    for (const [t, atteso] of BOO_SI) uguale(`BOO solo inglese: "${t}" → ${atteso ? 'EN' : 'IT'}`, ctx.linguaPerCartaShared(t, 'IT'), atteso ? 'EN' : 'IT');
+
+    // giro: "boo pal054" → BOOPAL054 e BOO23PAL054 non trovano niente, BOO24PAL054 porta alla carta.
+    // Mai la PAL 054 normale, anche se "PAL054" su Cardmarket la trova.
+    const ric = (t) => `${CM}/it/Pokemon/Products/Search?searchMode=v2&searchString=${encodeURIComponent(t).replace(/%20/g, '+')}`;
+    const vuota = `<html><head><meta property="og:url" content="${CM}/it/Pokemon/Products/Search"><title>Risultati</title></head><body><h1>Risultati Di Ricerca</h1></body></html>`;
+    const B24 = B + 'Trick-or-Trade-2024/Cetitan-BOO24PAL-054';
+    const NORM = B + 'Paldea-Evolved/Cetitan-PAL054';
+    const prezzoRiga = `<div class="article-row"><div class="product-attributes"><span aria-label="Inglese"></span></div><div class="price-container"><span class="fw-bold">1,00 €</span></div><a class="btn btn-sm btn-primary" role="button"><span class="fonticon-cart"></span></a></div>`;
+    const pag24 = paginaCarta('Cetitan', 'BOO24 PAL 054', B24).replace('</body>', prezzoRiga + '<a id="account-dropdown">u</a></body>');
+    const mappa = {
+      [ric('BOOPAL054')]: vuota, [ric('BOO23PAL054')]: vuota, [ric('BOO24PAL054')]: pag24, [B24]: pag24,
+      [ric('PAL054')]: paginaCarta('Cetitan', 'PAL 054', NORM),
+    };
+    const chiesti = [];
+    const { ctx: c } = caricaBackground({ version: versione, accelera: 10, pagine: { [B24]: pag24 }, fetch: async (url) => { chiesti.push(url); return mappa[url] ? rispostaFinta(mappa[url]) : null; } });
+    const r = await c._leggiNomeDaCardmarket(c._urlRicercaAutonoma('boo pal054'), 'EN', 'NM', '', false, 0, null, null, null);
+    uguale('BOO: giro "boo pal054" → BOO24 PAL 054 al terzo anno, mai la PAL 054 normale',
+      [slug(r.urlSingles), chiesti.filter(u => u.includes('/Search?')).map(u => new URL(u).searchParams.get('searchString'))],
+      ['Cetitan-BOO24PAL-054', ['BOOPAL054', 'BOO23PAL054', 'BOO24PAL054']]);
   }
 
   // Lettura leggera: la ricerca porta direttamente alla pagina della carta.
