@@ -58,6 +58,7 @@ const _setUi = {
     classifica: false,
     msg: '',
     cerca: '',
+    lingua: 'tutte',
     token: 0
 };
 
@@ -134,14 +135,45 @@ function _setUiRigaHtml(v) {
         ? `<i class="fa-solid ${v.nascosto ? 'fa-eye' : 'fa-eye-slash'} set-riga-occhio" title="${v.nascosto ? 'Mostra' : 'Nascondi'}"></i>`
         : '';
     return `<div class="pg-riga-set set-riga${v.nascosto ? ' nascosto' : ''}" data-sigla="${_setUiAttr(v.sigla)}" onclick="_setUiClickRiga(this.dataset.sigla)">
-        <div class="pg-riga-set-testa"><b>${_setUiAttr(v.nome)}${v.nome !== v.sigla ? ` <small class="set-sigla">${_setUiAttr(v.sigla)}</small>` : ''}</b><span>${v.hai}/${v.totale} · ${perc}%${occhio}</span></div>
+        <div class="pg-riga-set-testa"><b>${_setUiAttr(v.nome)}${_setUiSiglaTesto(v.sigla, v.nome)}</b><span>${v.hai}/${v.totale} · ${perc}%${occhio}</span></div>
         <div class="pg-barra-track"><div class="pg-barra-fill" style="width:${perc}%"></div></div>
         <div class="set-riga-sub">${sub}</div>
     </div>`;
 }
 
+// Sigla da mostrare: senza "@LINGUA", con la lingua accanto per i set non internazionali (es. "SV2A · JP")
+function _setUiSiglaTesto(sigla, nome) {
+    const vis = _ballSiglaVisibile(sigla);
+    const lingua = _ballLinguaSet(sigla);
+    const testo = vis + (lingua !== 'INT' ? ' · ' + lingua : '');
+    return (nome !== vis || lingua !== 'INT') ? ` <small class="set-sigla">${_setUiAttr(testo)}</small>` : '';
+}
+
+// Filtro per lingua dei set: Tutte / Internazionali / Giapponesi / Coreane / Cinesi / Cinesi tradizionali
+function _setUiFiltraLingua(voci) {
+    if (_setUi.lingua === 'tutte') return voci;
+    return voci.filter(v => (v.lingua || 'INT') === _setUi.lingua);
+}
+
+function _setUiLingueHtml(voci) {
+    const conta = new Map();
+    voci.forEach(v => conta.set(v.lingua || 'INT', (conta.get(v.lingua || 'INT') || 0) + 1));
+    if (conta.size < 2) return '';
+    const ordine = ['INT', 'JP', 'KOR', 'CHN', 'CHN-T'].filter(l => conta.has(l));
+    const chip = (id, et) => `<span class="pg-filtro${_setUi.lingua === id ? ' attivo' : ''}" onclick="_setUiImpostaLingua('${id}')">${et}</span>`;
+    return `<div class="pg-filtri set-lingue">${chip('tutte', 'Tutte le lingue')}${ordine.map(l => chip(l, `${_BALL_ETICHETTE_LINGUA[l] || l} (${conta.get(l)})`)).join('')}</div>`;
+}
+
+function _setUiImpostaLingua(l) {
+    _setUi.lingua = l || 'tutte';
+    _setUiRender();
+}
+
 function _setUiRenderLista(container) {
-    const r = setMCalcolaTutti();
+    const r0 = setMCalcolaTutti();
+    const lingue = _setUiLingueHtml(r0.voci);
+    if (!lingue) _setUi.lingua = 'tutte';
+    const r = { ...r0, voci: _setUiFiltraLingua(r0.voci) };
     if (r.daCaricare.length) {
         setMCaricaRighe(r.daCaricare)
             .then(caricate => { if (caricate && !_setUi.dett) _setUiRender(); })
@@ -199,6 +231,7 @@ function _setUiRenderLista(container) {
             <div class="set-layout">
                 <div class="set-sx">
                     ${ricerca}
+                    ${lingue}
                     <div class="pg-filtri">${schede}</div>
                     <div class="set-ordine">${ordine}</div>
                     <div class="set-msg">${_setUiAttr(_setUi.msg)}</div>
@@ -227,7 +260,7 @@ function _setUiCerca(testo) {
     _setUi.cerca = testo || '';
     const el = document.getElementById('setElenco');
     if (!el) return;
-    const g = setMSuddividi(setMCalcolaTutti().voci);
+    const g = setMSuddividi(_setUiFiltraLingua(setMCalcolaTutti().voci));
     const scheda = _SET_SCHEDE.find(s => s.id === _setUi.tab) || _SET_SCHEDE[0];
     el.innerHTML = _setUiElencoHtml(g[scheda.chiave], scheda);
     _setUiSegnaSelezione();
@@ -323,7 +356,7 @@ async function _setUiRenderDettaglio(container, inline) {
 
     const intestazione = (azione) => inline ? `
         <div class="set-dett-testa">
-            <span class="set-dett-nome">${_setUiAttr(nome)}${nome !== sigla ? ' · ' + _setUiAttr(sigla) : ''}</span>
+            <span class="set-dett-nome">${_setUiAttr(nome)}${(() => { const vis = _ballSiglaVisibile(sigla); const l = _ballLinguaSet(sigla); return (nome !== vis ? ' · ' + _setUiAttr(vis) : '') + (l !== 'INT' ? ' · ' + _setUiAttr(_BALL_ETICHETTE_LINGUA[l] || l) : ''); })()}</span>
             ${azione || ''}
         </div>` : `
         <div class="page-header">

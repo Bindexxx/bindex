@@ -22,7 +22,8 @@ async function _ballCaricaLibreriaDaDb() {
             daDb[String(r.sigla).toUpperCase()] = {
                 nome: r.nome || r.sigla,
                 base: r.carte_base ?? null,
-                totale: r.carte_totali
+                totale: r.carte_totali,
+                lingua: r.lingua || 'INT'
             };
         });
         _ballLIBRERIA_SET = Object.assign({}, _ballLIBRERIA_SET, daDb);
@@ -65,6 +66,33 @@ const _ballALIAS_TESTA = {
 
 function _ballSetBaseConAlias(testa) {
     return _ballSetBase(_ballALIAS_TESTA[testa] || testa);
+}
+
+// Set in altre lingue (sql/131): sigla "CODICE@LINGUA" (es. "SV2A@JP", "SV2A@KOR", "CBB2C@CHN"),
+// perché lo stesso codice esiste in più lingue. Una carta va nel set della sua lingua; se manca,
+// in quello internazionale; se manca anche quello, nel primo set con quel codice in un'altra lingua.
+const _BALL_LINGUE_SET = { JP: 'JP', JA: 'JP', KOR: 'KOR', KO: 'KOR', CHN: 'CHN', 'CHN-S': 'CHN', 'CHN-T': 'CHN-T' };
+const _BALL_ETICHETTE_LINGUA = { INT: 'Internazionali', JP: 'Giapponesi', KOR: 'Coreane', CHN: 'Cinesi', 'CHN-T': 'Cinesi tradizionali' };
+
+function _ballSiglaPerLingua(set, linguaCarta) {
+    if (!set) return set;
+    const lib = _ballLIBRERIA_SET || {};
+    const l = _BALL_LINGUE_SET[String(linguaCarta || '').toUpperCase().trim()];
+    if (l && lib[set + '@' + l]) return set + '@' + l;
+    if (lib[set]) return set;
+    for (const alt of ['JP', 'KOR', 'CHN', 'CHN-T']) if (lib[set + '@' + alt]) return set + '@' + alt;
+    return set;
+}
+
+function _ballSiglaVisibile(sigla) {
+    return String(sigla || '').split('@')[0];
+}
+
+function _ballLinguaSet(sigla) {
+    const info = (_ballLIBRERIA_SET || {})[sigla];
+    if (info && info.lingua) return info.lingua;
+    const i = String(sigla || '').indexOf('@');
+    return i > 0 ? String(sigla).slice(i + 1) : 'INT';
 }
 
 function _ballLeggiCodice(codice) {
