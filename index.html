@@ -465,6 +465,7 @@
 
                             <div class="ins-piede">
                                 <span class="autosave-status" id="autosaveLabel"><i class="fa-solid fa-floppy-disk"></i> Bozza salvata automaticamente<span class="ins-solo-pc"> · Invio = riga sotto</span></span>
+                                <span class="ins-sel-riepilogo" id="insSelRiepilogo"></span>
                                 <button class="btn-main" id="btnSalvaCarte" onclick="salvaCarteReali()"><i class="fa-solid fa-paper-plane"></i> Salva</button>
                             </div>
                         </div>
@@ -479,7 +480,7 @@
                 <h3 style="margin-bottom: 0.3rem; color: var(--text-dark); display: flex; align-items: center; gap: 0.6rem; font-size: 1.15rem; font-weight: 800;">
                     <i class="fa-solid fa-triangle-exclamation" style="color: var(--danger);"></i> Carte con problemi
                 </h3>
-                <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 1rem;">L'estensione non è riuscita a trovarle su Cardmarket — correggi il nome e riprova, o elimina la richiesta.</p>
+                <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 1rem;">L'estensione non è riuscita a trovarle su Cardmarket: scegli la carta giusta, correggi il nome e riprova, o elimina la richiesta.</p>
                 <div id="listaCarteProblemi"></div>
             </div>
         </div>
@@ -2107,6 +2108,7 @@
     <script src="data/prices.repository.js"></script>
     <script src="data/preferences.repository.js"></script>
     <script src="data/sets.repository.js"></script>
+    <script src="data/catalogo.repository.js"></script>
     <script src="data/missioni.repository.js"></script>
     <script src="data/missioni-scrittura.repository.js"></script>
     <script src="data/storico-valore.repository.js"></script>
@@ -2123,6 +2125,7 @@
     <script src="ui/auth.ui.js"></script>
     <script src="ui/prices.ui.js"></script>
     <script src="ui/entry.ui.js"></script>
+    <script src="ui/selettore-carte.ui.js"></script>
     <script src="ui/cards.ui.js"></script>
     <script src="ui/cards-modifica.ui.js"></script>
     <script src="ui/cards-selezione.ui.js"></script>
