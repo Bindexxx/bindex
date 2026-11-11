@@ -1,0 +1,178 @@
+-- 134 — Catalogo: miniature di tutte le carte dei set normali, prese una volta da TCGdex (11/11/2026).
+-- Decisione di Claudio (11/11/2026): riempire una volta set_carte.immagine con le immagini di TCGdex;
+-- quando l'estensione vedrà la carta su Cardmarket le sostituirà con quella di Cardmarket.
+--
+-- Verificato l'11/11/2026:
+--   - sul DB: 168 set con carte, tutti con tcgdex_id; immagine piena solo in 1.514 righe (messe dalla
+--     132 dalla collezione): quelle NON si toccano (si scrive solo dove immagine è vuota);
+--   - su TCGdex: l'indirizzo dell'immagine è  assets.tcgdex.net/en/<serie>/<set>/<numero>/low.webp ;
+--     per ognuno dei 141 set qui sotto ho caricato davvero un'immagine (la carta n. 5) per sapere
+--     cartella e numero di cifre; il sito le mostra passando da images.weserv.nl, come le altre
+--     immagini esterne (provato: si caricano);
+--   - senza immagini su TCGdex, quindi fuori da questo file (27 set): tutti i McDonald's, i Trainer
+--     Kit, EXU, XYA, SVE, MEE, CEL-CC. Restano col riquadro vuoto.
+-- Sono le immagini inglesi (le uniche complete). Se per una carta TCGdex non ha l'immagine, il sito
+-- mostra il riquadro vuoto come oggi (l'immagine che non si carica viene tolta).
+--
+-- EFFETTO SUL WIDGET SET: la pagina di un set mostra l'immagine del catalogo quando c'è; dopo questo
+-- file si vedono le immagini di TUTTE le carte del set, anche di quelle che mancano.
+-- Cambia solo "immagine", solo dove è vuota. Rollback: 134_catalogo_miniature_tcgdex_ROLLBACK.sql.
+
+with mappa(sigla, percorso, cifre) as (values
+    ('BS', 'base/base1/', 0),
+    ('JU', 'base/base2/', 0),
+    ('WP', 'base/basep/', 0),
+    ('FO', 'base/base3/', 0),
+    ('RO', 'base/base5/', 0),
+    ('N1', 'neo/neo1/', 0),
+    ('N2', 'neo/neo2/', 0),
+    ('N3', 'neo/neo3/', 0),
+    ('N4', 'neo/neo4/', 0),
+    ('EX', 'ecard/ecard1/', 0),
+    ('AQ', 'ecard/ecard2/', 0),
+    ('SK', 'ecard/ecard3/', 0),
+    ('RS', 'ex/ex1/', 0),
+    ('SS', 'ex/ex2/', 0),
+    ('DR', 'ex/ex3/', 0),
+    ('MA', 'ex/ex4/', 0),
+    ('HL', 'ex/ex5/', 0),
+    ('RG', 'ex/ex6/', 0),
+    ('DX', 'ex/ex8/', 0),
+    ('EM', 'ex/ex9/', 0),
+    ('UF', 'ex/ex10/', 0),
+    ('DS', 'ex/ex11/', 0),
+    ('LM', 'ex/ex12/', 0),
+    ('HP', 'ex/ex13/', 0),
+    ('CG', 'ex/ex14/', 0),
+    ('DF', 'ex/ex15/', 0),
+    ('NP', 'pop/np/', 0),
+    ('P1', 'pop/pop1/', 0),
+    ('P2', 'pop/pop2/', 0),
+    ('P3', 'pop/pop3/', 0),
+    ('P4', 'pop/pop4/', 0),
+    ('P5', 'pop/pop5/', 0),
+    ('P7', 'pop/pop7/', 0),
+    ('P9', 'pop/pop9/', 0),
+    ('DP', 'dp/dp1/', 0),
+    ('MT', 'dp/dp2/', 0),
+    ('SW', 'dp/dp3/', 0),
+    ('GE', 'dp/dp4/', 0),
+    ('MD', 'dp/dp5/', 0),
+    ('LA', 'dp/dp6/', 0),
+    ('SF', 'dp/dp7/', 0),
+    ('DPP', 'dp/dpp/DP', 2),
+    ('PL', 'pl/pl1/', 0),
+    ('RR', 'pl/pl2/', 0),
+    ('AR', 'pl/pl4/', 0),
+    ('HS', 'hgss/hgss1/', 0),
+    ('UL', 'hgss/hgss2/', 0),
+    ('UND', 'hgss/hgss3/', 0),
+    ('TRI', 'hgss/hgss4/', 0),
+    ('HGSSP', 'hgss/hgssp/HGSS', 2),
+    ('COL', 'col/col1/', 0),
+    ('BLW', 'bw/bw1/', 0),
+    ('EP', 'bw/bw2/', 0),
+    ('NVI', 'bw/bw3/', 0),
+    ('NXD', 'bw/bw4/', 0),
+    ('DEX', 'bw/bw5/', 0),
+    ('DRX', 'bw/bw6/', 0),
+    ('DRV', 'bw/dv1/', 0),
+    ('BCR', 'bw/bw7/', 0),
+    ('PLS', 'bw/bw8/', 0),
+    ('PLF', 'bw/bw9/', 0),
+    ('PLB', 'bw/bw10/', 0),
+    ('XY', 'xy/xy1/', 0),
+    ('FLF', 'xy/xy2/', 0),
+    ('FFI', 'xy/xy3/', 0),
+    ('PHF', 'xy/xy4/', 0),
+    ('PRC', 'xy/xy5/', 0),
+    ('ROS', 'xy/xy6/', 0),
+    ('AOR', 'xy/xy7/', 0),
+    ('BKT', 'xy/xy8/', 0),
+    ('BKP', 'xy/xy9/', 0),
+    ('GEN', 'xy/g1/', 0),
+    ('FCO', 'xy/xy10/', 0),
+    ('STS', 'xy/xy11/', 0),
+    ('EVO', 'xy/xy12/', 0),
+    ('SMP', 'sm/smp/SM', 2),
+    ('SUM', 'sm/sm1/', 0),
+    ('GRI', 'sm/sm2/', 0),
+    ('BUS', 'sm/sm3/', 0),
+    ('SLG', 'sm/sm35/', 0),
+    ('CIN', 'sm/sm4/', 0),
+    ('UPR', 'sm/sm5/', 0),
+    ('FLI', 'sm/sm6/', 0),
+    ('CES', 'sm/sm7/', 0),
+    ('DRM', 'sm/sm75/', 0),
+    ('LOT', 'sm/sm8/', 0),
+    ('TEU', 'sm/sm9/', 0),
+    ('DET', 'sm/det1/', 0),
+    ('UNB', 'sm/sm10/', 0),
+    ('UNM', 'sm/sm11/', 0),
+    ('HIF', 'sm/sm115/', 0),
+    ('CEC', 'sm/sm12/', 0),
+    ('SWSHP', 'swsh/swshp/SWSH', 3),
+    ('SSH', 'swsh/swsh1/', 0),
+    ('RCL', 'swsh/swsh2/', 0),
+    ('DAA', 'swsh/swsh3/', 0),
+    ('CPA', 'swsh/swsh3.5/', 0),
+    ('VIV', 'swsh/swsh4/', 0),
+    ('SHF', 'swsh/swsh4.5/', 0),
+    ('BST', 'swsh/swsh5/', 0),
+    ('CRE', 'swsh/swsh6/', 0),
+    ('EVS', 'swsh/swsh7/', 0),
+    ('CEL', 'swsh/cel25/', 0),
+    ('FST', 'swsh/swsh8/', 0),
+    ('SHF-SV', 'swsh/swsh4.5/SV', 3),
+    ('BRS', 'swsh/swsh9/', 3),
+    ('ASR', 'swsh/swsh10/', 3),
+    ('PGO', 'swsh/swsh10.5/', 3),
+    ('LOR', 'swsh/swsh11/', 3),
+    ('SIT', 'swsh/swsh12/', 3),
+    ('CRZ', 'swsh/swsh12.5/', 3),
+    ('BRS-TG', 'swsh/swsh9/TG', 2),
+    ('ASR-TG', 'swsh/swsh10/TG', 2),
+    ('LOR-TG', 'swsh/swsh11/TG', 2),
+    ('SIT-TG', 'swsh/swsh12/TG', 2),
+    ('CRZ-GG', 'swsh/swsh12.5/GG', 2),
+    ('SVI', 'sv/sv01/', 3),
+    ('SVP', 'sv/svp/', 3),
+    ('PAL', 'sv/sv02/', 3),
+    ('OBF', 'sv/sv03/', 3),
+    ('MEW', 'sv/sv03.5/', 3),
+    ('PAR', 'sv/sv04/', 3),
+    ('PAF', 'sv/sv04.5/', 3),
+    ('TEF', 'sv/sv05/', 3),
+    ('TWM', 'sv/sv06/', 3),
+    ('SFA', 'sv/sv06.5/', 3),
+    ('SCR', 'sv/sv07/', 3),
+    ('SSP', 'sv/sv08/', 3),
+    ('PRE', 'sv/sv08.5/', 3),
+    ('JTG', 'sv/sv09/', 3),
+    ('DRI', 'sv/sv10/', 3),
+    ('BLK', 'sv/sv10.5b/', 3),
+    ('WHT', 'sv/sv10.5w/', 3),
+    ('MEG', 'me/me01/', 3),
+    ('MEP', 'me/mep/', 3),
+    ('PFL', 'me/me02/', 3),
+    ('ASC', 'me/me02.5/', 3),
+    ('POR', 'me/me03/', 3),
+    ('CRI', 'me/me04/', 3),
+    ('PBL', 'me/me05/', 3),
+    ('B2', 'tcgp/B2/', 3)
+)
+update public.set_carte s
+set immagine = 'https://assets.tcgdex.net/en/' || m.percorso
+               || case when length(s.numero::text) >= m.cifre then s.numero::text
+                       else lpad(s.numero::text, m.cifre, '0') end
+               || '/low.webp',
+    aggiornato_il = now()
+from mappa m
+where s.sigla = m.sigla and s.immagine is null;
+
+-- Controllo a occhio dopo l'esecuzione (non cambia niente):
+select count(*) filter (where immagine like 'https://assets.tcgdex.net/%') as righe_da_tcgdex,
+       count(*) filter (where immagine is not null and immagine not like 'https://assets.tcgdex.net/%') as righe_dalla_collezione,
+       count(*) filter (where immagine is null) as righe_senza_miniatura,
+       count(*) as righe_catalogo
+from public.set_carte;
