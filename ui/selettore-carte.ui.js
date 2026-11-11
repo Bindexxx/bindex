@@ -147,7 +147,8 @@ function _selCarta(r) {
         nome: r.nome || '', immagine: r.immagine || null, link,
         setNome: r.set_nome || siglaVista, lingua: r.lingua || 'INT',
         base: r.base !== false, versioni: r.versioni || 1, carteBase: r.carte_base ?? null,
-        versione: _selEtichettaVariante(r.variante),
+        // la stessa carta può esserci più volte (mazzi diversi dei WCD, holo e non holo delle PPS): V1, V2…
+        versione: _selEtichettaVariante(r.variante) || ((/-V(\d+)-[^/]*$/.exec(r.cardmarket_url || '') || [])[1] ? 'V' + /-V(\d+)-[^/]*$/.exec(r.cardmarket_url)[1] : ''),
         codice: r.codice || null,      // masterset promo: "PAL 050" in BOO24, "A42" in BA24
     };
 }

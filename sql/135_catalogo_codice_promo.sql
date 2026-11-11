@@ -16,7 +16,9 @@
 --        - il parametro p_serie (il set d'origine dentro un masterset promo: "PAL" in "boo pal 050");
 --        - il numero cercato anche in fondo al codice ("050" di "PAL 050"), perché nei set promo
 --          set_carte.numero è solo un progressivo;
---        - la colonna "codice" nella risposta.
+--        - la colonna "codice" nella risposta;
+--        - il nome cercato anche nell'indirizzo Cardmarket della carta, dove c'è il nome inglese
+--          (il catalogo ha un nome solo, spesso italiano: "Codaurlante" si trova anche con "scream tail").
 --      Cambiando parametri e colonne la funzione va tolta e ricreata: per questo c'è un DROP, dentro
 --      una transazione (non c'è un momento senza funzione). Il sito di oggi la chiama coi 6 parametri
 --      di prima e continua a funzionare: il settimo ha un valore predefinito.
@@ -65,6 +67,11 @@ as $function$
         select c.sigla, c.numero, c.variante, c.nome, c.immagine, c.cardmarket_id, c.cardmarket_url, c.codice,
                e.nome as set_nome, e.lingua, e.data_uscita, e.carte_base,
                translate(lower(coalesce(c.nome, '')), 'àáâäèéêëìíîïòóôöùúûü', 'aaaaeeeeiiiioooouuuu') as nome_norm,
+               -- nome + nome inglese preso dall'indirizzo Cardmarket ("Prime-Catcher-V1-WCD25157" → "prime catcher v1"):
+               -- così "prime catcher" trova anche la carta che nel catalogo ha il nome italiano
+               translate(lower(coalesce(c.nome, '') || ' ' || replace(regexp_replace(coalesce(split_part(c.cardmarket_url, '/', 9), ''),
+                         '-[A-Za-z0-9]*[0-9][A-Za-z0-9]*(-[0-9]+[A-Za-z]?)?$', ''), '-', ' ')),
+                         'àáâäèéêëìíîïòóôöùúûü', 'aaaaeeeeiiiioooouuuu') as cerca_norm,
                case c.variante when 'normale' then 0 when 'reverse' then 1 else 2 end as ord
         from public.set_carte c
         join public.set_espansioni e on e.sigla = c.sigla
@@ -84,7 +91,7 @@ as $function$
         from righe r
         cross join par
         where par.nome_norm is null
-           or r.nome_norm like all (par.modelli)
+           or r.cerca_norm like all (par.modelli)
     ),
     con_primo as (
         select f.*,

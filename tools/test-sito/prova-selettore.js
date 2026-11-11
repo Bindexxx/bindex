@@ -91,6 +91,7 @@ const S = sandbox._prova;
   const carta = (o) => S._selCarta({ sigla: 'SVI', numero: 54, variante: 'normale', nome: 'Quaquaval', immagine: null, cardmarket_id: null, cardmarket_url: null, set_nome: 'Scarlatto e Violetto', lingua: 'INT', data_uscita: '2023-03-31', carte_base: 198, base: true, versioni: 2, ...o });
   uguale('set dal 2021: numero a tre cifre', [S._selCodiceVisibile(carta({})), S._selTestoCoda(carta({}))], ['SVI · 054/198', 'Quaquaval SVI 054']);
   uguale('set vecchio: numero com\'è', S._selTestoCoda(carta({ sigla: 'HS', numero: 72, nome: 'Magikarp', data_uscita: '2010-02-10' })), 'Magikarp HS 72');
+  uguale('versione dalla pagina Cardmarket (stessa carta in più mazzi)', [carta({ cardmarket_url: 'https://www.cardmarket.com/it/Pokemon/Products/Singles/WCD-2025/Prime-Catcher-V2-WCD25157', codice: '157', sigla: 'WCD25' }).versione, carta({ cardmarket_url: 'https://www.cardmarket.com/it/Pokemon/Products/Singles/Scarlet-Violet/Quaquaval-SVI054' }).versione, carta({ variante: 'reverse-pokeball', cardmarket_url: 'https://www.cardmarket.com/it/Pokemon/Products/Singles/X/Sylveon-V1-xPRE040' }).versione], ['V2', '', 'Poké Ball']);
   uguale('McDonald: mai tre cifre', S._selTestoCoda(carta({ sigla: 'MCD22', numero: 8, nome: 'Chinchou', data_uscita: '2022-08-01' })), 'Chinchou MCD22 8');
   uguale('set in altra lingua: sigla senza @', S._selTestoCoda(carta({ sigla: 'SV2A@JP', numero: 25, nome: 'Pikachu', data_uscita: '2023-06-16', lingua: 'JP' })), 'Pikachu SV2A 025');
   uguale('link: pagina salvata', carta({ cardmarket_url: 'https://www.cardmarket.com/it/Pokemon/Products/Singles/Scarlet-Violet/Quaquaval-V4-SVI054', cardmarket_id: 5 }).link, 'https://www.cardmarket.com/it/Pokemon/Products/Singles/Scarlet-Violet/Quaquaval-V4-SVI054');
@@ -144,7 +145,8 @@ const S = sandbox._prova;
   const promo = (c) => { const l = L._ballLeggiCodice(c); return l && l.promo ? l.promo.set + '|' + l.promo.codice : null; };
   uguale('carte promo: masterset e chiave', ['BOO24 PAL 012', 'BOO ASR 103', 'PPS6 SFA 063', 'PPS8 MEE 006', 'WCD16 BKP 39', 'WCD25 086', 'BA24 A19', 'BA20 C42'].map(promo),
     ['BOO24|PAL12', 'BOO|ASR103', 'PPS6|SFA63', 'PPS8|MEE6', 'WCD16|BKP39', 'WCD25|86', 'BA24|A19', 'BA20|C42']);
-  uguale('non promo', ['PAL 050', 'BASEP 4', 'MCD22 8', 'xPRE 040', 'BA22 EVE', 'PUMPKABOO 5'].map(promo), [null, null, null, null, null, null]);
+  uguale('non promo', ['PAL 050', 'BASEP 4', 'MCD22 8', 'xPRE 040', 'BA22 EVE', 'PUMPKABOO 5', 'MFB', 'PPS'].map(promo), [null, null, null, null, null, null, null, null]);
+  uguale('carte promo senza numero (energie): solo il masterset', ['WCD25', 'BA22', 'PPS8', 'BOO', 'BOO24'].map(promo), ['WCD25|', 'BA22|', 'PPS8|', 'BOO|', 'BOO24|']);
   uguale('i campi di prima restano (rarità e missioni li usano)', L._ballLeggiCodice('BOO24 PAL 012'), { set: 'PAL', variante: 'halloween', numero: 12, promo: { set: 'BOO24', codice: 'PAL12' } });
   uguale('chiave del codice del catalogo', ['PAL 012', 'ASR 103', 'A42', '086', '8', 'BKP 039', 'SFA-063', '100'].map(L._ballChiaveCodice), ['PAL12', 'ASR103', 'A42', '86', '8', 'BKP39', 'SFA63', '100']);
 

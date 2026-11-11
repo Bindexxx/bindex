@@ -20,7 +20,7 @@ const _setM = {
     tentato: false,
     conteggi: new Map(),
     righe: new Map(),
-    codici: new Map(),          // sigla → (chiave del codice → numero), per i masterset promo
+    codici: new Map(),          // masterset promo: sigla → { pagine: pagina Cardmarket → numero, codici: chiave del codice → numero }
     righeInCaricamento: new Set(),
     righeErroreTs: 0,
     baseTentativoTs: 0,
@@ -71,11 +71,21 @@ function setMVariantiPossedute(letto, c) {
     return [c && c.reverseHolo ? 'reverse' : 'normale'];
 }
 
-// Numero di catalogo di una carta di un masterset promo, dal suo codice ("PAL12", "A42").
-function _setMNumeroDaCodice(sigla, chiave) {
-    const mappa = _setM.codici.get(sigla);
-    if (!mappa) return null;
-    const n = mappa.get(chiave);
+// "…/Singles/WCD-2025/Prime-Catcher-V1-WCD25157?language=5" → "prime-catcher-v1-wcd25157"
+function _setMPagina(link) {
+    const m = /\/Products\/Singles\/[^/?#]+\/([^/?#]+)/.exec(String(link || ''));
+    return m ? m[1].toLowerCase() : '';
+}
+
+// Numero di catalogo di una tua carta in un masterset promo. Prima dalla pagina Cardmarket (la
+// stessa carta può esserci in più versioni col medesimo codice: i mazzi dei WCD, le holo delle PPS),
+// poi dal codice ("PAL12", "A42") se nel set ce n'è una sola con quel codice.
+function _setMNumeroPromo(sigla, chiave, link) {
+    const p = _setM.codici.get(sigla);
+    if (!p) return null;
+    const pagina = _setMPagina(link);
+    if (pagina && p.pagine.has(pagina)) return p.pagine.get(pagina);
+    const n = p.codici.get(chiave);
     return n == null ? null : n;
 }
 
@@ -95,7 +105,7 @@ function setMPossedute() {
         if (!s) { s = { numeri: new Map(), carte: 0, senzaNumero: 0 }; per.set(sigla, s); }
         s.carte++;
         // per un set promo il numero c'è solo dopo che le sue righe sono state caricate
-        const numero = promo ? _setMNumeroDaCodice(sigla, promo.codice) : letto.numero;
+        const numero = promo ? _setMNumeroPromo(sigla, promo.codice, c.link) : letto.numero;
         if (numero == null) { s.senzaNumero++; return; }
         let v = s.numeri.get(numero);
         if (!v) { v = new Map(); s.numeri.set(numero, v); }
@@ -312,7 +322,8 @@ async function setMCaricaRighe(sigle) {
                 rarita: r.rarita || '',
                 immagine: r.immagine || '',
                 cardmarketId: r.cardmarket_id != null ? Number(r.cardmarket_id) : null,
-                codice: r.codice || ''
+                codice: r.codice || '',
+                pagina: r.codice != null || /^(?:BOO|PPS|WCD|BA)\d*$/.test(sigla) ? _setMPagina(r.cardmarket_url) : ''
             });
         });
         gruppi.forEach((righe, sigla) => {
@@ -320,8 +331,16 @@ async function setMCaricaRighe(sigle) {
                 || _setMOrdineVariante(a.variante) - _setMOrdineVariante(b.variante)
                 || a.variante.localeCompare(b.variante));
             _setM.righe.set(sigla, righe);
-            const conCodice = righe.filter(r => r.codice);
-            if (conCodice.length) _setM.codici.set(sigla, new Map(conCodice.map(r => [_ballChiaveCodice(r.codice), r.numero])));
+            if (righe.some(r => r.codice)) {
+                // un codice usato da più carte del set (WCD25 "086") non basta a riconoscerla: resta fuori
+                const perCodice = new Map();
+                righe.forEach(r => { if (!r.codice) return; const k = _ballChiaveCodice(r.codice); perCodice.set(k, perCodice.has(k) ? null : r.numero); });
+                perCodice.forEach((n, k) => { if (n == null) perCodice.delete(k); });
+                _setM.codici.set(sigla, {
+                    pagine: new Map(righe.filter(r => r.pagina).map(r => [r.pagina, r.numero])),
+                    codici: perCodice
+                });
+            }
         });
         _setM.righeErroreTs = 0;
         return true;

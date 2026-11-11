@@ -101,7 +101,16 @@ function _ballLinguaSet(sigla) {
 function _ballPromo(testa, numero) {
     const m = testa.match(/^(BOO\d{0,2}|PPS\d{1,2}|WCD\d{2}|BA\d{2})(?:-(.+))?$/);
     if (!m) return null;
+    // le BOO hanno sempre il set d'origine nel codice: "BOO24" da solo è il set, non la carta n. 24 di BOO
+    if (!m[2] && m[1].startsWith('BOO')) return null;
     return { set: m[1], codice: (m[2] || '').replace(/-/g, '') + String(numero) };
+}
+
+// Una carta senza numero (le energie dei mazzi) ha come codice solo la sigla del set: "WCD25", "BA22".
+// Nel masterset si riconosce dalla sua pagina Cardmarket.
+function _ballPromoSenzaNumero(t) {
+    const m = t.replace(/[\s\-_]/g, '').match(/^(BOO\d{0,2}|PPS\d{1,2}|WCD\d{2}|BA\d{2})$/);
+    return m ? { set: m[1], codice: '' } : null;
 }
 
 // "PAL 050" → "PAL50", "A42" → "A42", "086" → "86": stessa chiave per il catalogo e per le tue carte.
@@ -119,14 +128,15 @@ function _ballLeggiCodice(codice) {
         if (testa && /[A-Z]/.test(testa)) {
             const b = _ballSetBaseConAlias(testa);
             const numero = parseInt(m[2], 10);
-            const promo = _ballPromo(testa, numero);
+            const promo = _ballPromo(testa, numero) || _ballPromoSenzaNumero(t);
             return { set: b.set, variante: b.variante, numero, ...(promo ? { promo } : {}) };
         }
     }
 
     if (/^[A-Z][A-Z\-]{0,7}$/.test(t)) {
         const b = _ballSetBaseConAlias(t);
-        return { set: b.set, variante: b.variante, numero: null };
+        const promo = _ballPromoSenzaNumero(t);
+        return { set: b.set, variante: b.variante, numero: null, ...(promo ? { promo } : {}) };
     }
     return null;
 }
