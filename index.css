@@ -6834,3 +6834,110 @@ textarea.avviso-campo { resize: vertical; font-size: 0.8rem; line-height: 1.4; f
 #wishlist .wl-pagina { max-width: 1600px; }
 #impostazioni { max-width: 1240px; }
 #location .pg-pagina { max-width: none !important; }
+
+/* ── Selettore carte: suggerimenti dal catalogo, carta bloccata, Indovino la tua carta ── */
+.sel-mini { position: relative; display: block; flex: 0 0 auto; width: 56px; aspect-ratio: 63 / 88; border-radius: 6px; overflow: hidden; background: var(--border-color); border: 1px solid var(--border-color); }
+.sel-mini img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.sel-mini-vuota { position: absolute; inset: 0; display: flex; flex-direction: column; gap: 8%; padding: 10%; box-sizing: border-box; }
+.sel-mini-vuota i { display: block; height: 7%; width: 70%; border-radius: 2px; background: var(--card-bg); opacity: .8; }
+.sel-mini-vuota b { display: block; flex: 1; border-radius: 3px; background: var(--card-bg); opacity: .55; }
+.sel-mini img + .sel-mini-vuota { display: none; }
+.sel-griglia { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; }
+.sel-carta { display: flex; gap: 10px; align-items: flex-start; text-align: left; padding: 9px; min-height: 44px; border-radius: 12px; border: 1px solid var(--border-color); background: var(--card-bg); color: var(--text-dark); font-family: inherit; cursor: pointer; }
+.sel-carta:hover, .sel-carta:focus-visible { border-color: var(--primary); }
+.sel-carta.sel-top { border: 2px solid var(--primary); padding: 8px; }
+.sel-carta.sel-scelta { border: 2px solid var(--primary); padding: 8px; box-shadow: 0 0 0 4px var(--primary-light); }
+.sel-testo { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.sel-testo b { font-size: 0.9rem; font-weight: 800; overflow-wrap: anywhere; }
+.sel-cod { font-size: 0.82rem; font-weight: 700; }
+.sel-set { font-size: 0.76rem; font-weight: 700; color: var(--primary-text, var(--primary)); }
+.sel-versione, .sel-nolink { font-size: 0.72rem; color: var(--text-muted); }
+.sel-altre { font-size: 0.76rem; color: var(--text-muted); }
+
+#inserimento .ins-sugg { display: flex; flex-direction: column; gap: 10px; padding: 12px 14px; border-radius: 14px; border: 1px solid var(--border-color); background: var(--bg-color); }
+#inserimento .ins-sugg-testa { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 0.8rem; color: var(--text-muted); }
+#inserimento .ins-sugg-testa b { color: var(--text-dark); }
+#inserimento .ins-sugg-azioni { display: flex; align-items: center; gap: 6px; margin-left: auto; }
+#inserimento .sel-aiuto { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 8px 12px; border: 0; border-radius: 10px; background: var(--primary-light); color: var(--primary-text, var(--primary)); font-family: inherit; font-size: 0.8rem; font-weight: 800; cursor: pointer; }
+#inserimento .sel-chiudi { width: 40px; height: 40px; border: 0; border-radius: 10px; background: transparent; color: var(--text-muted); cursor: pointer; }
+#inserimento .ins-scelta:empty { display: none; }
+#inserimento .ins-scelta button { margin-top: 3px; padding: 2px 0; border: 0; background: none; color: var(--primary-text, var(--primary)); font-family: inherit; font-size: 0.76rem; font-weight: 800; cursor: pointer; text-align: left; }
+#inserimento tr.ins-bloccata .ins-td-nome > input { display: none; }
+#inserimento .ins-blocco { display: flex; align-items: center; gap: 10px; padding: 7px 9px; border-radius: 12px; border: 1.5px solid var(--primary); background: var(--primary-light); }
+#inserimento .ins-blocco .sel-mini { width: 40px; }
+#inserimento tr.ins-bloccata-sola .ins-blocco { border-color: var(--success); background: rgba(46, 125, 50, 0.09); }
+#inserimento tr.ins-bloccata-sola .ins-blocco .sel-mini { width: 56px; }
+#inserimento .ins-blocco-testo { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+#inserimento .ins-blocco-nome { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 0.92rem; }
+#inserimento .ins-blocco-nome i { font-size: 0.72rem; color: var(--primary-text, var(--primary)); }
+#inserimento tr.ins-bloccata-sola .ins-blocco-nome i { color: var(--success); }
+#inserimento .ins-blocco-pill { padding: 1px 8px; border-radius: 999px; background: var(--success); color: #fff; font-size: 0.68rem; font-weight: 800; }
+#inserimento .ins-blocco-cod { display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; font-size: 0.76rem; }
+#inserimento .ins-blocco-cod span { padding: 1px 8px; border-radius: 999px; border: 1px solid var(--border-color); background: var(--card-bg); font-weight: 700; white-space: nowrap; }
+#inserimento .ins-blocco-cod em { font-style: normal; font-weight: 700; color: var(--primary-text, var(--primary)); }
+#inserimento .ins-blocco-nota { font-size: 0.72rem; color: var(--text-muted); }
+#inserimento .ins-blocco-cambia { flex: 0 0 auto; min-height: 40px; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--border-color); background: var(--card-bg); color: var(--primary-text, var(--primary)); font-family: inherit; font-size: 0.76rem; font-weight: 800; cursor: pointer; }
+#inserimento .ins-sel-riepilogo { flex: 1 1 auto; text-align: right; font-size: 0.78rem; color: var(--text-muted); }
+#inserimento .ins-sel-riepilogo:empty { display: none; }
+#inserimento .ins-sel-riepilogo b { color: var(--text-dark); }
+@container (max-width: 979px) {
+    #inserimento tbody tr.ins-sugg-riga { display: block; margin: -4px 0 10px; padding: 0; border: 0; background: none; }
+    #inserimento tbody tr.ins-sugg-riga td.ins-sugg-td { display: block !important; }
+    #inserimento .ins-sugg .sel-griglia { display: flex; overflow-x: auto; padding-bottom: 4px; }
+    #inserimento .ins-sugg .sel-carta { flex: 0 0 132px; flex-direction: column; }
+    #inserimento .ins-sugg .sel-mini { width: 100%; }
+    #inserimento tbody tr.ins-bloccata .ins-td-nome { flex-basis: 100%; }
+    #inserimento .ins-blocco { flex-wrap: wrap; }
+    #inserimento .ins-blocco-testo { flex: 1 1 60%; }
+    #inserimento .ins-blocco-cambia { flex: 1 1 100%; }
+    /* mentre scegli tra i suggerimenti la riga resta chiusa: le carte stanno subito sotto il nome */
+    #inserimento tbody tr.ins-con-pannello td:not(.ins-td-nome):not(.ins-td-qty) { display: none !important; }
+    #inserimento tbody tr.ins-con-pannello { margin-bottom: 6px; }
+    #inserimento .ins-piede:has(.ins-sel-riepilogo:not(:empty)) .autosave-status { display: none; }
+    #inserimento .ins-sel-riepilogo { text-align: left; }
+}
+@container (min-width: 980px) {
+    /* la cella della quantità era un flex anche su PC: con le righe alte (carta bloccata) il suo bordo restava a metà */
+    #inserimento tbody tr td.ins-td-qty { display: table-cell !important; }
+    #inserimento tbody tr.ins-con-pannello td { border-bottom-color: transparent; }
+    #inserimento tbody tr.ins-sugg-riga td.ins-sugg-td { padding: 0 10px 12px !important; }
+    #inserimento .ins-td-nome .ins-blocco { min-width: 300px; }
+}
+
+#inserimento .prob-scelta { width: 100%; margin-top: 0.4rem; display: flex; flex-direction: column; gap: 0.4rem; }
+#inserimento .prob-scelta-titolo { font-size: 0.74rem; font-weight: 800; color: var(--text-muted); }
+#inserimento .prob-griglia { max-height: 420px; overflow-y: auto; padding: 2px; }
+#inserimento .prob-opzione { display: flex; align-items: stretch; gap: 4px; }
+#inserimento .prob-opzione .sel-carta { flex: 1; min-width: 0; }
+#inserimento .prob-apri { flex: 0 0 auto; display: flex; align-items: center; margin: 0; padding: 0 0.7rem; }
+#inserimento .prob-nessuna { align-items: center; border-style: dashed; background: var(--bg-color); }
+#inserimento .prob-nessuna > i { font-size: 1.3rem; color: var(--primary-text, var(--primary)); }
+
+/* la barra in alto e il bottone in basso stanno sopra a tutto: la schermata parte sotto la barra */
+.sel-ind-overlay { z-index: 1100; align-items: flex-start; overflow-y: auto; padding: 72px 0 84px; box-sizing: border-box; }
+.sel-ind { position: relative; box-sizing: border-box; width: min(1080px, calc(100% - 24px)); margin: 0 auto; padding: 22px; border-radius: 20px; border: 1px solid var(--border-color); background: var(--card-bg); color: var(--text-dark); box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2); text-align: left; }
+.sel-ind h3 { margin: 0 40px 4px 0; font-size: 1.3rem; font-weight: 800; }
+.sel-ind-sotto { margin: 0 0 16px; font-size: 0.88rem; color: var(--text-muted); }
+.sel-ind-corpo { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 18px; }
+.sel-ind-modulo { flex: 1 1 300px; max-width: 400px; display: flex; flex-direction: column; gap: 6px; }
+.sel-ind-modulo label, .sel-ind-etichetta { margin-top: 8px; font-size: 0.8rem; font-weight: 800; }
+.sel-ind-modulo small { font-weight: 500; color: var(--text-muted); }
+.sel-ind-modulo input, .sel-ind-modulo select { box-sizing: border-box; width: 100%; min-height: 44px; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--border-color); background: var(--card-bg); color: var(--text-dark); font-family: inherit; font-size: 0.95rem; }
+.sel-ind-numero { display: flex; align-items: center; gap: 8px; color: var(--text-muted); }
+.sel-ind-numero input:first-child { flex: 0 0 96px; }
+.sel-ind-chip { display: flex; flex-wrap: wrap; gap: 6px; }
+.sel-ind-chip button { min-height: 40px; padding: 8px 12px; border-radius: 999px; border: 1px solid var(--border-color); background: var(--card-bg); color: var(--text-dark); font-family: inherit; font-size: 0.82rem; font-weight: 700; cursor: pointer; }
+.sel-ind-chip button.attivo { border-color: var(--primary); background: var(--primary); color: var(--on-primary, #fff); }
+.sel-ind-aiuto { font-size: 0.76rem; color: var(--text-muted); }
+.sel-ind-ba { display: flex; flex-direction: column; gap: 6px; padding: 4px 12px 12px; border-radius: 12px; border: 1px solid var(--border-color); background: var(--bg-color); }
+.sel-ind-risultati { flex: 999 1 420px; min-width: 0; display: flex; flex-direction: column; gap: 12px; }
+.sel-ind-testa { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
+.sel-ind-testa b { font-size: 1.02rem; }
+.sel-ind-testa span { font-size: 0.82rem; color: var(--text-muted); }
+.sel-ind-usa-testo { margin: 6px 0 0; }
+.sel-griglia-grande { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+.sel-griglia-grande .sel-carta { flex-direction: column; }
+.sel-griglia-grande .sel-mini { width: 100%; }
+.sel-ind-conferma { position: sticky; bottom: 0; display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; padding: 10px 12px; border-radius: 14px; border: 2px solid var(--primary); background: var(--card-bg); font-size: 0.88rem; }
+.sel-ind-conferma .btn-main { margin: 0; }
+.sel-ind-nota { padding: 10px 12px; border-radius: 12px; border: 1px dashed var(--border-color); font-size: 0.78rem; color: var(--text-muted); }

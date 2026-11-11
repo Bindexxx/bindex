@@ -62,7 +62,15 @@ async function caricaSelectLocationComune() {
                 destinazione,
                 qty,
                 ...(tipo ? { tipo } : {}),
+                // carta scelta dal catalogo (ui/selettore-carte.ui.js): va in coda col link diretto
+                ...(row.blocco && row.blocco.link ? { url_diretto: row.blocco.link } : {}),
             }];
+        }
+
+        // La carta bloccata su una riga (scelta dal catalogo), o null.
+        function _insBloccoRiga(tr) {
+            if (!tr || !tr.dataset.blocco) return null;
+            try { return JSON.parse(tr.dataset.blocco); } catch (_) { return null; }
         }
 
         function impostaDestinazioneInserimento(dest) {
@@ -125,7 +133,8 @@ async function caricaSelectLocationComune() {
                     sig: tr.querySelector('td:nth-child(6) input').checked,
                     qty: tr.querySelector('.qty-input').value,
                     loc: tr.querySelector('td:nth-child(8) select').value,
-                    notes: tr.querySelector('td:nth-child(9) input').value
+                    notes: tr.querySelector('td:nth-child(9) input').value,
+                    blocco: _insBloccoRiga(tr)
                 });
             });
 
@@ -228,7 +237,8 @@ async function caricaSelectLocationComune() {
                         sig: tr.querySelector('td:nth-child(6) input').checked,
                         qty: tr.querySelector('.qty-input').value,
                         loc: tr.querySelector('td:nth-child(8) select').value,
-                        notes: tr.querySelector('td:nth-child(9) input').value
+                        notes: tr.querySelector('td:nth-child(9) input').value,
+                        ...(_insBloccoRiga(tr) ? { blocco: _insBloccoRiga(tr) } : {})
                     });
                 }
             });
@@ -292,9 +302,10 @@ async function caricaSelectLocationComune() {
 
             tr.innerHTML = `
                 <td data-label="Nome/Codice" class="ins-td-nome">
-                    <input type="text" placeholder="+ Scrivi nome o codice..." value="${escapeHtml(nameVal)}" oninput="handleEntryInput(this)" onkeydown="handleEntryCodiceKeydown(event, this)">
+                    <input type="text" placeholder="+ Scrivi nome o codice..." value="${escapeHtml(nameVal)}" autocomplete="off" oninput="handleEntryInput(this)" onkeydown="handleEntryCodiceKeydown(event, this)" onfocus="if (typeof selEntraCampo === 'function') selEntraCampo(this)" onclick="if (typeof selEntraCampo === 'function') selEntraCampo(this)" onblur="if (typeof selLasciaCampo === 'function') selLasciaCampo(this)">
                     <div class="ins-sommario"></div>
                     <div class="ins-gia"></div>
+                    <div class="ins-scelta"></div>
                 </td>
                 <td data-label="Lingua" class="ins-td-sel"><select onchange="handleEntryInput(this)">${opz(_INS_LINGUE, langVal)}</select></td>
                 <td data-label="Cond." class="ins-td-sel"><select onchange="handleEntryInput(this)">${opz(_INS_CONDIZIONI, condVal)}</select></td>
@@ -317,6 +328,7 @@ async function caricaSelectLocationComune() {
             `;
 
             tbody.appendChild(tr);
+            if (data && data.blocco && typeof selMostraBlocco === 'function') selMostraBlocco(tr, data.blocco);
             _insSommario(tr);
         }
 
@@ -390,11 +402,12 @@ async function caricaSelectLocationComune() {
             const cosa = sealed ? `${n} prodott${n === 1 ? 'o' : 'i'}` : `${n} cart${n === 1 ? 'a' : 'e'}`;
             const ico = _destinazioneInserimento === 'wishlist' ? 'fa-bookmark' : 'fa-paper-plane';
             btn.innerHTML = `<i class="fa-solid ${ico}"></i> ${n ? `Salva ${cosa}` : 'Salva'}${_destinazioneInserimento === 'wishlist' ? ' in Wishlist' : ''}`;
+            if (typeof selRiepilogo === 'function') selRiepilogo();
         }
 
         document.addEventListener('focusin', (e) => {
             const tr = e.target.closest && e.target.closest('#entryTableBody tr');
-            if (!tr || tr.classList.contains('aperta')) return;
+            if (!tr || tr.classList.contains('aperta') || tr.classList.contains('ins-sugg-riga')) return;
             if (e.target.closest('.ins-apri')) return;
             document.querySelectorAll('#entryTableBody tr.aperta').forEach(r => r.classList.remove('aperta'));
             tr.classList.add('aperta');
@@ -489,17 +502,24 @@ async function caricaSelectLocationComune() {
             const tbody = document.getElementById('entryTableBody');
             _insLinguaPerBoo(row, element);
             _insSommario(row);
-            if (row === tbody.lastElementChild && row.querySelector('td:nth-child(1) input').value.trim()) {
+            const righeVere = tbody.querySelectorAll('tr:not(.ins-sugg-riga)');
+            if (row === righeVere[righeVere.length - 1] && row.querySelector('td:nth-child(1) input').value.trim()) {
                 addNewEntryRow();
             }
             saveEntryDraft();
+            // suggerimenti dal catalogo (ui/selettore-carte.ui.js)
+            if (typeof selAlScrivere === 'function') {
+                if (element.matches('.ins-td-nome input')) selAlScrivere(element);
+                else if (element.matches('td:nth-child(2) select')) selAlCambioLingua(row);
+            }
         }
 
         function handleEntryCodiceKeydown(e, input) {
             if (e.key !== 'Enter') return;
             e.preventDefault();
             const tr = input.closest('tr');
-            const nextRow = tr.nextElementSibling;
+            let nextRow = tr.nextElementSibling;
+            if (nextRow && nextRow.classList.contains('ins-sugg-riga')) nextRow = nextRow.nextElementSibling;
             if (nextRow) {
                 const nextInput = nextRow.querySelector('input[type="text"]');
                 if (nextInput) nextInput.focus();
@@ -508,13 +528,23 @@ async function caricaSelectLocationComune() {
 
         function removeEntryRow(btn) {
             const tbody = document.getElementById('entryTableBody');
-            if (tbody.children.length > 1) {
-                btn.closest('tr').remove();
+            const tr = btn.closest('tr');
+            if (tr.nextElementSibling && tr.nextElementSibling.classList.contains('ins-sugg-riga')) tr.nextElementSibling.remove();
+            if (tbody.querySelectorAll('tr:not(.ins-sugg-riga)').length > 1) {
+                tr.remove();
             } else {
                 const inputs = tbody.querySelectorAll('input[type="text"]');
                 inputs.forEach(i => i.value = '');
+                if (tr.dataset.blocco) {
+                    delete tr.dataset.blocco;
+                    tr.classList.remove('ins-bloccata', 'ins-bloccata-sola');
+                    tr.querySelector('.ins-blocco')?.remove();
+                }
+                tr._selEsito = null;
+                _insSommario(tr);
             }
             saveEntryDraft();
+            if (typeof selRiepilogo === 'function') selRiepilogo();
         }
 
         const INTEGRITA_PACKAGING_OPZIONI = [

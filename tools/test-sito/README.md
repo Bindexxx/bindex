@@ -9,7 +9,7 @@ pubblicati (`tools/` è escluso da `versiona_file.py`).
 ```
 cd tools/test-sito
 npm install
-npm test                       # prova-statica.js + prova-pagine.js
+npm test                       # prova-statica.js + prova-selettore.js + prova-pagine.js
 node prova-statica.js          # solo le prove senza browser
 ```
 
@@ -22,6 +22,7 @@ non è installato qui, `CHROME_PATH` = un altro Chrome.
 | File | Cosa prova |
 |---|---|
 | `prova-statica.js` | Per ognuna delle 6 pagine, sugli script nell'ordine di caricamento vero: ogni `<script src>` locale esiste e si legge; nessun nome di primo livello dichiarato in due script (`let`/`const`/`class` doppi bloccano tutta la pagina, una funzione ridefinita vince in silenzio); `supabaseClient` usato solo in `config/` e `data/`; le funzioni chiamate negli attributi `on…="…"`, sia nell'HTML sia nei testi generati dagli script, esistono. |
+| `prova-selettore.js` | Il selettore carte dell'Inserimento (`ui/selettore-carte.ui.js`) senza browser: come legge quello che scrivi ("jigglypuff 8", "svi 054", "PAL054", "zubat trainer kit 11", "mew 8"), che ricerca manda al catalogo, i testi e i link delle carte, quando una riga si blocca da sola. La funzione SQL `catalogo_cerca` (sql/132) si prova a parte in PGlite. |
 | `prova-pagine.js` | Le 6 pagine aperte in Chromium da un server locale con Supabase finto (nessuna sessione, tabelle vuote): nessun errore JavaScript, nessun `console.error` (a parte le risorse di rete bloccate apposta), la pagina mostra qualcosa. |
 | `lib/pagine.js` | Elenco delle pagine e dei loro script in ordine (`vendor/` e script esterni esclusi dalle prove sui nomi). |
 | `lib/verifica.js` | Registro OK / FALLITO (copia di quello delle prove dell'estensione). |
