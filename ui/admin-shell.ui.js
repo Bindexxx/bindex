@@ -69,6 +69,7 @@ async function controllaRuoloEAvvia() {
   caricaUtenti();
   caricaLogAdmin();
   if (typeof caricaWip === 'function') caricaWip();
+  if (typeof caricaCatalogoAdmin === 'function') caricaCatalogoAdmin();
   if (typeof caricaShopAdmin === 'function') caricaShopAdmin();
 }
 
