@@ -298,6 +298,7 @@
     <button class="tab-btn active" data-tab="richieste"><span class="tab-ico">📋</span><span class="tab-lbl">Da approvare</span> <span class="tab-count zero" id="count-richieste">0</span></button>
     <button class="tab-btn" data-tab="utenti"><span class="tab-ico">👥</span><span class="tab-lbl">Utenti</span></button>
     <button class="tab-btn" data-tab="shop"><span class="tab-ico">🛍️</span><span class="tab-lbl">Shop</span></button>
+    <button class="tab-btn" data-tab="catalogo"><span class="tab-ico">🗂️</span><span class="tab-lbl">Catalogo</span> <span class="tab-count zero" id="count-catalogo">0</span></button>
     <button class="tab-btn" data-tab="wip"><span class="tab-ico">🚧</span><span class="tab-lbl">Lavori in corso</span></button>
     <button class="tab-btn" data-tab="logadmin"><span class="tab-ico">🛡️</span><span class="tab-lbl">Registro</span></button>
   </div>
@@ -374,6 +375,15 @@
     <div class="card" id="logadmin-list"><div class="empty-state">Caricamento…</div></div>
   </div>
 
+  <div class="panel" id="panel-catalogo">
+    <h3 style="margin:0 0 8px;">Set nuovi da confermare</h3>
+    <div class="card" id="catalogo-da-confermare"><div class="empty-state">Caricamento…</div></div>
+    <h3 style="margin:18px 0 8px;">Set in ricontrollo</h3>
+    <div class="card" id="catalogo-aggiornamenti"><div class="empty-state">Caricamento…</div></div>
+    <h3 style="margin:18px 0 8px;">Ultimi giri notturni</h3>
+    <div class="card" id="catalogo-giri"><div class="empty-state">Caricamento…</div></div>
+  </div>
+
   <div class="panel" id="panel-wip">
     <div class="card">
       <h3 style="margin-top:0;">Metti un lavoro in corso</h3>
@@ -435,6 +445,8 @@
 <script src="ui/admin-users.ui.js"></script>
 <script src="ui/admin-log.ui.js"></script>
 <script src="ui/admin-wip.ui.js"></script>
+<script src="data/catalogo-admin.repository.js"></script>
+<script src="ui/admin-catalogo.ui.js"></script>
 <script src="data/shop.repository.js"></script>
 <script src="ui/admin-shop.ui.js"></script>
 <script>
