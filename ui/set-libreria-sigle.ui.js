@@ -51,7 +51,7 @@ function _ballSetBase(testa) {
 const _ballALIAS_TESTA = {
     'SM': 'SMP',
     'TR': 'RO',
-    'FL': 'UNB',
+    'FL': 'RG',      // Cardmarket scrive "FL" per EX RossoFuoco e VerdeFoglia (Bulbasaur-FL55); Legami Inossidabili è UNB
     'TM': 'TRI',
     'NG': 'N1',
     'NDI': 'N2',
