@@ -89,6 +89,13 @@ function _setMNumeroPromo(sigla, chiave, link) {
     return n == null ? null : n;
 }
 
+// Set letti pagina per pagina da Cardmarket (sql/142): i set asiatici ("SV2A@JP") e My First Battle.
+// Ogni pagina Cardmarket è una carta del set, anche le versioni con lo stesso numero (V1, V2…): la tua
+// carta si riconosce dalla sua pagina, poi dal codice se nel set ce n'è una sola con quel codice.
+function _setMAPagine(sigla) {
+    return String(sigla || '').includes('@') || sigla === 'MFB';
+}
+
 function setMPossedute() {
     const per = new Map();
     const coll = (typeof carteReali !== 'undefined' && Array.isArray(carteReali)) ? carteReali : [];
@@ -101,15 +108,18 @@ function setMPossedute() {
         const promo = letto.promo && (_setM.conteggi.get(letto.promo.set) || 0) > 0 ? letto.promo : null;
         // la lingua della carta sceglie il set (giapponese, coreano, cinese o internazionale)
         const sigla = promo ? promo.set : _ballSiglaPerLingua(letto.set, c.lang);
+        const aPagine = !promo && _setMAPagine(sigla) && (_setM.conteggi.get(sigla) || 0) > 0;
         let s = per.get(sigla);
         if (!s) { s = { numeri: new Map(), carte: 0, senzaNumero: 0 }; per.set(sigla, s); }
         s.carte++;
         // per un set promo il numero c'è solo dopo che le sue righe sono state caricate
-        const numero = promo ? _setMNumeroPromo(sigla, promo.codice, c.link) : letto.numero;
+        const numero = promo ? _setMNumeroPromo(sigla, promo.codice, c.link)
+            : aPagine ? _setMNumeroPromo(sigla, _ballChiaveCodice(c.code), c.link)
+            : letto.numero;
         if (numero == null) { s.senzaNumero++; return; }
         let v = s.numeri.get(numero);
         if (!v) { v = new Map(); s.numeri.set(numero, v); }
-        const varianti = promo ? [...new Set(['normale', ...setMVariantiPossedute({ variante: null }, c)])] : setMVariantiPossedute(letto, c);
+        const varianti = (promo || aPagine) ? [...new Set(['normale', ...setMVariantiPossedute({ variante: null }, c)])] : setMVariantiPossedute(letto, c);
         varianti.forEach(k => { if (!v.has(k)) v.set(k, c); });
     });
     return per;

@@ -3,7 +3,7 @@
   "private": true,
   "description": "Prove del sito Bindex fuori dal browser vero: script delle pagine, nomi doppi, regole del progetto, pagine caricate in Chromium con Supabase finto; lettura del testo del selettore carte.",
   "scripts": {
-    "test": "node prova-statica.js && node prova-selettore.js && node prova-pagine.js"
+    "test": "node prova-statica.js && node prova-selettore.js && node prova-pagine.js && node prova-set-pagine.js"
   },
   "dependencies": {
     "acorn": "^8.12.0",
