@@ -9,6 +9,7 @@
 // aggiungi_carta_popup.js: fuori durante una carta → la carta resta in coda, niente scrittura;
 //   di nuovo dentro → la coda riparte da sola.
 // app.js: pallino "connesso" solo per 5 minuti, poi "da verificare".
+// dalla 5.69: "Esci" premuto su Cardmarket in una scheda qualsiasi → fuori (webRequest, solo l'indirizzo).
 const fs = require('fs');
 const path = require('path');
 const { JSDOM, VirtualConsole } = require('jsdom');
@@ -81,6 +82,26 @@ const senzaRumore = (errori) => errori.filter(e => !/Not implemented: (navigatio
     const r = await interno(env, msg);
     const esito = r && (r.stato || (r.loggato === true ? 'ok' : r.loggato === false ? 'ko' : r.loggato));
     uguale(`dentro da 10 minuti, ${nome}: si controlla in una scheda nascosta e risulta fuori`, [esito, schedeCm(env), env.store.statoLoginCardmarket.loggato], ['ko', 1, false]);
+  }
+
+  // ── dalla 5.69: "Esci" premuto su Cardmarket in una scheda qualsiasi ──
+  if (maj > 5 || (maj === 5 && min >= 69)) {
+    const manifest = JSON.parse(fs.readFileSync(path.join(EXT, 'manifest.json'), 'utf8'));
+    controlla('manifest: permesso webRequest (solo per vedere "Esci")', manifest.permissions.includes('webRequest'), manifest.permissions);
+    const { env } = caricaBackground({ version: versione, store: { statoLoginCardmarket: { loggato: true, quando: Date.now() } } });
+    const ascolti = env.listeners.webRequest;
+    uguale('webRequest: ascolta rimando e risposta, solo l\'indirizzo di uscita di Cardmarket', ascolti.map(a => [a[0], a[2].urls]),
+      [['onBeforeRedirect', ['https://www.cardmarket.com/*/PostGetAction/User_Logout*']], ['onCompleted', ['https://www.cardmarket.com/*/PostGetAction/User_Logout*']]]);
+    const invia = (url) => ascolti.filter(a => a[0] === 'onBeforeRedirect').forEach(a => a[1]({ url, method: 'GET', type: 'main_frame', statusCode: 302 }));
+    invia(CM + '/it/Pokemon/Products/Singles/Silver-Tempest/Zubat-SIT103');
+    invia(CM + '/it/Pokemon/PostGetAction/User_Login');
+    uguale('webRequest: altre pagine e "Accedi" non cambiano niente', env.store.statoLoginCardmarket.loggato, true);
+    invia(CM + '/it/Pokemon/PostGetAction/User_Logout');
+    uguale('webRequest: "Esci" (/it/Pokemon) → fuori', env.store.statoLoginCardmarket.loggato, false);
+    await env.chrome.storage.local.set({ statoLoginCardmarket: { loggato: true, quando: Date.now() } });
+    invia(CM + '/en/Magic/PostGetAction/User_Logout');
+    uguale('webRequest: "Esci" in un\'altra lingua e gioco (/en/Magic) → fuori', env.store.statoLoginCardmarket.loggato, false);
+    controlla('webRequest: nessun errore', env.log.errori.length === 0, env.log.errori);
   }
 
   // ── service worker: "fuori" dopo "dentro" si scrive subito ──

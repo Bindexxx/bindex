@@ -3,7 +3,7 @@
 function creaAmbiente(opts = {}) {
   const log = { alarms: [], errori: [], messaggi: [], tabs: [], rpc: [], from: [], chiamate: [], script: [] };
   const store = opts.store || {};
-  const listeners = { onMessage: [], onMessageExternal: [], onAlarm: [], onChanged: [], onUpdated: [] };
+  const listeners = { onMessage: [], onMessageExternal: [], onAlarm: [], onChanged: [], onUpdated: [], webRequest: [] };
   let nextTab = 100;
   const tabs = new Map();
   const sveglie = new Map(opts.sveglie ? opts.sveglie.map(a => [a.name, a]) : []);
@@ -166,6 +166,11 @@ function creaAmbiente(opts = {}) {
       },
     },
     declarativeNetRequest: { updateDynamicRules: () => Promise.resolve() },
+    // dalla 5.69: richieste viste dal browser (listeners.webRequest: [evento, funzione, filtro])
+    webRequest: {
+      onBeforeRedirect: { addListener: (f, filtro) => listeners.webRequest.push(['onBeforeRedirect', f, filtro]) },
+      onCompleted: { addListener: (f, filtro) => listeners.webRequest.push(['onCompleted', f, filtro]) },
+    },
     offscreen: { createDocument: () => Promise.resolve() },
     action: { onClicked: ev([]) },
   };
