@@ -5804,6 +5804,7 @@
         #prezzi .pz-segbtn { flex: 1; font: inherit; font-weight: 700; font-size: 0.88rem; padding: 10px; border-radius: 11px; border: 0; background: transparent; color: var(--text-muted); cursor: pointer; }
         #prezzi .pz-segbtn.attivo { background: var(--card-bg); color: var(--text-dark); box-shadow: 0 1px 4px rgba(0,0,0,.1); }
         #prezzi .pz-nota { font-size: 0.78rem; color: var(--text-muted); margin: 8px 2px 0; }
+        #prezzi .pz-select { width: 100%; max-width: 360px; }
         #prezzi .pz-centro { text-align: center; }
         #prezzi .pz-avvia { width: 100%; margin-top: 16px; padding: 15px; border-radius: 16px; border: none; background: var(--primary); color: var(--on-primary, #fff); font-family: inherit; font-weight: 800; font-size: 1rem; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; }
         #prezzi .pz-avvia:disabled { opacity: .6; }

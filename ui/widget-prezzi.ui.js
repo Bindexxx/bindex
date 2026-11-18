@@ -449,6 +449,11 @@ function prezziScaffaliTutti() {
 function prezziMostraDiChi() {
     const el = document.getElementById('pzDiChiTesto');
     if (el) el.textContent = _ambitoControlloPrezzi === 'gruppo' ? 'tutto il gruppo' : 'solo le tue carte';
+    const sel = document.getElementById('pzSoglia');
+    if (sel && document.activeElement !== sel) {
+        const s = prefSogliaPrezziGet();
+        sel.value = s ? String(s) : '';
+    }
 }
 
 async function prezziRiepilogo() {
@@ -573,7 +578,7 @@ async function prezziRiprovaControllo(ordineId) {
         }
         const locations = priv && Array.isArray(priv.locations) ? priv.locations
             : (o.parametri && Array.isArray(o.parametri.locations) ? o.parametri.locations : []);
-        ({ error } = await ordiniCreaControlloPrezzi(locations, !!(o.parametri && o.parametri.aiutaGruppo)));
+        ({ error } = await ordiniCreaControlloPrezzi(locations, !!(o.parametri && o.parametri.aiutaGruppo), o.parametri && o.parametri.sogliaVariazione));
     } else {
         const payload = { tipo: o.tipo, creato_da: userId };
         if (o.parametri) payload.parametri = o.parametri;

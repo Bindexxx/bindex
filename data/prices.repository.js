@@ -4,11 +4,14 @@ async function ordiniInsert(payload) {
     return supabaseClient.from('ordini').insert(payload).select().single();
 }
 
-async function ordiniCreaControlloPrezzi(locations, aiutaGruppo) {
-    return supabaseClient.rpc('crea_ordine_controllo_prezzi', {
+// soglia (euro, facoltativa): l'estensione scrive il prezzo solo se cambia almeno di tanto (sql/147)
+async function ordiniCreaControlloPrezzi(locations, aiutaGruppo, soglia) {
+    const parametri = {
         p_locations: Array.isArray(locations) ? locations : [],
         p_aiuta_gruppo: !!aiutaGruppo,
-    });
+    };
+    if (soglia > 0) parametri.p_soglia = soglia;
+    return supabaseClient.rpc('crea_ordine_controllo_prezzi', parametri);
 }
 
 async function ordiniLocationPrivateLeggi(ordineId) {
