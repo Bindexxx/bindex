@@ -73,8 +73,35 @@ function _piattaformaNonWindows() {
             btn.disabled = false;
         }
 
-        function salvaPreferenzaApriSempreApp(attivo) {
-            prefApriSempreAppSet(attivo);
+        // Dalla 5.74 dell'estensione "Aiuta il gruppo", "Lavora anche a estensione chiusa" e
+        // "Apri l'app quando apri il sito" si cambiano solo nell'app (menu › Impostazioni).
+        // Il sito apre l'app sulle Impostazioni; un'estensione più vecchia apre solo l'app.
+        function apriImpostazioniEstensione() {
+            if (!window.chrome || !chrome.runtime || !chrome.runtime.sendMessage) return Promise.resolve(false);
+            return new Promise((resolve) => {
+                const payload = { type: 'CARDSYNC_OPEN_APP', impostazioni: true, temaScuro: prefDarkModeGet() };
+                try {
+                    chrome.runtime.sendMessage(ID_ESTENSIONE_CARDSYNC, payload, (risposta) => {
+                        resolve(!chrome.runtime.lastError && !!risposta && risposta.ok === true);
+                    });
+                } catch (_) { resolve(false); }
+            });
+        }
+
+        // Il sito avvisa l'estensione che è stato aperto: l'app si apre se lì è acceso "Apri l'app quando
+        // apri il sito". Il vecchio "Apri sempre l'app" del sito, se acceso, si passa una volta (migraApriSempre).
+        function _avvisaEstensioneSitoAperto() {
+            return new Promise((resolve) => {
+                if (!window.chrome || !chrome.runtime || !chrome.runtime.sendMessage) { resolve(null); return; }
+                const payload = { type: 'CARDSYNC_SITO_APERTO', temaScuro: prefDarkModeGet() };
+                if (prefApriSempreAppGet()) payload.migraApriSempre = true;
+                try {
+                    chrome.runtime.sendMessage(ID_ESTENSIONE_CARDSYNC, payload, (risposta) => {
+                        if (chrome.runtime.lastError) { resolve(null); return; }
+                        resolve(risposta || null);
+                    });
+                } catch (_) { resolve(null); }
+            });
         }
 
         function _chiediAiutaGruppoEstensione() {
@@ -99,43 +126,6 @@ function _piattaformaNonWindows() {
             });
         }
 
-        function salvaPreferenzaAiutaGruppoDispositivo(attivo) {
-            if (!window.chrome || !chrome.runtime || !chrome.runtime.sendMessage) return;
-            try {
-                chrome.runtime.sendMessage(ID_ESTENSIONE_CARDSYNC, { type: 'CARDSYNC_SET_AIUTA_GRUPPO', valore: attivo }, () => {
-                    void chrome.runtime.lastError;
-                });
-            } catch (_) {   }
-        }
-
-        function _chiediLavoraAChiusoEstensione() {
-            return new Promise((resolve) => {
-                if (!window.chrome || !chrome.runtime || !chrome.runtime.sendMessage) { resolve(true); return; }
-                let risolto = false;
-                const timeoutId = setTimeout(() => { if (!risolto) { risolto = true; resolve(true); } }, TIMEOUT_RISPOSTA_ESTENSIONE_MS);
-                try {
-                    chrome.runtime.sendMessage(ID_ESTENSIONE_CARDSYNC, { type: 'CARDSYNC_GET_LAVORA_A_CHIUSO' }, (risposta) => {
-                        if (risolto) return;
-                        risolto = true;
-                        clearTimeout(timeoutId);
-                        if (chrome.runtime.lastError || !risposta || !risposta.ok) { resolve(true); return; }
-                        resolve(risposta.lavoraAChiuso !== false);
-                    });
-                } catch (_) {
-                    if (!risolto) { risolto = true; clearTimeout(timeoutId); resolve(true); }
-                }
-            });
-        }
-
-        function salvaPreferenzaLavoraAChiuso(attivo) {
-            if (!window.chrome || !chrome.runtime || !chrome.runtime.sendMessage) return;
-            try {
-                chrome.runtime.sendMessage(ID_ESTENSIONE_CARDSYNC, { type: 'CARDSYNC_SET_LAVORA_A_CHIUSO', valore: attivo }, () => {
-                    void chrome.runtime.lastError;
-                });
-            } catch (_) {   }
-        }
-
         async function _aggiornaControlliApriApp() {
             const gruppo = document.getElementById('appLaunchGroup');
             const gruppoImpostazioni = document.getElementById('impostazioniEstensioneGroup');
@@ -147,13 +137,11 @@ function _piattaformaNonWindows() {
             gruppo.style.display = 'flex';
             gruppoImpostazioni.style.display = 'block';
 
-            const apriSempre = prefApriSempreAppGet();
-            document.getElementById('chkApriSempreApp').checked = apriSempre;
-            if (apriSempre) _mandaAperturaAppAEstensione();
-
-            const [aiuta, lavoraAChiuso] = await Promise.all([_chiediAiutaGruppoEstensione(), _chiediLavoraAChiusoEstensione()]);
-            document.getElementById('chkAiutaGruppoDispositivo').checked = aiuta;
-            document.getElementById('chkLavoraAChiuso').checked = lavoraAChiuso;
+            _avvisaEstensioneSitoAperto().then((risposta) => {
+                if (risposta && risposta.ok) { prefApriSempreAppTogli(); return; }
+                // estensione prima della 5.74 (non conosce il messaggio): vale ancora la scelta salvata sul sito
+                if (prefApriSempreAppGet()) _mandaAperturaAppAEstensione();
+            });
 
             _controllaAccountEstensione();
         }
@@ -359,7 +347,7 @@ function _piattaformaNonWindows() {
             } else {
                 document.getElementById('statoBossFieroTitolo').textContent = mostraTestoEstensione ? 'Il boss è fiero di te!' : 'Nessun problema!';
                 document.getElementById('statoBossFieroTesto').textContent = mostraTestoEstensione
-                    ? 'Hai l\'estensione installata e aggiornata all\'ultima versione — valuta di attivare la funzione "Aiuta il gruppo" per far sì che non sia solo il PC di Bill a fare i calcoli per gli altri. In questo modo l\'app sarà più veloce per tutti noi. Bill ringrazia. 🙏'
+                    ? 'Hai l\'estensione installata e aggiornata all\'ultima versione — valuta di attivare la funzione "Aiuta il gruppo" (nell\'app dell\'estensione, menu › Impostazioni) per far sì che non sia solo il PC di Bill a fare i calcoli per gli altri. In questo modo l\'app sarà più veloce per tutti noi. Bill ringrazia. 🙏'
                     : 'Puoi usare il sito tranquillamente anche senza l\'estensione su questo dispositivo — accedi per continuare.';
             }
 

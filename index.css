@@ -6328,7 +6328,7 @@ body.dark-mode #achievement { --ach-legg-bg: #4a3a12; --ach-rara-bg: #173450; --
 #impostazioni .imp-card-pad { padding: 14px; }
 #impostazioni .imp-card-titolo { font-size: 0.9rem; font-weight: 800; color: var(--text-dark); display: flex; gap: 8px; align-items: center; }
 #impostazioni .imp-voce { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--border-color); cursor: pointer; margin: 0; }
-#impostazioni .imp-card > .imp-voce:last-child, #impostazioni .imp-card > .imp-corpo:last-child, #impostazioni #impostazioniEstensioneGroup > .imp-voce:last-child { border-bottom: 0; }
+#impostazioni .imp-card > .imp-voce:last-child, #impostazioni .imp-card > .imp-corpo:last-child { border-bottom: 0; }
 #impostazioni .imp-card > .imp-voce.espandibile:nth-last-child(2):not(.aperta) { border-bottom: 0; }
 #impostazioni .imp-ico { width: 34px; height: 34px; border-radius: 10px; flex: 0 0 auto; display: flex; align-items: center; justify-content: center; background: var(--primary-light); color: var(--primary-text, var(--primary)); font-size: 0.9rem; }
 #impostazioni .imp-voce-testo { flex: 1; min-width: 0; }

@@ -54,7 +54,8 @@ function prefSogliaPrezziSet(soglia) {
 }
 
 function prefApriSempreAppGet() { return localStorage.getItem(CHIAVE_APRI_SEMPRE_APP) === 'true'; }
-function prefApriSempreAppSet(attivo) { localStorage.setItem(CHIAVE_APRI_SEMPRE_APP, attivo ? 'true' : 'false'); }
+// dalla 5.74 dell'estensione la scelta sta nell'estensione: il sito la legge solo per passarla, poi la toglie
+function prefApriSempreAppTogli() { localStorage.removeItem(CHIAVE_APRI_SEMPRE_APP); }
 
 function prefSidebarCompressaGet() { return localStorage.getItem(CHIAVE_SIDEBAR_COMPRESSA) === 'true'; }
 function prefSidebarCompressaSet(compressa) { localStorage.setItem(CHIAVE_SIDEBAR_COMPRESSA, compressa ? 'true' : 'false'); }
