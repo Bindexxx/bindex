@@ -10,7 +10,11 @@
   window.chrome = {
     runtime: {
       id: 'fake', getURL: (p) => location.origin + '/' + p, getManifest: () => ({ version: '5.46' }),
-      sendMessage: (...a) => { const cb = a.find(x => typeof x === 'function'); if (cb) setTimeout(() => cb({ ok: true, loggato: true, attendi: false }), 0); return cb ? undefined : Promise.resolve(); },
+      sendMessage: (...a) => {
+        // dalla 5.74 l'app si sblocca solo con un "dentro" scritto dopo l'apertura: il controllo finto lo scrive
+        if (a[0] && a[0].type === 'CM_ACCESSO_CONTROLLA') scrivi({ ...leggi(), statoLoginCardmarket: { loggato: true, quando: Date.now() } });
+        const cb = a.find(x => typeof x === 'function'); if (cb) setTimeout(() => cb({ ok: true, loggato: true, attendi: false }), 0); return cb ? undefined : Promise.resolve();
+      },
       onMessage: ev(), lastError: undefined,
     },
     storage: {

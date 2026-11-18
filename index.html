@@ -1085,23 +1085,13 @@
                             <button type="button" class="btn-secondary imp-btn" id="impCestinoSvuota" onclick="cestinoSvuotaChiedi()" style="display:none;"><i class="fa-solid fa-trash"></i> Svuota il cestino</button>
                         </div>
                     </div>
-                        <div id="impostazioniEstensioneGroup" class="imp-card" style="display:none;">
-                            <label class="imp-voce">
-                                <span class="imp-ico"><i class="fa-solid fa-handshake-angle"></i></span>
-                                <div class="imp-voce-testo"><h4>Aiuta il gruppo da questo dispositivo</h4><p class="imp-solo-pc">L'app aperta qui aiuta gli altri a fare i calcoli (risolve anche le carte del resto del gruppo)</p></div>
-                                <span class="switch"><input type="checkbox" id="chkAiutaGruppoDispositivo" onchange="salvaPreferenzaAiutaGruppoDispositivo(this.checked)"><span class="slider"></span></span>
-                            </label>
-                            <label class="imp-voce">
-                                <span class="imp-ico"><i class="fa-solid fa-gears"></i></span>
-                                <div class="imp-voce-testo"><h4>Lavora anche a estensione chiusa</h4><p class="imp-solo-pc">Con Chrome aperto, la coda va avanti da sola (una carta al minuto) e si aprono schede di Cardmarket in secondo piano. Spento: la coda avanza solo con l'app dell'estensione aperta</p></div>
-                                <span class="switch"><input type="checkbox" id="chkLavoraAChiuso" onchange="salvaPreferenzaLavoraAChiuso(this.checked)"><span class="slider"></span></span>
-                            </label>
-                            <label class="imp-voce">
-                                <span class="imp-ico"><i class="fa-solid fa-arrow-up-right-from-square"></i></span>
-                                <div class="imp-voce-testo"><h4>Apri sempre l'app all'apertura</h4><p class="imp-solo-pc">Apre l'app dell'estensione ogni volta che visiti il sito da questo dispositivo</p></div>
-                                <span class="switch"><input type="checkbox" id="chkApriSempreApp" onchange="salvaPreferenzaApriSempreApp(this.checked)"><span class="slider"></span></span>
-                            </label>
+                    <div id="impostazioniEstensioneGroup" class="imp-card" style="display:none;">
+                        <div class="imp-voce">
+                            <span class="imp-ico"><i class="fa-solid fa-puzzle-piece"></i></span>
+                            <div class="imp-voce-testo"><h4>Impostazioni dell'estensione</h4><p>Aiuta il gruppo, lavoro a estensione chiusa e apertura dell'app ora stanno nell'app dell'estensione: menu col tuo nome › Impostazioni</p></div>
+                            <button class="btn-secondary imp-btn" onclick="apriImpostazioniEstensione()"><i class="fa-solid fa-arrow-up-right-from-square"></i> Apri</button>
                         </div>
+                    </div>
                     <div id="impostazioniDiagnosticaCard" class="imp-card imp-card-pad" style="display:none;">
                         <h4 class="imp-card-titolo"><i class="fa-solid fa-stethoscope"></i> Diagnostica (admin)</h4>
                         <p class="imp-nota">Log di QUESTA sessione soltanto — riparte vuoto ad ogni refresh, non può leggere retroattivamente la console.</p>
@@ -1563,7 +1553,7 @@
             <div id="statoBossFiero" class="pdx-login" style="display:none; text-align:center;">
                 <div class="cardsync-motivo-tema" id="motivoBossFiero">🎉</div>
                 <h2 class="pdx-login-tit" id="statoBossFieroTitolo">Il boss è fiero di te!</h2>
-                <p class="pdx-login-txt" id="statoBossFieroTesto">Hai l'estensione installata e aggiornata all'ultima versione — valuta di attivare la funzione "Aiuta il gruppo" per far sì che non sia solo il PC di Bill a fare i calcoli per gli altri. In questo modo l'app sarà più veloce per tutti noi. Bill ringrazia. 🙏</p>
+                <p class="pdx-login-txt" id="statoBossFieroTesto">Hai l'estensione installata e aggiornata all'ultima versione — valuta di attivare la funzione "Aiuta il gruppo" (nell'app dell'estensione, menu › Impostazioni) per far sì che non sia solo il PC di Bill a fare i calcoli per gli altri. In questo modo l'app sarà più veloce per tutti noi. Bill ringrazia. 🙏</p>
 
                 <div id="bossFieroGiaLoggato" style="display:none;">
                     <button class="btn-main pdx-login-btn" style="width:100%; justify-content:center;" id="btnContinuaComeUtente" onclick="_continuaAlSito()"></button>

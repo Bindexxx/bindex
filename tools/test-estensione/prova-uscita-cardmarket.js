@@ -268,8 +268,9 @@ const senzaRumore = (errori) => errori.filter(e => !/Not implemented: (navigatio
       if (msg && msg.type === 'CM_ACCESSO_CONTROLLA') {
         controlli++;
         // come il service worker: stato ricordato se recente, altrimenti scheda nascosta che dice "dentro"
+        // (dalla 5.74 l'app chiede sempre il controllo forzato: scheda nascosta anche se recente)
         setTimeout(async () => {
-          if (Date.now() - quando >= 5 * MIN) await env.chrome.storage.local.set({ statoLoginCardmarket: { loggato: true, quando: Date.now() } });
+          if (msg.forza || Date.now() - quando >= 5 * MIN) await env.chrome.storage.local.set({ statoLoginCardmarket: { loggato: true, quando: Date.now() } });
           sendResponse({ stato: 'ok' });
         }, 400);
         return true;
