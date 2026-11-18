@@ -60,9 +60,10 @@ const LAVORO_MS = 300;         // lettura finta della pagina
     return { prezzo: 1.5, nomePagina: 'Carta ' + n, codicePagina: 'TST ' + n, immagine: null };
   };
   const d = w.document;
-  d.getElementById('sliderDelayMin').value = '1';
-  d.getElementById('sliderDelayMax').value = '1';
-  d.getElementById('sliderPausaOgni').value = '4';
+  // fino alla 5.72 le attese erano anche nella pagina; dalla 5.73 solo nel menu (store)
+  if (d.getElementById('sliderDelayMin')) d.getElementById('sliderDelayMin').value = '1';
+  if (d.getElementById('sliderDelayMax')) d.getElementById('sliderDelayMax').value = '1';
+  if (d.getElementById('sliderPausaOgni')) d.getElementById('sliderPausaOgni').value = '4';
 
   const { turnoCardmarketConta: contaPrima = 0 } = await env.chrome.storage.local.get('turnoCardmarketConta');
   const t0 = Date.now();
