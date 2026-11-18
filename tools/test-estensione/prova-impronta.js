@@ -67,8 +67,10 @@ const PAGINA_CARTA_LOGGATO = PAGINA_CARTA.replace('<div id="login-signup"><div c
   const conTurnstile = await leggiConContent(PAGINA_CARTA, B + 'Silver-Tempest/Zubat-SIT103?language=5', 2);
   // dalla 5.63 la pagina dice anche "fuori da Cardmarket" (login-signup): un messaggio di stato, sempre un solo prezzo
   const dalla563 = maj > 5 || (maj === 5 && min >= 63);
+  // dalla 5.68 una pagina "fuori" non si legge: il controllo prezzi si ferma (prova-uscita-cardmarket.js)
+  const dalla568 = maj > 5 || (maj === 5 && min >= 68);
   uguale('5.5 widget Turnstile su una pagina con offerte: prezzo, non Cloudflare (iniezione doppia → un messaggio)', conTurnstile.tipi,
-    dalla563 ? ['STATO_LOGIN_CARDMARKET', 'PREZZO_TROVATO:0.1'] : ['PREZZO_TROVATO:0.1']);
+    dalla568 ? ['STATO_LOGIN_CARDMARKET', 'FUORI_DA_CARDMARKET'] : dalla563 ? ['STATO_LOGIN_CARDMARKET', 'PREZZO_TROVATO:0.1'] : ['PREZZO_TROVATO:0.1']);
   uguale('5.2 content.js: niente scroll né mouse finto', [conTurnstile.scroll, conTurnstile.mouse], [0, 0]);
   const soloWidget = await leggiConContent('<html><head><title>Cardmarket</title></head><body><h1>Accedi</h1><div class="cf-turnstile"></div></body></html>', CM + '/it/Pokemon');
   uguale('5.5 widget Turnstile senza offerte né carta: Cloudflare', soloWidget.tipi, ['CLOUDFLARE_DETECTED']);
