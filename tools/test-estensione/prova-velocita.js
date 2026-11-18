@@ -118,7 +118,11 @@ function caricaPagina(file, chromeFinto, supabaseFinto) {
     const { w, errori } = caricaPagina('aggiungi_carta_popup.html', pag.chrome, pag.supabase);
     await attendi(800);
     const d = w.document;
-    uguale('"Pausa lunga ogni" di default: 75 (come app e controllo prezzi)', [d.getElementById('sliderPausaOgni').value, d.getElementById('valPausaOgni').textContent], ['2', '75']);
+    // fino alla 5.72 la pagina aveva il suo "Pausa lunga ogni"; dalla 5.73 c'è solo nel menu dell'app
+    const [vMaj, vMin] = manifest.version.split('.').map(Number);
+    if (vMaj === 5 && vMin < 73) {
+      uguale('"Pausa lunga ogni" di default: 75 (come app e controllo prezzi)', [d.getElementById('sliderPausaOgni').value, d.getElementById('valPausaOgni').textContent], ['2', '75']);
+    }
 
     await sw.ctx._prenotaTurnoCardmarket();
     await sw.ctx._chiudiTurnoCardmarket();

@@ -65,8 +65,9 @@ const senzaRumore = (errori) => errori.filter(e => !/Not implemented: (navigatio
   controlla('Prezzi: la pagina dice che i controlli partono dal sito', /dal sito/.test(d.querySelector('.nota-ordini') ? d.querySelector('.nota-ordini').textContent : ''));
 
   // ── sessione da un ordine: soglia dall'ordine, filtri del PC ignorati ──
-  d.getElementById('sliderDelayMin').value = '1';
-  d.getElementById('sliderDelayMax').value = '1';
+  // fino alla 5.72 le attese erano anche nella pagina; dalla 5.73 solo nel menu (store)
+  if (d.getElementById('sliderDelayMin')) d.getElementById('sliderDelayMin').value = '1';
+  if (d.getElementById('sliderDelayMax')) d.getElementById('sliderDelayMax').value = '1';
   const prezziNuovi = { c1: 1.10, c2: 3.00, c3: 1.00 }; // prima 1,00 € per tutte
   let visibileDurante = null;
   w.apriTabEAspettaPrezzo = async (url) => {

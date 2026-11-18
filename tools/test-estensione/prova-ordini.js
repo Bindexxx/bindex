@@ -228,8 +228,9 @@ function caricaPagina(file, env, { prima } = {}) {
   const { w, errori } = caricaPagina('popup.html', sw.env);
   await attendi(900);
   const d = w.document;
-  d.getElementById('sliderDelayMin').value = '1';
-  d.getElementById('sliderDelayMax').value = '1';
+  // fino alla 5.72 le attese erano anche nella pagina; dalla 5.73 solo nel menu (store)
+  if (d.getElementById('sliderDelayMin')) d.getElementById('sliderDelayMin').value = '1';
+  if (d.getElementById('sliderDelayMax')) d.getElementById('sliderDelayMax').value = '1';
   const pagine = [];
   w.apriTabEAspettaPrezzo = async (url) => { pagine.push(url); await attendi(50); return { prezzo: 1.5, nomePagina: 'Carta', codicePagina: 'TST 1', immagine: null }; };
   const azioni = [];
