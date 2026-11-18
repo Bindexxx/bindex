@@ -6750,6 +6750,8 @@ body.badge-pallino .widget-badge { font-size: 0 !important; min-width: 12px !imp
 .avviso-finestra { width: min(420px, 100%); max-height: calc(100vh - 32px); overflow: auto; box-sizing: border-box; background: var(--card-bg, #fff); color: var(--text-dark, #2a2438); border: 1px solid var(--border-color, #e2d9f3); border-radius: 18px; padding: 20px; box-shadow: 0 20px 60px rgba(0, 0, 0, .3); outline: none; }
 .avviso-titolo { display: flex; align-items: center; gap: 10px; margin: 0 0 8px; font-size: 1.02rem; font-weight: 800; color: var(--text-dark, #2a2438); }
 .avviso-titolo i { color: var(--primary-text, var(--primary, #7c4dff)); }
+/* Caterpie della segnalazione bug: pixel art 14×16 a grandezza d'icona, pixel nitidi */
+.ico-caterpie { display: inline-block; width: 14px; height: 16px; flex: 0 0 auto; image-rendering: pixelated; vertical-align: -3px; }
 .avviso-corpo { margin: 0 0 14px; font-size: 0.88rem; line-height: 1.5; color: var(--text-dark, #2a2438); white-space: pre-line; overflow-wrap: anywhere; }
 .avviso-campo { width: 100%; box-sizing: border-box; margin: 0 0 14px; padding: 10px 12px; border-radius: 10px; border: 1.5px solid var(--border-color, #e2d9f3); background: var(--card-bg, #fff); color: var(--text-dark, #2a2438); font: inherit; font-size: 0.95rem; }
 textarea.avviso-campo { resize: vertical; font-size: 0.8rem; line-height: 1.4; font-family: 'JetBrains Mono', monospace; }

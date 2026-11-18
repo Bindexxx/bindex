@@ -175,7 +175,7 @@ async function caricaSelectLocationComune() {
 
         async function segnalaCaterpie(descrizioneDaPannello) {
             const descrizione = (typeof descrizioneDaPannello === 'string') ? descrizioneDaPannello
-                : await chiediTesto({ titolo: '🐛 Un Caterpie selvatico appare!', testo: 'Descrivi cosa hai visto (cosa NON funzionava come dovrebbe):', conferma: 'Segnala', maxLength: 1500 });
+                : await chiediTesto({ titolo: 'Un Caterpie selvatico appare!', icona: 'caterpie', testo: 'Descrivi cosa hai visto (cosa NON funzionava come dovrebbe):', conferma: 'Segnala', maxLength: 1500 });
             if (!descrizione || !descrizione.trim()) return;
 
             const userId = await authGetUserId();
@@ -192,7 +192,7 @@ async function caricaSelectLocationComune() {
                     schermo: `${window.innerWidth}x${window.innerHeight}`,
                 });
                 if (!error) {
-                    mostraAvviso('🐛 Caterpie catturato! Grazie della segnalazione, l\'admin la vedrà a breve.');
+                    mostraAvviso('Caterpie catturato! Grazie della segnalazione, l\'admin la vedrà a breve.', { icona: 'caterpie' });
                     return;
                 }
                 console.error('Errore invio segnalazione bug, uso il fallback appunti:', error.message);
@@ -201,9 +201,9 @@ async function caricaSelectLocationComune() {
             const testo = `Ho catturato un Caterpie!\n\nDescrizione: ${descrizione.trim()}\n\nPagina: ${window.location.href}\nData: ${new Date().toLocaleString('it-IT')}\n\n--- Log diagnostico ---\n${logTesto || '(non disponibile)'}`;
             try {
                 await navigator.clipboard.writeText(testo);
-                mostraAvviso('🐛 Non sono riuscito a salvare la segnalazione (sei offline o non hai fatto l\'accesso).\n\nIl testo completo, con il log diagnostico, è stato COPIATO negli appunti: incollalo in un messaggio all\'admin.');
+                mostraAvviso('Non sono riuscito a salvare la segnalazione (sei offline o non hai fatto l\'accesso).\n\nIl testo completo, con il log diagnostico, è stato COPIATO negli appunti: incollalo in un messaggio all\'admin.', { icona: 'caterpie' });
             } catch (_) {
-                await chiediTesto({ titolo: '🐛 Segnalazione non salvata', testo: 'Copia questo testo e mandalo all\'admin:', valore: testo, multiriga: true, conferma: 'Fatto', annulla: 'Chiudi' });
+                await chiediTesto({ titolo: 'Segnalazione non salvata', icona: 'caterpie', testo: 'Copia questo testo e mandalo all\'admin:', valore: testo, multiriga: true, conferma: 'Fatto', annulla: 'Chiudi' });
             }
         }
 
