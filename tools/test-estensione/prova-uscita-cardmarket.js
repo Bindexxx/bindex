@@ -205,7 +205,10 @@ const senzaRumore = (errori) => errori.filter(e => !/Not implemented: (navigatio
   }
 
   // ── coda "Aggiungi carte": fuori durante una carta, poi di nuovo dentro ──
+  // fino alla 5.71 la carta si scrive a mano; dalla 5.72 arriva dal sito (coda_carte)
   {
+    const dalla572 = maj > 5 || (maj === 5 && min >= 72);
+    const codaSito = dalla572 ? [{ id: 31, nome: 'ZUBAT SIT 103', lingua: 'IT', condizione: 'NM', qty: 1, stato: 'pending', owner_id: 'u-me', location: 'BULK', tentativi_falliti: 0, destinazione: 'collezione', creato_il: new Date().toISOString() }] : [];
     const registro = { letture: 0, scritture: 0 };
     let env = null;
     const sw = (msg, sender, sendResponse) => {
@@ -220,22 +223,29 @@ const senzaRumore = (errori) => errori.filter(e => !/Not implemented: (navigatio
           registro.letture++;
           if (registro.letture === 1) env.chrome.storage.local.set({ statoLoginCardmarket: { loggato: false, quando: Date.now() } });
           return rispondi({ nome: 'Zubat', codice: 'SIT 103', prezzo: 0.1, urlSingles: SINGLES + 'Silver-Tempest/Zubat-SIT103' });
-        case 'AGGIUNGI_CARTA': registro.scritture++; return rispondi({ ok: true, riga: 'r' + registro.scritture });
+        case 'AGGIUNGI_CARTA': {
+          registro.scritture++;
+          const i = codaSito.findIndex(r => r.id === msg.dbRigaId);
+          if (i >= 0) codaSito.splice(i, 1);
+          return rispondi({ ok: true, riga: 'r' + registro.scritture });
+        }
         default: return false;
       }
     };
-    env = creaAmbiente({ store: { sliderDelayMinSec: 1, sliderDelayMaxSec: 1, sliderRicontrollo: 0, aiutaGruppo: true, statoLoginCardmarket: { loggato: true, quando: Date.now() } }, dati: {}, inoltraA: [sw] });
+    env = creaAmbiente({ store: { sliderDelayMinSec: 1, sliderDelayMaxSec: 1, sliderRicontrollo: 0, aiutaGruppo: true, statoLoginCardmarket: { loggato: true, quando: Date.now() } }, dati: { get coda_carte() { return codaSito.slice(); } }, inoltraA: [sw] });
     const { w, errori } = caricaPagina('aggiungi_carta_popup.html', env);
     w.verificaAccessoValido = async () => true;
     const chiamaVero = w.chiamaSupabase;
     w.chiamaSupabase = async (azione, payload) => (azione === 'elencaLocationTab' ? { ok: true, location: ['BULK'] } : azione === 'aggiungiLocationTab' ? { ok: true, giaEsistente: true, nome: 'BULK' } : chiamaVero(azione, payload));
     await attendi(600);
     const d = w.document;
-    d.getElementById('inputLocation').value = 'BULK';
-    const input = d.querySelectorAll('#tbodyCarte tr.riga-nuova td input[type=text]')[0];
-    input.value = 'zubat sit 103';
-    input.dispatchEvent(new w.KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
-    for (let i = 0; i < 40 && registro.letture < 1; i++) await attendi(100);
+    if (!dalla572) {
+      d.getElementById('inputLocation').value = 'BULK';
+      const input = d.querySelectorAll('#tbodyCarte tr.riga-nuova td input[type=text]')[0];
+      input.value = 'zubat sit 103';
+      input.dispatchEvent(new w.KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    }
+    for (let i = 0; i < 60 && registro.letture < 1; i++) await attendi(100);
     await attendi(800);
     uguale('coda, fuori durante la carta: niente scrittura, la carta resta in coda', [registro.letture, registro.scritture, w.eval('_codaInvio.length')], [1, 0, 1]);
     controlla('coda, fuori: il messaggio lo dice', /uscito da Cardmarket/.test(d.getElementById('status').textContent), d.getElementById('status').textContent);

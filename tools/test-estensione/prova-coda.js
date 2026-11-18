@@ -7,7 +7,9 @@
 //    - location: quella del campo per le carte a mano (nome già esistente con
 //      maiuscole diverse → si usa quello), mai per le carte del sito;
 //    - Reset: le righe del sito tornano libere subito.
-// 2) adapter: tipo 'carta', movimento per le carte a mano, location dalla tabella.
+//    Dalla 5.72 niente carte a mano (si aggiungono dal sito): le stesse prove con righe del sito,
+//    in sola lettura, con la loro location.
+// 2) adapter: tipo 'carta', movimento per le carte a mano, location dalla tabella (fino alla 5.71).
 // 3) popup.js: lingue/condizioni con alias → l'URL non si riscrive a ogni controllo.
 const fs = require('fs');
 const path = require('path');
@@ -107,9 +109,49 @@ async function finisce(registro, n, maxMs) {
 
 (async () => {
   console.log('Estensione provata:', EXT, '\n');
+  const [vMaj, vMin] = JSON.parse(fs.readFileSync(path.join(EXT, 'manifest.json'), 'utf8')).version.split('.').map(Number);
+  const dalla572 = vMaj > 5 || (vMaj === 5 && vMin >= 72);
 
-  // ── 1a) Carte scritte a mano ──
-  {
+  // ── 1a) dalla 5.72: carte arrivate dal sito, niente da scrivere a mano ──
+  if (dalla572) {
+    const ora = Date.now();
+    const rigaSito = (id, nome, location) => ({ id, nome, lingua: 'IT', condizione: 'NM', qty: 1, stato: 'pending', owner_id: 'u-me', location, tentativi_falliti: 0, destinazione: 'collezione', creato_il: new Date(ora + id).toISOString() });
+    const codaSito = [rigaSito(11, 'OK 1', 'BULK'), rigaSito(12, 'SENZAPREZZO 3', 'Scatola 2')];
+    const dati = { get coda_carte() { return codaSito.slice(); } };
+    const { w, env, registro, errori } = await apriPagina({ dati, location: ['BULK'] });
+    const sw = env.chrome.runtime.sendMessage;
+    // tolta dalla coda finta appena salvata
+    env.chrome.runtime.sendMessage = (msg, cb) => {
+      if (msg && msg.type === 'AGGIUNGI_CARTA' && msg.dbRigaId) { const i = codaSito.findIndex(r => r.id === msg.dbRigaId); if (i >= 0) codaSito.splice(i, 1); }
+      return sw(msg, cb);
+    };
+    await attendi(600);
+    const d = w.document;
+    uguale('pagina: niente riga da scrivere, campo location, incolla', [!!d.querySelector('#tbodyCarte tr.riga-nuova'), !!d.getElementById('inputLocation'), !!d.getElementById('locationOptions')], [false, false, false]);
+    controlla('pagina: dice che le carte si aggiungono dal sito', /dal sito/.test(d.querySelector('.modulo .aiuto') ? d.querySelector('.modulo .aiuto').textContent : ''));
+    controlla('niente pannello correzioni nella pagina', !d.getElementById('pannelloCorrezione') && !d.getElementById('cardCorrezione'));
+    controlla('avviso "carte da sistemare" presente', !!d.getElementById('cardCorrezioni') && !!d.getElementById('linkCorrezioniSito'));
+    await finisce(registro, 2, 40000);
+    await attendi(12000); // rilettura del prezzo dopo 10 s (slider minimo)
+    const scrittaOk = registro.scritture.find(m => m.dbRigaId === 11);
+    uguale('sito: la carta salvata con la sua location', scrittaOk && scrittaOk.rigaDati.D, 'BULK');
+    const scritteSnp = registro.scritture.filter(m => m.dbRigaId === 12);
+    uguale('prezzo mancante: una sola scrittura, col prezzo riletto, location della riga', scritteSnp.map(m => [m.rigaDati.I, m.rigaDati.D]), [[4.56, 'Scatola 2']]);
+    controlla('prezzo mancante: riletto dalla pagina della carta con i filtri', registro.soloPrezzo.length === 1 && /Senza-Prezzo-SNP3\?language=5&minCondition=2/.test(registro.soloPrezzo[0]), registro.soloPrezzo);
+    controlla('nessuna location creata o letta dalla pagina', !registro.adapter.some(a => /LocationTab/.test(a.azione)), registro.adapter.map(a => a.azione));
+    controlla('pagina senza errori', errori.length === 0, errori);
+    env.log.chiamate.length = 0;
+    w._rilasciaRigheDb([501, 502]);
+    await attendi(100);
+    const upd = env.log.chiamate.filter(c => c.tabella === 'coda_carte');
+    controlla('reset: righe del sito rimesse "pending" per gli altri PC',
+      upd.some(c => c.metodo === 'update' && c.args[0].stato === 'pending' && c.args[0].claimed_by === null)
+      && upd.some(c => c.metodo === 'in' && JSON.stringify(c.args) === JSON.stringify(['id', [501, 502]])), upd.map(c => c.metodo));
+    w.close();
+  }
+
+  // ── 1a) fino alla 5.71: carte scritte a mano ──
+  if (!dalla572) {
     const { w, env, registro, errori } = await apriPagina({ dati: {}, location: ['BULK'] });
     await attendi(600);
     const d = w.document;
@@ -158,7 +200,7 @@ async function finisce(registro, n, maxMs) {
     const rigaMia = { id: 78, nome: 'MIA 9', lingua: 'IT', condizione: 'NM', qty: 1, stato: 'pending', owner_id: 'u-me', location: null, tentativi_falliti: 0, destinazione: 'collezione', creato_il: new Date().toISOString() };
     const dati = { get coda_carte() { giri++; return giri <= 2 ? [rigaAmbigua] : (giri <= 4 ? [rigaMia] : []); } };
     const { w, env, registro, errori } = await apriPagina({ dati, location: ['BULK'] });
-    w.document.getElementById('inputLocation').value = 'BULK';
+    if (w.document.getElementById('inputLocation')) w.document.getElementById('inputLocation').value = 'BULK';
     await finisce(registro, 2, 30000);
     const sposta = env.log.chiamate.find(c => c.rpc === 'sposta_riga_in_correzione_manuale');
     controlla('sito: carta con più versioni subito in correzione (al primo tentativo)',
@@ -211,15 +253,17 @@ async function finisce(registro, n, maxMs) {
     controlla('adapter: carta a mano con il suo movimento (Variazione valore)',
       !!mov && mov.riga.tipo_evento === 'aggiunta' && mov.riga.oggetto_id === 'nuova' && mov.riga.valore_delta === 2.5 && mov.riga.fonte === 'estensione', mov && mov.riga);
 
-    chiamate.length = 0;
-    const g = await ctx.chiamaSupabase('aggiungiLocationTab', { nome: 'bulk', tipo: 'carta' });
-    controlla('adapter: location con maiuscole diverse → quella esistente, nessun doppione', g.ok && g.giaEsistente && g.nome === 'BULK' && !chiamate.some(c => c.op === 'insert'), g);
-    const n = await ctx.chiamaSupabase('aggiungiLocationTab', { nome: 'Nuova', tipo: 'carta' });
-    const insLoc = chiamate.find(c => c.tabella === 'location' && c.op === 'insert');
-    controlla('adapter: location nuova creata con il tipo', n.ok && !n.giaEsistente && insLoc && insLoc.riga.tipo === 'carta' && insLoc.riga.nome === 'Nuova', insLoc);
+    // la creazione delle location dalla Coda c'è fino alla 5.71 (dalla 5.72 niente carte a mano)
+    if (!dalla572) {
+      chiamate.length = 0;
+      const g = await ctx.chiamaSupabase('aggiungiLocationTab', { nome: 'bulk', tipo: 'carta' });
+      controlla('adapter: location con maiuscole diverse → quella esistente, nessun doppione', g.ok && g.giaEsistente && g.nome === 'BULK' && !chiamate.some(c => c.op === 'insert'), g);
+      const n = await ctx.chiamaSupabase('aggiungiLocationTab', { nome: 'Nuova', tipo: 'carta' });
+      const insLoc = chiamate.find(c => c.tabella === 'location' && c.op === 'insert');
+      controlla('adapter: location nuova creata con il tipo', n.ok && !n.giaEsistente && insLoc && insLoc.riga.tipo === 'carta' && insLoc.riga.nome === 'Nuova', insLoc);
+    }
 
     // la tendina delle location di Prezzi c'è fino alla 5.70 (dalla 5.71 le location le sceglie il sito)
-    const [vMaj, vMin] = JSON.parse(fs.readFileSync(path.join(EXT, 'manifest.json'), 'utf8')).version.split('.').map(Number);
     if (vMaj === 5 && vMin < 71) {
       chiamate.length = 0;
       const el = await ctx.chiamaSupabase('elencaLocation', {});

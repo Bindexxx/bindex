@@ -115,11 +115,25 @@ function swCoda(msg, sender, sendResponse) {
   }
 
   // ── 2) pagina Coda dentro l'app ──
+  // fino alla 5.71 le carte si scrivevano a mano nella pagina; dalla 5.72 arrivano solo dal sito
+  // (coda_carte): qui due righe del sito, tolte dalla coda finta appena salvate.
+  const dalla572 = maj > 5 || (maj === 5 && min >= 72);
   {
+    const ora = Date.now();
+    const rigaSito = (id, nome, extra) => ({ id, nome, lingua: 'IT', condizione: 'NM', qty: 1, stato: 'pending', owner_id: 'u-me', location: 'BULK', tentativi_falliti: 0, destinazione: 'collezione', creato_il: new Date(ora + id).toISOString(), ...extra });
+    const codaSito = dalla572 ? [rigaSito(1, 'PRIMA 1', { reverse: true, first_ed: true, sigillata_originale: true }), rigaSito(2, 'SECONDA 2')] : [];
+    const swCodaSito = (msg, sender, sendResponse) => {
+      if (msg && msg.type === 'AGGIUNGI_CARTA' && msg.dbRigaId) {
+        const i = codaSito.findIndex(r => r.id === msg.dbRigaId);
+        if (i >= 0) codaSito.splice(i, 1);
+      }
+      return swCoda(msg, sender, sendResponse);
+    };
     const env = creaAmbiente({
       version: manifest.version,
       store: { sliderDelayMinSec: 1, sliderDelayMaxSec: 1, sliderPausaOgni: 4, sliderRicontrollo: 1, sliderCfTimeout: 1, aiutaGruppo: true, cardsyncMantieniAccessoEstensione: true },
-      inoltraA: [swCoda],
+      dati: { get coda_carte() { return codaSito.slice(); } },
+      inoltraA: [swCodaSito],
     });
     const { w, errori, ricevuti, dalGenitore } = apriPagina('aggiungi_carta_popup.html', env, { conGenitore: true });
     w.verificaAccessoValido = async () => true;
@@ -127,19 +141,29 @@ function swCoda(msg, sender, sendResponse) {
     await attendi(600);
     const d = w.document;
     const colonneTesta = d.querySelectorAll('table.tabella-carte thead th').length;
-    const rigaNuova = d.querySelector('#tbodyCarte tr.riga-nuova');
-    uguale('stesse colonne in intestazione e nella riga per scrivere (11)', [colonneTesta, rigaNuova.children.length], [11, 11]);
-    uguale('RH, 1ª e SIG nella stessa cella "Varianti"', rigaNuova.querySelectorAll('td.col-var .var-toggle').length, 3);
+    if (!dalla572) {
+      const rigaNuova = d.querySelector('#tbodyCarte tr.riga-nuova');
+      uguale('stesse colonne in intestazione e nella riga per scrivere (11)', [colonneTesta, rigaNuova.children.length], [11, 11]);
+      uguale('RH, 1ª e SIG nella stessa cella "Varianti"', rigaNuova.querySelectorAll('td.col-var .var-toggle').length, 3);
+    }
     controlla('B12: niente "prossima tra" fisso davanti al conto alla rovescia', !/prossima tra/i.test(d.getElementById('timerRigaAttiva').textContent.replace(d.getElementById('timerCountdownAttiva').textContent, '')));
 
-    d.getElementById('inputLocation').value = 'BULK';
-    const scrivi = (testo) => {
-      const input = d.querySelector('#tbodyCarte tr.riga-nuova td input[type=text]');
-      input.value = testo;
-      input.dispatchEvent(new w.KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
-    };
-    scrivi('PRIMA 1');
-    scrivi('SECONDA 2');
+    if (dalla572) {
+      // le righe del sito compaiono da sole, in sola lettura
+      for (let i = 0; i < 60 && !d.querySelector('#tbodyCarte tr'); i++) await attendi(100);
+      const prima = d.querySelector('#tbodyCarte tr');
+      uguale('riga del sito: stesse colonne dell\'intestazione (11), niente campi da scrivere', [colonneTesta, prima && prima.children.length, prima && prima.querySelectorAll('input, select, button').length], [11, 11, 0]);
+      uguale('riga del sito: RH, 1ª e SIG nella cella "Varianti"', prima && [...prima.querySelectorAll('td.col-var .pill-var')].map(s => s.textContent), ['RH', '1ª', 'SIG']);
+    } else {
+      d.getElementById('inputLocation').value = 'BULK';
+      const scrivi = (testo) => {
+        const input = d.querySelector('#tbodyCarte tr.riga-nuova td input[type=text]');
+        input.value = testo;
+        input.dispatchEvent(new w.KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+      };
+      scrivi('PRIMA 1');
+      scrivi('SECONDA 2');
+    }
     const fasi = () => ricevuti.filter(m => m.type === 'CARDSYNC_ATTIVITA' && m.chi === 'coda');
     for (let i = 0; i < 60 && !fasi().some(m => m.fase === 'attesa' && m.prossima); i++) await attendi(100);
     const lettura = fasi().find(m => m.fase === 'lettura');
