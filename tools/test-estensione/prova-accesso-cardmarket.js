@@ -1,6 +1,7 @@
 // Accesso a Cardmarket (dalla 5.63):
 // service worker:
-//   - stato per l'app (CM_ACCESSO_CONTROLLA): ricordato senza schede; "dentro" vale 6 ore;
+//   - stato per l'app (CM_ACCESSO_CONTROLLA): ricordato senza schede; "dentro" vale 6 ore
+//     (dalla 5.68 5 minuti: vedi prova-uscita-cardmarket.js);
 //   - scheda per accedere (CM_ACCESSO_APRI): una sola, si chiude da sola quando l'accesso si vede;
 //   - controllo in scheda nascosta: Cloudflare riconosciuto e ricordato come tale;
 //   - pagine aperte per lavorare: dicono anche "fuori" (login-signup), non solo "dentro";
@@ -55,11 +56,13 @@ function caricaApp(env) {
   });
   const schedeCm = (env) => env.log.tabs.filter(t => t[0] === 'create' && /cardmarket/.test(t[1])).length;
 
-  // stato ricordato: nessuna scheda
+  // stato ricordato: nessuna scheda (fino alla 5.67 "dentro" valeva 6 ore, dalla 5.68 5 minuti)
   {
-    const { env } = caricaBackground({ version: versione, store: { statoLoginCardmarket: { loggato: true, quando: Date.now() - 3 * 60 * 60 * 1000 } } });
+    const dalla568 = maj > 5 || (maj === 5 && min >= 68);
+    const fa = dalla568 ? 3 * 60 * 1000 : 3 * 60 * 60 * 1000;
+    const { env } = caricaBackground({ version: versione, store: { statoLoginCardmarket: { loggato: true, quando: Date.now() - fa } } });
     const r = await interno(env, { type: 'CM_ACCESSO_CONTROLLA' });
-    uguale('dentro da 3 ore: stato ok senza aprire Cardmarket', [r && r.stato, schedeCm(env)], ['ok', 0]);
+    uguale(dalla568 ? 'dentro da 3 minuti: stato ok senza aprire Cardmarket' : 'dentro da 3 ore: stato ok senza aprire Cardmarket', [r && r.stato, schedeCm(env)], ['ok', 0]);
   }
   {
     const { env } = caricaBackground({ version: versione, store: { statoLoginCardmarket: { loggato: false, quando: Date.now() } } });

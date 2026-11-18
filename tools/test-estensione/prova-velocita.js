@@ -165,7 +165,8 @@ function caricaPagina(file, chromeFinto, supabaseFinto) {
   {
     const righe = [1, 2, 3].map(i => ({ id: 'c' + i, owner_id: 'u-me', nome: 'Carta ' + i, stato: 'pending', creato_il: '2026-10-25T10:0' + i + ':00Z', tipo: 'carta' }));
     const dati = { get coda_carte() { return righe.length ? [righe[0]] : []; } };
-    const { ctx, env } = caricaBackground({ version: manifest.version, store: { ...SLIDER, aiutaGruppo: true }, dati });
+    // collegati a Cardmarket da poco (dalla 5.68 la coda autonoma lo controlla prima di ogni carta)
+    const { ctx, env } = caricaBackground({ version: manifest.version, store: { ...SLIDER, aiutaGruppo: true, statoLoginCardmarket: { loggato: true, quando: Date.now() } }, dati });
     const lavorate = [];
     ctx._risolviRigaCodaCarteAutonoma = async (r) => {
       lavorate.push({ id: r.id, t: Date.now(), occupato: !!env.store.workerAutonomoAttivo });
