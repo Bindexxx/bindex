@@ -42,6 +42,17 @@ function prefBinderLayoutSet(layout) { localStorage.setItem(CHIAVE_BINDER_LAYOUT
 function prefAmbitoPrezziGet() { return localStorage.getItem('cardsyncAmbitoPrezzi') === 'gruppo' ? 'gruppo' : 'soloMie'; }
 function prefAmbitoPrezziSet(ambito) { localStorage.setItem('cardsyncAmbitoPrezzi', ambito === 'gruppo' ? 'gruppo' : 'soloMie'); }
 
+// Soglia di variazione dei controlli prezzi (euro): null = il prezzo si aggiorna sempre
+function prefSogliaPrezziGet() {
+    const v = parseFloat(localStorage.getItem('cardsyncSogliaPrezzi'));
+    return v > 0 && v <= 100 ? v : null;
+}
+function prefSogliaPrezziSet(soglia) {
+    const v = parseFloat(soglia);
+    if (v > 0 && v <= 100) localStorage.setItem('cardsyncSogliaPrezzi', String(v));
+    else localStorage.removeItem('cardsyncSogliaPrezzi');
+}
+
 function prefApriSempreAppGet() { return localStorage.getItem(CHIAVE_APRI_SEMPRE_APP) === 'true'; }
 function prefApriSempreAppSet(attivo) { localStorage.setItem(CHIAVE_APRI_SEMPRE_APP, attivo ? 'true' : 'false'); }
 

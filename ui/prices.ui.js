@@ -63,7 +63,7 @@ async function caricaListaLocationCheckbox() {
 
             const locations = _locationSelezionate();
 
-            const { data: ordineId, error } = await ordiniCreaControlloPrezzi(locations, _ambitoControlloPrezzi === 'gruppo');
+            const { data: ordineId, error } = await ordiniCreaControlloPrezzi(locations, _ambitoControlloPrezzi === 'gruppo', prefSogliaPrezziGet());
             const ordine = ordineId ? { id: ordineId } : null;
 
             if (error || !ordine) {
@@ -162,7 +162,8 @@ async function caricaListaLocationCheckbox() {
             btn.disabled = true;
             btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Creazione ordine...';
 
-            const { data: ordine, error } = await ordiniInsert({ tipo: 'controlla_prezzi_wishlist', creato_da: userId });
+            const soglia = prefSogliaPrezziGet();
+            const { data: ordine, error } = await ordiniInsert({ tipo: 'controlla_prezzi_wishlist', creato_da: userId, ...(soglia ? { parametri: { sogliaVariazione: soglia } } : {}) });
 
             if (error) {
                 sub.textContent = '❌ Errore: ' + error.message;
@@ -411,7 +412,8 @@ async function caricaListaLocationCheckbox() {
 
             const scaffali = _scaffaliSelezionatiSealed();
 
-            const { data: ordine, error } = await ordiniInsert({ tipo: 'controlla_prezzi_sealed', creato_da: userId, parametri: { scaffali, aiutaGruppo: _ambitoControlloPrezziSealed === 'gruppo' } });
+            const soglia = prefSogliaPrezziGet();
+            const { data: ordine, error } = await ordiniInsert({ tipo: 'controlla_prezzi_sealed', creato_da: userId, parametri: { scaffali, aiutaGruppo: _ambitoControlloPrezziSealed === 'gruppo', ...(soglia ? { sogliaVariazione: soglia } : {}) } });
 
             if (error) {
                 sub.textContent = '❌ Errore: ' + error.message;

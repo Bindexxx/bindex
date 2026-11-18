@@ -180,10 +180,13 @@ function swCoda(msg, sender, sendResponse) {
     uguale('B15: niente Anteprima foglio, profilo, "apri in una tab", tema scuro interno',
       ['anteprimaLink', 'selectProfilo', 'btnSalvaProfilo', 'apriTabLink', 'temaScuroEstensione'].filter(id => d.getElementById(id)), []);
     controlla('B15: niente "foglio" nei testi della pagina', !/foglio/i.test(corpo.textContent));
-    const soglia = d.getElementById('sliderSoglia');
-    soglia.value = '2';
-    soglia.dispatchEvent(new w.Event('input'));
-    uguale('soglia come tendina: salvata come prima (indice)', [soglia.tagName, env.store.sliderSoglia], ['SELECT', 2]);
+    // fino alla 5.70 la soglia era una tendina della pagina; dalla 5.71 arriva con l'ordine del sito
+    if (maj === 5 && min < 71) {
+      const soglia = d.getElementById('sliderSoglia');
+      soglia.value = '2';
+      soglia.dispatchEvent(new w.Event('input'));
+      uguale('soglia come tendina: salvata come prima (indice)', [soglia.tagName, env.store.sliderSoglia], ['SELECT', 2]);
+    }
     w.eval("_segnaCartaHome({ nome: 'Charizard', codice: 'OBF 125', lingua: 'IT', cond: 'NM', di: 'tua' }, 3, 10)");
     w._registraControllata(null, 1.0, 1.2, 1.2);
     const riga = (d.querySelector('#ultimeControllateBody .ultime-riga') || {}).textContent || '';

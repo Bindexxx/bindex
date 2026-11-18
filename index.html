@@ -520,6 +520,19 @@
                             </div>
 
                             <div class="pz-blocco">
+                                <div class="pz-etichetta"><span>Aggiorna il prezzo</span></div>
+                                <select class="filter-select pz-select" id="pzSoglia" onchange="prefSogliaPrezziSet(this.value)" aria-label="Quando aggiornare il prezzo">
+                                    <option value="">Sempre</option>
+                                    <option value="0.05">Solo se cambia di almeno 0,05 €</option>
+                                    <option value="0.1">Solo se cambia di almeno 0,10 €</option>
+                                    <option value="0.2">Solo se cambia di almeno 0,20 €</option>
+                                    <option value="0.5">Solo se cambia di almeno 0,50 €</option>
+                                    <option value="1">Solo se cambia di almeno 1,00 €</option>
+                                    <option value="2">Solo se cambia di almeno 2,00 €</option>
+                                </select>
+                            </div>
+
+                            <div class="pz-blocco">
                                 <p class="pz-nota">Controllo: <b id="pzDiChiTesto">solo le tue carte</b> · <a class="pz-link-sotto" onclick="apriDettaglioWidget('impostazioni'); setTimeout(() => _impostazioniApri('account'), 50);">cambia in Impostazioni</a></p>
                                 <div style="display:none;">
                                     <button type="button" id="btnAmbitoSoloMie"></button>

@@ -218,11 +218,15 @@ async function finisce(registro, n, maxMs) {
     const insLoc = chiamate.find(c => c.tabella === 'location' && c.op === 'insert');
     controlla('adapter: location nuova creata con il tipo', n.ok && !n.giaEsistente && insLoc && insLoc.riga.tipo === 'carta' && insLoc.riga.nome === 'Nuova', insLoc);
 
-    chiamate.length = 0;
-    const el = await ctx.chiamaSupabase('elencaLocation', {});
-    const sel = chiamate.find(c => c.op === 'select');
-    controlla('adapter: la tendina di Prezzi legge la tabella location (tipo carta)',
-      el.ok && sel && sel.tabella === 'location' && sel.filtri.some(f => f[0] === 'eq' && f[1] === 'tipo' && f[2] === 'carta'), sel);
+    // la tendina delle location di Prezzi c'è fino alla 5.70 (dalla 5.71 le location le sceglie il sito)
+    const [vMaj, vMin] = JSON.parse(fs.readFileSync(path.join(EXT, 'manifest.json'), 'utf8')).version.split('.').map(Number);
+    if (vMaj === 5 && vMin < 71) {
+      chiamate.length = 0;
+      const el = await ctx.chiamaSupabase('elencaLocation', {});
+      const sel = chiamate.find(c => c.op === 'select');
+      controlla('adapter: la tendina di Prezzi legge la tabella location (tipo carta)',
+        el.ok && sel && sel.tabella === 'location' && sel.filtri.some(f => f[0] === 'eq' && f[1] === 'tipo' && f[2] === 'carta'), sel);
+    }
     const r = await ctx.chiamaSupabase('aggiornaPrezzo', { riga: 'x', prezzo: 1 });
     controlla('adapter: azione aggiornaPrezzo tolta', r.ok === false);
   }
