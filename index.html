@@ -1132,13 +1132,13 @@
                             <i class="fa-solid fa-chevron-right imp-freccia"></i>
                         </div>
                         <div class="imp-voce espandibile" onclick="_impostazioniEspandi(this)">
-                            <span class="imp-ico"><i class="fa-solid fa-bug"></i></span>
+                            <span class="imp-ico"><img class="ico-caterpie" src="assets/icone/caterpie.png" alt="" aria-hidden="true"></span>
                             <div class="imp-voce-testo"><h4>Hai trovato un Caterpie?</h4><p>Se qualcosa non funziona come dovrebbe, hai incontrato un Caterpie selvatico (un bug): segnalalo</p></div>
                             <i class="fa-solid fa-chevron-right imp-freccia"></i>
                         </div>
                         <div class="imp-corpo">
                             <textarea id="bugDescrizione" rows="5" maxlength="1500" placeholder="Cosa non funzionava come dovrebbe?" style="width:100%; box-sizing:border-box; border-radius:12px; padding:0.7rem; font:inherit;"></textarea>
-                            <button class="btn-main" onclick="(async()=>{const t=document.getElementById('bugDescrizione'); if(!t||!t.value.trim()) return; await segnalaCaterpie(t.value); t.value='';})()"><i class="fa-solid fa-bug"></i> Segnala un Caterpie</button>
+                            <button class="btn-main" onclick="(async()=>{const t=document.getElementById('bugDescrizione'); if(!t||!t.value.trim()) return; await segnalaCaterpie(t.value); t.value='';})()"><img class="ico-caterpie" src="assets/icone/caterpie.png" alt="" aria-hidden="true"> Segnala un Caterpie</button>
                         </div>
                     </div>
                     </div>

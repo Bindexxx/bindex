@@ -1,6 +1,23 @@
 // Avvisi e conferme con la grafica del sito, al posto di alert/confirm/prompt.
 
 const _AVVISI_ICONE = { ok: 'fa-circle-check', errore: 'fa-triangle-exclamation', info: 'fa-circle-info' };
+// icone a immagine (opz.icona) al posto di quella del tipo: il Caterpie della segnalazione bug
+const _AVVISI_IMMAGINI = { caterpie: 'assets/icone/caterpie.png' };
+
+function _avvisoIcona(tipo, immagine) {
+    if (immagine && _AVVISI_IMMAGINI[immagine]) {
+        const img = document.createElement('img');
+        img.className = 'ico-caterpie';
+        img.src = _AVVISI_IMMAGINI[immagine];
+        img.alt = '';
+        img.setAttribute('aria-hidden', 'true');
+        return img;
+    }
+    const i = document.createElement('i');
+    i.className = 'fa-solid ' + (_AVVISI_ICONE[tipo] || _AVVISI_ICONE.info);
+    i.setAttribute('aria-hidden', 'true');
+    return i;
+}
 let _avvisiFila = Promise.resolve();
 
 function _avvisiPila() {
@@ -30,9 +47,7 @@ function _avvisoCreaBolla(testo, opz) {
     const tipo = opz.tipo || _avvisoTipoDaTesto(testo);
     const bolla = document.createElement('div');
     bolla.className = 'avviso-bolla avviso-' + tipo;
-    const icona = document.createElement('i');
-    icona.className = 'fa-solid ' + (_AVVISI_ICONE[tipo] || _AVVISI_ICONE.info);
-    icona.setAttribute('aria-hidden', 'true');
+    const icona = _avvisoIcona(tipo, opz.icona);
     const corpo = document.createElement('span');
     corpo.className = 'avviso-testo';
     corpo.textContent = _avvisoPulisci(testo);
@@ -89,7 +104,7 @@ function avvisoBreve(testo, opz) {
 
 function mostraAvviso(testo, opz) {
     const t = String(testo == null ? '' : testo);
-    if (t.length > 110 || t.includes('\n')) return mostraMessaggio({ testo: _avvisoPulisci(t), tipo: (opz && opz.tipo) || _avvisoTipoDaTesto(t) });
+    if (t.length > 110 || t.includes('\n')) return mostraMessaggio({ testo: _avvisoPulisci(t), tipo: (opz && opz.tipo) || _avvisoTipoDaTesto(t), icona: opz && opz.icona });
     avvisoBreve(t, opz);
     return Promise.resolve();
 }
@@ -158,16 +173,11 @@ function _avvisoFinestra(costruisci) {
     return turno;
 }
 
-function _avvisoTitolo(box, testoTitolo, tipo) {
-    if (!testoTitolo && !tipo) return;
+function _avvisoTitolo(box, testoTitolo, tipo, immagine) {
+    if (!testoTitolo && !tipo && !immagine) return;
     const h = document.createElement('h3');
     h.className = 'avviso-titolo';
-    if (tipo) {
-        const i = document.createElement('i');
-        i.className = 'fa-solid ' + (_AVVISI_ICONE[tipo] || _AVVISI_ICONE.info);
-        i.setAttribute('aria-hidden', 'true');
-        h.appendChild(i);
-    }
+    if (tipo || immagine) h.appendChild(_avvisoIcona(tipo, immagine));
     const s = document.createElement('span');
     s.textContent = testoTitolo || (tipo === 'errore' ? 'Attenzione' : (tipo === 'ok' ? 'Fatto' : 'Avviso'));
     h.appendChild(s);
@@ -201,7 +211,7 @@ function _avvisoBottoni(box, voci) {
 function mostraMessaggio(opz) {
     opz = opz || {};
     return _avvisoFinestra((box, chiudi) => {
-        _avvisoTitolo(box, opz.titolo, opz.tipo || 'info');
+        _avvisoTitolo(box, opz.titolo, opz.tipo || 'info', opz.icona);
         _avvisoParagrafo(box, opz.testo);
         const [ok] = _avvisoBottoni(box, [{ etichetta: opz.conferma || 'OK', classe: 'btn-main', fn: () => chiudi(undefined) }]);
         return { conferma: () => undefined, annulla: () => undefined, fuoco: ok };
@@ -224,7 +234,7 @@ function chiediConferma(opz) {
 function chiediTesto(opz) {
     opz = typeof opz === 'string' ? { testo: opz } : (opz || {});
     return _avvisoFinestra((box, chiudi) => {
-        _avvisoTitolo(box, opz.titolo || 'Scrivi', null);
+        _avvisoTitolo(box, opz.titolo || 'Scrivi', null, opz.icona);
         _avvisoParagrafo(box, opz.testo);
         const campo = document.createElement(opz.multiriga ? 'textarea' : 'input');
         if (opz.multiriga) campo.rows = 7; else campo.type = opz.tipo || 'text';
