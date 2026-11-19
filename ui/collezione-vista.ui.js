@@ -154,6 +154,18 @@ function _collVarHtml(card) {
     return `<span class="coll-var">—</span>`;
 }
 
+// Carte con la spunta "Sigillata" (sql/148, estensione 5.76): prezzo dalla prima offerta sigillata di
+// Cardmarket e, accanto, il minimo di Cardmarket per il confronto; se di sigillate non ce n'erano, lo dice.
+function _collSigillataHtml(card) {
+    if (!card || card.tabella !== 'carte' || !card.sigillataOriginale) return '';
+    const tit = escapeHtml(typeof _titoloSigillata === 'function' ? _titoloSigillata(card) : 'Ancora sigillata nella bustina originale');
+    if (card.prezzoDaSigillata === true) {
+        return `<span class="coll-sig" title="${tit}">📦 sigillata${card.prezzoMinimoCm != null ? ` · minimo CM ${formattaEuro(card.prezzoMinimoCm)}` : ''}</span>`;
+    }
+    if (card.prezzoDaSigillata === false) return `<span class="coll-sig no" title="${tit}">📦 nessuna sigillata · prezzo normale</span>`;
+    return `<span class="coll-sig" title="${tit}">📦 sigillata</span>`;
+}
+
 function _collChip(card) {
     if (card.tabella === 'wishlist') return '<span class="coll-chip wish">Wishlist</span>';
     if (_collEdSealed(card)) return '<span class="coll-chip">Sealed</span>';
@@ -220,6 +232,7 @@ function _collRigaTelefonoHtml(card) {
                 <div class="coll-prezzo">
                     <div id="prezzoCellaCompatta-${escapeHtml(String(card.id))}">${formattaEuro(card.price)}</div>
                     ${_collVarHtml(card)}
+                    ${_collSigillataHtml(card)}
                 </div>
             </div>
             ${aperta ? `<div class="coll-azioni" onclick="event.stopPropagation()">${_collAzioniHtml(card)}</div>` : ''}
@@ -421,7 +434,7 @@ function _collTabellaPC(data) {
             <td>${escapeHtml(card.lang || '—')}</td>
             <td>${card.tipo === 'sealed' ? '—' : escapeHtml(card.cond || '—')}</td>
             <td class="num">${wish ? '—' : (Number(card.qty) || 0)}</td>
-            <td class="num forte" id="prezzoCella-${escapeHtml(String(card.id))}">${formattaEuro(card.price)}</td>
+            <td class="num forte"><span id="prezzoCella-${escapeHtml(String(card.id))}">${formattaEuro(card.price)}</span>${_collSigillataHtml(card)}</td>
             <td class="num">${_collVarHtml(card)}</td>
             <td class="coll-td-nota">${card.notes ? `<i class="fa-solid fa-note-sticky" title="${escapeHtml(card.notes)}"></i>` : '<i class="fa-regular fa-note-sticky vuota"></i>'}</td>
             <td class="coll-td-menu"><i class="fa-solid fa-ellipsis"></i></td>
@@ -472,6 +485,7 @@ function _collDettaglioHtml(data) {
         <div class="coll-dett-nome">${escapeHtml(card.name || '(senza nome)')}${_collPillVarianti(card.link)}</div>
         <div class="coll-meta">${escapeHtml(_collMeta(card, false))}</div>
         <div class="coll-dett-prezzo"><span>${formattaEuro(card.price)}</span>${_collVarHtml(card)}</div>
+        ${_collSigillataHtml(card) ? `<div class="coll-dett-sig">${_collSigillataHtml(card)}</div>` : ''}
         <div class="coll-campi">
             ${wish ? campo('Location', 'Wishlist') : campo('Location', escapeHtml(card.location || '—'), `modificaLocationInline(event, '${id}', '${t}', '${_collAttr(card.location)}')`)}
             ${campo('Lingua', escapeHtml(card.lang || 'Qualsiasi'), `modificaLinguaInline(event, '${id}', '${t}', '${_collAttr(card.lang)}')`)}

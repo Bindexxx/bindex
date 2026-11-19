@@ -19,6 +19,9 @@ const MODI_CON_VISTA_COMPATTA = ['visualizzazione', 'scambio', 'wishlist', 'seal
                 firstEd: !!r.first_ed || /[?&]isFirstEd=Y(&|$)/i.test(r.url || ''),
                 variante: r.variante || null,
                 sigillataOriginale: !!r.sigillata_originale,
+                // sql/148: carte sigillate — minimo di Cardmarket e se il prezzo viene da un'offerta sigillata
+                prezzoMinimoCm: r.prezzo_minimo_cm != null ? Number(r.prezzo_minimo_cm) : null,
+                prezzoDaSigillata: typeof r.prezzo_da_sigillata === 'boolean' ? r.prezzo_da_sigillata : null,
                 price: r.prezzo != null ? Number(r.prezzo) : 0,
                 variation: _mappaVariazione(r),
                 variazioneNumerica: (r.prezzo_precedente != null && r.prezzo != null) ? (Number(r.prezzo) - Number(r.prezzo_precedente)) : null,
@@ -30,6 +33,17 @@ const MODI_CON_VISTA_COMPATTA = ['visualizzazione', 'scambio', 'wishlist', 'seal
                 esitoControllo: r.esito_controllo || null,
                 esitoControlloIl: r.esito_controllo_il || null,
             };
+        }
+
+        // Carte con la spunta "Sigillata": da dove viene il prezzo (sql/148, estensione 5.76)
+        function _titoloSigillata(card) {
+            const base = 'Ancora sigillata nella bustina originale';
+            if (card.prezzoDaSigillata === true) {
+                return base + ' — prezzo della prima offerta sigillata su Cardmarket'
+                    + (card.prezzoMinimoCm != null ? '; minimo Cardmarket ' + formattaEuro(card.prezzoMinimoCm) : '');
+            }
+            if (card.prezzoDaSigillata === false) return base + ' — nessuna offerta sigillata su Cardmarket, prezzo normale';
+            return base;
         }
 
         function _rigaWishlistDaDb(r) {
@@ -472,7 +486,7 @@ const MODI_CON_VISTA_COMPATTA = ['visualizzazione', 'scambio', 'wishlist', 'seal
                 tr.innerHTML = `
                     <td><input type="checkbox" class="riga-checkbox" data-id="${idAttr}" data-tabella="${card.tabella}" onclick="event.stopPropagation(); aggiornaSelezioneMultipla();"></td>
                     <td data-label="Q.tà" class="cella-editabile" title="Clicca per modificare" onclick="event.stopPropagation(); modificaCampoInline('${idAttr}', '${card.tabella}', 'qty', ${card.qty}, 'Quantità', 'intero')"><strong>${card.qty}</strong></td>
-                    <td data-label="Nome" class="cella-editabile" title="${card.name.replace(/"/g, '&quot;')} — clicca per modificare" onclick="event.stopPropagation(); modificaCampoInline('${idAttr}', '${card.tabella}', 'nome', '${nomeAttr}', 'Nome')" style="max-width:170px; overflow:hidden; text-overflow:ellipsis;">${thumb}<strong>${escapeHtml(card.name)}</strong>${obiettivoRaggiunto ? ` <span class="badge" style="background-color:var(--success-bg); color:var(--success);" title="Prezzo sceso al di sotto del tuo obiettivo (${card.prezzoObiettivo.toFixed(2)} €)">🎯 obiettivo!</span>` : ''}${card.sigillataOriginale ? ` <span class="badge" style="background-color:var(--primary-light); color:var(--primary);" title="Ancora sigillata nella bustina originale">📦 sigillata</span>` : ''}</td>
+                    <td data-label="Nome" class="cella-editabile" title="${card.name.replace(/"/g, '&quot;')} — clicca per modificare" onclick="event.stopPropagation(); modificaCampoInline('${idAttr}', '${card.tabella}', 'nome', '${nomeAttr}', 'Nome')" style="max-width:170px; overflow:hidden; text-overflow:ellipsis;">${thumb}<strong>${escapeHtml(card.name)}</strong>${obiettivoRaggiunto ? ` <span class="badge" style="background-color:var(--success-bg); color:var(--success);" title="Prezzo sceso al di sotto del tuo obiettivo (${card.prezzoObiettivo.toFixed(2)} €)">🎯 obiettivo!</span>` : ''}${card.sigillataOriginale ? ` <span class="badge" style="background-color:var(--primary-light); color:var(--primary);" title="${escapeHtml(_titoloSigillata(card))}">📦 sigillata</span>` : ''}</td>
                     <td data-label="Codice" class="cella-editabile" title="Clicca per modificare" onclick="event.stopPropagation(); modificaCampoInline('${idAttr}', '${card.tabella}', 'codice', '${codeAttr}', 'Codice')"><code>${escapeHtml(card.code)}</code></td>
                     <td data-label="Location"><span class="badge badge-location" title="${(card.location || '').replace(/"/g, '&quot;')} — clicca per modificare" onclick="event.stopPropagation(); modificaLocationInline(event, '${idAttr}', '${card.tabella}', '${locAttr}')">${escapeHtml(card.location || '—')}</span></td>
                     <td data-label="Lingua"><span class="badge ${langClass} cella-editabile" title="Clicca per modificare" onclick="event.stopPropagation(); modificaLinguaInline(event, '${idAttr}', '${card.tabella}', '${escapeJsAttr(card.lang || '')}')">${card.lang ? escapeHtml(card.lang) : 'Qualsiasi'}</span></td>
@@ -550,7 +564,7 @@ const MODI_CON_VISTA_COMPATTA = ['visualizzazione', 'scambio', 'wishlist', 'seal
                         <span class="riga-compatta-meta-testo">${escapeHtml(metaTesto)}</span>
                         <span class="pill-location">${escapeHtml(card.location || '—')}</span>
                         ${obiettivoRaggiunto ? `<span class="pill-location" style="background-color:var(--success-bg); color:var(--success);">🎯 obiettivo</span>` : ''}
-                        ${card.sigillataOriginale ? `<span class="pill-location" style="background-color:var(--primary-light); color:var(--primary);">📦 sigillata</span>` : ''}
+                        ${card.sigillataOriginale ? `<span class="pill-location" style="background-color:var(--primary-light); color:var(--primary);" title="${escapeHtml(_titoloSigillata(card))}">📦 sigillata</span>` : ''}
                     </div>
                     <div class="riga-compatta-azioni" id="menuCompatto-${idAttr}" style="display:none;">
                         <button onclick="event.stopPropagation(); apriModificaCarta('${idAttr}')"><i class="fa-solid fa-pen"></i> Modifica</button>
