@@ -193,8 +193,17 @@ function creaAmbiente(opts = {}) {
         signOut: () => Promise.resolve({}), signInWithPassword: () => Promise.resolve({ data: { session: sessione }, error: null }),
       },
       from: qb,
-      rpc: (nome, args) => { log.rpc.push(nome); log.chiamate.push({ rpc: nome, args }); return Promise.resolve({ data: opts.rpc && opts.rpc[nome] !== undefined ? opts.rpc[nome] : null, error: null }); },
-      storage: { from: () => ({ upload: () => Promise.resolve({ error: null }), getPublicUrl: (n) => ({ data: { publicUrl: 'https://x/' + n } }) }) },
+      // opts.rpc[nome]: valore fisso, oppure funzione (args) → valore (dalla 5.78); letto una volta per chiamata
+      rpc: (nome, args) => {
+        log.rpc.push(nome); log.chiamate.push({ rpc: nome, args });
+        let v = opts.rpc ? opts.rpc[nome] : undefined;
+        if (typeof v === 'function') v = v(args);
+        return Promise.resolve({ data: v !== undefined ? v : null, error: null });
+      },
+      storage: { from: (bucket) => ({
+        upload: (nome, file, opzioni) => { log.chiamate.push({ storage: bucket, upload: nome, opzioni, byte: file && file.size }); return Promise.resolve({ error: null }); },
+        getPublicUrl: (n) => ({ data: { publicUrl: 'https://x/' + n } }),
+      }) },
     }; },
   };
   return { chrome, supabase, log, store, storeSessione: sessione_, listeners, tabs, sveglie };
