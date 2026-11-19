@@ -24,6 +24,9 @@ async function caricaProdottiSealedReali() {
         integrita: r.integrita_packaging || 'sigillato_integro',
         price: r.prezzo != null ? Number(r.prezzo) : 0,
         prezzoCardmarket: r.prezzo_cardmarket != null ? Number(r.prezzo_cardmarket) : null,
+        // sql/150: minimo di Cardmarket e se il prezzo viene da un'offerta con l'integrità del prodotto
+        prezzoMinimoCm: r.prezzo_minimo_cm != null ? Number(r.prezzo_minimo_cm) : null,
+        prezzoDaIntegrita: typeof r.prezzo_da_integrita === 'boolean' ? r.prezzo_da_integrita : null,
         prezzoAcquisto: r.prezzo_acquisto != null ? Number(r.prezzo_acquisto) : null,
         dataAcquisizione: r.data_acquisizione || null,
         note: r.note || '',
@@ -258,7 +261,8 @@ function _sealedRenderDettaglio() {
         ? 'calcolato su Cardmarket' : 'prezzo impostato da te';
 
     const righeInfo = [
-        ['Cardmarket', p.prezzoCardmarket != null ? eur(p.prezzoCardmarket) : null],
+        ['Cardmarket', p.prezzoCardmarket != null ? eur(p.prezzoCardmarket) + (p.prezzoDaIntegrita === false ? ' <span class="sl-integrita-no">nessuna offerta con questa integrità · prezzo normale</span>' : '') : null],
+        ['Minimo Cardmarket', p.prezzoMinimoCm != null ? eur(p.prezzoMinimoCm) : null],
         ['Acquisto', p.prezzoAcquisto != null ? eur(p.prezzoAcquisto) : null],
         ['Acquisito il', _sealedDataLunga(p.dataAcquisizione)],
         ['Quantità', qty > 1 ? `×${qty} (totale ${eur((p.price || 0) * qty)})` : null],
