@@ -6,7 +6,9 @@
 // - rallentamento, Cloudflare o pagina non scaricata: pausa di un'ora;
 // - foto: scaricata da product-images, rimpicciolita a 400 px WebP, caricata in sealed-foto;
 // - dalla 5.79: con pagine da leggere segnala alla pagina Prezzi di non far partire i prezzi automatici;
-//   lettura diretta respinta da Cardmarket → pagina letta in una scheda in background, chiusa dopo.
+//   lettura diretta respinta da Cardmarket → pagina letta in una scheda in background, chiusa dopo;
+// - dalla 5.81: Cloudflare nella scheda → si aspetta fino a 30 s che passi da solo, poi pausa;
+//   una pagina-elenco ogni ~60 s, attesa fuori dal turno comune.
 // Le pagine finte ricalcano quelle vere di Cardmarket del 19/11 (Boosters, Scintille Folgoranti).
 const fs = require('fs');
 const path = require('path');
@@ -69,14 +71,16 @@ const URL_FOTO = 'https://product-images.s3.cardmarket.com/52/784945/784945.jpg'
   }
 
   // Ambiente per i giri: risposte di Cardmarket e del DB decise da ogni prova.
-  function giro({ mio = true, lavori = [], pagine = {}, schede = null, fotoMancanti = [], store = {}, dati = {}, fotoGrande = false } = {}) {
+  function giro({ mio = true, lavori = [], pagine = {}, schede = null, fotoMancanti = [], store = {}, dati = {}, fotoGrande = false, tempoVero = false } = {}) {
     const lettureCm = [];
     const fotoScaricate = [];
     const tele = [];
     const coda = lavori.slice();
     const daFare = (args) => (args.p_prodotti || []).filter(p => p.foto_cm).map(p => ({ url: p.url, id_prodotto: p.id_prodotto, foto_cm: p.foto_cm }));
     const { ctx, env } = caricaBackground({
-      version: versione, store, dati, pagine: schede || undefined, accelera: schede ? 20 : undefined,
+      // le schede finte con i tempi accelerati (setTimeout 20 volte più corto); tempoVero per i casi
+      // che mescolano setTimeout e setInterval (il banco accelera solo il primo)
+      version: versione, store, dati, pagine: schede || undefined, accelera: schede && !tempoVero ? 20 : undefined,
       rpc: {
         catalogo_sealed_e_mio: mio,
         catalogo_sealed_prossimo: () => { const l = coda.shift(); return l ? [l] : []; },
@@ -99,7 +103,10 @@ const URL_FOTO = 'https://product-images.s3.cardmarket.com/52/784945/784945.jpg'
       },
     });
     let turni = 0;
+    let spazi = 0;
     ctx._attendiTurnoCardmarket = async () => { turni++; };
+    // dalla 5.81 tra due pagine-elenco ~60 s: nelle prove si conta, la prova vera è più sotto
+    if (min >= 81) ctx._attendiSpazioElencoSealed = async () => { spazi++; };
     ctx._chiudiTurnoCardmarket = async () => {};
     ctx.createImageBitmap = async () => ({ width: 1000, height: 800, close() {} });
     ctx.OffscreenCanvas = class {
@@ -113,7 +120,7 @@ const URL_FOTO = 'https://product-images.s3.cardmarket.com/52/784945/784945.jpg'
     const rpcFatte = (nome) => env.log.chiamate.filter(c => c.rpc === nome);
     const upload = () => env.log.chiamate.filter(c => c.upload);
     const schedeChiuse = () => env.log.tabs.filter(t => t[0] === 'remove').length;
-    return { ctx, env, lettureCm, fotoScaricate, tele, turni: () => turni, rpcFatte, upload, schedeAperte, schedeChiuse };
+    return { ctx, env, lettureCm, fotoScaricate, tele, turni: () => turni, spazi: () => spazi, rpcFatte, upload, schedeAperte, schedeChiuse };
   }
 
   // ── 2. Solo l'account del catalogo ─────────────────────────────────────────────────────────
@@ -132,6 +139,10 @@ const URL_FOTO = 'https://product-images.s3.cardmarket.com/52/784945/784945.jpg'
     uguale('giro finito quando il DB non ha altro', await g.ctx._lavoraCatalogoSealed(), 'finito');
     uguale('pagine lette nell\'ordine, sempre in galleria', g.lettureCm, [P + 'Boosters?mode=gallery', P + 'Boosters?idExpansion=5879&mode=gallery', P + 'Boosters?idExpansion=5879&mode=gallery&site=2']);
     uguale('una pagina = un turno comune di Cardmarket', g.turni(), 3);
+    if (min >= 81) {
+      controlla('prima di ogni pagina l\'attesa di ~60 s (fuori dal turno)', g.spazi() >= g.turni(), [g.spazi(), g.turni()]);
+      controlla('ora dell\'ultima pagina salvata (resta anche se il motore si riavvia)', typeof g.env.store.catalogoSealedUltimaPagina === 'number' && Date.now() - g.env.store.catalogoSealedUltimaPagina < 5000, g.env.store.catalogoSealedUltimaPagina);
+    }
     const esp = g.rpcFatte('catalogo_sealed_salva_espansioni');
     uguale('espansioni salvate per la categoria', esp.map(c => [c.args.p_id_categoria, c.args.p_espansioni.length]), [[52, 4]]);
     const pag = g.rpcFatte('catalogo_sealed_salva_pagina');
@@ -257,12 +268,48 @@ const URL_FOTO = 'https://product-images.s3.cardmarket.com/52/784945/784945.jpg'
     uguale('… scheda chiusa, mai in primo piano, turno rallentato', [cfScheda.schedeChiuse(), cfScheda.schedeAperte.every(t => t.active === false), segnalato], [1, true, 1]);
     uguale('… niente salvato', cfScheda.rpcFatte('catalogo_sealed_salva_pagina').length, 0);
 
+    // dalla 5.81: Cloudflare che passa da solo nella scheda → si aspetta e si continua
+    if (min >= 81) {
+      const passa = giro({ lavori: [lavori[1]], pagine: {}, schede: { [URL_1]: PAGINA_1, [URL_2]: PAGINA_2 }, tempoVero: true });
+      let segnalatoP = 0;
+      passa.ctx._segnalaCloudflareAlTurno = () => { segnalatoP++; };
+      const esegui = passa.env.chrome.scripting.executeScript;
+      let chiamate = 0;
+      passa.env.chrome.scripting.executeScript = (o, cb) => {
+        chiamate++;
+        // la prima lettura vede la verifica, la seguente (1,5 s dopo) la pagina vera
+        if (chiamate <= 1) { const r = [{ result: { motivo: 'cloudflare' } }]; if (cb) { setTimeout(() => cb(r), 0); return undefined; } return Promise.resolve(r); }
+        return esegui(o, cb);
+      };
+      uguale('Cloudflare che passa da solo nella scheda: nessuna pausa, giro finito', await passa.ctx._lavoraCatalogoSealed(), 'finito');
+      uguale('… pagine salvate come sempre', passa.rpcFatte('catalogo_sealed_salva_pagina').map(c => [c.args.p_prodotti.length, c.args.p_completa]), [[2, false], [1, true]]);
+      uguale('… turno rallentato una volta, schede chiuse, mai in primo piano', [segnalatoP, passa.schedeChiuse(), passa.schedeAperte.every(t => t.active === false)], [1, 2, true]);
+      uguale('… nessuna pausa salvata', passa.env.store.catalogoSealedPausaFino, undefined);
+    }
+
     const lenta = giro({ lavori: [lavori[1]], pagine: {}, schede: {} });
     uguale('scheda che non si carica in 30 s: pausa', await lenta.ctx._lavoraCatalogoSealed(), 'pausa');
     uguale('… e la scheda si chiude', lenta.schedeChiuse(), 1);
   }
 
-  // ── 10. Sveglia ─────────────────────────────────────────────────────────────────────────────
+  // ── 10. Dalla 5.81: una pagina-elenco ogni ~60 s ────────────────────────────────────────────
+  if (min >= 81) {
+    const { ctx, env } = caricaBackground({ version: versione });
+    await env.chrome.storage.local.set({ catalogoSealedUltimaPagina: Date.now() - 120000 });
+    let t = Date.now();
+    await ctx._attendiSpazioElencoSealed();
+    controlla('ultima pagina 2 minuti fa: si legge subito', Date.now() - t < 1000, Date.now() - t);
+    await env.chrome.storage.local.set({ catalogoSealedUltimaPagina: Date.now() });
+    let finita = false;
+    ctx._attendiSpazioElencoSealed().then(() => { finita = true; });
+    await new Promise(r => setTimeout(r, 1500));
+    controlla('ultima pagina adesso: aspetta (almeno 54 s)', finita === false);
+    const fonte = fs.readFileSync(path.join(EXT, 'background.js'), 'utf8');
+    controlla('spazio tra le pagine: 60 s ± 10%', /_CATALOGO_SEALED_SPAZIO_MS = 60 \* 1000/.test(fonte) && /_CATALOGO_SEALED_SPAZIO_MS \* \(0\.9 \+ Math\.random\(\) \* 0\.2\)/.test(fonte));
+    controlla('l\'attesa tiene sveglio il motore (come il turno)', /async function _attendiSpazioElencoSealed[\s\S]{0,600}getPlatformInfo/.test(fonte));
+  }
+
+  // ── 11. Sveglia ─────────────────────────────────────────────────────────────────────────────
   {
     const { ctx, env } = caricaBackground({ version: versione });
     await new Promise(r => setTimeout(r, 50));

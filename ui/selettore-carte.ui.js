@@ -404,6 +404,41 @@ async function _selBloccoDaSolo(tr) {
     if (unica) _selBlocca(tr, unica, { daSolo: true, testo: esito.testo });
 }
 
+// Al salvataggio (19/11/2026): le righe ancora scollegate con il codice preciso di una sola carta del
+// catalogo si collegano come all'uscita dal campo (_selBloccoDaSolo), così vanno in coda col link e
+// l'estensione non le cerca su Cardmarket. Servono per le righe incollate o salvate senza uscire dal
+// campo: a novembre ~1 riga scritta a codice su 3 aveva la sua carta, unica, nel catalogo.
+// Le righe con "Non è questa" (selManuale) restano come sono. Restituisce quante ne ha collegate.
+async function selBloccaRigheDaCodice() {
+    if (_selSpento) return 0;
+    if (typeof _tipoInserimento !== 'undefined' && _tipoInserimento === 'sealed') return 0;
+    const daGuardare = _selRigheDati().filter(tr => {
+        if (!tr.isConnected || tr.dataset.blocco || tr.dataset.selManuale) return false;
+        const input = _selInput(tr);
+        return !!input && input.value.trim().length >= 2;
+    });
+    let collegate = 0;
+    const lavora = async (tr) => {
+        clearTimeout(tr._selTimer);
+        let esito = null;
+        try { esito = await _selAggiornaRiga(tr, { mostra: false }); } catch (_) { esito = null; }
+        if (!esito || !tr.isConnected || tr.dataset.blocco) return;
+        const unica = _selUnicaPrecisa(esito);
+        if (!unica || !unica.link) return;
+        try {
+            _selBlocca(tr, unica, { daSolo: true, testo: esito.testo });
+        } catch (e) {
+            console.warn('[selettore carte] collegamento al salvataggio:', e);
+        }
+        if (tr.dataset.blocco) collegate++;
+    };
+    // quattro righe alla volta: la ricerca nel catalogo è una chiamata al DB per riga
+    for (let i = 0; i < daGuardare.length; i += 4) {
+        await Promise.all(daGuardare.slice(i, i + 4).map(lavora));
+    }
+    return collegate;
+}
+
 // ───────────────────────── blocco della riga ─────────────────────────
 
 function _selBloccoHtml(b) {

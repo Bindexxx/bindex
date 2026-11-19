@@ -117,6 +117,22 @@ async function caricaSelectLocationComune() {
                 return;
             }
 
+            // Righe scritte a codice e mai uscite dal campo: si collegano al catalogo come all'uscita,
+            // così partono col link e l'estensione non le cerca su Cardmarket (ui/selettore-carte.ui.js).
+            let collegateDalCodice = 0;
+            if (typeof selBloccaRigheDaCodice === 'function') {
+                const btnSalva = document.getElementById('btnSalvaCarte');
+                const htmlSalva = btnSalva ? btnSalva.innerHTML : '';
+                if (btnSalva) { btnSalva.disabled = true; btnSalva.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Controllo i codici...'; }
+                try {
+                    collegateDalCodice = await selBloccaRigheDaCodice();
+                } catch (e) {
+                    console.warn('[inserimento] collegamento dei codici al catalogo non riuscito:', e);
+                } finally {
+                    if (btnSalva) { btnSalva.disabled = false; btnSalva.innerHTML = htmlSalva; }
+                }
+            }
+
             const righe = document.querySelectorAll('#entryTableBody tr');
             const righeValide = [];
             righe.forEach(tr => {
@@ -170,7 +186,10 @@ async function caricaSelectLocationComune() {
 
             clearEntryDraft();
             insAggiornaPagina();
-            mostraAvviso(`✅ ${righeDb.length} cart${righeDb.length === 1 ? 'a inviata' : 'e inviate'} nella coda persistente!\n\nApri l'estensione sulla sezione "Aggiungi Carte" per farle processare — non si perdono, restano lì in attesa finché qualcuno non le lavora.`);
+            const notaCodici = collegateDalCodice > 0
+                ? `\n\n${collegateDalCodice} ${collegateDalCodice === 1 ? 'codice trovato' : 'codici trovati'} nel catalogo: ${collegateDalCodice === 1 ? 'parte' : 'partono'} col link diretto.`
+                : '';
+            mostraAvviso(`✅ ${righeDb.length} cart${righeDb.length === 1 ? 'a inviata' : 'e inviate'} nella coda persistente!${notaCodici}\n\nApri l'estensione sulla sezione "Aggiungi Carte" per farle processare — non si perdono, restano lì in attesa finché qualcuno non le lavora.`);
         }
 
         async function segnalaCaterpie(descrizioneDaPannello) {
