@@ -281,6 +281,16 @@ function caricaPagina(file, env, { prima } = {}) {
   // due conteggi (prima di partire e all'inizio della sessione) e UN lotto prenotato
   uguale('coda piena: un lotto prenotato soltanto', azioni.filter(a => a === 'leggi').length - leggiPrima, 3);
   uguale('coda piena: conteggio ripartito da zero', sw.env.store.carteCodaDaUltimiPrezzi, 0);
+  // dalla 5.79: con l'elenco dei sealed da leggere su questo PC i prezzi automatici aspettano
+  if (Number(versione.split('.')[1]) >= 79) {
+    pagine.length = 0;
+    await sw.env.chrome.storage.local.set({ carteCodaDaUltimiPrezzi: 25, catalogoSealedInCorso: { scadenza: Date.now() + 5 * 60000 } });
+    await w._avviaControlloPrezziSeInattivo();
+    uguale('elenco sealed da leggere: niente prezzi automatici', pagine.length, 0);
+    await sw.env.chrome.storage.local.set({ catalogoSealedInCorso: { scadenza: Date.now() - 1000 } });
+    await w._avviaControlloPrezziSeInattivo();
+    uguale('segnale dell\'elenco scaduto: i prezzi automatici ripartono', pagine.length, 3);
+  }
   const jsdomErrori = errori.filter(e => !/Not implemented: (navigation|HTMLMediaElement)/.test(e));
   controlla('pagina Prezzi: nessun errore', jsdomErrori.length === 0 && sw.env.log.errori.length === 0, { jsdomErrori, sw: sw.env.log.errori });
   w.close();
