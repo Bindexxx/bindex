@@ -107,6 +107,11 @@ const senzaRumore = (errori) => errori.filter(e => !/Not implemented: (navigatio
 
   await ordineCon('o-strana', { sogliaVariazione: 'niente' });
   uguale('ordine con una soglia non valida: come senza soglia', scritti, ['c1', 'c2', 'c3']);
+  if (maj > 5 || min >= 75) {
+    await attendi(100);
+    uguale('dalla 5.75: le 9 carte dei tre ordini contano in "carte fatte oggi" (anche quelle senza scrittura)',
+      sw.env.store.prezziFattiOggi && sw.env.store.prezziFattiOggi.n, 9);
+  }
 
   // ── "Ferma" dall'app durante un controllo ──
   w.eval('isRunning = true; stopRequested = false;');
