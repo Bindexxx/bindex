@@ -5291,6 +5291,11 @@
         .coll-var { color: var(--text-muted); font-size: 0.8rem; font-weight: 600; white-space: nowrap; }
         .coll-var.su { color: var(--success); }
         .coll-var.giu { color: var(--danger); }
+        /* sql/148: carte sigillate (prezzo da offerta sigillata, minimo Cardmarket) */
+        .coll-sig { display: block; margin-top: 2px; color: var(--primary); font-size: 0.72rem; font-weight: 700; white-space: nowrap; }
+        .coll-sig.no { color: var(--text-muted); font-weight: 600; }
+        .coll-dett-sig { margin: -4px 0 8px; }
+        .coll-dett-sig .coll-sig { display: inline-block; font-size: 0.8rem; }
         .coll-obiettivo { color: var(--text-muted); font-size: 0.78rem; white-space: nowrap; }
 
         .coll-riga { border-bottom: 1px solid var(--border-color); padding: 0.7rem 0.15rem; cursor: pointer; }
