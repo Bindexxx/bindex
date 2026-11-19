@@ -9,7 +9,7 @@ pubblicati (`tools/` è escluso da `versiona_file.py`).
 ```
 cd tools/test-sito
 npm install
-npm test                       # prova-statica.js + prova-selettore.js + prova-pagine.js
+npm test                       # prova-statica.js + prova-selettore.js + prova-salva-codici.js + prova-pagine.js + prova-set-pagine.js
 node prova-statica.js          # solo le prove senza browser
 ```
 
@@ -23,6 +23,7 @@ non è installato qui, `CHROME_PATH` = un altro Chrome.
 |---|---|
 | `prova-statica.js` | Per ognuna delle 6 pagine, sugli script nell'ordine di caricamento vero: ogni `<script src>` locale esiste e si legge; nessun nome di primo livello dichiarato in due script (`let`/`const`/`class` doppi bloccano tutta la pagina, una funzione ridefinita vince in silenzio); `supabaseClient` usato solo in `config/` e `data/`; le funzioni chiamate negli attributi `on…="…"`, sia nell'HTML sia nei testi generati dagli script, esistono. |
 | `prova-selettore.js` | Il selettore carte dell'Inserimento (`ui/selettore-carte.ui.js`) senza browser: come legge quello che scrivi ("jigglypuff 8", "svi 054", "PAL054", "zubat trainer kit 11", "mew 8"), che ricerca manda al catalogo, i testi e i link delle carte, quando una riga si blocca da sola. La funzione SQL `catalogo_cerca` (sql/132) si prova a parte in PGlite. |
+| `prova-salva-codici.js` | Inserimento, salvataggio (19/11/2026): pagina di prova in Chromium con i file veri `ui/entry.ui.js` e `ui/selettore-carte.ui.js` e catalogo/coda finti. Le righe scritte a codice e mai uscite dal campo si collegano al catalogo al salvataggio: codice preciso con una sola carta → link della pagina (o `?idProduct=`) e testo del catalogo; due carte possibili, solo un nome, "Non è questa" → restano testo; riga già scelta → resta la sua scelta; avviso con quanti codici sono stati collegati. Sulla versione di prima fallisce. |
 | `prova-pagine.js` | Le 6 pagine aperte in Chromium da un server locale con Supabase finto (nessuna sessione, tabelle vuote): nessun errore JavaScript, nessun `console.error` (a parte le risorse di rete bloccate apposta), la pagina mostra qualcosa. |
 | `lib/pagine.js` | Elenco delle pagine e dei loro script in ordine (`vendor/` e script esterni esclusi dalle prove sui nomi). |
 | `lib/verifica.js` | Registro OK / FALLITO (copia di quello delle prove dell'estensione). |
