@@ -4,7 +4,9 @@
 // - legge col turno comune la pagina di una categoria (filtro "Espansione") o le pagine di una
 //   categoria + espansione, sempre in vista galleria, e salva con le RPC di sql/151;
 // - rallentamento, Cloudflare o pagina non scaricata: pausa di un'ora;
-// - foto: scaricata da product-images, rimpicciolita a 400 px WebP, caricata in sealed-foto.
+// - foto: scaricata da product-images, rimpicciolita a 400 px WebP, caricata in sealed-foto;
+// - dalla 5.79: con pagine da leggere segnala alla pagina Prezzi di non far partire i prezzi automatici;
+//   lettura diretta respinta da Cardmarket → pagina letta in una scheda in background, chiusa dopo.
 // Le pagine finte ricalcano quelle vere di Cardmarket del 19/11 (Boosters, Scintille Folgoranti).
 const fs = require('fs');
 const path = require('path');
@@ -16,12 +18,13 @@ const EXT = cartellaEstensione();
 const P = 'https://www.cardmarket.com/it/Pokemon/Products/';
 
 const PAGINA_CATEGORIA = `<html><head><title>Bustine Pokémon | Cardmarket</title></head><body>
+<h1 class="H1_PageTitle page-header">Boosters</h1>
 <form id="SearchResultForm"><select id="idCategory6afed061f309e" class="form-select"><option value="0">All</option><option value="52">Boosters</option></select>
 <select name="idExpansion" size="1" id="idExpansion6afed06f8edd0" class="form-select"><option value="0">Tutti</option><option value="5402">151</option><option value="4345">25th Anniversary Collection</option><option value="5879">Scintille Folgoranti</option><option value="1601">Pok&eacute;mon &amp; Friends</option><option value="5402">151</option></select></form>
 <div class="col-auto d-none d-md-block">300 Risultati</div><div class="col-12 col-sm-6 ms-auto">Pagina 1 di 10</div></body></html>`;
 
 const scheda = (cat, idCat, id, slug, nome) => `<div class="d-flex mb-4 col-12 col-sm-6 col-md-4 col-lg-3"><a href="/it/Pokemon/Products/${cat}/${slug}" class="card text-center w-100 galleryBox"><img src="https://www.cardmarket.com/img/transparent.gif" alt="${nome}" data-echo="https://product-images.s3.cardmarket.com/${idCat}/${id}/${id}.jpg" class="lazy card-img-top img-fluid"><div class="card-body d-flex flex-column"><h2 class="card-title h3"><span class="expansion-symbol is-pokemon icon is-24x24"><span></span></span>${nome}</h2><p class="card-text text-muted">Da <b>4,00 €</b></p></div></a></div>`;
-const paginaCoppia = (schede, pagina, di, risultati) => `<html><head><title>Bustine Pokémon | Cardmarket</title></head><body><section>
+const paginaCoppia = (schede, pagina, di, risultati) => `<html><head><title>Bustine Pokémon | Cardmarket</title></head><body><h1 class="H1_PageTitle page-header">Boosters</h1><section>
 <div class="col-auto d-none d-md-block">${risultati} Risultati</div><div class="col-12 col-sm-6 ms-auto">Pagina ${pagina} di ${di}</div>
 <div class="row">${schede.join('')}</div>
 <a href="/it/Pokemon/Products/Boosters?idExpansion=5879&site=${pagina + 1}" class="btn btn-primary btn-sm ms-3 pagination-control"></a></section></body></html>`;
@@ -66,14 +69,14 @@ const URL_FOTO = 'https://product-images.s3.cardmarket.com/52/784945/784945.jpg'
   }
 
   // Ambiente per i giri: risposte di Cardmarket e del DB decise da ogni prova.
-  function giro({ mio = true, lavori = [], pagine = {}, fotoMancanti = [], store = {}, dati = {}, fotoGrande = false } = {}) {
+  function giro({ mio = true, lavori = [], pagine = {}, schede = null, fotoMancanti = [], store = {}, dati = {}, fotoGrande = false } = {}) {
     const lettureCm = [];
     const fotoScaricate = [];
     const tele = [];
     const coda = lavori.slice();
     const daFare = (args) => (args.p_prodotti || []).filter(p => p.foto_cm).map(p => ({ url: p.url, id_prodotto: p.id_prodotto, foto_cm: p.foto_cm }));
     const { ctx, env } = caricaBackground({
-      version: versione, store, dati,
+      version: versione, store, dati, pagine: schede || undefined, accelera: schede ? 20 : undefined,
       rpc: {
         catalogo_sealed_e_mio: mio,
         catalogo_sealed_prossimo: () => { const l = coda.shift(); return l ? [l] : []; },
@@ -104,9 +107,13 @@ const URL_FOTO = 'https://product-images.s3.cardmarket.com/52/784945/784945.jpg'
       getContext() { return { drawImage() {} }; }
       async convertToBlob(o) { return { type: o.type, size: fotoGrande ? 300 * 1024 : 21000 }; }
     };
+    const schedeAperte = [];
+    const creaVera = env.chrome.tabs.create;
+    env.chrome.tabs.create = (p, cb) => { schedeAperte.push({ url: p.url, active: p.active }); return creaVera(p, cb); };
     const rpcFatte = (nome) => env.log.chiamate.filter(c => c.rpc === nome);
     const upload = () => env.log.chiamate.filter(c => c.upload);
-    return { ctx, env, lettureCm, fotoScaricate, tele, turni: () => turni, rpcFatte, upload };
+    const schedeChiuse = () => env.log.tabs.filter(t => t[0] === 'remove').length;
+    return { ctx, env, lettureCm, fotoScaricate, tele, turni: () => turni, rpcFatte, upload, schedeAperte, schedeChiuse };
   }
 
   // ── 2. Solo l'account del catalogo ─────────────────────────────────────────────────────────
@@ -165,7 +172,9 @@ const URL_FOTO = 'https://product-images.s3.cardmarket.com/52/784945/784945.jpg'
     uguale('… la coppia non conta come errore (riprende dopo la pausa)', g.rpcFatte('catalogo_sealed_errore').length, 0);
     uguale('durante la pausa non legge niente', [await g.ctx._lavoraCatalogoSealed(), g.lettureCm.length], ['pausa', 1]);
 
-    const cf = giro({ lavori, pagine: { [P + 'Boosters?idExpansion=5879&mode=gallery']: PAGINA_CF } });
+    // dalla 5.79 la pagina respinta si legge in scheda: Cloudflare anche lì
+    const cf = giro({ lavori, pagine: { [P + 'Boosters?idExpansion=5879&mode=gallery']: PAGINA_CF },
+      schede: min >= 79 ? { [P + 'Boosters?idExpansion=5879&mode=gallery']: PAGINA_CF } : null });
     let segnalato = 0;
     cf.ctx._segnalaCloudflareAlTurno = () => { segnalato++; };
     uguale('verifica Cloudflare: pausa', await cf.ctx._lavoraCatalogoSealed(), 'pausa');
@@ -194,7 +203,66 @@ const URL_FOTO = 'https://product-images.s3.cardmarket.com/52/784945/784945.jpg'
     uguale('… oltre 200 KB non la carica', [g.upload().length, g.rpcFatte('catalogo_sealed_foto_salvata').length], [0, 0]);
   }
 
-  // ── 8. Sveglia ─────────────────────────────────────────────────────────────────────────────
+  // ── 8. Dalla 5.79: segnale per la pagina Prezzi (l'elenco viene prima dei prezzi automatici) ──
+  if (min >= 79) {
+    const daLeggere = [{ id_categoria: 52 }];
+    const occupato = giro({ lavori: [{ id_categoria: 52, categoria: 'Boosters', id_espansione: 0 }],
+      store: { sessionePrezziAttiva_prezzi: { scadenza: Date.now() + 60000 } }, dati: { sealed_catalogo_giri: daLeggere } });
+    uguale('prezzi automatici in corso e pagine da leggere: l\'elenco aspetta…', await occupato.ctx._lavoraCatalogoSealed(), 'occupato');
+    const segnale = occupato.env.store.catalogoSealedInCorso;
+    controlla('… ma segnala alla pagina Prezzi che ha pagine da leggere (5 minuti)',
+      segnale && segnale.scadenza - Date.now() > 4 * 60000 && segnale.scadenza - Date.now() <= 5 * 60000, segnale);
+    const filtro = occupato.env.log.chiamate.filter(c => c.tabella === 'sealed_catalogo_giri' && c.metodo === 'or').map(c => c.args[0]);
+    controlla('pagine da leggere: stesse regole del DB (mai lette, categorie dopo un giorno, coppie dopo 30)',
+      filtro.length === 1 && /^letto_il\.is\.null,and\(id_espansione\.eq\.0,letto_il\.lt\.[^)]+\),letto_il\.lt\./.test(filtro[0]), filtro);
+    uguale('… senza prenotare lavori', occupato.rpcFatte('catalogo_sealed_prossimo').length, 0);
+
+    const vecchio = { catalogoSealedInCorso: { scadenza: Date.now() + 60000 } };
+    const finito = giro({ store: { ...vecchio }, dati: { sealed_catalogo_giri: [] } });
+    uguale('elenco tutto letto: nessun segnale', [await finito.ctx._lavoraCatalogoSealed(), finito.env.store.catalogoSealedInCorso], ['finito', undefined]);
+    const nonMio = giro({ mio: false, store: { ...vecchio }, dati: { sealed_catalogo_giri: daLeggere } });
+    await nonMio.ctx._lavoraCatalogoSealed();
+    uguale('account diverso: nessun segnale (sugli altri PC i prezzi vanno come prima)', nonMio.env.store.catalogoSealedInCorso, undefined);
+    const inPausa = giro({ store: { ...vecchio, catalogoSealedPausaFino: Date.now() + 60000 }, dati: { sealed_catalogo_giri: daLeggere } });
+    await inPausa.ctx._lavoraCatalogoSealed();
+    uguale('pausa di un\'ora: nessun segnale', inPausa.env.store.catalogoSealedInCorso, undefined);
+    const rallenta = giro({ lavori: [{ id_categoria: 52, categoria: 'Boosters', id_espansione: 5879 }], pagine: { [P + 'Boosters?idExpansion=5879&mode=gallery']: 429 }, dati: { sealed_catalogo_giri: daLeggere } });
+    await rallenta.ctx._lavoraCatalogoSealed();
+    uguale('Cardmarket rallenta: pausa e segnale tolto', rallenta.env.store.catalogoSealedInCorso, undefined);
+  }
+
+  // ── 9. Dalla 5.79: lettura diretta respinta → pagina letta in una scheda in background ──────
+  if (min >= 79) {
+    const URL_CAT = P + 'Boosters?mode=gallery';
+    const URL_1 = P + 'Boosters?idExpansion=5879&mode=gallery';
+    const URL_2 = P + 'Boosters?idExpansion=5879&mode=gallery&site=2';
+    const lavori = [{ id_categoria: 52, categoria: 'Boosters', id_espansione: 0 }, { id_categoria: 52, categoria: 'Boosters', id_espansione: 5879 }];
+    const g = giro({ lavori, pagine: {}, schede: { [URL_CAT]: PAGINA_CATEGORIA, [URL_1]: PAGINA_1, [URL_2]: PAGINA_2 } });
+    // fetch senza pagina = 404 ("fetch statico NON OK" come nella console del 19/11)
+    uguale('lettura diretta respinta: giro finito leggendo in scheda', await g.ctx._lavoraCatalogoSealed(), 'finito');
+    uguale('… una sola lettura diretta, poi per mezz\'ora dritto in scheda', g.lettureCm, [URL_CAT]);
+    uguale('… una scheda per pagina, in background', g.schedeAperte, [{ url: URL_CAT, active: false }, { url: URL_1, active: false }, { url: URL_2, active: false }]);
+    uguale('… ogni scheda chiusa dopo la lettura', g.schedeChiuse(), 3);
+    uguale('… stessi salvataggi della lettura diretta',
+      [g.rpcFatte('catalogo_sealed_salva_espansioni').map(c => c.args.p_espansioni.length), g.rpcFatte('catalogo_sealed_salva_pagina').map(c => [c.args.p_prodotti.length, c.args.p_completa, c.args.p_totale])],
+      [[4], [[2, false, null], [1, true, 3]]]);
+    uguale('… prodotti letti dalla scheda come dalla pagina', g.rpcFatte('catalogo_sealed_salva_pagina')[0].args.p_prodotti.map(p => [p.id_prodotto, p.nome]),
+      [[784945, 'Busta di Scintille Folgoranti'], [784946, 'Busta con protezione di Scintille Folgoranti']]);
+    uguale('una pagina = un turno anche in scheda', g.turni(), 3);
+
+    const cfScheda = giro({ lavori: [lavori[1]], pagine: {}, schede: { [URL_1]: PAGINA_CF } });
+    let segnalato = 0;
+    cfScheda.ctx._segnalaCloudflareAlTurno = () => { segnalato++; };
+    uguale('Cloudflare nella scheda: pausa', await cfScheda.ctx._lavoraCatalogoSealed(), 'pausa');
+    uguale('… scheda chiusa, mai in primo piano, turno rallentato', [cfScheda.schedeChiuse(), cfScheda.schedeAperte.every(t => t.active === false), segnalato], [1, true, 1]);
+    uguale('… niente salvato', cfScheda.rpcFatte('catalogo_sealed_salva_pagina').length, 0);
+
+    const lenta = giro({ lavori: [lavori[1]], pagine: {}, schede: {} });
+    uguale('scheda che non si carica in 30 s: pausa', await lenta.ctx._lavoraCatalogoSealed(), 'pausa');
+    uguale('… e la scheda si chiude', lenta.schedeChiuse(), 1);
+  }
+
+  // ── 10. Sveglia ─────────────────────────────────────────────────────────────────────────────
   {
     const { ctx, env } = caricaBackground({ version: versione });
     await new Promise(r => setTimeout(r, 50));
