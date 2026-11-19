@@ -187,11 +187,15 @@ function creaAmbiente(opts = {}) {
   const sessione = opts.loggato === false ? null : { access_token: 't', user: { id: 'u-me', email: 'utente@test.local' } };
   const supabase = {
     createClient: (url, chiave, opzioni) => { log.opzioniClient = opzioni; return {
-      auth: {
+      // opts.auth: metodi al posto di questi (dalla 5.83: auth con stato, verifyOtp); opts.functions:
+      // funzioni edge finte { invoke(nome, opzioni) }
+      auth: Object.assign({
         getSession: () => Promise.resolve({ data: { session: sessione }, error: null }),
         onAuthStateChange: () => ({ data: { subscription: { unsubscribe() {} } } }),
         signOut: () => Promise.resolve({}), signInWithPassword: () => Promise.resolve({ data: { session: sessione }, error: null }),
-      },
+        verifyOtp: () => Promise.resolve({ data: { session: null, user: null }, error: { message: 'verifyOtp finto' } }),
+      }, opts.auth || {}),
+      functions: opts.functions || { invoke: () => Promise.resolve({ data: null, error: { message: 'funzione finta non impostata' } }) },
       from: qb,
       // opts.rpc[nome]: valore fisso, oppure funzione (args) → valore (dalla 5.78); letto una volta per chiamata
       rpc: (nome, args) => {

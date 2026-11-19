@@ -144,6 +144,8 @@ function _piattaformaNonWindows() {
             });
 
             _controllaAccountEstensione();
+            // dentro (anche dopo un accesso a mano): l'estensione fuori entra con lo stesso account
+            authGetSession().then((s) => { if (s) _accessoUnico(s); });
         }
 
         const ID_AVVISO_ACCOUNT_ESTENSIONE = 'account-estensione';
@@ -186,6 +188,167 @@ function _piattaformaNonWindows() {
         document.addEventListener('visibilitychange', () => {
             if (document.visibilityState === 'visible') _controllaAccountEstensione();
         });
+
+        // ── Un solo accesso con l'estensione (estensione 5.83) ──
+        // Sito ed estensione hanno ognuno la sua sessione: chi entra da una parte fa entrare l'altra con
+        // un biglietto monouso (funzione biglietto-accesso), mai con la propria sessione (audit C3: due
+        // client che rinnovano lo stesso token si buttano fuori). "Esci" da una parte fa uscire anche
+        // l'altra se è lo stesso account; dopo un "Esci" niente rientra da solo finché non si rifà
+        // l'accesso a mano. Mai sopra un account già collegato: con due account diversi resta l'avviso
+        // qui sopra. Decide il sito; l'estensione risponde solo alle pagine di /bindex/ e solo con
+        // "Un solo accesso con il sito" acceso (menu Impostazioni dell'app). Le ore sono di questo PC.
+        // Su un PC usato da più persone: da sola una parte entra solo con l'ultimo account entrato lì
+        // (o se lì non è mai entrato nessuno), mai con quello di un altro.
+        const PAUSA_DOPO_ERRORE_ACCESSO_UNICO_MS = 60 * 1000;
+        let _accessoUnicoInCorso = null;
+        let _portaAccessoInCorso = null;
+        let _accessoUnicoErroreIl = 0;
+
+        function _messaggioAccessoEstensione(payload) {
+            return new Promise((resolve) => {
+                if (!window.chrome || !chrome.runtime || !chrome.runtime.sendMessage) { resolve(null); return; }
+                let risolto = false;
+                const timeoutId = setTimeout(() => { if (!risolto) { risolto = true; resolve(null); } }, TIMEOUT_RISPOSTA_ESTENSIONE_MS);
+                try {
+                    chrome.runtime.sendMessage(ID_ESTENSIONE_CARDSYNC, payload, (risposta) => {
+                        if (risolto) return;
+                        risolto = true;
+                        clearTimeout(timeoutId);
+                        if (chrome.runtime.lastError || !risposta) { resolve(null); return; }
+                        resolve(risposta);
+                    });
+                } catch (_) {
+                    if (!risolto) { risolto = true; clearTimeout(timeoutId); resolve(null); }
+                }
+            });
+        }
+
+        // null con un'estensione vecchia, assente o con l'interruttore spento: allora niente di nuovo
+        async function _statoAccessoEstensione() {
+            const r = await _messaggioAccessoEstensione({ type: 'CARDSYNC_STATO_ACCESSO' });
+            return r && r.ok === true && r.attivo === true ? r : null;
+        }
+
+        function _statoAccessoSito(sessione) {
+            const userId = sessione && sessione.user ? sessione.user.id : null;
+            if (userId) prefUltimoUtenteSitoSet(userId);
+            const dal = prefAccessoSitoGet();
+            return { userId, accessoDal: dal && dal.userId === userId ? dal.quando : 0, uscita: prefUscitaSitoGet(), ultimoUtente: prefUltimoUtenteSitoGet() };
+        }
+
+        // sito = _statoAccessoSito(), est = risposta di CARDSYNC_STATO_ACCESSO (o null).
+        // Un "Esci" più recente dell'accesso dell'altra parte: stesso account → esce anche l'altra,
+        // account diverso → niente (e niente rientra da solo). Si entra da soli solo con l'ultimo
+        // account entrato da quella parte (o se lì non è mai entrato nessuno).
+        function _decisioneAccessoUnico(sito, est) {
+            if (!est || (sito.userId && est.userId)) return 'niente';
+            if (sito.userId) {
+                const u = est.uscita;
+                if (u && u.quando > sito.accessoDal) return u.userId === sito.userId ? 'esci_dal_sito' : 'niente';
+                return !est.ultimoUtente || est.ultimoUtente === sito.userId ? 'porta_accesso' : 'niente';
+            }
+            if (est.userId) {
+                const u = sito.uscita;
+                if (u && u.quando > (est.accessoDal || 0)) return u.userId === est.userId ? 'fai_uscire_estensione' : 'niente';
+                return !sito.ultimoUtente || sito.ultimoUtente === est.userId ? 'prendi_accesso' : 'niente';
+            }
+            return 'niente';
+        }
+
+        async function _portaAccessoAllEstensione(userId) {
+            const { data, error } = await authBigliettoPerEstensione();
+            if (error || !data || data.ok !== true || !data.biglietto || data.userId !== userId) {
+                throw new Error((data && data.errore) || (error && error.message) || 'biglietto non creato');
+            }
+            const r = await _messaggioAccessoEstensione({ type: 'CARDSYNC_ACCEDI_CON_BIGLIETTO', biglietto: data.biglietto, tipo: data.tipo, userId });
+            if (!r || r.ok !== true) throw new Error((r && r.errore) || "l'estensione non risponde");
+            avvisoFissoTogli(ID_AVVISO_ACCOUNT_ESTENSIONE);
+        }
+
+        async function _prendiAccessoDallEstensione(est) {
+            const r = await _messaggioAccessoEstensione({ type: 'CARDSYNC_DAMMI_BIGLIETTO' });
+            if (!r || r.ok !== true || !r.biglietto || r.userId !== est.userId) throw new Error((r && r.errore) || 'biglietto non arrivato');
+            const { data, error } = await authAccediConBiglietto(r.biglietto, r.tipo);
+            const sessione = data && data.session;
+            if (error || !sessione || !sessione.user) throw new Error((error && error.message) || 'biglietto non accettato');
+            if (sessione.user.id !== r.userId) { await authLogout(); throw new Error('account diverso'); }
+            prefAccessoSitoSet(sessione.user.id);
+            return sessione;
+        }
+
+        // Un passo: restituisce la sessione del sito dopo il passo (null se il sito è appena uscito).
+        // L'accesso portato all'estensione non si aspetta: il sito va avanti intanto.
+        function _accessoUnico(sessione) {
+            if (_accessoUnicoInCorso) return _accessoUnicoInCorso;
+            _accessoUnicoInCorso = (async () => {
+                try {
+                    if (Date.now() - _accessoUnicoErroreIl < PAUSA_DOPO_ERRORE_ACCESSO_UNICO_MS) return sessione;
+                    const est = await _statoAccessoEstensione();
+                    const decisione = _decisioneAccessoUnico(_statoAccessoSito(sessione), est);
+                    if (decisione === 'porta_accesso') {
+                        if (!_portaAccessoInCorso) {
+                            _portaAccessoInCorso = _portaAccessoAllEstensione(sessione.user.id)
+                                .catch((e) => { _accessoUnicoErroreIl = Date.now(); console.warn("[accesso unico] l'estensione non è entrata:", e && e.message); })
+                                .finally(() => { _portaAccessoInCorso = null; });
+                        }
+                        return sessione;
+                    }
+                    if (decisione === 'prendi_accesso') return await _prendiAccessoDallEstensione(est);
+                    if (decisione === 'esci_dal_sito') {
+                        prefUscitaSitoSet(sessione.user.id);
+                        await authLogout();
+                        if (typeof cacheCarteSvuota === 'function') cacheCarteSvuota();
+                        prefActiveTabClear();
+                        return null;
+                    }
+                    if (decisione === 'fai_uscire_estensione') await _messaggioAccessoEstensione({ type: 'CARDSYNC_ESCI', userId: est.userId });
+                    return sessione;
+                } catch (e) {
+                    _accessoUnicoErroreIl = Date.now();
+                    console.warn('[accesso unico]', e && e.message);
+                    return sessione;
+                } finally {
+                    _accessoUnicoInCorso = null;
+                }
+            })();
+            return _accessoUnicoInCorso;
+        }
+
+        // "Esci" dal sito: l'uscita si ricorda (l'estensione non lo fa rientrare da sola) e, se
+        // l'estensione è dentro con lo stesso account, esce anche lei.
+        async function _accessoUnicoEsciAncheEstensione() {
+            try {
+                const userId = await authGetUserId();
+                if (!userId) return;
+                prefUscitaSitoSet(userId);
+                if (_versioneVecchiaRilevata) await _messaggioAccessoEstensione({ type: 'CARDSYNC_ESCI', userId });
+            } catch (e) {
+                console.warn('[accesso unico] uscita:', e && e.message);
+            }
+        }
+
+        function _moduloAccessoInVista() {
+            const panel = document.getElementById('cardsyncPanel');
+            const stato = document.getElementById('statoBossFiero');
+            const modulo = document.getElementById('bossFieroLoginForm');
+            return !!(panel && panel.style.display !== 'none' && stato && stato.style.display !== 'none'
+                && modulo && modulo.style.display !== 'none');
+        }
+
+        // La scheda torna in vista: entrati o usciti dall'estensione nel frattempo.
+        async function _accessoUnicoAlRitorno() {
+            if (!_versioneVecchiaRilevata) return;
+            const prima = await authGetSession();
+            if (!prima && !_moduloAccessoInVista()) return;
+            const dopo = await _accessoUnico(prima);
+            if (prima && !dopo) { location.reload(); return; }
+            if (!prima && dopo) await _mostraStatoLoginOControllo();
+        }
+
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') _accessoUnicoAlRitorno();
+        });
+        window.addEventListener('focus', () => { _accessoUnicoAlRitorno(); });
 
         function _motivoEmojiTema() {
             if (document.body.classList.contains('theme-verde')) return '🌿';
@@ -353,7 +516,13 @@ function _piattaformaNonWindows() {
 
             document.getElementById('btnDisinstallaDaAccesso').style.display = nonWindows ? 'none' : 'flex';
 
-            const sessione = await assicuraLoginSupabase();
+            let sessione = await assicuraLoginSupabase();
+            if (_versioneVecchiaRilevata) {
+                // un solo accesso con l'estensione: dentro da lì → dentro anche qui; uscita da lì → fuori
+                const prima = sessione;
+                sessione = await _accessoUnico(sessione);
+                if (sessione && !prima) mostraUtenteLoggato(sessione.user.email);
+            }
             _apriPannelloCardsync();
             _mostraSoloStato('statoBossFiero');
 

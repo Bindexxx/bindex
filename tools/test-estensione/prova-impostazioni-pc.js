@@ -186,6 +186,7 @@ function ambienteApp(versione, store) {
         function prefDarkModeGet() { return false; }
         function prefSiteThemeGet() { return 'viola'; }
         function authGetUserId() { return Promise.resolve(null); }
+        function authGetSession() { return Promise.resolve(null); }
         function avvisoFissoTogli() {}
         function avvisoFisso() {}
       `);

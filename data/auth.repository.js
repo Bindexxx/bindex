@@ -23,6 +23,16 @@ async function authLogout() {
     return supabaseClient.auth.signOut({ scope: 'local' });
 }
 
+// Un solo accesso con l'estensione (estensione 5.83, funzione biglietto-accesso): biglietto monouso per
+// far entrare l'estensione con una sessione sua; ingresso del sito con il biglietto dell'estensione.
+async function authBigliettoPerEstensione() {
+    return supabaseClient.functions.invoke('biglietto-accesso', { body: {} });
+}
+
+async function authAccediConBiglietto(biglietto, tipo) {
+    return supabaseClient.auth.verifyOtp({ token_hash: biglietto, type: tipo === 'email' ? 'email' : 'magiclink' });
+}
+
 async function authUpdatePassword(nuovaPassword) {
     return supabaseClient.auth.updateUser({ password: nuovaPassword });
 }

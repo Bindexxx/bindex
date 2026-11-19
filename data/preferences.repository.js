@@ -4,6 +4,26 @@
 function prefMantieniAccessoGet() { return localStorage.getItem('cardsyncMantieniAccesso'); }
 function prefMantieniAccessoSet(valore) { localStorage.setItem('cardsyncMantieniAccesso', valore); }
 
+// Un solo accesso con l'estensione (estensione 5.83): ultimo accesso e ultimo "Esci" voluto su questo
+// browser, { userId, quando }, confrontati con quelli dell'estensione (ui/extension.ui.js), e l'ultimo
+// account entrato nel sito da qui (resta dopo "Esci").
+function _prefMomentoAccesso(chiave) {
+    try {
+        const v = JSON.parse(localStorage.getItem(chiave) || 'null');
+        return v && typeof v.userId === 'string' && typeof v.quando === 'number' ? v : null;
+    } catch (_) { return null; }
+}
+function prefAccessoSitoGet() { return _prefMomentoAccesso('bindexAccessoSitoDal'); }
+function prefAccessoSitoSet(userId) {
+    localStorage.setItem('bindexAccessoSitoDal', JSON.stringify({ userId, quando: Date.now() }));
+    localStorage.removeItem('bindexUscitaSito');
+    prefUltimoUtenteSitoSet(userId);
+}
+function prefUscitaSitoGet() { return _prefMomentoAccesso('bindexUscitaSito'); }
+function prefUscitaSitoSet(userId) { localStorage.setItem('bindexUscitaSito', JSON.stringify({ userId, quando: Date.now() })); }
+function prefUltimoUtenteSitoGet() { return localStorage.getItem('bindexUltimoUtenteSito'); }
+function prefUltimoUtenteSitoSet(userId) { if (userId && localStorage.getItem('bindexUltimoUtenteSito') !== userId) localStorage.setItem('bindexUltimoUtenteSito', userId); }
+
 function prefSiteThemeGet() { return localStorage.getItem('siteTheme'); }
 function prefSiteThemeSet(nome) { localStorage.setItem('siteTheme', nome); }
 

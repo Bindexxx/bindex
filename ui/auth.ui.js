@@ -16,6 +16,7 @@ function _nomeDaEmail(email) {
             btnLogout.onclick = async (e) => {
                 e.stopPropagation();
                 if (!(await chiediConferma({ titolo: 'Uscire da Bindex?', testo: email, conferma: 'Esci' }))) return;
+                await _accessoUnicoEsciAncheEstensione();
                 await authLogout();
                 if (typeof cacheCarteSvuota === 'function') cacheCarteSvuota();
                 prefActiveTabClear();
@@ -61,6 +62,7 @@ function _nomeDaEmail(email) {
                 authSubmit.textContent = 'Accedi';
                 return;
             }
+            prefAccessoSitoSet(data.session.user.id);
             mostraUtenteLoggato(data.session.user.email);
             nascondiPannelloCardsync();
             await _avviaSitoDopoAccesso();
