@@ -232,7 +232,7 @@ const _ballTITOLI_BREVI = {
     prezzi_recenti: 'Controlli',
     visualizzazione: 'Collezione',
     contributi: 'Contributi',
-    richieste: 'Richieste',
+    richieste: 'Scambi',
     chat: 'Chat',
     achievement: 'Achievement',
     scaffali: 'Scaffali',

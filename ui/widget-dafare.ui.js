@@ -42,7 +42,7 @@ CATALOGO_WIDGET.suggerimento = {
                 const richiesteInfo = await CATALOGO_WIDGET.richieste.preview();
                 const daGestire = (richiesteInfo.dati && richiesteInfo.dati.totale) || 0;
                 righeRichieste = (richiesteInfo.dati && richiesteInfo.dati.righeInAttesa) || [];
-                if (daGestire > 0) segnali.push({ id: 'richieste_da_gestire', testo: `${daGestire} richiest${daGestire === 1 ? 'a' : 'e'} da gestire`, stato: 'allerta', tab: 'richieste', immagini: (richiesteInfo.dati.immagini || []).slice(0, 3), righe: righeRichieste, valore: richiesteInfo.dati.valore || 0 });
+                if (daGestire > 0) segnali.push({ id: 'richieste_da_gestire', testo: `${daGestire} scamb${daGestire === 1 ? 'io' : 'i'} da gestire`, stato: 'allerta', tab: 'richieste', immagini: (richiesteInfo.dati.immagini || []).slice(0, 3), righe: righeRichieste, valore: richiesteInfo.dati.valore || 0 });
             } catch (e) { console.error('[Centro operativo] richieste:', e); }
 
             const codaErrori = await _contaCodaErrori();
@@ -160,6 +160,10 @@ function _daFareTesti(s, nickname) {
             const chi = rsOspite
                 ? escapeHtml((rsOspite.ospite_nome || 'Un ospite') + ' (ospite)')
                 : (nickname[persone[0]] ? escapeHtml(nickname[persone[0]]) : 'Qualcuno del gruppo');
+            if (righe.some(r => r._proposta)) {
+                const proposte = new Set(righe.filter(r => r._proposta).map(r => r.richiesta_id)).size;
+                return { titolo: `${chi} aspetta te per ${proposte === 1 ? 'uno scambio' : `${proposte} scambi`}`, sotto: pezzi.join(' · ') };
+            }
             return { titolo: `${chi} ti ha chiesto ${righe.length} oggett${righe.length === 1 ? 'o' : 'i'}`, sotto: pezzi.join(' · ') };
         }
         return { titolo, sotto: pezzi.join(' · ') };

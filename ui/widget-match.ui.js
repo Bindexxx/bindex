@@ -13,9 +13,9 @@ CATALOGO_WIDGET.match = {
         azione: (dati, evt) => { apriDettaglioWidget('match', evt); },
 };
 
-let _matchTabAttivo = 'cerchi';
+let _matchTabAttivo = 'scambi';
 let _matchDati = null;
-let _matchPersonaSel = { hai: null, cerchi: null };
+let _matchPersonaSel = { hai: null, cerchi: null, scambi: null };
 let _matchSelezionate = new Set();
 let _matchMostraNascoste = false;
 let _matchMenuIdx = 0;
@@ -28,8 +28,8 @@ async function renderPaginaMatch() {
     const container = document.getElementById('matchLista');
     if (!container) return;
     container.innerHTML = '<p style="text-align:center; color:var(--text-muted); font-size:0.85rem; padding:1rem 0;"><i class="fa-solid fa-spinner fa-spin"></i> Cerco corrispondenze…</p>';
-    _matchTabAttivo = 'cerchi';
-    _matchPersonaSel = { hai: null, cerchi: null };
+    _matchTabAttivo = 'scambi';
+    _matchPersonaSel = { hai: null, cerchi: null, scambi: null };
     _matchSelezionate = new Set();
     _matchMostraNascoste = false;
 
@@ -57,7 +57,7 @@ async function renderPaginaMatch() {
     (dataScambio || []).forEach(m => righe.push({
         chiave: `${m.mia_carta_id}_${m.altra_wishlist_id}`, lato: 'hai', tipo: 'carta', ownerAltro: m.altro_owner_id,
         ...daCarta(m.mia_carta_id), nome: m.mio_nome || daCarta(m.mia_carta_id).nome,
-        prezzo: Number(m.mio_prezzo) || 0, obiettivo: m.altro_prezzo_obiettivo,
+        prezzo: Number(m.mio_prezzo) || 0, obiettivo: m.altro_prezzo_obiettivo, oggettoId: m.mia_carta_id,
     }));
     (dataWishlist || []).forEach(m => righe.push({
         chiave: `${m.mia_wishlist_id}_${m.altra_carta_id}`, lato: 'cerchi', tipo: 'carta', ownerAltro: m.altro_owner_id,
@@ -68,7 +68,7 @@ async function renderPaginaMatch() {
     (dataScambioSealed || []).forEach(m => righe.push({
         chiave: `s_${m.mio_prodotto_id}_${m.altra_wishlist_sealed_id}`, lato: 'hai', tipo: 'sealed', ownerAltro: m.altro_owner_id,
         nome: m.mio_nome || '', code: '', lang: '', cond: '', img: null,
-        prezzo: Number(m.mio_prezzo) || 0, obiettivo: m.altro_prezzo_obiettivo,
+        prezzo: Number(m.mio_prezzo) || 0, obiettivo: m.altro_prezzo_obiettivo, oggettoId: m.mio_prodotto_id,
     }));
     (dataWishlistSealed || []).forEach(m => righe.push({
         chiave: `s_${m.mia_wishlist_sealed_id}_${m.altro_prodotto_id}`, lato: 'cerchi', tipo: 'sealed', ownerAltro: m.altro_owner_id,
@@ -147,24 +147,52 @@ function _matchRenderDaDati() {
 
     const righeCerchi = visibili.filter(r => r.lato === 'cerchi');
     const righeHai = visibili.filter(r => r.lato === 'hai');
+    const suggeriti = _matchSuggerimenti(visibili);
+    const conta = { scambi: suggeriti.length, cerchi: righeCerchi.length, hai: righeHai.length };
     let tab = _matchTabAttivo;
-    if (tab === 'cerchi' && righeCerchi.length === 0 && righeHai.length > 0) tab = 'hai';
-    else if (tab === 'hai' && righeHai.length === 0 && righeCerchi.length > 0) tab = 'cerchi';
+    if (!conta[tab]) tab = ['scambi', 'cerchi', 'hai'].find(t => conta[t]) || tab;
     _matchTabAttivo = tab;
 
     const persone = new Set(visibili.map(r => r.ownerAltro)).size;
     const nNuove = visibili.filter(r => nuovi.has(r.chiave)).length;
     const riepilogo = `<b>${visibili.length} corrispondenz${visibili.length === 1 ? 'a' : 'e'}</b><span class="match-riep-pc"> con ${persone} person${persone === 1 ? 'a' : 'e'} del gruppo</span>${nNuove ? ` · <b class="match-rosso">${nNuove} nuov${nNuove === 1 ? 'a' : 'e'}</b>` : ''}`;
 
+    const tabBtn = (id, icona, testo, n) =>
+        `<button type="button" class="match-tabbtn ${tab === id ? 'attivo' : ''}" onclick="_matchCambiaTab('${id}')"><i class="fa-solid ${icona}"></i> <span class="match-tab-testo">${testo}</span> &middot; ${n}</button>`;
+    const tabsHtml = `<div class="match-tabs match-tabs-3">${tabBtn('scambi', 'fa-handshake', 'Scambi', suggeriti.length)}${tabBtn('cerchi', 'fa-heart', 'Lo cerchi', righeCerchi.length)}${tabBtn('hai', 'fa-right-left', 'Lo hai tu', righeHai.length)}</div>`;
+
+    if (tab === 'scambi') {
+        if (suggeriti.length && !suggeriti.some(g => g.ownerAltro === _matchPersonaSel.scambi)) _matchPersonaSel.scambi = suggeriti[0].ownerAltro;
+        const elencoS = suggeriti.map(g => {
+            const d = g.sugg.differenza;
+            const chip = Math.abs(d) < 0.005 ? '<span class="bx-stato bx-stato-conclusa">Pari</span>' : `<span class="bx-stato">${d > 0 ? '+' : '−'}${formattaEuro(Math.abs(d))}</span>`;
+            return `<div class="match-mrow ${g.ownerAltro === _matchPersonaSel.scambi ? 'sel' : ''}" onclick="_matchSelezionaPersona('${g.ownerAltro}')">
+                <div class="match-avatar" data-avatar-utente="${g.ownerAltro}">${escapeHtml(g.label.charAt(0).toUpperCase())}</div>
+                <div class="match-mtesto"><div class="match-persona-nome">${escapeHtml(g.label)}${g.nuovi ? ' <span class="match-punto"></span>' : ''}</div><div class="match-persona-sotto">ricevi ${g.sugg.ricevi.length} · dai ${g.sugg.dai.length}</div></div>
+                ${chip}<i class="fa-solid fa-chevron-right match-freccia"></i></div>`;
+        }).join('');
+        const cardsS = suggeriti.length
+            ? suggeriti.map(g => _matchCardScambioHtml(g, g.ownerAltro === _matchPersonaSel.scambi)).join('')
+            : '<p class="match-vuoto">Nessuno scambio possibile per ora: serve qualcuno che abbia una cosa che cerchi e cerchi una cosa tua.</p>';
+        container.innerHTML = `
+        <p class="pg-sotto match-riepilogo">${riepilogo}</p>
+        <div class="match-layout">
+            ${tabsHtml}
+            <div class="match-master">
+                <div class="match-descr">Persone con cui potete scambiare: hanno qualcosa che cerchi e cercano qualcosa di tuo. Prima di inviare puoi cambiare tutto.</div>
+                ${elencoS}
+            </div>
+            <div class="match-dettaglio">${cardsS}</div>
+        </div>`;
+        if (typeof fotoProfiloApplica === 'function') fotoProfiloApplica(container);
+        return;
+    }
+
     const righeTab = tab === 'cerchi' ? righeCerchi : righeHai;
     const nascosteTab = nascoste.filter(r => r.lato === tab);
     const gruppi = _matchRaggruppa(righeTab);
     const gruppiNascosti = _matchMostraNascoste ? _matchRaggruppa(nascosteTab) : [];
     if (gruppi.length && !gruppi.some(g => g.ownerAltro === _matchPersonaSel[tab])) _matchPersonaSel[tab] = gruppi[0].ownerAltro;
-
-    const tabBtn = (id, icona, testo, n) =>
-        `<button type="button" class="match-tabbtn ${tab === id ? 'attivo' : ''}" onclick="_matchCambiaTab('${id}')"><i class="fa-solid ${icona}"></i> ${testo} &middot; ${n}</button>`;
-    const tabsHtml = `<div class="match-tabs">${tabBtn('cerchi', 'fa-heart', 'Lo cerchi', righeCerchi.length)}${tabBtn('hai', 'fa-right-left', 'Lo hai tu', righeHai.length)}</div>`;
 
     const descr = tab === 'cerchi' ? 'Cose della tua Wishlist che qualcuno del gruppo ha in Scambio' : 'Cose tue in Scambio che qualcuno del gruppo ha in Wishlist';
     const vuoto = tab === 'cerchi'
@@ -214,8 +242,8 @@ function _matchCardPersonaHtml(g, eCerchi, nascoste, selPC) {
     const titoloPC = eCerchi ? `${escapeHtml(g.label)} ha ${n} ${n === 1 ? 'carta' : 'carte'} che cerchi` : `${escapeHtml(g.label)} cerca ${n} tu${n === 1 ? 'a carta' : 'e carte'}`;
     const selezionate = eCerchi ? g.righe.filter(r => _matchSelezionate.has(r.chiave)) : [];
     const azioneFondo = nascoste ? '' : (eCerchi
-        ? `<button type="button" class="match-fondo ${selezionate.length ? 'attivo' : ''}" ${selezionate.length ? '' : 'disabled'} onclick="_matchRichiediSelezionate('${g.ownerAltro}')"><i class="fa-solid fa-paper-plane"></i> Richiedi le selezionate${selezionate.length ? ` (${selezionate.length})` : ''}</button>`
-        : `<button type="button" class="match-fondo" onclick="_contattaPersonaMatch('${g.ownerAltro}', '${g.labelSafe}')"><i class="fa-solid fa-comment"></i> Proponi a ${escapeHtml(g.label)}</button>`);
+        ? `<button type="button" class="match-fondo ${selezionate.length ? 'attivo' : ''}" ${selezionate.length ? '' : 'disabled'} onclick="_matchRichiediSelezionate('${g.ownerAltro}')"><i class="fa-solid fa-right-left"></i> Proponi uno scambio${selezionate.length ? ` (${selezionate.length})` : ''}</button>`
+        : `<button type="button" class="match-fondo attivo" onclick="_matchProponiTutte('${g.ownerAltro}')"><i class="fa-solid fa-right-left"></i> Proponi a ${escapeHtml(g.label)}</button>`);
     return `
         <div class="match-persona ${nascoste ? 'match-persona-nasc' : ''} ${selPC ? 'match-persona-sel' : ''}" data-owner="${g.ownerAltro}">
             <div class="match-persona-head">
@@ -245,9 +273,7 @@ function _matchRigaHtml(r, eCerchi, g, nascosta) {
     const nuovo = _matchDati.nuovi.has(r.chiave) ? ' <span class="match-nuovo">NUOVO</span>' : '';
     const spunta = (eCerchi && !nascosta)
         ? `<input type="checkbox" class="match-spunta" ${_matchSelezionate.has(r.chiave) ? 'checked' : ''} onclick="event.stopPropagation(); _matchToggleSpunta('${chiaveSafe}')" aria-label="Seleziona ${escapeHtml(r.nome)}">` : '';
-    const primaria = nascosta ? '' : (eCerchi
-        ? `<button type="button" class="match-azione match-pc-flex" onclick="event.stopPropagation(); _matchRichiediUna('${chiaveSafe}')"><i class="fa-solid fa-paper-plane"></i> Richiedi</button>`
-        : `<button type="button" class="match-azione match-pc-flex" onclick="event.stopPropagation(); _contattaPersonaMatch('${g.ownerAltro}', '${g.labelSafe}')"><i class="fa-solid fa-comment"></i> Proponi</button>`);
+    const primaria = nascosta ? '' : `<button type="button" class="match-azione match-pc-flex" onclick="event.stopPropagation(); _matchRichiediUna('${chiaveSafe}')"><i class="fa-solid fa-right-left"></i> Proponi</button>`;
     const voceMenu = nascosta
         ? `<button type="button" onclick="_matchChiudiMenuAperto(); _riattivaMatch('${chiaveSafe}')"><i class="fa-solid fa-eye"></i> Mostra di nuovo</button>`
         : `<button type="button" onclick="_matchChiudiMenuAperto(); _nascondiMatch('${chiaveSafe}', event)"><i class="fa-solid fa-eye-slash"></i> Nascondi</button>`;
@@ -274,23 +300,106 @@ function _matchToggleSpunta(chiave) {
     _matchRenderDaDati();
 }
 
-function _matchVoceRichiesta(r) {
-    return { chiave: r.chiave, tipo: r.tipo, oggettoId: r.oggettoId, nome: r.nome, code: r.code, img: r.img, prezzo: r.prezzo };
+// Righe di Match → oggetti della finestra della proposta (uno per oggetto, anche se combacia due volte).
+function _matchVociProposta(righe) {
+    const viste = new Set();
+    return (righe || []).filter(r => r.oggettoId && !viste.has(r.tipo + ':' + r.oggettoId) && viste.add(r.tipo + ':' + r.oggettoId))
+        .map(r => ({ tipo: r.tipo, oggettoId: r.oggettoId, quantita: 1 }));
+}
+function _matchApriProposta(ownerId, righeRicevi, righeDai) {
+    const chiavi = [...righeRicevi, ...righeDai].map(r => r.chiave);
+    apriPropostaScambio({
+        altroId: ownerId, nomeAltro: _matchNomePersona(ownerId),
+        ricevi: _matchVociProposta(righeRicevi), dai: _matchVociProposta(righeDai),
+        dopoInvio: () => _matchRichiestaInviata(chiavi),
+    });
 }
 function _matchRichiediUna(chiave) {
     const r = _matchDati && _matchDati.righe.find(x => x.chiave === chiave);
     if (!r) return;
-    apriRichiediMatchMulti(r.ownerAltro, _matchNomePersona(r.ownerAltro), [_matchVoceRichiesta(r)]);
+    if (r.lato === 'cerchi') _matchApriProposta(r.ownerAltro, [r], []);
+    else _matchApriProposta(r.ownerAltro, [], [r]);
 }
 function _matchRichiediSelezionate(ownerId) {
     if (!_matchDati) return;
-    const voci = _matchDati.righe.filter(r => r.ownerAltro === ownerId && r.lato === 'cerchi' && _matchSelezionate.has(r.chiave)).map(_matchVoceRichiesta);
-    if (!voci.length) return;
-    apriRichiediMatchMulti(ownerId, _matchNomePersona(ownerId), voci);
+    const righe = _matchDati.righe.filter(r => r.ownerAltro === ownerId && r.lato === 'cerchi' && _matchSelezionate.has(r.chiave));
+    if (!righe.length) return;
+    _matchApriProposta(ownerId, righe, []);
+}
+// "Lo hai tu": tutte le cose tue che quella persona cerca, da togliere o completare nella finestra.
+function _matchProponiTutte(ownerId) {
+    if (!_matchDati) return;
+    const righe = _matchDati.righe.filter(r => r.ownerAltro === ownerId && r.lato === 'hai' && !_matchDati.nascosti.has(r.chiave));
+    _matchApriProposta(ownerId, [], righe);
 }
 function _matchRichiestaInviata(chiavi) {
     (chiavi || []).forEach(c => _matchSelezionate.delete(c));
     _matchRenderDaDati();
+}
+
+// Scambi possibili: per ogni persona con match nei due versi, una parte di quello che cerchi e una
+// di quello che cerca, con valori vicini (utils/scambi.js).
+function _matchSuggerimenti(visibili) {
+    if (!_matchDati || typeof scambiSuggerito !== 'function') return [];
+    const perPersona = new Map();
+    const viste = new Set();
+    visibili.forEach(r => {
+        if (!r.oggettoId) return;
+        const k = r.ownerAltro + '|' + r.lato + '|' + r.tipo + ':' + r.oggettoId;
+        if (viste.has(k)) return;
+        viste.add(k);
+        if (!perPersona.has(r.ownerAltro)) perPersona.set(r.ownerAltro, { cerchi: [], hai: [] });
+        perPersona.get(r.ownerAltro)[r.lato].push(r);
+    });
+    const out = [];
+    perPersona.forEach((x, ownerAltro) => {
+        const sugg = scambiSuggerito(x.cerchi, x.hai);
+        if (!sugg) return;
+        const label = _matchNomePersona(ownerAltro);
+        out.push({
+            ownerAltro, label, labelSafe: escapeJsAttr(label), sugg,
+            altriCerchi: x.cerchi.length - sugg.ricevi.length, altriHai: x.hai.length - sugg.dai.length,
+            nuovi: [...sugg.ricevi, ...sugg.dai].filter(r => _matchDati.nuovi.has(r.chiave)).length,
+        });
+    });
+    return out.sort((a, b) => Math.abs(a.sugg.differenza) - Math.abs(b.sugg.differenza)
+        || (b.sugg.valoreRicevi + b.sugg.valoreDai) - (a.sugg.valoreRicevi + a.sugg.valoreDai));
+}
+
+function _matchCardScambioHtml(g, selPC) {
+    const s = g.sugg;
+    const d = s.differenza;
+    const voce = (r) => {
+        const src = _urlImmagineVisualizzabile(r.img, 64);
+        const img = src ? `<img class="match-sugg-img" src="${src}" alt="" loading="lazy" onerror="this.remove()">` : `<span class="match-sugg-img match-img-vuota"><i class="fa-solid ${r.tipo === 'sealed' ? 'fa-box' : 'fa-image'}"></i></span>`;
+        return `<div class="match-sugg-voce">${img}<span class="match-sugg-nome">${escapeHtml(r.nome || '(senza nome)')}</span><b>${formattaEuro(r.prezzo)}</b></div>`;
+    };
+    const altri = (n, chi) => n > 0 ? `<div class="match-sugg-altri">+ ${n} altr${n === 1 ? 'o' : 'i'} che ${chi}: li aggiungi nella proposta</div>` : '';
+    const saldo = Math.abs(d) < 0.005 ? 'Pari: date e ricevete lo stesso valore'
+        : (d > 0 ? `Ricevi ${formattaEuro(d)} in più: puoi pareggiare con gli euro` : `Dai ${formattaEuro(-d)} in più: puoi chiedere la differenza in euro`);
+    return `
+        <div class="match-persona match-sugg ${selPC ? 'match-persona-sel' : ''}" data-owner="${g.ownerAltro}">
+            <div class="match-persona-head">
+                <div class="match-avatar" data-avatar-utente="${g.ownerAltro}">${escapeHtml(g.label.charAt(0).toUpperCase())}</div>
+                <div style="flex:1; min-width:0;">
+                    <div class="match-persona-nome"><span class="match-tel">${escapeHtml(g.label)}</span><span class="match-pc">Scambio possibile con ${escapeHtml(g.label)}</span></div>
+                    <div class="match-persona-sotto">ricevi ${s.ricevi.length} · dai ${s.dai.length}${Math.abs(d) < 0.005 ? ' · pari' : ''}</div>
+                </div>
+                <button type="button" class="match-icobtn match-scrivi" onclick="event.stopPropagation(); _contattaPersonaMatch('${g.ownerAltro}', '${g.labelSafe}')" title="Scrivi a ${g.labelSafe}" aria-label="Scrivi a ${g.labelSafe}"><i class="fa-solid fa-comment"></i><span class="match-pc"> Scrivi</span></button>
+            </div>
+            <div class="match-sugg-lati">
+                <div class="match-sugg-lato"><div class="match-sugg-tit">Ricevi <b>${formattaEuro(s.valoreRicevi)}</b></div>${s.ricevi.map(voce).join('')}${altri(g.altriCerchi, 'cerchi')}</div>
+                <div class="match-sugg-lato"><div class="match-sugg-tit">Tu dai <b>${formattaEuro(s.valoreDai)}</b></div>${s.dai.map(voce).join('')}${altri(g.altriHai, 'cerca')}</div>
+            </div>
+            <div class="match-sugg-saldo">${saldo}</div>
+            <div class="match-sugg-fondo"><button type="button" class="match-fondo attivo" onclick="_matchApriSuggerimento('${g.ownerAltro}')"><i class="fa-solid fa-right-left"></i> Prepara la proposta</button></div>
+        </div>`;
+}
+
+function _matchApriSuggerimento(ownerId) {
+    if (!_matchDati) return;
+    const g = _matchSuggerimenti(_matchDati.righe.filter(r => !_matchDati.nascosti.has(r.chiave))).find(x => x.ownerAltro === ownerId);
+    if (g) _matchApriProposta(ownerId, g.sugg.ricevi, g.sugg.dai);
 }
 
 function _matchToggleMenu(idx, evt) {
