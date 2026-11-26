@@ -598,7 +598,7 @@ async function caricaSelectLocationComune() {
             ).join('');
 
             tr.innerHTML = `
-                <td data-label="Nome"><input type="text" placeholder="Nome come su Cardmarket (italiano o inglese)" title="Nome del prodotto come su Cardmarket, in italiano o in inglese — es. Booster Box Obsidian Flames, Set Allenatore Fuoriclasse Evoluzioni Prismatiche" value="${escapeHtml(nameVal)}" oninput="handleEntryInputSealed(this)"></td>
+                <td data-label="Nome"><input type="text" placeholder="Cerca il prodotto (italiano o inglese, anche ETB, box, busta)" title="Scrivi il nome del prodotto in italiano o in inglese — es. ETB Evoluzioni Prismatiche, box Scintille Folgoranti — e scegli dal catalogo. Se non c'è, salvalo così: lo cerca l'estensione per nome." value="${escapeHtml(nameVal)}" oninput="handleEntryInputSealed(this)" onfocus="ssEntraCampo(this)" autocomplete="off"></td>
                 <td data-label="Lingua">
                     <select onchange="handleEntryInputSealed(this)">
                         ${_INS_LINGUE.map(l => `<option value="${l}" ${langVal === l ? 'selected' : ''}>${l}</option>`).join('')}
@@ -635,20 +635,26 @@ async function caricaSelectLocationComune() {
         function handleEntryInputSealed(element) {
             const row = element.closest('tr');
             const tbody = document.getElementById('entryTableBodySealed');
-            if (row === tbody.lastElementChild) {
+            // l'ultima riga vera (sotto può esserci il pannello del catalogo, ui/selettore-sealed.ui.js)
+            const righe = tbody.querySelectorAll('tr:not(.ins-sugg-riga)');
+            if (row === righe[righe.length - 1]) {
                 addNewEntryRowSealed();
             }
+            if (element.matches('td:nth-child(1) > input') && !row.dataset.ssBlocco && typeof ssAlScrivere === 'function') ssAlScrivere(element);
             insAggiornaBottone();
         }
 
         function removeEntryRowSealed(btn) {
             const tbody = document.getElementById('entryTableBodySealed');
-            if (tbody.children.length > 1) {
-                btn.closest('tr').remove();
+            const tr = btn.closest('tr');
+            if (typeof ssTogliRiga === 'function') ssTogliRiga(tr);
+            if (tbody.querySelectorAll('tr:not(.ins-sugg-riga)').length > 1) {
+                tr.remove();
             } else {
                 const inputs = tbody.querySelectorAll('input[type="text"]');
                 inputs.forEach(i => i.value = '');
             }
+            insAggiornaBottone();
         }
 
         async function salvaSealedInCoda() {
@@ -660,13 +666,16 @@ async function caricaSelectLocationComune() {
 
             const wish = _destinazioneInserimento === 'wishlist';
             const righeDb = [];
-            document.querySelectorAll('#entryTableBodySealed tr').forEach(tr => {
-                const nome = tr.querySelector('td:nth-child(1) input')?.value.trim();
+            document.querySelectorAll('#entryTableBodySealed tr:not(.ins-sugg-riga)').forEach(tr => {
+                // prodotto scelto dal catalogo (ui/selettore-sealed.ui.js): va in coda col suo link
+                const scelto = typeof ssBloccoRiga === 'function' ? ssBloccoRiga(tr) : null;
+                const nome = scelto ? scelto.nome : tr.querySelector('td:nth-child(1) input')?.value.trim();
                 if (!nome) return;
                 const prezzo = parseFloat(tr.querySelector('td:nth-child(5) input')?.value);
                 righeDb.push({
                     owner_id: userId,
                     nome,
+                    ...(scelto && scelto.url ? { url_diretto: scelto.url } : {}),
                     lingua: tr.querySelector('td:nth-child(2) select')?.value || 'IT',
                     integrita_packaging: tr.querySelector('td:nth-child(3) select')?.value || 'sigillato_integro',
                     qty: Math.max(1, parseInt(tr.querySelector('.qty-input')?.value, 10) || 1),
@@ -687,6 +696,17 @@ async function caricaSelectLocationComune() {
             btn.disabled = true;
             btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Invio in corso...';
 
+            // nome scritto proprio come nel catalogo (un solo prodotto) → parte col link anche senza sceglierlo
+            let collegati = 0;
+            const daCollegare = righeDb.filter(r => !r.url_diretto);
+            if (daCollegare.length && typeof ssCollegaPerNome === 'function') {
+                const trovati = await ssCollegaPerNome(daCollegare.map(r => r.nome));
+                daCollegare.forEach(r => {
+                    const p = trovati.get(r.nome);
+                    if (p && p.url) { r.url_diretto = p.url; r.nome = p.nome || r.nome; collegati++; }
+                });
+            }
+
             const { error } = await queueInsertRighe(righeDb);
 
             btn.disabled = false;
@@ -699,5 +719,10 @@ async function caricaSelectLocationComune() {
 
             initEntryTableSealed();
             insAggiornaPagina();
-            mostraAvviso(`✅ ${righeDb.length} prodott${righeDb.length === 1 ? 'o sealed inviato' : 'i sealed inviati'} nella coda!\n\nApri l'estensione sulla sezione "Aggiungi Carte": cerca ogni prodotto su Cardmarket e, se lo trova, lo aggiunge a ${wish ? 'la Wishlist' : 'Sealed'}. Se non lo trova lo vedrai tra le carte da correggere.`);
+            const conLink = righeDb.filter(r => r.url_diretto).length;
+            const senzaLink = righeDb.length - conLink;
+            const dettaglio = senzaLink === 0
+                ? `Tutti dal catalogo: l'estensione apre la loro pagina su Cardmarket e li aggiunge a ${wish ? 'la Wishlist' : 'Sealed'}.`
+                : `${conLink ? `${conLink} dal catalogo${collegati ? ` (${collegati} trovat${collegati === 1 ? 'o' : 'i'} dal nome)` : ''}, ${senzaLink} col nome scritto: ` : ''}l'estensione cerca ${senzaLink === 1 ? 'il prodotto' : 'i prodotti'} col nome su Cardmarket e, se ${senzaLink === 1 ? 'lo trova, lo aggiunge' : 'li trova, li aggiunge'} a ${wish ? 'la Wishlist' : 'Sealed'}. Se non ${senzaLink === 1 ? 'lo trova lo vedrai' : 'li trova li vedrai'} tra le carte da correggere.`;
+            mostraAvviso(`✅ ${righeDb.length} prodott${righeDb.length === 1 ? 'o sealed inviato' : 'i sealed inviati'} nella coda!\n\nApri l'estensione sulla sezione "Aggiungi Carte". ${dettaglio}`);
         }

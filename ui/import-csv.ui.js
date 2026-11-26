@@ -124,17 +124,19 @@ function _importCsvValuta() {
         const linkGrezzo = val(r, 'url');
         const link = _importCsvLink(linkGrezzo);
         if (linkGrezzo && !link) avvisi.push('link non di Cardmarket: ignorato, si cerca per nome');
+        // sealed col nome proprio come nel catalogo sealed (Sealed fase C): parte col link del prodotto
+        const delCatalogo = !link && s.tipo === 'sealed' && s.sealedTrovati ? s.sealedTrovati.get(nome) : null;
         const destGrezza = val(r, 'destinazione').toLowerCase();
         const dest = idx.destinazione >= 0 && destGrezza ? (destGrezza === 'wishlist' ? 'wishlist' : 'collezione') : s.dest;
         const db = {
-            nome, lingua, condizione: cond,
+            nome: delCatalogo ? delCatalogo.nome : nome, lingua, condizione: cond,
             reverse: idx.reverse >= 0 ? _importCsvBool(val(r, 'reverse')) : !!(link && link.reverse),
             first_ed: idx.first_ed >= 0 ? _importCsvBool(val(r, 'first_ed')) : !!(link && link.first_ed),
             sigillata_originale: _importCsvBool(val(r, 'sigillata_originale')),
             nota: val(r, 'nota') || null,
             location: (loc && loc !== '?') ? loc : null,
             destinazione: dest, qty,
-            ...(link ? { url_diretto: link.url } : {}),
+            ...(link ? { url_diretto: link.url } : delCatalogo ? { url_diretto: delCatalogo.url } : {}),
             ...(s.tipo === 'sealed' ? { tipo: 'sealed' } : {}),
         };
         let stato = 'ok', nota = '';
@@ -143,9 +145,28 @@ function _importCsvValuta() {
             const gia = dest === 'collezione' && s.tipo !== 'sealed' ? _importCsvGia(nome) : null;
             if (gia) { stato = 'gia'; nota = `già in collezione${gia.dove ? ' (' + gia.dove + ')' : ''} → diventerebbe ×${gia.qty + qty}`; }
             else if (avvisi.length) { stato = 'avviso'; nota = avvisi.join(' · '); }
+            else if (delCatalogo) nota = 'trovato nel catalogo sealed';
         }
         return { db, stato, nota, linguaGrezza, condGrezza };
     });
+}
+
+// Sealed: cerca nel catalogo sealed i nomi senza link (una volta per nome), poi ricalcola il controllo.
+function _importCsvCercaSealed() {
+    const s = _impCsv;
+    if (!s || s.tipo !== 'sealed' || !s.righe || s.invio || typeof ssCollegaPerNome !== 'function') return null;
+    if (!s.sealedTrovati) s.sealedTrovati = new Map();
+    if (!s.sealedCercati) s.sealedCercati = new Set();
+    const nomi = [...new Set(s.righe.filter(r => r.db.nome && !r.db.url_diretto).map(r => r.db.nome))].filter(n => !s.sealedCercati.has(n));
+    if (!nomi.length) return s.sealedPromessa || null;
+    nomi.forEach(n => s.sealedCercati.add(n));
+    const prima = s.sealedPromessa || Promise.resolve();
+    s.sealedPromessa = prima.then(() => ssCollegaPerNome(nomi)).then(trovati => {
+        if (_impCsv !== s) return;
+        trovati.forEach((p, n) => s.sealedTrovati.set(n, p));
+        if (trovati.size && !s.invio) { _importCsvValuta(); _importCsvRender(); }
+    }).catch(e => console.warn('[import-csv] catalogo sealed:', e));
+    return s.sealedPromessa;
 }
 
 function _importCsvDaInviare() {
@@ -194,8 +215,10 @@ async function _importCsvLeggi(file) {
         _impCsv.tabella = tabella;
         _impCsv.mappa = _importCsvMappaAuto(tabella[0]);
         _impCsv.inviate = 0;
+        _impCsv.sealedTrovati = null; _impCsv.sealedCercati = null; _impCsv.sealedPromessa = null;
         _importCsvValuta();
         _importCsvRender();
+        _importCsvCercaSealed();
     } catch (e) {
         console.error('[import-csv]', e);
         _impCsv.errore = 'Impossibile leggere il file: ' + (e.message || e);
@@ -232,6 +255,7 @@ function _importCsvCambiaColonna(i, campo) {
     _impCsv.mappa[i] = campo;
     _importCsvValuta();
     _importCsvRender();
+    _importCsvCercaSealed();
 }
 
 function _importCsvImposta(chiave, valore) {
@@ -239,6 +263,7 @@ function _importCsvImposta(chiave, valore) {
     _impCsv[chiave] = valore;
     if (chiave !== 'saltaGia' && chiave !== 'mostraTutte') _importCsvValuta();
     _importCsvRender();
+    if (chiave === 'tipo') _importCsvCercaSealed();
 }
 
 async function _importCsvCreaLocation(userId, righe) {
@@ -267,6 +292,12 @@ async function importCsvInvia() {
     if (!s || s.invio) return;
     const userId = await authGetUserId();
     if (!userId) return;
+    if (s.tipo === 'sealed' && s.sealedPromessa) {   // i link del catalogo sealed, se la ricerca è ancora in corso
+        if (s.attesaSealed) return;
+        s.attesaSealed = true;
+        try { await s.sealedPromessa; } finally { s.attesaSealed = false; }
+        if (s.invio) return;
+    }
     const righe = _importCsvDaInviare().map(r => ({ owner_id: userId, ...r.db }));
     if (!righe.length) return;
     s.invio = true; s.errore = ''; s.totale = righe.length;
@@ -390,7 +421,7 @@ function _importCsvRender() {
             <div class="csv-piede">
                 <p class="csv-nota">Finiscono nella stessa coda di Inserimento: l'estensione cerca codici e prezzi come sempre, e le trovi in "Ultimo invio".</p>
                 <button type="button" class="btn-secondary" onclick="importCsvIndietro()">Indietro</button>
-                <button type="button" class="btn-main" onclick="importCsvInvia()" ${daInviare && !senzaNome ? '' : 'disabled'}><i class="fa-solid fa-file-import"></i> Metti in coda ${daInviare} ${daInviare === 1 ? 'carta' : 'carte'}</button>
+                <button type="button" class="btn-main" onclick="importCsvInvia()" ${daInviare && !senzaNome ? '' : 'disabled'}><i class="fa-solid fa-file-import"></i> Metti in coda ${daInviare} ${s.tipo === 'sealed' ? (daInviare === 1 ? 'prodotto' : 'prodotti') : (daInviare === 1 ? 'carta' : 'carte')}</button>
             </div>`;
     }
 

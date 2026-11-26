@@ -31,6 +31,7 @@ async function caricaProdottiSealedReali() {
         dataAcquisizione: r.data_acquisizione || null,
         note: r.note || '',
         immagine: r.immagine || null,
+        url: r.url || null,
     }));
 }
 
@@ -341,11 +342,47 @@ async function _sealedRinfrescaDopoModifica() {
 }
 
 let _sealedInModifica = null;
+let _sealedProdottoScelto = null;   // Sealed fase C: prodotto del catalogo scelto con "Cambia prodotto"
+
+// La riga "Prodotto su Cardmarket" della finestra Modifica: quello salvato o quello appena scelto.
+function _sealedRenderProdottoModifica() {
+    const box = document.getElementById('editSealedProdotto');
+    if (!box || !_sealedInModifica) return;
+    const p = _sealedProdottoScelto;
+    const immagine = p ? p.immagine : _sealedInModifica.immagine;
+    const mini = typeof _ssMiniHtml === 'function' ? _ssMiniHtml(immagine) : '';
+    const titolo = p ? p.nome : (_sealedInModifica.url ? 'Collegato a Cardmarket' : 'Non ancora collegato');
+    const sotto = p
+        ? [typeof sealedCategoriaCorta === 'function' ? sealedCategoriaCorta(p.categoria) : '', p.espansione].filter(Boolean).join(' · ') + ' · si salva con "Salva Modifiche"'
+        : (_sealedInModifica.url ? 'Se è il prodotto sbagliato, sceglilo dal catalogo' : 'Sceglilo dal catalogo per prezzi e foto giusti');
+    const puoScegliere = typeof apriSceltaSealed === 'function';
+    box.innerHTML = `
+        ${mini}
+        <div class="ss-prodotto-testo"><b>${escapeHtml(titolo)}</b><span>${escapeHtml(sotto)}</span></div>
+        ${puoScegliere ? `<button type="button" class="btn-secondary" onclick="_sealedCambiaProdotto()"><i class="fa-solid fa-magnifying-glass"></i> ${p || _sealedInModifica.url ? 'Cambia' : 'Scegli'}</button>` : ''}`;
+}
+
+function _sealedCambiaProdotto() {
+    if (!_sealedInModifica || typeof apriSceltaSealed !== 'function') return;
+    apriSceltaSealed({
+        titolo: 'Scegli il prodotto',
+        sottotitolo: 'Nome, foto e link di Cardmarket prendono quelli del catalogo; il prezzo si aggiorna al prossimo controllo prezzi.',
+        testo: document.getElementById('editSealedNome').value.trim() || _sealedInModifica.name,
+        alScelta: (p) => {
+            _sealedProdottoScelto = p;
+            document.getElementById('editSealedNome').value = p.nome;
+            if (p.espansione) document.getElementById('editSealedSet').value = p.espansione;
+            _sealedRenderProdottoModifica();
+        },
+    });
+}
 
 async function apriModificaSealed(id) {
     const prodotto = prodottiSealedReali.find(p => String(p.id) === String(id));
     if (!prodotto) return;
     _sealedInModifica = prodotto;
+    _sealedProdottoScelto = null;
+    _sealedRenderProdottoModifica();
 
     document.getElementById('editSealedNome').value = prodotto.name;
     document.getElementById('editSealedCodice').value = prodotto.codice || '';
@@ -377,6 +414,7 @@ async function apriModificaSealed(id) {
 function chiudiModificaSealed() {
     document.getElementById('editSealedModal').style.display = 'none';
     _sealedInModifica = null;
+    _sealedProdottoScelto = null;
 }
 
 async function salvaModificaSealed() {
@@ -401,6 +439,12 @@ async function salvaModificaSealed() {
         data_acquisizione: document.getElementById('editSealedDataAcquisizione').value || null,
         note: document.getElementById('editSealedNote').value.trim() || null,
     };
+    // prodotto scelto dal catalogo: il link (con la lingua, come lo salva l'estensione) e la foto
+    if (_sealedProdottoScelto && _sealedProdottoScelto.url) {
+        aggiornamento.url = typeof sealedUrlConLingua === 'function'
+            ? sealedUrlConLingua(_sealedProdottoScelto.url, aggiornamento.lingua) : _sealedProdottoScelto.url;
+        if (_sealedProdottoScelto.immagine) aggiornamento.immagine = _sealedProdottoScelto.immagine;
+    }
 
     const btn = document.getElementById('btnSalvaModificaSealed');
     btn.disabled = true;
