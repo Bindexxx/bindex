@@ -396,15 +396,15 @@ const _ballCORPI = {
         if (!d) return { inline: '', blocco: '' };
         const n = d.totale || 0, ris = d.riservate || 0;
         const inline =
-            '<p class="ball-k-tit">Richieste</p>' +
+            '<p class="ball-k-tit">Scambi</p>' +
             `<div class="ball-k-big ball-k-mono"${n ? ' style="color:#d32f2f"' : ''}>${n}</div>` +
-            `<span class="ball-k-lab">da gestire${ris ? ` · ${ris} riservat${ris === 1 ? 'a' : 'e'}` : ''}</span>`;
+            `<span class="ball-k-lab">da gestire${ris ? ` · ${ris} in corso` : ''}</span>`;
         let blocco = '';
         if (d.immagini && d.immagini.length) {
             blocco += '<div class="ball-th">' + d.immagini.map(u => `<img src="${_urlImmagineVisualizzabile(u, 64) || ''}" alt="" onerror="this.remove();">`).join('') +
                 `<span>${d.oggetti} oggett${d.oggetti === 1 ? 'o' : 'i'}${d.valore ? ' · ' + formattaEuro(d.valore) : ''}</span></div>`;
         }
-        blocco += _ballPulsante(n || ris ? 'Gestisci' : 'Apri Richieste', `_ballAzioneRiga(event,'tab','richieste')`);
+        blocco += _ballPulsante(n || ris ? 'Gestisci' : 'Apri Scambi', `_ballAzioneRiga(event,'tab','richieste')`);
         return { inline, blocco };
     },
 

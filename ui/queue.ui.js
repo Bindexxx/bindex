@@ -153,7 +153,7 @@ let _numNuoviMatchScambio = 0;
                     const personaAttr = escapeJsAttr((m.altro_nickname || '').trim() || 'qualcuno del gruppo');
                     bottone = `<button class="btn-secondary" style="padding:0.35rem 0.7rem; font-size:0.78rem; white-space:nowrap;"
                         onclick="apriRichiediMatch('${m.altro_owner_id}', '${oggettoId}', '${tipoRichiesta}', '${nomeAttr}', '${personaAttr}', ${Number(m.altro_prezzo) || 0})">
-                        <i class="fa-solid fa-paper-plane"></i> Richiedi</button>`;
+                        <i class="fa-solid fa-right-left"></i> Proponi</button>`;
                 }
 
                 if (tabId === 'scambio') {
@@ -177,85 +177,9 @@ let _numNuoviMatchScambio = 0;
             `;
         }
 
-        let _matchRichiestaPendente = null;
-
+        // Dal pannello dei match di Scambio/Wishlist: la proposta di scambio (ui/proposta-scambio.ui.js),
+        // già con quell'oggetto tra quelli che ricevi.
         function apriRichiediMatch(ownerId, oggettoId, tipo, nomeOggetto, nomeAltro, prezzo) {
-            apriRichiediMatchMulti(ownerId, nomeAltro, [{
-                chiave: `pannello_${oggettoId}`, tipo, oggettoId,
-                nome: nomeOggetto || '', code: '', img: null, prezzo: Number(prezzo) || 0,
-            }]);
-        }
-
-        function apriRichiediMatchMulti(ownerId, nomeAltro, voci) {
-            if (!ownerId || !voci || !voci.length) return;
-            _matchRichiestaPendente = { ownerId, nomeAltro, voci: voci.map(v => ({ ...v, qty: 1 })) };
-            _renderRichiediMatch();
-            document.getElementById('richiediMatchModal').style.display = 'flex';
-        }
-
-        function _renderRichiediMatch() {
-            const p = _matchRichiestaPendente;
-            if (!p) return;
-            const n = p.voci.length;
-            document.getElementById('richiediMatchAvatar').textContent = (p.nomeAltro || '?').trim().charAt(0).toUpperCase() || '?';
-            document.getElementById('richiediMatchTitolo').textContent = `Richiedi a ${p.nomeAltro}`;
-            document.getElementById('richiediMatchSotto').textContent = n === 1 ? 'una sola richiesta con 1 oggetto' : `una sola richiesta con ${n} oggetti`;
-            document.getElementById('richiediMatchLista').innerHTML = p.voci.map((v, i) => {
-                const src = _urlImmagineVisualizzabile(v.img, 96);
-                const miniatura = src
-                    ? `<img class="match-img" src="${src}" alt="" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'match-img match-img-vuota',innerHTML:'<i class=&quot;fa-solid fa-image&quot;></i>'}))">`
-                    : `<span class="match-img match-img-vuota"><i class="fa-solid ${v.tipo === 'sealed' ? 'fa-box' : 'fa-image'}"></i></span>`;
-                return `
-                    <div class="richiedi-riga">
-                        ${miniatura}
-                        <div class="richiedi-testo">
-                            <div class="match-riga-nome">${escapeHtml(v.nome || '(senza nome)')}</div>
-                            ${v.code ? `<div class="match-riga-meta">${escapeHtml(v.code)}</div>` : ''}
-                        </div>
-                        <div class="richiedi-prezzo">${formattaEuro(v.prezzo)}</div>
-                        <div class="richiedi-qty">
-                            <button type="button" ${v.qty <= 1 ? 'disabled' : ''} onclick="_richiediMatchQty(${i}, -1)" aria-label="Meno">−</button>
-                            <span>${v.qty}</span>
-                            <button type="button" onclick="_richiediMatchQty(${i}, 1)" aria-label="Più">+</button>
-                        </div>
-                    </div>`;
-            }).join('');
-            const totale = p.voci.reduce((t, v) => t + v.prezzo * v.qty, 0);
-            document.getElementById('richiediMatchTotale').textContent = formattaEuro(totale);
-            document.getElementById('richiediMatchNota').textContent = `I prezzi restano fissati a oggi. ${p.nomeAltro} la trova in Richieste → Ricevute, tu in Richieste → Inviate.`;
-            const btn = document.getElementById('btnConfermaRichiediMatch');
-            btn.innerHTML = `<i class="fa-solid fa-paper-plane"></i> Invia richiesta (${n} oggett${n === 1 ? 'o' : 'i'})`;
-        }
-
-        function _richiediMatchQty(i, delta) {
-            const p = _matchRichiestaPendente;
-            if (!p || !p.voci[i]) return;
-            p.voci[i].qty = Math.max(1, p.voci[i].qty + delta);
-            _renderRichiediMatch();
-        }
-
-        function chiudiRichiediMatch() {
-            document.getElementById('richiediMatchModal').style.display = 'none';
-            _matchRichiestaPendente = null;
-        }
-
-        async function confermaRichiediMatch() {
-            if (!_matchRichiestaPendente) return;
-            const { ownerId, voci } = _matchRichiestaPendente;
-
-            const btn = document.getElementById('btnConfermaRichiediMatch');
-            btn.disabled = true;
-            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Invio...';
-
-            const righe = voci.map(v => ({ tipo: v.tipo, oggetto_id: v.oggettoId, quantita: v.qty }));
-            const { error } = await inviaRichiestaScambio(ownerId, righe);
-
-            btn.disabled = false;
-            if (error) { _renderRichiediMatch(); mostraAvviso('❌ ' + error.message); return; }
-
-            const chiavi = voci.map(v => v.chiave);
-            chiudiRichiediMatch();
-            if (typeof _widgetRichiesteSvuotaCache === 'function') _widgetRichiesteSvuotaCache();
-            if (typeof _matchRichiestaInviata === 'function') _matchRichiestaInviata(chiavi);
-            mostraAvviso('✅ Richiesta inviata! La trovi nella pagina Richieste, tab Inviate.');
+            if (!ownerId || !oggettoId) return;
+            apriPropostaScambio({ altroId: ownerId, nomeAltro, ricevi: [{ tipo: tipo || 'carta', oggettoId, quantita: 1 }] });
         }

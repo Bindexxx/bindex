@@ -182,9 +182,105 @@ let _chatUserId = null;
 let _chatPollingHandle = null;
 
 let _chatRichiestaAllegata = null;
-function apriChatPerRichiesta(ownerAltro, personaLabel, richiestaId) {
-    _chatRichiestaAllegata = richiestaId ? { id: richiestaId, altro: ownerAltro } : null;
+let _chatAltroNome = '';
+let _chatScambiAperti = [];
+// etichetta: "Proposta del 19/11" / "Richiesta del 19/11", mostrata sopra la barra finché non mandi il messaggio.
+function apriChatPerRichiesta(ownerAltro, personaLabel, richiestaId, etichetta) {
+    _chatRichiestaAllegata = richiestaId ? { id: richiestaId, altro: ownerAltro, etichetta: etichetta || 'Scambio' } : null;
     return apriChat(ownerAltro, personaLabel);
+}
+
+// La proposta allegata al prossimo messaggio, con la X per toglierla.
+function _chatRenderAllegato() {
+    const el = document.getElementById('chatAllegato');
+    if (!el) return;
+    const a = (_chatRichiestaAllegata && _chatRichiestaAllegata.altro === _chatAltroId) ? _chatRichiestaAllegata : null;
+    el.hidden = !a;
+    el.innerHTML = a ? `<i class="fa-solid fa-paperclip"></i><span>Il messaggio parla di: <b>${escapeHtml(a.etichetta)}</b></span>
+        <button type="button" onclick="_chatTogliAllegato()" aria-label="Non allegare" title="Non allegare"><i class="fa-solid fa-xmark"></i></button>` : '';
+}
+function _chatTogliAllegato() { _chatRichiestaAllegata = null; _chatRenderAllegato(); }
+
+// Striscia sotto la testata: lo scambio aperto con questa persona e cosa manca.
+async function _chatRenderScambio() {
+    const el = document.getElementById('chatScambio');
+    if (!el || !_chatAltroId || !_chatUserId || typeof scambiProposteAperteCon !== 'function') return;
+    const altro = _chatAltroId;
+    let esito;
+    try { esito = await scambiProposteAperteCon(_chatUserId, altro); } catch (e) { esito = { error: e }; }
+    if (altro !== _chatAltroId) return;
+    if (esito.error) { console.warn('_chatRenderScambio:', esito.error.message || esito.error); el.hidden = true; _chatScambiAperti = []; _chatRenderFrasi(); return; }
+    _chatScambiAperti = esito.data || [];
+    _chatRenderFrasi();
+    const p = _chatScambiAperti[0];
+    if (!p) { el.hidden = true; el.innerHTML = ''; return; }
+    const mittente = p.richiedente_id === _chatUserId;
+    const fattoIo = mittente ? p.fatto_richiedente_il : p.fatto_proprietario_il;
+    const fattoAltro = mittente ? p.fatto_proprietario_il : p.fatto_richiedente_il;
+    const nome = escapeHtml(_chatAltroNome || 'questa persona');
+    const righe = p.richieste_scambio_righe || [];
+    const pezzi = (rr) => rr.reduce((t, r) => t + (Number(r.quantita_richiesta) || 1), 0);
+    const ricevi = pezzi(righe.filter(r => r.richiedente_id === _chatUserId));
+    const dai = pezzi(righe.filter(r => r.proprietario_id === _chatUserId));
+    let stato, daFare = false;
+    if (p.stato_proposta === 'in_attesa') { stato = mittente ? `aspetti la risposta di ${nome}` : 'aspetta la tua risposta'; daFare = !mittente; }
+    else if (fattoIo) stato = `hai premuto Fatto, manca ${nome}`;
+    else { stato = fattoAltro ? `${nome} ha premuto Fatto, manca il tuo` : 'accettata: quando vi scambiate gli oggetti premete Fatto'; daFare = true; }
+    const altri = _chatScambiAperti.length - 1;
+    el.hidden = false;
+    el.classList.toggle('da-fare', daFare);
+    el.innerHTML = `<i class="fa-solid fa-handshake"></i>
+        <div class="chat-scambio-testo"><b>${mittente ? 'La tua proposta' : 'La sua proposta'}</b> · ricevi ${ricevi}${Number(mittente ? p.euro_da_proprietario : p.euro_da_richiedente) > 0 ? ' + €' : ''} · dai ${dai}${Number(mittente ? p.euro_da_richiedente : p.euro_da_proprietario) > 0 ? ' + €' : ''}<span>${stato}${altri > 0 ? ` · e altr${altri === 1 ? 'o' : 'i'} ${altri}` : ''}</span></div>
+        <button type="button" class="ric-btn ${daFare ? 'ric-btn-pieno' : ''}" onclick="_chatApriScambio('${escapeJsAttr(String(p.id))}')">Apri</button>`;
+}
+
+function _chatApriScambio(id) {
+    if (!id) return;
+    chiudiChat();
+    if (typeof apriScambio === 'function') apriScambio(id);
+}
+
+// Etichetta di un messaggio: apre lo scambio a cui si riferisce.
+function _chatApriRiferimento(id) { _chatApriScambio(id); }
+
+function _chatProponiScambio() {
+    if (!_chatAltroId || typeof apriPropostaScambio !== 'function') return;
+    const altro = _chatAltroId, nome = _chatAltroNome;
+    apriPropostaScambio({
+        altroId: altro, nomeAltro: nome,
+        dopoInvio: (id) => {
+            if (_chatAltroId !== altro) return;
+            _chatRichiestaAllegata = { id, altro, etichetta: 'Proposta del ' + _chatGiornoMese(new Date().toISOString()) };
+            _chatRenderAllegato();
+            _chatRenderScambio();
+            const input = document.getElementById('chatInput');
+            if (input && !input.value.trim()) { input.value = 'Ti ho mandato una proposta di scambio, dai un\'occhiata!'; _chatSuInputCambiato(); input.focus(); }
+        },
+    });
+}
+
+function _chatGiornoMese(iso) {
+    const d = new Date(iso);
+    try { return d.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', timeZone: 'Europe/Rome' }); }
+    catch (_) { return d.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' }); }
+}
+
+// Frasi rapide: quelle di sempre, più quelle dello scambio quando ce n'è uno aperto.
+const _CHAT_FRASI_BASE = ['Ce l\'hai ancora?', 'Mi interessa, come facciamo?', 'Grazie mille!'];
+function _chatRenderFrasi() {
+    const el = document.getElementById('chatFrasi');
+    if (!el) return;
+    const p = _chatScambiAperti[0];
+    let frasi = _CHAT_FRASI_BASE;
+    if (p && p.stato_proposta === 'in_attesa') {
+        frasi = p.richiedente_id === _chatUserId
+            ? ['Hai visto la mia proposta?', 'Se vuoi cambiarla, dimmi pure', 'Grazie mille!']
+            : ['Ci penso e ti dico', 'Possiamo cambiare qualcosa?', 'Grazie mille!'];
+    } else if (p) {
+        frasi = ['Quando ci vediamo per lo scambio?', 'Fatto da parte mia!', 'Grazie mille!'];
+    }
+    const corto = { 'Mi interessa, come facciamo?': 'Mi interessa', 'Grazie mille!': 'Grazie!' };
+    el.innerHTML = frasi.map(f => `<button type="button" onclick="_chatInviaFrase('${escapeJsAttr(f)}')">${escapeHtml(corto[f] || f)}</button>`).join('');
 }
 
 async function apriChat(ownerAltro, personaLabel) {
@@ -204,7 +300,9 @@ async function apriChat(ownerAltro, personaLabel) {
     if (!modal || !box) return;
 
     _chatAltroId = ownerAltro;
+    _chatScambiAperti = [];
     const label = personaLabel || 'Utente';
+    _chatAltroNome = label;
     if (titolo) titolo.textContent = label;
     if (avatar) {
         avatar.textContent = label.trim().charAt(0).toUpperCase() || '?';
@@ -219,6 +317,11 @@ async function apriChat(ownerAltro, personaLabel) {
     const inputApertura = document.getElementById('chatInput');
     if (inputApertura) inputApertura.value = '';
     _chatSuInputCambiato();
+    const strisciaScambio = document.getElementById('chatScambio');
+    if (strisciaScambio) { strisciaScambio.hidden = true; strisciaScambio.innerHTML = ''; }
+    _chatRenderFrasi();
+    _chatRenderAllegato();
+    _chatRenderScambio();
 
     const { data: convId, error } = await chatOttieniOCreaConversazione(ownerAltro);
     if (error || !convId) {
@@ -239,9 +342,12 @@ function chiudiChat() {
     _chatConversazioneId = null;
     _chatAltroId = null;
     _chatRichiestaAllegata = null;
+    _chatScambiAperti = [];
+    _chatRenderAllegato();
     if (typeof _aggiornaBadgeChat === 'function') _aggiornaBadgeChat();
 }
 
+let _chatGiriPolling = 0;
 function _chatAvviaPolling() {
     _chatFermaPolling();
     _chatPollingHandle = setInterval(async () => {
@@ -249,6 +355,8 @@ function _chatAvviaPolling() {
         if (document.hidden) return;
         await _chatRenderMessaggi();
         await chatSegnaLetti(_chatConversazioneId);
+        _chatGiriPolling = (_chatGiriPolling + 1) % 5;
+        if (_chatGiriPolling === 0) _chatRenderScambio();
     }, 6000);
     document.addEventListener('visibilitychange', _chatSuVisibilitaCambiata);
 }
@@ -309,7 +417,9 @@ function _chatBubbleHtml(m, isPrimo, isUltimo, isNuovo) {
     return `
     <div class="chat-bubble-wrap ${lato}" style="margin-top:${margine};">
         <div class="chat-bubble ${lato}" style="border-radius:${radius};" ${isNuovo ? 'data-nuovo' : ''}>
-            ${m.richiesta_etichetta ? `<span class="chat-richiesta"><i class="fa-solid fa-handshake"></i> ${escapeHtml(m.richiesta_etichetta)}</span>` : ''}
+            ${m.richiesta_etichetta ? (m.richiesta_id
+                ? `<button type="button" class="chat-richiesta chat-richiesta-link" onclick="_chatApriRiferimento('${escapeJsAttr(String(m.richiesta_id))}')" title="Apri lo scambio"><i class="fa-solid fa-handshake"></i> ${escapeHtml(m.richiesta_etichetta)} <i class="fa-solid fa-chevron-right"></i></button>`
+                : `<span class="chat-richiesta"><i class="fa-solid fa-handshake"></i> ${escapeHtml(m.richiesta_etichetta)}</span>`) : ''}
             <span>${testoHtml}</span>
             <span class="chat-ora">${_chatFormattaOra(m.creato_il)}</span>
             ${_chatSpuntaHtml(m)}
@@ -391,7 +501,7 @@ async function _chatInviaMessaggioClick() {
     const allegata = (_chatRichiestaAllegata && _chatRichiestaAllegata.altro === _chatAltroId) ? _chatRichiestaAllegata.id : null;
     const { error } = await chatInviaMessaggio(_chatConversazioneId, testo, allegata);
     if (error) { mostraAvviso('Errore invio: ' + error.message); return; }
-    if (allegata) _chatRichiestaAllegata = null;
+    if (allegata) { _chatRichiestaAllegata = null; _chatRenderAllegato(); }
     await _chatRenderMessaggi();
 }
 

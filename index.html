@@ -798,7 +798,7 @@
         <div id="richieste" class="view-section">
             <div class="pg-contenuto-pagina">
                 <div class="page-header">
-                    <span class="page-title">Richieste</span>
+                    <span class="page-title">Scambi</span>
                 </div>
                 <p class="pg-sotto" id="richiesteRiepilogo" style="margin:0 0 12px;"></p>
                 <div id="richiesteContenuto"></div>
@@ -2011,26 +2011,6 @@
         </div>
     </div>
 
-    <div id="richiediMatchModal" class="modal-overlay">
-        <div class="modal-content richiedi-modal" onclick="event.stopPropagation()">
-            <button class="close-modal-btn" onclick="chiudiRichiediMatch()" aria-label="Chiudi"><i class="fa-solid fa-xmark"></i></button>
-            <div class="richiedi-head">
-                <div class="match-avatar" id="richiediMatchAvatar"></div>
-                <div>
-                    <h3 id="richiediMatchTitolo"></h3>
-                    <div class="richiedi-sotto" id="richiediMatchSotto"></div>
-                </div>
-            </div>
-            <div id="richiediMatchLista"></div>
-            <div class="richiedi-totale"><span>Totale</span><b id="richiediMatchTotale"></b></div>
-            <p class="richiedi-nota" id="richiediMatchNota"></p>
-            <div class="richiedi-azioni">
-                <button type="button" class="btn-secondary" onclick="chiudiRichiediMatch()">Annulla</button>
-                <button type="button" class="btn-main" id="btnConfermaRichiediMatch" onclick="confermaRichiediMatch()"></button>
-            </div>
-        </div>
-    </div>
-
     <div id="chatModal" class="modal-overlay">
         <div class="modal-content">
             <div class="chat-header">
@@ -2038,6 +2018,7 @@
                 <div class="chat-header-info">
                     <div class="chat-nome" id="chatTitolo">Chat</div>
                 </div>
+                <button type="button" class="chat-proponi-btn" id="chatProponiBtn" onclick="_chatProponiScambio()" title="Proponi uno scambio" aria-label="Proponi uno scambio"><i class="fa-solid fa-right-left"></i><span> Proponi</span></button>
                 <div class="chat-menu-wrap">
                     <button type="button" class="chat-menu-btn" onclick="_chatToggleMenu(event)" title="Altre azioni"><i class="fa-solid fa-ellipsis-vertical"></i></button>
                     <div class="chat-menu-dropdown" id="chatMenuDropdown">
@@ -2047,12 +2028,14 @@
                 </div>
                 <button class="close-modal-btn" onclick="chiudiChat()" style="position:static;"><i class="fa-solid fa-xmark"></i></button>
             </div>
+            <div id="chatScambio" class="chat-scambio" hidden></div>
             <div id="chatMessaggi" class="chat-body"></div>
             <div class="chat-frasi" id="chatFrasi">
                 <button type="button" onclick="_chatInviaFrase('Ce l\'hai ancora?')">Ce l'hai ancora?</button>
                 <button type="button" onclick="_chatInviaFrase('Mi interessa, come facciamo?')">Mi interessa</button>
                 <button type="button" onclick="_chatInviaFrase('Grazie mille!')">Grazie!</button>
             </div>
+            <div id="chatAllegato" class="chat-allegato" hidden></div>
             <div class="chat-input-bar">
                 <input type="text" id="chatInput" class="chat-input-campo" maxlength="2000" placeholder="Scrivi un messaggio…" oninput="_chatSuInputCambiato()" onkeydown="if(event.key==='Enter'){_chatInviaMessaggioClick();}">
                 <button class="btn-main chat-invia-btn" id="chatInviaBtn" onclick="_chatInviaMessaggioClick()" disabled><i class="fa-solid fa-paper-plane"></i></button>
@@ -2123,7 +2106,7 @@
     <script src="utils/comuni.js"></script>
     <script src="utils/foto-reali.js"></script>    <script src="utils/formatters.js"></script>
     <script src="utils/pagination.utils.js"></script>
-    <script src="utils/valore-escluso.js"></script>    <script src="utils/theme-colori.js"></script>
+    <script src="utils/valore-escluso.js"></script>    <script src="utils/scambi.js"></script>    <script src="utils/theme-colori.js"></script>
     <script src="ui/avvisi.ui.js"></script>
     <script src="ui/auth.ui.js"></script>
     <script src="ui/prices.ui.js"></script>
@@ -2146,6 +2129,7 @@
     <script src="ui/binder-sleeve.ui.js"></script>
     <script src="ui/scaffali.ui.js"></script>
     <script src="ui/richieste-scambio.ui.js"></script>
+    <script src="ui/proposta-scambio.ui.js"></script>
     <script src="ui/extension.ui.js"></script>
     <script src="ui/photos.ui.js"></script>
     <script src="ui/navigation.ui.js"></script>
