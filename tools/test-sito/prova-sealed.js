@@ -121,7 +121,7 @@ const STUB = `
   function _aggiornaPallinoMenu() {}
   async function correzioniManualiConta() { return { count: 0 }; }
   const CORR = [
-    { id: 'c1', owner_id: 'u-prova', nome: 'etb prismatica', lingua: 'IT', tipo: 'sealed', destinazione: 'collezione', qty: 1, errore_msg: 'Non trovato', opzioni_disambiguazione: null, creato_il: '2026-11-26T10:00:00Z' },
+    { id: 'c1', owner_id: 'u-prova', nome: 'etb prismatica', lingua: 'IT', tipo: 'sealed', destinazione: 'collezione', qty: 1, integrita_packaging: 'sigillo_danneggiato', errore_msg: 'Non trovato', opzioni_disambiguazione: null, creato_il: '2026-11-26T10:00:00Z' },
     { id: 'c2', owner_id: 'u-prova', nome: 'box scintille', lingua: 'EN', tipo: 'sealed', destinazione: 'wishlist', qty: 2, errore_msg: 'Più risultati', creato_il: '2026-11-26T10:01:00Z',
       opzioni_disambiguazione: [{ urlSingles: '${B}Booster-Boxes/Surging-Sparks-Booster-Box', label: 'Box di buste di Scintille Folgoranti' }] },
   ];
@@ -270,6 +270,8 @@ async function provaBrowser() {
   controlla('"prismatica" trova anche Prismatiche', st.tessere.includes('Set Allenatore Fuoriclasse di Evoluzioni Prismatiche'), st.tessere);
   await pg.click('#ssScelta .ss-carta:has-text("Set Allenatore Fuoriclasse di Evoluzioni Prismatiche")');
   await aspetta(150);
+  const integrita = await pg.evaluate(() => window.__coda.map(r => [r.integrita_packaging || null, r.sigillata_originale]));
+  uguale('sql/155: l\'integrità della confezione resta quella della riga', integrita, [['sigillo_danneggiato', false]]);
   st = await pg.evaluate(() => ({ coda: window.__coda.map(r => ({ nome: r.nome, url: r.url_diretto, tipo: r.tipo, dest: r.destinazione, stato: r.stato })), eliminate: window.__eliminate.slice(), aperta: getComputedStyle(document.getElementById('ssScelta')).display }));
   uguale('scelta: torna in coda col link e il nome del catalogo, tolta dalle carte con problemi', [st.coda, st.eliminate, st.aperta], [[{ nome: 'Set Allenatore Fuoriclasse di Evoluzioni Prismatiche', url: B + 'Elite-Trainer-Boxes/Prismatic-Evolutions-Elite-Trainer-Box', tipo: 'sealed', dest: 'collezione', stato: 'pending' }], ['c1'], 'none']);
   await pg.click('#listaCarteProblemi button:has-text("Nessuno di questi")');
@@ -277,8 +279,8 @@ async function provaBrowser() {
   await pg.fill('#ssSceltaTesto', 'Box Scintille Folgoranti 18');
   await pg.click('#ssSceltaUsaTesto');
   await aspetta(150);
-  st = await pg.evaluate(() => window.__coda.slice(1).map(r => ({ nome: r.nome, url: r.url_diretto, lingua: r.lingua, qty: r.qty })));
-  uguale('"Riprova con il nome scritto": in coda col testo, senza link', st, [{ nome: 'Box Scintille Folgoranti 18', url: null, lingua: 'EN', qty: 2 }]);
+  st = await pg.evaluate(() => window.__coda.slice(1).map(r => ({ nome: r.nome, url: r.url_diretto, lingua: r.lingua, qty: r.qty, integrita: r.integrita_packaging || null })));
+  uguale('"Riprova con il nome scritto": in coda col testo, senza link (riga senza integrità salvata: nessuna)', st, [{ nome: 'Box Scintille Folgoranti 18', url: null, lingua: 'EN', qty: 2, integrita: null }]);
 
   // ── Modifica sealed ──
   await pg.evaluate(() => {
