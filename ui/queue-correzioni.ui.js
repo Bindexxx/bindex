@@ -20,8 +20,14 @@ async function caricaCarteConProblemi() {
             if (conteggio === 0) return;
 
             const conIndovino = typeof selApriIndovino === 'function';
+            const conSceltaSealed = typeof apriSceltaSealed === 'function';
             lista.innerHTML = data.map(r => {
                 _correzioniRighe.set(r.id, r);
+                // sealed (Sealed fase C): si sceglie dal catalogo sealed invece che con l'Indovino delle carte
+                const sealed = r.tipo === 'sealed';
+                const conScelta = sealed ? conSceltaSealed : conIndovino;
+                const apriScelta = sealed ? 'correzioneApriSceltaSealed' : 'correzioneApriIndovino';
+                const cosa = sealed ? ['prodotto possibile', 'prodotti possibili'] : ['carta possibile', 'carte possibili'];
                 const opzioni = Array.isArray(r.opzioni_disambiguazione) ? r.opzioni_disambiguazione : [];
                 const nomeAttr = escapeJsAttr(r.nome);
                 const idOpzioni = 'opz-' + r.id;
@@ -30,20 +36,20 @@ async function caricaCarteConProblemi() {
                 ` : '';
                 const opzioniHtml = opzioni.length > 0 ? `
                     <div class="prob-scelta">
-                        <span class="prob-scelta-titolo">${opzioni.length} cart${opzioni.length === 1 ? 'a possibile' : 'e possibili'}: scegli quella giusta</span>
+                        <span class="prob-scelta-titolo">${opzioni.length} ${opzioni.length === 1 ? cosa[0] : cosa[1]}: scegli ${sealed ? 'quello giusto' : 'quella giusta'}</span>
                         ${opzioni.length > 25 ? `<span style="font-size:0.68rem; color:var(--danger);">⚠️ Cardmarket mostra i risultati su più pagine — se non vedi la carta giusta qui sotto, usa "Correggi e riprova" con un nome più specifico (non solo il codice del set).</span>` : ''}
                         ${filtroHtml}
                         <div id="${idOpzioni}" class="sel-griglia prob-griglia">
                             ${opzioni.map(o => `
-                                <div class="prob-opzione" data-filtro-testo="${escapeHtml((o.label || '').toLowerCase())}" data-link="${escapeHtml(String(o.urlSingles || '').split('?')[0])}">
+                                <div class="prob-opzione" data-filtro-testo="${escapeHtml((o.label || '').toLowerCase())}" data-link="${escapeHtml(String(o.urlSingles || '').split('?')[0])}"${sealed ? ' data-sealed="1"' : ''}>
                                     <button type="button" class="sel-carta" onclick="sceglieOpzioneDisambiguazione('${r.id}', '${escapeJsAttr(o.label || '')}', '${escapeJsAttr(o.urlSingles || '')}')">
-                                        ${typeof _selMiniaturaHtml === 'function' ? _selMiniaturaHtml(null) : ''}
+                                        ${sealed && typeof _ssMiniHtml === 'function' ? _ssMiniHtml(null) : typeof _selMiniaturaHtml === 'function' ? _selMiniaturaHtml(null) : ''}
                                         <span class="sel-testo"><b>${escapeHtml(o.label || o.urlSingles || 'opzione senza nome')}</b><span class="sel-set">È questa</span></span>
                                     </button>
                                     ${urlEsternoSicuro(o.urlSingles) ? `<a href="${urlEsternoSicuro(o.urlSingles)}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()" class="btn-secondary prob-apri" title="Apri su Cardmarket per vederla prima di scegliere" aria-label="Apri su Cardmarket"><i class="fa-solid fa-arrow-up-right-from-square"></i></a>` : ''}
                                 </div>
                             `).join('')}
-                            ${conIndovino ? `<button type="button" class="sel-carta prob-nessuna" onclick="correzioneApriIndovino('${r.id}')"><i class="fa-regular fa-circle-question"></i><span class="sel-testo"><b>Nessuna di queste</b><span class="sel-versione">Apri “Indovino la tua carta” con i dati già scritti</span></span></button>` : ''}
+                            ${conScelta ? `<button type="button" class="sel-carta prob-nessuna" onclick="${apriScelta}('${r.id}')"><i class="fa-regular fa-circle-question"></i><span class="sel-testo"><b>${sealed ? 'Nessuno di questi' : 'Nessuna di queste'}</b><span class="sel-versione">${sealed ? 'Cercalo nel catalogo sealed col nome già scritto' : 'Apri “Indovino la tua carta” con i dati già scritti'}</span></span></button>` : ''}
                         </div>
                     </div>
                 ` : '';
@@ -53,7 +59,7 @@ async function caricaCarteConProblemi() {
                             <strong style="font-size:0.85rem;">${escapeHtml(r.nome)}</strong>
                             <div style="font-size:0.72rem; color:var(--danger);">${escapeHtml(r.errore_msg || 'Errore sconosciuto')}</div>
                         </div>
-                        ${conIndovino && !opzioni.length ? `<button class="btn-main" onclick="correzioneApriIndovino('${r.id}')" style="font-size:0.75rem; padding:0.4rem 0.7rem; margin:0;"><i class="fa-solid fa-wand-magic-sparkles"></i> Scegli la carta</button>` : ''}
+                        ${conScelta && !opzioni.length ? `<button class="btn-main" onclick="${apriScelta}('${r.id}')" style="font-size:0.75rem; padding:0.4rem 0.7rem; margin:0;"><i class="fa-solid fa-wand-magic-sparkles"></i> ${sealed ? 'Scegli il prodotto' : 'Scegli la carta'}</button>` : ''}
                         <button class="btn-secondary" onclick="modificaERiprovaCartaFallita('${r.id}', '${nomeAttr}')" style="font-size:0.75rem; padding:0.4rem 0.7rem;"><i class="fa-solid fa-pen"></i> Correggi e riprova</button>
                         <button class="btn-secondary" onclick="riprovaCartaFallita('${r.id}')" style="font-size:0.75rem; padding:0.4rem 0.7rem;"><i class="fa-solid fa-rotate-right"></i> Riprova</button>
                         <button class="btn-secondary" style="color:var(--danger); background-color:var(--danger-bg); font-size:0.75rem; padding:0.4rem 0.7rem;" onclick="eliminaCartaFallita('${r.id}')"><i class="fa-solid fa-trash"></i></button>
@@ -62,12 +68,46 @@ async function caricaCarteConProblemi() {
                 `;
             }).join('');
             _correzioniCaricaMiniature();
+            _correzioniCaricaMiniatureSealed();
+        }
+
+        // Le foto delle opzioni sealed, per i prodotti che il catalogo sealed conosce (Sealed fase C).
+        async function _correzioniCaricaMiniatureSealed() {
+            if (typeof sealedCatalogoPerUrl !== 'function' || typeof _ssMiniHtml !== 'function') return;
+            const caselle = [...document.querySelectorAll('#listaCarteProblemi .prob-opzione[data-sealed][data-link]')].filter(el => el.dataset.link);
+            if (!caselle.length) return;
+            const { data, error } = await sealedCatalogoPerUrl(caselle.map(el => el.dataset.link));
+            if (error || !data || !data.length) return;
+            const perLink = new Map(data.map(r => [r.url, r.foto ? sealedCatalogoFotoUrl(r.foto) : r.foto_cm]));
+            caselle.forEach(el => {
+                const immagine = perLink.get(el.dataset.link);
+                const mini = el.querySelector('.sel-mini');
+                if (immagine && mini) mini.outerHTML = _ssMiniHtml(immagine);
+            });
+        }
+
+        // Sealed: "Scegli il prodotto" / "Nessuno di questi" → finestra del catalogo sealed col nome della riga.
+        function correzioneApriSceltaSealed(id) {
+            const r = _correzioniRighe.get(id);
+            if (!r || typeof apriSceltaSealed !== 'function') return;
+            const rimetti = async (cambi) => {
+                const ok = await _rimettiInCodaDaCorrezioneManuale(id, cambi);
+                if (ok) await caricaCarteConProblemi();
+            };
+            apriSceltaSealed({
+                titolo: 'Scegli il prodotto',
+                sottotitolo: `L'estensione non l'ha trovato${r.errore_msg ? ` (${r.errore_msg})` : ''}. Sceglilo dal catalogo: riparte col suo link.`,
+                testo: r.nome,
+                alScelta: (p) => rimetti({ nome: p.nome, url_diretto: p.url }),
+                alTesto: (testo) => rimetti({ nome: testo, url_diretto: null }),
+                testoBottone: 'Riprova con il nome scritto',
+            });
         }
 
         // Le miniature delle opzioni, per le pagine Cardmarket che il catalogo conosce già.
         async function _correzioniCaricaMiniature() {
             if (typeof catalogoMiniaturePerLink !== 'function' || typeof _selMiniaturaHtml !== 'function') return;
-            const caselle = [...document.querySelectorAll('#listaCarteProblemi .prob-opzione[data-link]')].filter(el => el.dataset.link);
+            const caselle = [...document.querySelectorAll('#listaCarteProblemi .prob-opzione[data-link]:not([data-sealed])')].filter(el => el.dataset.link);
             if (!caselle.length) return;
             const { data, error } = await catalogoMiniaturePerLink(caselle.map(el => el.dataset.link));
             if (error || !data || !data.length) return;

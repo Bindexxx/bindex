@@ -7109,3 +7109,44 @@ textarea.avviso-campo { resize: vertical; font-size: 0.8rem; line-height: 1.4; f
 .sel-ind-conferma { position: sticky; bottom: 0; display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; padding: 10px 12px; border-radius: 14px; border: 2px solid var(--primary); background: var(--card-bg); font-size: 0.88rem; }
 .sel-ind-conferma .btn-main { margin: 0; }
 .sel-ind-nota { padding: 10px 12px; border-radius: 12px; border: 1px dashed var(--border-color); font-size: 0.78rem; color: var(--text-muted); }
+
+/* Sealed fase C (26/11/2026): scelta del prodotto dal catalogo sealed (ui/selettore-sealed.ui.js) */
+.ss-mini { aspect-ratio: 1 / 1; background: #fff; }
+.ss-mini img { object-fit: contain; padding: 4%; box-sizing: border-box; }
+.ss-mini-vuota { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: var(--text-muted); font-size: 1.1rem; opacity: .6; }
+.ss-mini img + .ss-mini-vuota { display: none; }
+.ss-carta .sel-mini { width: 64px; }
+.ss-filtri { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.ss-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.ss-chip { min-height: 32px; padding: 5px 11px; border-radius: 999px; border: 1px solid var(--border-color); background: var(--card-bg); color: var(--text-muted); font-family: inherit; font-size: 0.78rem; font-weight: 700; cursor: pointer; white-space: nowrap; }
+.ss-chip:hover, .ss-chip:focus-visible { border-color: var(--primary); }
+.ss-chip.attivo { background: var(--primary-light); border-color: var(--primary); color: var(--primary-text, var(--primary)); }
+.ss-esp { width: auto; max-width: 100%; min-height: 34px; padding: 5px 10px; border-radius: 10px; border: 1px solid var(--border-color); background: var(--card-bg); color: var(--text-dark); font-family: inherit; font-size: 0.8rem; font-weight: 700; }
+.ss-nota { margin: 0; font-size: 0.8rem; color: var(--text-muted); }
+#inserimento tr.ss-bloccata td:first-child > input { display: none !important; }
+#inserimento .ss-blocco .sel-mini { width: 44px; }
+.ss-overlay.modal-overlay { z-index: 9160; }
+.ss-finestra.modal-content { max-width: 780px; width: 94%; text-align: left; display: flex; flex-direction: column; gap: 10px; }
+.ss-titolo { margin: 0 2rem 0 0; font-weight: 800; font-size: 1.05rem; }
+.ss-titolo i { color: var(--primary); }
+.ss-sottotitolo { margin: 0; font-size: 0.82rem; color: var(--text-muted); }
+.ss-campo { width: 100%; box-sizing: border-box; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--border-color); background: var(--card-bg); color: var(--text-dark); font: inherit; font-weight: 700; }
+.ss-corpo { display: flex; flex-direction: column; gap: 10px; min-height: 120px; }
+.ss-corpo .sel-griglia { grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); }
+.ss-piede { display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; position: sticky; bottom: -1.5rem; margin: 0 -1.5rem -1.5rem; padding: 10px 1.5rem; background: var(--card-bg); border-top: 1px solid var(--border-color); }
+.ss-piede .btn-secondary { margin: 0; }
+.ss-prodotto { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 12px; border: 1px solid var(--border-color); background: var(--bg-color); }
+.ss-prodotto .sel-mini { width: 44px; }
+.ss-prodotto-testo { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; font-size: 0.82rem; }
+.ss-prodotto-testo b { font-size: 0.88rem; overflow-wrap: anywhere; }
+.ss-prodotto-testo span { color: var(--text-muted); font-size: 0.74rem; }
+.ss-prodotto .btn-secondary { margin: 0; padding: 0.45rem 0.7rem; font-size: 0.78rem; white-space: nowrap; }
+@media (max-width: 600px) {
+    .ss-overlay.modal-overlay { padding: 0; align-items: stretch; justify-content: stretch; }
+    .ss-finestra.modal-content { width: 100%; max-width: none; max-height: none; height: 100%; border-radius: 0; padding-top: calc(1.5rem + env(safe-area-inset-top)); }
+    .ss-corpo .sel-griglia { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .ss-corpo .sel-carta { flex-direction: column; }
+    .ss-corpo .ss-carta .sel-mini { width: 100%; }
+    .ss-chips { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 2px; }
+    .ss-esp { width: 100%; }
+}
