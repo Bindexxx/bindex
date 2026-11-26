@@ -151,6 +151,9 @@ async function caricaCarteConProblemi() {
                 nota: riga.nota, location: riga.location, tipo: riga.tipo, destinazione: riga.destinazione,
                 prezzo_obiettivo: riga.prezzo_obiettivo,
                 url_diretto: overrides.url_diretto !== undefined ? overrides.url_diretto : riga.url_diretto,
+                // sql/155: integrità della confezione (sealed) e spunta "Sigillata" (carte) restano come erano
+                ...(riga.integrita_packaging ? { integrita_packaging: riga.integrita_packaging } : {}),
+                sigillata_originale: !!riga.sigillata_originale,
                 opzioni_disambiguazione: null, stato: 'pending', tentativi_falliti: 0,
                 claimed_by: null, claimed_at: null, completato_il: null, errore_msg: null,
             };
