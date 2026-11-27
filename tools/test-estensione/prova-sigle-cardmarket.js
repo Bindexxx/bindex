@@ -4,7 +4,8 @@
 // "SF 25" prendeva il Turffield Stadium delle Single Strike Premium Trainer Box (sF 25).
 // In più: "gastly tm63" (nome corto + codice di 2 lettere attaccato) diventava "GASTLYTM63", e
 // POP1/B2/M24 facevano pensare a una carta giapponese.
-// Sigle confermate dai codici delle carte salvate nel DB (presi da Cardmarket), 27/11/2026.
+// Sigle confermate il 27/11/2026 dai codici delle carte salvate nel DB e da ricerche su Cardmarket
+// (EPO10, HGSS01, ASRTG01, CRZGG01, SHFSV1, XYPR10, SWSH016, M24002, POP311 portano dritti alla carta).
 const fs = require('fs');
 const path = require('path');
 const { caricaBackground, rispostaFinta } = require('./lib/carica-background');
@@ -35,10 +36,21 @@ const TESTI = [
   ['Inteleon V SWSHP 16', 'Inteleon V SWSH 016'],
   ['Pikachu XYP 152', 'Pikachu XYPR 152'],
   ['Pikachu MCD24 2', 'Pikachu M24 002'],
+  ['Cottonee EP 10', 'Cottonee EPO 10'],
+  ['Ho-Oh HGSSP 1', 'Ho-Oh HGSS 01'],
+  ['Bulbasaur MCD21 1', 'Bulbasaur MCD25 1'],
+  ['Abomasnow ASR-TG 001', 'Abomasnow ASR TG01'],
+  ['Flareon brs-tg 1', 'Flareon BRS TG01'],
+  ['Parasect LOR-TG 001', 'Parasect LOR TG01'],
+  ['Braixen SIT-TG 001', 'Braixen SIT TG01'],
+  ['Voltorb di Hisui CRZ-GG 001', 'Voltorb di Hisui CRZ GG01'],
+  ['Rowlet SHF-SV 1', 'Rowlet SHF SV1'],
+  ['Dartrix SHF-SV 012', 'Dartrix SHF SV12'],
   // attaccate: solo le sigle di sole lettere
   ['tri44', 'TM44'],
   ['Scizor sf25', 'Scizor STF25'],
   ['swshp16', 'SWSH016'],
+  ['ep10', 'EPO10'],
   ['n162', 'n162'],
   // già come su Cardmarket, o altre sigle: non cambia niente
   ['STF 48', 'STF 48'],
@@ -58,7 +70,7 @@ const COMPATTI = [
   // come prima
   ['dratini tm62', 'TM62'], ['Pikachu EM60', 'EM60'], ['flareon sm186', 'SM186'],
   ['Jynx SIT TG04', 'SITTG04'], ['SHF SV12', 'SHFSV12'], ['Falinks V SHF SV115', 'SHFSV115'], ['Kricketune CRZ GG01', 'CRZGG01'],
-  ['Pikachu GEN RC5', 'GENRC5'], ['BA22 C31', 'BA22C31'], ['rotom ba24 p14', 'BA24P14'], ['Magikarp DR 60', 'DR60'],
+  ['Pikachu GEN RC5', 'GENRC5'], ['Abomasnow ASR TG01', 'ASRTG01'], ['Rowlet SHF SV1', 'SHFSV1'], ['BA22 C31', 'BA22C31'], ['rotom ba24 p14', 'BA24P14'], ['Magikarp DR 60', 'DR60'],
   ['banette tm 14', 'TM14'], ['STF 50', 'STF50'], ['Roselia StF 72', 'STF72'], ['CUBONE CBB3C04', 'CBB3C04'],
   ['Pikachu 25', null], ['Pikachu', null],
 ];
