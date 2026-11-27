@@ -5,7 +5,8 @@
 // In più: "gastly tm63" (nome corto + codice di 2 lettere attaccato) diventava "GASTLYTM63", e
 // POP1/B2/M24 facevano pensare a una carta giapponese.
 // Sigle confermate il 27/11/2026 dai codici delle carte salvate nel DB e da ricerche su Cardmarket
-// (EPO10, HGSS01, ASRTG01, CRZGG01, SHFSV1, XYPR10, SWSH016, M24002, POP311 portano dritti alla carta).
+// (EPO10, HGSS01, ASRTG01, CRZGG01, SHFSV1, XYPR10, SWSH016, M24002, POP311, M23012, SM04, TK110A portano dritti alla carta).
+// Il 27/11 sera giro completo: una carta per ognuno dei 277 set del catalogo, testo come lo scrive il sito.
 const fs = require('fs');
 const path = require('path');
 const { caricaBackground, rispostaFinta } = require('./lib/carica-background');
@@ -33,9 +34,13 @@ const TESTI = [
   ['larvitar P1 11', 'larvitar POP1 11'],
   ['P6 14', 'POP6 14'],
   ['flareon SMP 186', 'flareon SM 186'],
+  ['Pikachu SMP 4', 'Pikachu SM 04'],
+  ['Fire Energy TK1A 10', 'Fire Energy TK1 10A'],
+  ['Lightning Energy TK1O 10', 'Lightning Energy TK1 10O'],
   ['Inteleon V SWSHP 16', 'Inteleon V SWSH 016'],
   ['Pikachu XYP 152', 'Pikachu XYPR 152'],
   ['Pikachu MCD24 2', 'Pikachu M24 002'],
+  ['Blissey MCD23 12', 'Blissey M23 012'],
   ['Cottonee EP 10', 'Cottonee EPO 10'],
   ['Ho-Oh HGSSP 1', 'Ho-Oh HGSS 01'],
   ['Bulbasaur MCD21 1', 'Bulbasaur MCD25 1'],
@@ -76,7 +81,7 @@ const COMPATTI = [
 ];
 
 const LINGUE = [
-  ['larvitar POP1 11', null], ['POP6 14', null], ['Blastoise B2 2', null], ['EEVEE M24 013', null],
+  ['larvitar POP1 11', null], ['POP6 14', null], ['Blastoise B2 2', null], ['EEVEE M24 013', null], ['tandemaus m23 013', null],
   ['heracross m6 001', 'giapponese'], ['m6001', 'giapponese'], ['Eevee SV2A 133', 'giapponese'], ['pikachu CSV2C 001', 'cinese'],
 ];
 
@@ -145,6 +150,20 @@ const ric = (t) => `${CM}/it/Pokemon/Products/Search?searchMode=v2&searchString=
     [GASTLY]: conPrezzo('Gastly', 'TM 63', GASTLY),
   });
   uguale('"gastly tm63": cercata come TM63 e trovata', [slug(g4.r.urlSingles), g4.chiesti], ['Gastly-TM63', ['TM63']]);
+
+  const ENERGIA = B + 'EX-Trainer-Kit/Fire-Energy-TK1Latias-10';
+  const g5 = await giro('Fire Energy TK1A 10', {
+    [ric('TK110A')]: paginaCarta('Energia Fuoco', 'TK1 10A', ENERGIA),
+    [ENERGIA]: conPrezzo('Energia Fuoco', 'TK1 10A', ENERGIA),
+  });
+  uguale('"Fire Energy TK1A 10": cercata come TK110A e trovata', [slug(g5.r.urlSingles), g5.chiesti], ['Fire-Energy-TK1Latias-10', ['TK110A']]);
+
+  const BLISSEY = B + 'McDonalds-Match-Battle-2023/Blissey-M23012';
+  const g6 = await giro('Blissey MCD23 12', {
+    [ric('M23012')]: paginaCarta('Blissey', 'M23 012', BLISSEY),
+    [BLISSEY]: conPrezzo('Blissey', 'M23 012', BLISSEY),
+  });
+  uguale('"Blissey MCD23 12": cercata come M23012 e trovata', [slug(g6.r.urlSingles), g6.chiesti], ['Blissey-M23012', ['M23012']]);
 
   chiudi();
 })();
