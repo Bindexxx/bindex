@@ -184,7 +184,7 @@ let _ricercaContenitori = { quando: 0, binder: [], scaffali: [] };
                 if (!card) return;
                 const cerca = document.getElementById('searchInput');
                 if (cerca) cerca.value = card.name || '';
-                const azzeraFiltri = () => ['filterLocation', 'filterLang', 'collFiltroLoc', 'collFiltroLang'].forEach(id => { const s = document.getElementById(id); if (s) s.value = ''; });
+                const azzeraFiltri = () => ['filterLocation', 'filterLang', 'filterContenitore', 'collFiltroLoc', 'collFiltroLang', 'collFiltroCont'].forEach(id => { const s = document.getElementById(id); if (s) s.value = ''; });
                 azzeraFiltri();
                 const tipoRiga = card.tabella === 'wishlist' ? 'wishlist' : 'carte';
                 if (!_filtriTipo[tipoRiga]) {

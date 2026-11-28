@@ -57,9 +57,13 @@ function toggleMenuCompatto(id) {
             inputLocation.value = isWishlist ? '' : card.location;
             inputLocation.disabled = isWishlist;
             inputLocation.placeholder = isWishlist ? 'Non applicabile alla wishlist' : '';
-            // sql/158: location secondaria, solo per le carte della collezione
+            // sql/162: contenitore, solo per le carte della collezione
             document.getElementById('campoEditLocation2').style.display = isWishlist ? 'none' : '';
             document.getElementById('editLocation2').value = isWishlist ? '' : (card.locationSecondaria || '');
+            if (!isWishlist) _contenitoriDisponibili().then(nomi => {
+                const dl = document.getElementById('datalistEditContenitore');
+                if (dl) dl.innerHTML = nomi.map(n => `<option value="${escapeHtml(n)}"></option>`).join('');
+            });
 
             const campoSigillata = document.getElementById('campoEditSigillata');
             campoSigillata.style.display = isWishlist ? 'none' : 'flex';
@@ -72,7 +76,7 @@ function toggleMenuCompatto(id) {
             }
 
             const datalist = document.getElementById('datalistEditLocation');
-            datalist.innerHTML = [...new Set(carteReali.flatMap(c => [c.location, c.locationSecondaria]).filter(Boolean))]
+            datalist.innerHTML = [...new Set(carteReali.map(c => c.location).filter(Boolean))]
                 .map(loc => `<option value="${escapeHtml(loc)}"></option>`).join('');
 
             document.getElementById('editCardModal').style.display = 'flex';
@@ -120,9 +124,8 @@ function toggleMenuCompatto(id) {
             }
             if (!isWishlist) {
                 aggiornamento.location = document.getElementById('editLocation').value.trim() || null;
-                const location2 = document.getElementById('editLocation2').value.trim();
-                aggiornamento.location_secondaria = (location2 && location2 !== '?'
-                    && location2.toLowerCase() !== String(aggiornamento.location || '').toLowerCase()) ? location2 : null;
+                const contenitore = document.getElementById('editLocation2').value.trim();
+                aggiornamento.location_secondaria = (contenitore && contenitore !== '?') ? contenitore : null;
                 aggiornamento.sigillata_originale = document.getElementById('editSigillata').checked;
                 if (_cartaInModifica.esitoControllo
                     && (aggiornamento.lingua !== _cartaInModifica.lang || aggiornamento.condizione !== _cartaInModifica.cond)) {
@@ -291,11 +294,45 @@ function toggleMenuCompatto(id) {
             return _locationDisponibiliCache;
         }
 
-        // sql/158: location secondaria dalla scheda della carta ('' = nessuna)
-        async function modificaLocationSecondariaInline(event, id, valoreAttuale, locationPrincipale) {
+        // sql/162: i contenitori (dove sta fisicamente la carta, facoltativo; sulla carta location_secondaria).
+        // L'elenco della tabella contenitori più i nomi già sulle carte.
+        async function _contenitoriDisponibili() {
+            if (!_contenitoriCache) {
+                const userId = await authGetUserId();
+                if (!userId) return [];
+                const { data, error } = await contenitoriList(userId);
+                if (error) { console.error('[contenitori] elenco:', error.message); return []; }
+                _contenitoriCache = (data || []).map(r => r.nome);
+            }
+            const tutti = new Map(_contenitoriCache.map(n => [n.toLowerCase(), n]));
+            (typeof carteReali !== 'undefined' ? carteReali : []).forEach(c => {
+                if (c.locationSecondaria && !tutti.has(c.locationSecondaria.toLowerCase())) tutti.set(c.locationSecondaria.toLowerCase(), c.locationSecondaria);
+            });
+            return [...tutti.values()].sort((a, b) => a.localeCompare(b, 'it', { sensitivity: 'base' }));
+        }
+        function _contenitoriInvalida() { _contenitoriCache = null; }
+
+        // Chiede il nome di un contenitore nuovo e lo crea. Torna il nome (com'è nell'elenco) o null.
+        async function contenitoreNuovo() {
+            const nome = ((await chiediTesto({ titolo: 'Nuovo contenitore', testo: 'Dove stanno fisicamente le carte (es. Toploader, Binder Scambi):', conferma: 'Crea', maxLength: 60 })) || '').trim();
+            if (!nome) return null;
+            if (nome === '?') { mostraAvviso('"?" non va bene come nome di un contenitore.'); return null; }
+            const esistenti = await _contenitoriDisponibili();
+            const uguale = esistenti.find(n => n.toLowerCase() === nome.toLowerCase());
+            if (uguale) return uguale;
+            const userId = await authGetUserId();
+            if (!userId) return null;
+            const { error } = await contenitoreInsert(userId, nome);
+            if (error) { mostraAvviso('❌ Contenitore non creato: ' + error.message); return null; }
+            _contenitoriInvalida();
+            return nome;
+        }
+
+        // Contenitore dalla scheda della carta ('' = nessuno)
+        async function modificaContenitoreInline(event, id, valoreAttuale) {
             const span = event.target.closest('span');
-            const opzioni = ['', ...(await _locationDisponibili()).filter(n => n !== '?' && n !== locationPrincipale)];
-            _apriSelectInline(span, id, 'carte', 'location_secondaria', valoreAttuale || '', opzioni, 'Nessuna');
+            const opzioni = ['', ...(await _contenitoriDisponibili())];
+            _apriSelectInline(span, id, 'carte', 'location_secondaria', valoreAttuale || '', opzioni, 'Nessuno');
         }
 
         async function modificaLocationInline(event, id, tabella, valoreAttuale) {
@@ -334,7 +371,7 @@ function toggleMenuCompatto(id) {
             select.onchange = async () => {
                 const nuovo = select.value;
                 if (nuovo === valoreAttuale) { filterTable(); return; }
-                if (!(await chiediConferma({ titolo: 'Salvare la modifica?', testo: `"${campo === 'location_secondaria' ? 'Location secondaria' : campo}" = "${nuovo || etichettaVuota}"`, conferma: 'Salva' }))) { filterTable(); return; }
+                if (!(await chiediConferma({ titolo: 'Salvare la modifica?', testo: `"${campo === 'location_secondaria' ? 'Contenitore' : campo}" = "${nuovo || etichettaVuota}"`, conferma: 'Salva' }))) { filterTable(); return; }
                 const { error } = await cardsUpdateCampo(tabella, id, campo, nuovo);
                 if (error) { mostraAvviso(`❌ Errore nel salvare: ` + error.message); filterTable(); return; }
                 const carta = carteReali.find(c => String(c.id) === String(id));

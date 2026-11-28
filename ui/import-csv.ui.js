@@ -4,7 +4,7 @@ const _IMPORT_CSV_BLOCCO = 100;
 const _IMPORT_CSV_MAX_RIGHE = 2000;
 const _IMPORT_CSV_CAMPI = [
     ['', '— non usare —'], ['nome', 'Nome'], ['codice', 'Codice'], ['qty', 'Quantità'], ['lingua', 'Lingua'],
-    ['condizione', 'Condizione'], ['location', 'Location'], ['location_secondaria', 'Location secondaria'], ['nota', 'Note'], ['reverse', 'Reverse'],
+    ['condizione', 'Condizione'], ['location', 'Location'], ['location_secondaria', 'Contenitore'], ['nota', 'Note'], ['reverse', 'Reverse'],
     ['first_ed', 'Prima edizione'], ['sigillata_originale', 'Sigillata'], ['destinazione', 'Destinazione'],
     ['url', 'Link Cardmarket'],
 ];
@@ -19,7 +19,7 @@ const _IMPORT_CSV_ALIAS = {
     sigillata_originale: ['sigillata_originale', 'sigillata', 'sig'],
     nota: ['nota', 'note', 'notes', 'commento'],
     location: ['location', 'ubicazione', 'posizione', 'dove', 'binder', 'scatola'],
-    location_secondaria: ['location_secondaria', 'location_2', 'location2', 'loc_2', 'loc2', 'seconda_location', 'location_bis', 'posizione_2', 'ubicazione_2'],
+    location_secondaria: ['contenitore', 'contenitori', 'box', 'location_secondaria', 'location_2', 'location2', 'loc_2', 'loc2', 'seconda_location'],
     destinazione: ['destinazione', 'dest'],
     url: ['link', 'url', 'cardmarket', 'link_cardmarket', 'url_cardmarket'],
 };
@@ -122,7 +122,7 @@ function _importCsvValuta() {
         const qty = Math.max(1, parseInt(qtyGrezza, 10) || 1);
         if (qtyGrezza && String(qty) !== qtyGrezza) avvisi.push(`quantità "${qtyGrezza}" → ${qty}`);
         const loc = val(r, 'location');
-        const loc2 = val(r, 'location_secondaria');   // sql/158: solo carte in collezione
+        const loc2 = val(r, 'location_secondaria');   // sql/162: contenitore, solo carte in collezione
         const linkGrezzo = val(r, 'url');
         const link = _importCsvLink(linkGrezzo);
         if (linkGrezzo && !link) avvisi.push('link non di Cardmarket: ignorato, si cerca per nome');
@@ -137,7 +137,7 @@ function _importCsvValuta() {
             sigillata_originale: _importCsvBool(val(r, 'sigillata_originale')),
             nota: val(r, 'nota') || null,
             location: (loc && loc !== '?') ? loc : null,
-            location_secondaria: (s.tipo !== 'sealed' && dest !== 'wishlist' && loc2 && loc2 !== '?' && loc2.toLowerCase() !== loc.toLowerCase()) ? loc2 : null,
+            location_secondaria: (s.tipo !== 'sealed' && dest !== 'wishlist' && loc2 && loc2 !== '?') ? loc2.slice(0, 60) : null,
             destinazione: dest, qty,
             ...(link ? { url_diretto: link.url } : delCatalogo ? { url_diretto: delCatalogo.url } : {}),
             ...(s.tipo === 'sealed' ? { tipo: 'sealed' } : {}),
@@ -242,7 +242,7 @@ function _importCsvRilascia(ev) {
 }
 
 function importCsvScaricaModello() {
-    const testo = 'nome;codice;qty;lingua;condizione;location;location_secondaria;nota;reverse;first_ed;sigillata_originale\n' +
+    const testo = 'nome;codice;qty;lingua;condizione;location;contenitore;nota;reverse;first_ed;sigillata_originale\n' +
         'Charizard ex;OBF 125;1;IT;NM;Binder 1;;;no;no;no\n';
     const blob = new Blob(['﻿' + testo], { type: 'text/csv;charset=utf-8' });
     const a = document.createElement('a');
@@ -271,7 +271,7 @@ function _importCsvImposta(chiave, valore) {
 
 async function _importCsvCreaLocation(userId, righe) {
     const tipo = _impCsv && _impCsv.tipo === 'sealed' ? 'sealed' : 'carta';
-    const nomi = [...new Set(righe.flatMap(r => [r.location, r.location_secondaria]).filter(Boolean))];
+    const nomi = [...new Set(righe.map(r => r.location).filter(Boolean))];
     if (!nomi.length) return null;
     const { data, error } = await locationsList(userId, tipo);
     if (error) return { nome: nomi[0], messaggio: error.message };
@@ -279,10 +279,7 @@ async function _importCsvCreaLocation(userId, righe) {
     for (const nome of nomi) {
         const giaPresente = esistenti.get(nome.toLowerCase());
         if (giaPresente) {
-            if (giaPresente !== nome) righe.forEach(r => {
-                if (r.location === nome) r.location = giaPresente;
-                if (r.location_secondaria === nome) r.location_secondaria = giaPresente;
-            });
+            if (giaPresente !== nome) righe.forEach(r => { if (r.location === nome) r.location = giaPresente; });
             continue;
         }
         if (typeof _locRiservata === 'function' && _locRiservata(nome)) continue;
@@ -401,7 +398,7 @@ function _importCsvRender() {
                     <td>${r.db.qty}</td>
                     <td>${esc(r.linguaGrezza && r.stato === 'avviso' ? r.linguaGrezza : r.db.lingua)}</td>
                     <td>${esc(r.db.condizione)}</td>
-                    <td>${esc(r.db.location || '?')}${r.db.location_secondaria ? ` <small>· ${esc(r.db.location_secondaria)}</small>` : ''}</td>
+                    <td>${esc(r.db.location || '?')}${r.db.location_secondaria ? ` <small>· 📦 ${esc(r.db.location_secondaria)}</small>` : ''}</td>
                     <td class="csv-nota-riga">${esc(r.nota)}</td>
                 </tr>`).join('')}
             </tbody></table></div>

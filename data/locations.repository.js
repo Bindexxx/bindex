@@ -32,12 +32,27 @@ async function locationSpostaCarte(userId, nomiDa, nomeA) {
         .in('location', nomiDa);
 }
 
-// sql/158: le carte che usano queste location come secondaria. nomeA vuoto = tolgo la secondaria.
-async function locationSpostaSecondarie(userId, nomiDa, nomeA) {
-    return supabaseClient.from('carte')
-        .update({ location_secondaria: nomeA || null })
-        .eq('owner_id', userId)
-        .in('location_secondaria', nomiDa);
+// ── Contenitori (sql/162): dove sta fisicamente la carta, facoltativo. Sulla carta: location_secondaria.
+async function contenitoriList(userId) {
+    return supabaseClient.from('contenitori').select('nome').eq('owner_id', userId).order('nome');
+}
+
+async function contenitoreInsert(userId, nome) {
+    return supabaseClient.from('contenitori').insert({ owner_id: userId, nome });
+}
+
+async function contenitoreRinomina(nomeDa, nomeA) {
+    return supabaseClient.rpc('rinomina_contenitore', { p_da: nomeDa, p_a: nomeA });
+}
+
+// Toglie il contenitore da tutte le carte che ce l'hanno (il contenitore resta nell'elenco).
+async function contenitoreSvuota(userId, nome) {
+    return supabaseClient.from('carte').update({ location_secondaria: null }, { count: 'exact' })
+        .eq('owner_id', userId).eq('location_secondaria', nome);
+}
+
+async function contenitoreElimina(userId, nome) {
+    return supabaseClient.from('contenitori').delete().eq('owner_id', userId).eq('nome', nome);
 }
 
 async function locationsScambioAutomatico(userId) {

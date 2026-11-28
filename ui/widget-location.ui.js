@@ -33,6 +33,8 @@ let _locOccupato = false;
 let _locOrd = 'valore';
 let _locSelezionando = false;
 let _locModaleResizeHandler = null;
+let _locVista = 'location';          // sql/162: 'location' | 'contenitori'
+let _contSel = null;                 // contenitore aperto nel pannello (PC)
 
 function _locSistema(nome) { return _LOC_SISTEMA.includes(String(nome).trim().toUpperCase()); }
 function _locInerte(nome) { return nome === '—'; }
@@ -226,7 +228,8 @@ function _locModaleDisegna() {
     const corpo = document.getElementById('locModaleCorpo');
     if (!corpo || !_locModale) return;
     const titoloEl = document.getElementById('locModaleTitolo');
-    if (titoloEl) titoloEl.textContent = _locModale.tipo === 'sposta' ? 'Sposta le carte' : (_locModale.nome || '');
+    if (titoloEl) titoloEl.textContent = _locModale.tipo === 'sposta' ? 'Sposta le carte' : (_locModale.tipo === 'contenitore' ? (_locModale.nome ? '📦 ' + _locModale.nome : 'Senza contenitore') : (_locModale.nome || ''));
+    if (_locModale.tipo === 'contenitore') { corpo.innerHTML = _contDettaglioHtml(_locModale.nome, true); return; }
 
     if (_locModale.tipo === 'sposta') {
         const sorgenti = _locModale.sorgenti;
@@ -279,6 +282,7 @@ function _locModaleDisegna() {
         <div class="loc-mcover">${cover}</div>
         <div style="font-size:0.85rem; color:var(--text-muted);">${meta}</div>
         ${inAttesa}${_locScambioAutoHtml(nome)}${nota}
+        ${_locContenitoriDellaLocationHtml(nome)}
         <div style="margin-top:0.8rem;">${azioni}</div>`;
 }
 
@@ -409,20 +413,14 @@ async function _locElimina(nomi) {
         ? `Eliminare la location "${eliminabili[0]}"? È vuota.`
         : `Eliminare ${eliminabili.length} location vuote?\n- ${eliminabili.join('\n- ')}`;
     if (saltate.length > 0) msg += `\n\nNon verranno eliminate:\n- ${saltate.join('\n- ')}`;
-    // sql/158: le carte che le usano come location secondaria la perdono (restano dove sono)
-    const conSecondaria = carteReali.filter(c => c.tabella === 'carte' && c.locationSecondaria && eliminabili.includes(c.locationSecondaria)).length;
-    if (conSecondaria > 0) msg += `\n\n${_locCarte(conSecondaria)} la ${conSecondaria === 1 ? 'usa' : 'usano'} come location secondaria: la perde${conSecondaria === 1 ? '' : 'ranno'}, restando dove ${conSecondaria === 1 ? 'è' : 'sono'}.`;
     if (!(await chiediConferma({ titolo: 'Eliminare le location?', testo: msg, conferma: 'Elimina', pericolo: true }))) return;
 
     _locOccupato = true;
     try {
         const userId = await authGetUserId();
         if (!userId) return;
-        const { error: errSec } = await locationSpostaSecondarie(userId, eliminabili, null);
-        if (errSec) { mostraAvviso('Errore nel togliere la location secondaria dalle carte: ' + errSec.message); return; }
         const { error } = await locationDeleteBatch(userId, eliminabili);
         if (error) { mostraAvviso('Errore nella cancellazione: ' + error.message); return; }
-        if (conSecondaria > 0 && typeof caricaCarteReali === 'function') await caricaCarteReali();
         _locInvalidaCache();
         _locSelezione.clear();
         _locChiudiModale();
@@ -612,6 +610,7 @@ function _locPannelloDisegna() {
         </div>
         <div class="loc-p-azioni">${btn.join('')}</div>
         ${_locScambioAutoHtml(nome)}
+        ${_locContenitoriDellaLocationHtml(nome)}
         ${carte.length ? `<div class="loc-p-titolo"><b>Carte in questa location</b><span>per valore</span></div><div class="loc-p-lista">${righe}</div>` : ''}
         <p class="loc-p-nota">${nota}</p>`;
 }
@@ -620,6 +619,7 @@ function _locDisegna() {
     const container = document.getElementById('locationContenuto');
     if (!container) return;
     _locAssicuraStile();
+    if (_locVista === 'contenitori') { _contDisegna(container); return; }
     _locOrdina();
     const voci = _locDati.voci;
 
@@ -628,6 +628,7 @@ function _locDisegna() {
             <div class="page-header">
                 <span class="page-title">Location</span>
             </div>
+            ${_locVisteHtml()}
             <div class="stato-vuoto"><i class="fa-solid fa-map-pin"></i><br>Nessuna carta ha ancora una location.</div>
             <div class="pg-bottoni" style="justify-content:center;">
                 <button class="primario" onclick="_locAggiungi()">+ Crea la prima location</button>
@@ -681,6 +682,7 @@ function _locDisegna() {
                 <span class="page-title">Location</span>
                 <button type="button" class="loc-btn loc-btn-pieno" onclick="_locAggiungi()"><i class="fa-solid fa-plus"></i> Nuova location</button>
             </div>
+            ${_locVisteHtml()}
             <div class="loc-riga-sopra">
                 <div class="pg-sotto"><b>${voci.length} location</b>${top ? ` &middot; la più preziosa è ${escapeHtml(top.nome)}` : ''}</div>
                 <button type="button" class="loc-btn" onclick="_locToggleSeleziona()"><i class="fa-solid ${_locSelezionando ? 'fa-square-check' : 'fa-square-check'}"></i> ${_locSelezionando ? 'Fine' : 'Seleziona'}</button>
@@ -710,6 +712,7 @@ async function renderPaginaLocation(opzioni) {
         _locSelezione.clear();
         _locSelezionando = false;
         _locOrd = prefFiltroPaginaScegli('location', 'ordine', ['valore', 'carte', 'az'], 'valore');
+        _locVista = prefFiltroPaginaScegli('location', 'vista', ['location', 'contenitori'], 'location');
         _locChiudiModale();
         container.innerHTML = '<p style="text-align:center; color:var(--text-muted); font-size:0.85rem; padding:1rem 0;">Caricamento…</p>';
     }
@@ -775,13 +778,264 @@ async function renderPaginaLocation(opzioni) {
         || b.n - a.n
         || String(a.nome).localeCompare(String(b.nome)));
 
-    _locDati = { voci, binder, copertine, scambioAuto, scambioAutoPronto };
+    let contenitori = [];
+    if (userId) {
+        try {
+            const { data, error } = await contenitoriList(userId);
+            if (error) throw error;
+            contenitori = (data || []).map(r => r.nome);
+        } catch (e) {
+            console.error('renderPaginaLocation (contenitori):', e && e.message);
+        }
+    }
+
+    _locDati = { voci, binder, copertine, scambioAuto, scambioAutoPronto, contenitori };
     const nomi = new Set(voci.map(v => v.nome));
     _locSelezione = new Set([..._locSelezione].filter(n => nomi.has(n)));
     if (_locModale) {
-        const ok = _locModale.tipo === 'gestisci' ? nomi.has(_locModale.nome) : _locModale.sorgenti.every(n => nomi.has(n));
+        const ok = _locModale.tipo === 'contenitore' ? (!_locModale.nome || _contVoci().some(v => v.nome === _locModale.nome))
+            : _locModale.tipo === 'gestisci' ? nomi.has(_locModale.nome) : _locModale.sorgenti.every(n => nomi.has(n));
         if (!ok) _locChiudiModale(); else _locModaleDisegna();
     }
 
     _locDisegna();
+}
+
+
+// ─────────────────────────── Contenitori (sql/162) ───────────────────────────
+// Dove sta fisicamente una carta (Toploader, Binder Scambi…), facoltativo e a parte dalla location:
+// un contenitore può avere carte di più location. Sulla carta è location_secondaria.
+
+function _locVisteHtml() {
+    const b = (v, et, ico) => `<span class="loc-chip${_locVista === v ? ' attivo' : ''}" onclick="_locImpostaVista('${v}')"><i class="fa-solid ${ico}"></i> ${et}</span>`;
+    return `<div class="loc-chips loc-viste">${b('location', 'Location', 'fa-map-pin')}${b('contenitori', 'Contenitori', 'fa-box-archive')}</div>`;
+}
+
+function _locImpostaVista(v) {
+    _locVista = v === 'contenitori' ? 'contenitori' : 'location';
+    prefFiltroPaginaSet('location', 'vista', _locVista);
+    _locSelezionando = false;
+    _locSelezione.clear();
+    _locDisegna();
+}
+
+function _contCarte() {
+    return carteReali.filter(c => c.tabella === 'carte' && c.stato === 'collezione');
+}
+
+// I contenitori: quelli dell'elenco (anche vuoti) e quelli scritti sulle carte. Ognuno con quante
+// carte ha, il valore e come si dividono per location.
+function _contVoci() {
+    const voci = new Map();
+    const voce = (nome) => {
+        const k = nome.toLowerCase();
+        if (!voci.has(k)) voci.set(k, { nome, n: 0, valore: 0, perLoc: new Map() });
+        return voci.get(k);
+    };
+    (_locDati.contenitori || []).forEach(voce);
+    _contCarte().forEach(c => {
+        if (!c.locationSecondaria) return;
+        const v = voce(c.locationSecondaria);
+        const val = (Number(c.price) || 0) * (Number(c.qty) || 1);
+        v.n += 1; v.valore += val;
+        const loc = c.location || '—';
+        const l = v.perLoc.get(loc) || { n: 0, valore: 0 };
+        l.n += 1; l.valore += val;
+        v.perLoc.set(loc, l);
+    });
+    return [...voci.values()].sort((a, b) => (b.n > 0) - (a.n > 0) || b.valore - a.valore || a.nome.localeCompare(b.nome, 'it', { sensitivity: 'base' }));
+}
+
+function _contSenza() {
+    const s = { nome: '', n: 0, valore: 0, perLoc: new Map() };
+    _contCarte().forEach(c => {
+        if (c.locationSecondaria) return;
+        const val = (Number(c.price) || 0) * (Number(c.qty) || 1);
+        s.n += 1; s.valore += val;
+        const loc = c.location || '—';
+        const l = s.perLoc.get(loc) || { n: 0, valore: 0 };
+        l.n += 1; l.valore += val;
+        s.perLoc.set(loc, l);
+    });
+    return s;
+}
+
+function _contVoce(nome) {
+    if (!nome) return _contSenza();
+    return _contVoci().find(v => v.nome === nome) || null;
+}
+
+function _contRiassuntoLoc(v, quante = 3) {
+    const voci = [...v.perLoc.entries()].sort((a, b) => b[1].n - a[1].n);
+    const testo = voci.slice(0, quante).map(([n, x]) => `${escapeHtml(n)} ${x.n}`).join(' · ');
+    return testo + (voci.length > quante ? ` · +${voci.length - quante}` : '');
+}
+
+function _contDisegna(container) {
+    const voci = _contVoci();
+    const senza = _contSenza();
+    const tessera = (v, i) => {
+        const vuoto = v.n === 0;
+        return `
+            <div class="loc-tile${vuoto ? ' loc-vuota' : ''}${_contSel === v.nome ? ' loc-attiva' : ''}" data-cont="${i}" title="${_locAttr(v.nome || 'Senza contenitore')}" onclick="_contClic(${i})">
+                ${vuoto ? '<span class="loc-badge-vuota">VUOTO</span>' : ''}
+                <div class="loc-cover"><i class="fa-solid ${v.nome ? 'fa-box-archive' : 'fa-circle-question'} loc-ico"></i></div>
+                <div class="loc-nome">${v.nome ? escapeHtml(v.nome) : 'Senza contenitore'}</div>
+                <div class="loc-meta"><b>${v.n}</b> ${v.n === 1 ? 'carta' : 'carte'}${v.n ? ` &middot; ${_locEur(v.valore)}` : ''}</div>
+                ${v.n ? `<div class="loc-meta">${_contRiassuntoLoc(v)}</div>` : ''}
+            </div>`;
+    };
+    const tutte = [...voci, ...(senza.n ? [senza] : [])];
+    window._contVociDisegnate = tutte;
+    if (_contSel != null && !tutte.some(v => v.nome === _contSel)) _contSel = null;
+    if (_contSel == null && tutte.length) _contSel = tutte[0].nome;
+    container.innerHTML = `
+        <div class="pg-pagina">
+            <div class="page-header loc-testa">
+                <span class="page-title">Contenitori</span>
+                <button type="button" class="loc-btn loc-btn-pieno" onclick="_contCrea()"><i class="fa-solid fa-plus"></i> Nuovo contenitore</button>
+            </div>
+            ${_locVisteHtml()}
+            <div class="loc-riga-sopra"><div class="pg-sotto">Dove stanno fisicamente le carte. È facoltativo: la location (il gruppo) non cambia, e in un contenitore possono stare carte di più location.</div></div>
+            ${tutte.length ? `<div class="loc-layout">
+                <div class="loc-grid loc-rest">${tutte.map(tessera).join('')}</div>
+                <div class="loc-pannello" id="locPannello"></div>
+            </div>` : `<div class="stato-vuoto"><i class="fa-solid fa-box-archive"></i><br>Nessun contenitore. Creane uno, oppure scegline uno dalle carte (Modifica, selezione multipla, Inserimento, Import CSV).</div>`}
+        </div>`;
+    const box = document.getElementById('locPannello');
+    if (box) box.innerHTML = _contSel === null ? '' : _contDettaglioHtml(_contSel, false);
+}
+
+function _contClic(i) {
+    const v = (window._contVociDisegnate || [])[i];
+    if (!v) return;
+    if (_locEPC()) {
+        _contSel = v.nome;
+        document.querySelectorAll('#location .loc-tile[data-cont]').forEach(t => t.classList.toggle('loc-attiva', t.dataset.cont === String(i)));
+        const box = document.getElementById('locPannello');
+        if (box) box.innerHTML = _contDettaglioHtml(v.nome, false);
+        return;
+    }
+    _locApriModale({ tipo: 'contenitore', nome: v.nome });
+}
+
+function _contDettaglioHtml(nome, inModale) {
+    const v = _contVoce(nome);
+    if (!v) return '<p style="color:var(--text-muted);">Contenitore non trovato.</p>';
+    const j = escapeJsAttr(nome || '');
+    const righe = [...v.perLoc.entries()].sort((a, b) => b[1].valore - a[1].valore || b[1].n - a[1].n).map(([loc, x]) => `
+        <div class="loc-p-riga" onclick="_contVediCarte('${j}', '${escapeJsAttr(loc)}')">
+            <span class="loc-p-fig" style="display:flex; align-items:center; justify-content:center; height:26px;"><i class="fa-solid fa-map-pin" style="font-size:.75rem; color:var(--text-muted);"></i></span>
+            <div><b>${escapeHtml(loc)}</b><span>${x.n} ${x.n === 1 ? 'carta' : 'carte'}</span></div>
+            <b>${_locEur(x.valore)}</b></div>`).join('');
+    const bottone = inModale ? 'loc-mbtn' : '';
+    const btn = [];
+    if (v.n > 0) btn.push(`<button type="button" class="${inModale ? 'btn-main' : 'loc-btn loc-btn-pieno'} ${bottone}" onclick="_contVediCarte('${j}', '')"><i class="fa-solid fa-eye"></i> Vedi in Collezione</button>`);
+    if (nome) {
+        btn.push(`<button type="button" class="${inModale ? 'btn-secondary' : 'loc-btn'} ${bottone}" onclick="_contRinomina('${j}')"><i class="fa-solid fa-pen"></i> Rinomina</button>`);
+        if (v.n > 0) btn.push(`<button type="button" class="${inModale ? 'btn-secondary' : 'loc-btn'} ${bottone}" onclick="_contSvuota('${j}', false)"><i class="fa-solid fa-eraser"></i> Svuota</button>`);
+        btn.push(`<button type="button" class="${inModale ? 'btn-secondary' : 'loc-btn'} ${bottone}" style="color:var(--danger);" onclick="_contSvuota('${j}', true)"><i class="fa-solid fa-trash"></i> Elimina</button>`);
+    }
+    const nota = nome
+        ? 'Svuota toglie il contenitore dalle carte (restano nella loro location). Elimina fa lo stesso e toglie il contenitore dall\'elenco.'
+        : 'Le carte della collezione che non hanno un contenitore.';
+    return `
+        <div class="loc-p-testa">
+            <div class="loc-p-cover"><i class="fa-solid ${nome ? 'fa-box-archive' : 'fa-circle-question'}"></i></div>
+            <div><div class="loc-p-nome">${nome ? escapeHtml(nome) : 'Senza contenitore'}</div>
+                <div class="loc-p-meta"><b>${v.n} ${v.n === 1 ? 'carta' : 'carte'}</b>${v.n ? ` · ${_locEur(v.valore)}` : ''}${v.perLoc.size ? ` · ${v.perLoc.size} location` : ''}</div></div>
+        </div>
+        <div class="loc-p-azioni">${btn.join('')}</div>
+        ${righe ? `<div class="loc-p-titolo"><b>Per location</b><span>tocca per vedere le carte</span></div><div class="loc-p-lista">${righe}</div>` : ''}
+        <p class="loc-p-nota">${nota}</p>`;
+}
+
+// Nella location: in quali contenitori stanno le sue carte.
+function _locContenitoriDellaLocationHtml(nomeLocation) {
+    const carte = _contCarte().filter(c => (c.location || '—') === nomeLocation);
+    if (!carte.length || !carte.some(c => c.locationSecondaria)) return '';
+    const conti = new Map();
+    carte.forEach(c => { const k = c.locationSecondaria || ''; conti.set(k, (conti.get(k) || 0) + 1); });
+    const voci = [...conti.entries()].sort((a, b) => (a[0] === '') - (b[0] === '') || b[1] - a[1]).map(([k, n]) =>
+        `<span class="loc-chip" onclick="_contVediCarte('${escapeJsAttr(k)}', '${escapeJsAttr(nomeLocation)}')" title="Vedi queste carte">${k ? '📦 ' + escapeHtml(k) : 'senza contenitore'} <b>${n}</b></span>`).join('');
+    return `<div class="loc-p-titolo"><b>Nei contenitori</b><span>tocca per vedere le carte</span></div><div class="loc-chips" style="margin:8px 0 0;">${voci}</div>`;
+}
+
+// Collezione filtrata per contenitore (e location, se data). nome '' = senza contenitore.
+function _contVediCarte(nome, location) {
+    _locChiudiModale();
+    apriDettaglioWidget('visualizzazione');
+    setTimeout(() => {
+        if (typeof _popolaFiltroContenitoreCarte === 'function') _popolaFiltroContenitoreCarte();
+        const selCont = document.getElementById('filterContenitore');
+        const selLoc = document.getElementById('filterLocation');
+        if (!selCont || typeof filterTable !== 'function') return;
+        const v = nome || FILTRO_SENZA_CONTENITORE;
+        if ([...selCont.options].some(o => o.value === v)) selCont.value = v;
+        if (selLoc) selLoc.value = location && [...selLoc.options].some(o => o.value === location) ? location : '';
+        filterTable();
+    }, 60);
+}
+
+async function _contDopoModifica() {
+    if (typeof _contenitoriInvalida === 'function') _contenitoriInvalida();
+    if (typeof caricaCarteReali === 'function') await caricaCarteReali();
+    await renderPaginaLocation({ mantieni: true });
+}
+
+async function _contCrea() {
+    if (_locOccupato || typeof contenitoreNuovo !== 'function') return;
+    _locOccupato = true;
+    try {
+        const nome = await contenitoreNuovo();
+        if (!nome) return;
+        _contSel = nome;
+        await renderPaginaLocation({ mantieni: true });
+    } finally { _locOccupato = false; }
+}
+
+async function _contRinomina(nome) {
+    if (_locOccupato || !nome) return;
+    const input = await chiediTesto({ titolo: 'Rinomina contenitore', testo: `Nuovo nome per "${nome}":`, valore: nome, conferma: 'Rinomina', maxLength: 60 });
+    if (input === null) return;
+    const nuovo = input.trim();
+    if (!nuovo || nuovo === nome) return;
+    if (nuovo === '?') { mostraAvviso('"?" non va bene come nome di un contenitore.'); return; }
+    _locOccupato = true;
+    try {
+        const { error } = await contenitoreRinomina(nome, nuovo);
+        if (error) { mostraAvviso('❌ Errore nella rinomina: ' + error.message); return; }
+        _contSel = nuovo;
+        if (_locModale && _locModale.tipo === 'contenitore') _locModale.nome = nuovo;
+        await _contDopoModifica();
+        avvisoBreve(`Contenitore rinominato in "${nuovo}".`, { tipo: 'ok' });
+    } finally { _locOccupato = false; }
+}
+
+// elimina = svuota e toglie dall'elenco
+async function _contSvuota(nome, elimina) {
+    if (_locOccupato || !nome) return;
+    const v = _contVoce(nome);
+    const n = v ? v.n : 0;
+    const testo = elimina
+        ? `Eliminare il contenitore "${nome}"?${n ? `\n\n${_locCarte(n)} lo perdono e restano nella loro location.` : ''}`
+        : `Togliere il contenitore "${nome}" da ${_locCarte(n)}? Restano nella loro location; il contenitore resta nell'elenco, vuoto.`;
+    if (!(await chiediConferma({ titolo: elimina ? 'Eliminare il contenitore?' : 'Svuotare il contenitore?', testo, conferma: elimina ? 'Elimina' : 'Svuota', pericolo: true }))) return;
+    _locOccupato = true;
+    try {
+        const userId = await authGetUserId();
+        if (!userId) return;
+        if (n > 0) {
+            const { error } = await contenitoreSvuota(userId, nome);
+            if (error) { mostraAvviso('❌ Errore nello svuotare: ' + error.message); return; }
+        }
+        if (elimina) {
+            const { error } = await contenitoreElimina(userId, nome);
+            if (error) { mostraAvviso('❌ Errore nell\'eliminare: ' + error.message); await _contDopoModifica(); return; }
+            _contSel = null;
+            _locChiudiModale();
+        }
+        await _contDopoModifica();
+        avvisoBreve(elimina ? `Contenitore "${nome}" eliminato.` : `Contenitore "${nome}" svuotato.`, { tipo: 'ok' });
+    } finally { _locOccupato = false; }
 }

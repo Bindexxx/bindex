@@ -36,6 +36,22 @@ function _ballAzioneRiga(evt, tipo, valore, origine) {
                 filterTable();
             }, 60);
             break;
+
+        // sql/162: le carte di un contenitore (valore '' = quelle senza contenitore)
+        case 'contenitore':
+            apriDettaglioWidget('visualizzazione', evt);
+            setTimeout(() => {
+                const select = document.getElementById('filterContenitore');
+                if (!select || typeof filterTable !== 'function') return;
+                if (typeof _popolaFiltroContenitoreCarte === 'function') _popolaFiltroContenitoreCarte();
+                const v = valore || (typeof FILTRO_SENZA_CONTENITORE !== 'undefined' ? FILTRO_SENZA_CONTENITORE : '');
+                if (!Array.from(select.options).some(o => o.value === v)) return;
+                const loc = document.getElementById('filterLocation');
+                if (loc) loc.value = '';
+                select.value = v;
+                filterTable();
+            }, 60);
+            break;
     }
 }
 

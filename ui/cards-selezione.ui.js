@@ -100,12 +100,17 @@ function toggleSelezionaTutte(checked) {
             if (scelta.tipo === 'nuova') return spostaLocationSelezionate();
             if (scelta.tipo === 'location') return _spostaLocationSelezionateIn(righe, scelta.valore);
             if (scelta.tipo === 'location2') return _impostaLocationSecondariaSelezionate(righe, scelta.valore);
+            if (scelta.tipo === 'contenitoreNuovo') {
+                const nome = typeof contenitoreNuovo === 'function' ? await contenitoreNuovo() : null;
+                if (nome) return _impostaLocationSecondariaSelezionate(righe, nome);
+            }
         }
 
         async function _scegliDestinazioneSelezionate(n) {
             const extra = (_bindersElenco || []).find(b => b.tipo === 'extra');
             const nomeExtra = (extra && extra.nome) || 'Il mio binder';
             const locations = typeof _locationDisponibili === 'function' ? await _locationDisponibili() : [];
+            const contenitori = typeof _contenitoriDisponibili === 'function' ? await _contenitoriDisponibili() : [];
             return _avvisoFinestra((box, chiudi) => {
                 _avvisoTitolo(box, `Metti ${n} cart${n === 1 ? 'a' : 'e'} in…`, null);
                 const lista = document.createElement('div');
@@ -132,10 +137,11 @@ function toggleSelezionaTutte(checked) {
                 sezione('Location (sposta le carte)');
                 locations.filter(l => l && l !== '?').forEach(l => voce('fa-warehouse', l, '', { tipo: 'location', valore: l }));
                 voce('fa-plus', 'Nuova location…', '', { tipo: 'nuova' });
-                // sql/158: etichetta in più, le carte restano dove sono
-                sezione('Location secondaria (le carte restano dove sono)');
-                locations.filter(l => l && l !== '?').forEach(l => voce('fa-bookmark', l, '', { tipo: 'location2', valore: l }));
-                voce('fa-eraser', 'Togli la location secondaria', '', { tipo: 'location2', valore: '' });
+                // sql/162: contenitore (dove stanno fisicamente), la location non cambia
+                sezione('Contenitore (la location non cambia)');
+                contenitori.forEach(l => voce('fa-box-archive', l, '', { tipo: 'location2', valore: l }));
+                voce('fa-plus', 'Nuovo contenitore…', '', { tipo: 'contenitoreNuovo' });
+                voce('fa-eraser', 'Togli il contenitore', '', { tipo: 'location2', valore: '' });
                 box.appendChild(lista);
                 _avvisoBottoni(box, [{ etichetta: 'Annulla', classe: 'btn-secondary avviso-annulla', fn: () => chiudi(null) }]);
                 return { conferma: () => null, annulla: () => null, fuoco: primo };
@@ -189,7 +195,7 @@ function toggleSelezionaTutte(checked) {
 
             const primaDi = righe.map(r => {
                 const c = carteReali.find(x => String(x.id) === String(r.id) && x.tabella === r.tabella);
-                return { tabella: r.tabella, id: r.id, location: c ? (c.location || '') : '', locationSecondaria: c ? (c.locationSecondaria || '') : '' };
+                return { tabella: r.tabella, id: r.id, location: c ? (c.location || '') : '' };
             });
 
             const idsPerTabella = {};
@@ -207,29 +213,27 @@ function toggleSelezionaTutte(checked) {
             });
         }
 
-        // sql/158: location secondaria alle carte selezionate ('' = la tolgo). La wishlist non ce l'ha.
+        // sql/162: contenitore delle carte selezionate ('' = lo tolgo). La wishlist non ce l'ha.
         async function _impostaLocationSecondariaSelezionate(righe, valore) {
             const carte = righe
                 .filter(r => r.tabella === 'carte')
                 .map(r => carteReali.find(c => String(c.id) === String(r.id) && c.tabella === 'carte'))
                 .filter(Boolean);
-            if (carte.length === 0) { mostraAvviso('Le righe della Wishlist non hanno la location secondaria.'); return; }
+            if (carte.length === 0) { mostraAvviso('Le righe della Wishlist non hanno un contenitore.'); return; }
             const n = carte.length;
             const quante = `${n} cart${n === 1 ? 'a' : 'e'}`;
-            const uguali = valore ? carte.filter(c => String(c.location || '').toLowerCase() === valore.toLowerCase()).length : 0;
             const testo = (valore
-                ? `Location secondaria "${valore}" per ${quante}. Restano nella loro location: è solo un'etichetta in più.`
-                : `Tolgo la location secondaria da ${quante}.`)
-                + (uguali ? `\n\n${uguali} ${uguali === 1 ? 'è già' : 'sono già'} in "${valore}" come location principale: lì non serve e resta vuota.` : '')
+                ? `${quante} nel contenitore "${valore}". La location resta quella di ognuna.`
+                : `Tolgo il contenitore da ${quante}. La location resta quella di ognuna.`)
                 + (righe.length > n ? `\n\n${righe.length - n} righe della Wishlist saltate.` : '');
-            if (!(await chiediConferma({ titolo: valore ? 'Location secondaria' : 'Togliere la location secondaria?', testo, conferma: valore ? 'Imposta' : 'Togli' }))) return;
+            if (!(await chiediConferma({ titolo: valore ? 'Mettere nel contenitore?' : 'Togliere il contenitore?', testo, conferma: valore ? 'Metti' : 'Togli' }))) return;
 
             const primaDi = carte.map(c => ({ id: c.id, valore: c.locationSecondaria || '' }));
             const { error } = await cardsUpdateLocationSecondariaBatch(carte.map(c => c.id), valore);
-            if (error) { mostraAvviso('❌ Errore nel salvare la location secondaria: ' + error.message); await caricaCarteReali(); return; }
+            if (error) { mostraAvviso('❌ Errore nel salvare il contenitore: ' + error.message); await caricaCarteReali(); return; }
             svuotaSelezioneMultipla();
             await caricaCarteReali();
-            avvisoBreve(valore ? `${quante}: location secondaria "${valore}".` : `${quante}: location secondaria tolta.`, {
+            avvisoBreve(valore ? `${quante} nel contenitore "${valore}".` : `${quante}: contenitore tolto.`, {
                 tipo: 'ok', durata: 6000,
                 azione: { etichetta: 'Annulla', fn: () => _annullaLocationSecondaria(primaDi) },
             });
@@ -245,7 +249,7 @@ function toggleSelezionaTutte(checked) {
             }
             await caricaCarteReali();
             if (errore) mostraAvviso('❌ Annullamento non riuscito: ' + errore.message);
-            else avvisoBreve('Location secondaria ripristinata.', { tipo: 'ok' });
+            else avvisoBreve('Contenitore ripristinato.', { tipo: 'ok' });
         }
 
         async function _annullaSpostamentoLocation(primaDi) {
@@ -259,14 +263,6 @@ function toggleSelezionaTutte(checked) {
             for (const g of gruppi.values()) {
                 const { error } = await cardsUpdateLocationBatch(g.tabella, g.ids, g.location);
                 if (error) { errore = error; break; }
-            }
-            // sql/158: la secondaria uguale alla nuova location il DB l'aveva tolta: torna com'era
-            const secondarie = new Map();
-            primaDi.forEach(r => { if (r.tabella === 'carte' && r.locationSecondaria) { if (!secondarie.has(r.locationSecondaria)) secondarie.set(r.locationSecondaria, []); secondarie.get(r.locationSecondaria).push(r.id); } });
-            for (const [valore, ids] of secondarie) {
-                if (errore) break;
-                const { error } = await cardsUpdateLocationSecondariaBatch(ids, valore);
-                if (error) errore = error;
             }
             await caricaCarteReali();
             if (errore) mostraAvviso('❌ Annullamento non riuscito: ' + errore.message);

@@ -68,6 +68,8 @@ function handleChangelogClick() {
 
             const qrBtn = document.getElementById('btnShowQrCode');
             const locFilter = document.getElementById('filterLocation');
+            const contFilter = document.getElementById('filterContenitore');   // sql/162
+            if (contFilter) contFilter.value = '';
 
             if (tabId === 'scambio') {
                 qrBtn.style.display = 'inline-flex';
