@@ -29,16 +29,16 @@ function toggleFiltroTipo(tipo) {
                 }
                 if (currentMode === 'sealed') {
                     if (card.stato !== 'collezione' || card.tipo !== 'sealed') return false;
-                    return locVal === "" || card.location === locVal;
+                    return locVal === "" || card.location === locVal || card.locationSecondaria === locVal;
                 }
                 if (currentMode === 'visualizzazione') {
                     if (card.stato === 'wishlist') { if (!_filtriTipo.wishlist) return false; }
                     else if (card.tipo === 'sealed') { if (!_filtriTipo.sealed) return false; }
                     else { if (!_filtriTipo.carte) return false; }
-                    return locVal === "" || card.location === locVal;
+                    return locVal === "" || card.location === locVal || card.locationSecondaria === locVal;
                 }
                 if (card.stato !== 'collezione') return false;
-                return locVal === "" || card.location === locVal;
+                return locVal === "" || card.location === locVal || card.locationSecondaria === locVal;
             });
 
             const mostraSealed = currentMode === 'sealed' ||

@@ -36,7 +36,7 @@ function apriFlipCardHome(id, opzioni = {}) {
             document.getElementById('flipCardStats').innerHTML = `
                 <div class="pg-testo">
                     <b>${escapeHtml(card.name || '')}</b>
-                    <span><code style="background:none; color:inherit; padding:0;">${escapeHtml(String(card.code || '').replace(/\s+/g, ' ').trim())}</code> · ${escapeHtml(card.location || '—')}</span>
+                    <span><code style="background:none; color:inherit; padding:0;">${escapeHtml(String(card.code || '').replace(/\s+/g, ' ').trim())}</code> · ${escapeHtml(card.location || '—')}${card.locationSecondaria ? ' · ' + escapeHtml(card.locationSecondaria) : ''}</span>
                 </div>
             `;
             const prezzoTesto = formattaEuro(card.price);

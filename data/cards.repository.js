@@ -49,6 +49,11 @@ async function cardsUpdateLocationBatch(tabella, ids, valore) {
     return supabaseClient.from(tabella).update({ location: valore || null }).in('id', ids);
 }
 
+// Location secondaria (sql/158): solo carte, la wishlist non ce l'ha.
+async function cardsUpdateLocationSecondariaBatch(ids, valore) {
+    return supabaseClient.from('carte').update({ location_secondaria: valore || null }).in('id', ids);
+}
+
 function cardsRealtimeSubscribe(userId, onChange) {
     return supabaseClient
         .channel('carte-realtime-' + userId)

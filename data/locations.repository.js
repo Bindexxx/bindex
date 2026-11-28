@@ -32,6 +32,14 @@ async function locationSpostaCarte(userId, nomiDa, nomeA) {
         .in('location', nomiDa);
 }
 
+// sql/158: le carte che usano queste location come secondaria. nomeA vuoto = tolgo la secondaria.
+async function locationSpostaSecondarie(userId, nomiDa, nomeA) {
+    return supabaseClient.from('carte')
+        .update({ location_secondaria: nomeA || null })
+        .eq('owner_id', userId)
+        .in('location_secondaria', nomiDa);
+}
+
 async function locationsScambioAutomatico(userId) {
     return supabaseClient.from('location').select('nome, scambio_automatico').eq('owner_id', userId).eq('tipo', 'carta');
 }

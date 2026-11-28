@@ -169,7 +169,9 @@ function _collSigillataHtml(card) {
 function _collChip(card) {
     if (card.tabella === 'wishlist') return '<span class="coll-chip wish">Wishlist</span>';
     if (_collEdSealed(card)) return '<span class="coll-chip">Sealed</span>';
-    return `<span class="coll-chip">${escapeHtml(card.location || '—')}</span>`;
+    // sql/158: la location secondaria accanto, più piccola
+    const sec = card.locationSecondaria ? ` <small class="coll-chip-sec" title="Location secondaria">· ${escapeHtml(card.locationSecondaria)}</small>` : '';
+    return `<span class="coll-chip">${escapeHtml(card.location || '—')}${sec}</span>`;
 }
 
 function _collMeta(card, conQta) {
@@ -488,6 +490,7 @@ function _collDettaglioHtml(data) {
         ${_collSigillataHtml(card) ? `<div class="coll-dett-sig">${_collSigillataHtml(card)}</div>` : ''}
         <div class="coll-campi">
             ${wish ? campo('Location', 'Wishlist') : campo('Location', escapeHtml(card.location || '—'), `modificaLocationInline(event, '${id}', '${t}', '${_collAttr(card.location)}')`)}
+            ${t === 'carte' ? campo('Location 2', escapeHtml(card.locationSecondaria || '—'), `modificaLocationSecondariaInline(event, '${id}', '${_collAttr(card.locationSecondaria)}', '${_collAttr(card.location)}')`) : ''}
             ${campo('Lingua', escapeHtml(card.lang || 'Qualsiasi'), `modificaLinguaInline(event, '${id}', '${t}', '${_collAttr(card.lang)}')`)}
             ${card.tipo === 'sealed' ? '' : campo('Condizione', escapeHtml(card.cond || '—'), `modificaCondizioneInline(event, '${id}', '${t}', '${_collAttr(card.cond)}')`)}
             ${wish ? '' : campo('Quantità', Number(card.qty) || 0, `modificaCampoInline('${id}', '${t}', 'qty', ${Number(card.qty) || 0}, 'Quantità', 'intero')`)}

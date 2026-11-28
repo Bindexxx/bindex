@@ -12,6 +12,7 @@ const MODI_CON_VISTA_COMPATTA = ['visualizzazione', 'scambio', 'wishlist', 'seal
                 name: r.nome || '',
                 code: r.codice || '',
                 location: r.location || '',
+                locationSecondaria: r.location_secondaria || '',   // sql/158: solo etichetta
                 qty: r.qty || 1,
                 lang: r.lingua || 'IT',
                 cond: r.condizione || 'NM',
@@ -267,7 +268,7 @@ const MODI_CON_VISTA_COMPATTA = ['visualizzazione', 'scambio', 'wishlist', 'seal
         function _popolaFiltroLocationCarte() {
             const selectLoc = document.getElementById('filterLocation');
             if (!selectLoc) return;
-            const locationPresenti = [...new Set(carteReali.map(c => c.location).filter(Boolean))].sort();
+            const locationPresenti = [...new Set(carteReali.flatMap(c => [c.location, c.locationSecondaria]).filter(Boolean))].sort();
             const valorePrecedente = selectLoc.value;
             selectLoc.innerHTML = '<option value="">Tutte le Location</option>';
             locationPresenti.forEach(loc => {
