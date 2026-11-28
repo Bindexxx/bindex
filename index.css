@@ -5448,7 +5448,13 @@
             color: var(--primary-text, var(--primary)); font-size: 0.75rem; font-weight: 700; white-space: nowrap; max-width: 110px; overflow: hidden; text-overflow: ellipsis;
         }
         .coll-chip.wish { background: var(--danger-bg); color: var(--danger); }
-        .coll-chip-sec { font-size: inherit; font-weight: 500; opacity: 0.75; }  /* sql/158: location secondaria */
+        .coll-chip-sec { font-size: inherit; font-weight: 500; opacity: 0.75; }  /* sql/162: contenitore */
+        /* sql/162: testata di ogni contenitore quando la Collezione è ordinata per contenitore */
+        .coll-gruppo { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.2rem 0.6rem; padding: 0.9rem 0.2rem 0.35rem; border-bottom: 2px solid var(--primary); }
+        .coll-gruppo b { font-size: 0.95rem; color: var(--text-dark); }
+        .coll-gruppo span { font-size: 0.76rem; color: var(--text-muted); }
+        .coll-gruppo-griglia { grid-column: 1 / -1; }
+        .coll-gruppo-tr td { padding: 0 !important; background: none !important; border: 0 !important; }
         .coll-var { color: var(--text-muted); font-size: 0.8rem; font-weight: 600; white-space: nowrap; }
         .coll-var.su { color: var(--success); }
         .coll-var.giu { color: var(--danger); }

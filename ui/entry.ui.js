@@ -11,20 +11,45 @@ async function caricaSelectLocationComune() {
 
             const valorePrecedente = select.value;
             select.innerHTML = '<option value="">per riga</option>';
-            const select2 = document.getElementById('selectLocation2Comune');
-            const valore2Precedente = select2 ? select2.value : '';
-            if (select2) select2.innerHTML = '<option value="">per riga</option>';
-            if (tipoLocation === 'carta') { _insLocationNomi = (data || []).map(r => r.nome); _insAggiornaSelectRighe(); }
+            if (tipoLocation === 'carta') {
+                // sql/162: contenitori (elenco a parte, facoltativo)
+                const { data: cont, error: errCont } = await contenitoriList(userId);
+                if (errCont) console.error('Errore caricamento contenitori:', errCont.message);
+                _insContenitoriNomi = (cont || []).map(r => r.nome);
+                _insLocationNomi = (data || []).map(r => r.nome);
+                _insAggiornaSelectRighe();
+                _insAggiornaSelectContenitoreComune();
+            }
             (data || []).forEach(r => {
                 const opt = document.createElement('option');
                 opt.value = r.nome;
                 opt.textContent = r.nome;
                 select.appendChild(opt);
-                if (select2 && r.nome !== '?') select2.appendChild(opt.cloneNode(true));
             });
             if (valorePrecedente) select.value = valorePrecedente;
-            if (select2 && valore2Precedente) select2.value = valore2Precedente;
             _locationComuneCaricata = true;
+        }
+
+        function _insAggiornaSelectContenitoreComune() {
+            const select2 = document.getElementById('selectLocation2Comune');
+            if (!select2) return;
+            const v = select2.value;
+            select2.innerHTML = '<option value="">per riga</option>' +
+                _insContenitoriNomi.map(n => `<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join('');
+            if (v && _insContenitoriNomi.includes(v)) select2.value = v;
+        }
+
+        // "+" accanto a "Contenitore per tutte": crea un contenitore e lo sceglie per tutte le righe
+        async function insNuovoContenitore() {
+            if (typeof contenitoreNuovo !== 'function') return;
+            const nome = await contenitoreNuovo();
+            if (!nome) return;
+            if (!_insContenitoriNomi.includes(nome)) _insContenitoriNomi = [..._insContenitoriNomi, nome].sort((a, b) => a.localeCompare(b, 'it', { sensitivity: 'base' }));
+            _insAggiornaSelectRighe();
+            _insAggiornaSelectContenitoreComune();
+            const select2 = document.getElementById('selectLocation2Comune');
+            if (select2) select2.value = nome;
+            insLocationComuneCambiata();
         }
 
         async function aggiungiNuovaLocationComune() {
@@ -64,8 +89,8 @@ async function caricaSelectLocationComune() {
                 sigillata_originale: !!row.sig,
                 nota: (row.notes || '').trim() || null,
                 location: (row.loc && row.loc !== '?') ? row.loc : null,
-                // location secondaria (sql/158): solo etichetta, mai "?" e mai uguale alla principale
-                location_secondaria: (row.loc2 && row.loc2 !== '?' && row.loc2.toLowerCase() !== String(row.loc || '').toLowerCase()) ? row.loc2 : null,
+                // contenitore (sql/162): facoltativo, mai "?"
+                location_secondaria: (row.loc2 && row.loc2 !== '?') ? row.loc2 : null,
                 destinazione,
                 qty,
                 ...(tipo ? { tipo } : {}),
@@ -358,7 +383,7 @@ async function caricaSelectLocationComune() {
                     <button type="button" class="ins-apri" onclick="insApriRiga(this)" aria-label="Apri o chiudi la riga"><i class="fa-solid fa-chevron-down"></i></button>
                 </td>
                 <td data-label="Location" class="ins-td-sel ins-td-loc"><select onchange="handleEntryInput(this)">${_insOpzioniLocation(locVal)}</select></td>
-                <td data-label="Loc. 2" class="ins-td-sel ins-td-loc ins-td-loc2" title="Location secondaria: solo un'etichetta in più, la carta resta nella sua location"><select onchange="handleEntryInput(this)">${_insOpzioniLocation2(loc2Val)}</select></td>
+                <td data-label="Contenitore" class="ins-td-sel ins-td-loc ins-td-loc2" title="Contenitore (facoltativo): dove sta fisicamente la carta"><select onchange="handleEntryInput(this)">${_insOpzioniLocation2(loc2Val)}</select></td>
                 <td data-label="Note" class="ins-td-note"><input type="text" placeholder="Nota (facoltativa)" value="${escapeHtml(notesVal)}" oninput="handleEntryInput(this)"></td>
                 <td class="ins-td-togli">
                     <button type="button" class="ins-togli" onclick="removeEntryRow(this)" title="Togli riga"><i class="fa-solid fa-trash"></i><span class="ins-solo-tel"> Togli riga</span></button>
@@ -380,12 +405,13 @@ async function caricaSelectLocationComune() {
             return nomi.map(n => `<option value="${escapeHtml(n)}" ${n === valore ? 'selected' : ''}>${escapeHtml(n === '?' ? '? (da decidere)' : n)}</option>`).join('');
         }
 
-        // Location secondaria (sql/158): "nessuna" in cima, niente "?".
+        // Contenitore (sql/162): "nessuno" in cima, poi l'elenco dei contenitori.
+        let _insContenitoriNomi = [];
         function _insOpzioniLocation2(valore) {
-            const nomi = _insLocationNomi.filter(n => n !== '?');
+            const nomi = _insContenitoriNomi.filter(n => n !== '?');
             if (valore && valore !== '?' && !nomi.includes(valore)) nomi.push(valore);
-            return `<option value="" ${!valore ? 'selected' : ''}>2ª: nessuna</option>` +
-                nomi.map(n => `<option value="${escapeHtml(n)}" ${n === valore ? 'selected' : ''}>2ª · ${escapeHtml(n)}</option>`).join('');
+            return `<option value="" ${!valore ? 'selected' : ''}>Contenitore: nessuno</option>` +
+                nomi.map(n => `<option value="${escapeHtml(n)}" ${n === valore ? 'selected' : ''}>📦 ${escapeHtml(n)}</option>`).join('');
         }
 
         function _insAggiornaSelectRighe() {
@@ -414,7 +440,7 @@ async function caricaSelectLocationComune() {
             if (loc && loc !== '?') parti.push(loc);
             const comune2 = document.getElementById('selectLocation2Comune')?.value || '';
             const loc2 = _destinazioneInserimento === 'wishlist' ? '' : (comune2 || tr.querySelector('td.ins-td-loc2 select')?.value || '');
-            if (loc2 && loc2 !== '?' && loc2 !== loc) parti.push('2ª: ' + loc2);
+            if (loc2 && loc2 !== '?') parti.push('📦 ' + loc2);
             tr.querySelector('.ins-sommario').textContent = parti.join(' · ');
             const gia = tr.querySelector('.ins-gia');
             const n = nome.toLowerCase();

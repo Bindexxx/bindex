@@ -293,6 +293,7 @@
                 </div>
                 <div class="coll-filtri" id="collFiltri" style="display:none;">
                     <select id="collFiltroLoc" onchange="collCambiaFiltro('filterLocation', this.value)"></select>
+                    <select id="collFiltroCont" onchange="collCambiaFiltro('filterContenitore', this.value)"></select>
                     <select id="collFiltroLang" onchange="collCambiaFiltro('filterLang', this.value)"></select>
                     <button type="button" class="coll-btn" onclick="collAzzeraFiltri()">Azzera</button>
                 </div>
@@ -336,6 +337,10 @@
 
                     <select class="filter-select" id="filterLocation" onchange="filterTable()">
                         <option value="">Tutte le Location</option>
+                    </select>
+
+                    <select class="filter-select" id="filterContenitore" onchange="filterTable()">
+                        <option value="">Tutti i contenitori</option>
                     </select>
 
                     <select class="filter-select" id="filterLang" onchange="filterTable()">
@@ -426,12 +431,13 @@
                             <button type="button" onclick="aggiungiNuovaLocationComune()">Aggiungi</button>
                         </div>
                     </div>
-                    <div id="pannelloLocation2Comune" class="ins-location ins-location2" title="Location secondaria: solo un'etichetta in più, la carta resta nella sua location">
-                        <i class="fa-regular fa-bookmark"></i>
-                        <label for="selectLocation2Comune">Location 2 per tutte</label>
+                    <div id="pannelloLocation2Comune" class="ins-location ins-location2" title="Contenitore (facoltativo): dove stanno fisicamente le carte, es. Toploader">
+                        <i class="fa-solid fa-box-archive"></i>
+                        <label for="selectLocation2Comune">Contenitore per tutte</label>
                         <select id="selectLocation2Comune" onchange="insLocationComuneCambiata()">
                             <option value="">per riga</option>
                         </select>
+                        <button type="button" class="ins-nuova-loc" onclick="insNuovoContenitore()" title="Nuovo contenitore"><i class="fa-solid fa-plus"></i></button>
                     </div>
                 </div>
 
@@ -448,7 +454,7 @@
                                         <th colspan="3">Varianti</th>
                                         <th class="ins-th-centro">Q.tà</th>
                                         <th class="colonna-location">Location</th>
-                                        <th class="colonna-location" title="Location secondaria">Loc. 2</th>
+                                        <th class="colonna-location" title="Contenitore (facoltativo): dove sta fisicamente la carta">Contenitore</th>
                                         <th>Note</th>
                                         <th></th>
                                     </tr>
@@ -1866,8 +1872,9 @@
                 <datalist id="datalistEditLocation"></datalist>
             </div>
             <div class="auth-field" id="campoEditLocation2">
-                <label for="editLocation2">Location secondaria <small style="font-weight:400; color:var(--text-muted);">(facoltativa, solo un'etichetta: la carta resta nella sua location)</small></label>
-                <input type="text" id="editLocation2" list="datalistEditLocation" placeholder="Nessuna">
+                <label for="editLocation2">Contenitore <small style="font-weight:400; color:var(--text-muted);">(facoltativo: dove sta fisicamente, es. Toploader)</small></label>
+                <input type="text" id="editLocation2" list="datalistEditContenitore" placeholder="Nessuno" maxlength="60">
+                <datalist id="datalistEditContenitore"></datalist>
             </div>
             <div class="auth-field" id="campoEditSigillata" style="display:flex; align-items:center; gap:0.5rem;">
                 <input type="checkbox" id="editSigillata" style="width:auto;">

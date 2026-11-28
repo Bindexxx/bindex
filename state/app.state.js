@@ -22,5 +22,6 @@ const authEmail    = document.getElementById('authEmail');
         let _versioneVecchiaRilevata = false;
         const CHIAVE_APRI_SEMPRE_APP = 'cardsyncApriSempreApp';
         let _locationDisponibiliCache = null;
+        let _contenitoriCache = null;   // sql/162: nomi dei contenitori (ui/cards-modifica.ui.js)
         const CHIAVE_SIDEBAR_COMPRESSA = 'cardsync_sidebar_collapsed';
         const CHIAVE_RIDUCI_ANIMAZIONI = 'cardsync_riduci_animazioni';

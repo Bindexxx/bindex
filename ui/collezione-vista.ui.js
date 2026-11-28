@@ -18,8 +18,41 @@ const _COLL_ORDINI = {
     variazione: { etichetta: 'variazione ↓', chiave: c => Number(c.variazioneNumerica) || 0, giu: true },
     location: { etichetta: 'location', chiave: c => String(c.location || '').toLowerCase(), giu: false },
     qty: { etichetta: 'quantità ↓', chiave: c => Number(c.qty) || 0, giu: true },
+    // sql/162: raggruppate per contenitore (quelle senza in fondo), poi location e nome
+    contenitore: { etichetta: 'contenitore', chiave: c => (_collNomeGruppo(c) ? '0' + _collNomeGruppo(c).toLowerCase() : '1') + '\u0001' + String(c.location || '').toLowerCase() + '\u0001' + String(c.name || '').toLowerCase(), giu: false },
 };
-const _COLL_CICLO = ['prezzo_giu', 'prezzo_su', 'nome', 'nome_za', 'recenti'];
+const _COLL_CICLO = ['prezzo_giu', 'prezzo_su', 'nome', 'nome_za', 'recenti', 'contenitore'];
+
+// ── Raggruppa per contenitore (sql/162): una testata prima della prima carta di ogni gruppo ──
+let _collTesteGruppo = new Map();
+function _collNomeGruppo(c) { return c && c.tabella === 'carte' && c.locationSecondaria ? c.locationSecondaria : ''; }
+function _collCalcolaGruppi(ordinati) {
+    _collTesteGruppo = new Map();
+    if (_collOrdine !== 'contenitore') return;
+    const conti = new Map();
+    ordinati.forEach(c => {
+        const k = _collNomeGruppo(c);
+        const g = conti.get(k) || { n: 0, valore: 0, location: new Map() };
+        g.n += Number(c.qty) || 1;
+        g.valore += (Number(c.price) || 0) * (Number(c.qty) || 1);
+        const loc = c.tabella === 'wishlist' ? 'Wishlist' : (c.location || '—');
+        g.location.set(loc, (g.location.get(loc) || 0) + (Number(c.qty) || 1));
+        conti.set(k, g);
+    });
+    let prima = null;
+    ordinati.forEach(c => {
+        const k = _collNomeGruppo(c);
+        if (k !== prima) { _collTesteGruppo.set(String(c.id), { nome: k, ...conti.get(k) }); prima = k; }
+    });
+}
+function _collTestaGruppo(card, tipo) {
+    const g = _collTesteGruppo.get(String(card.id));
+    if (!g) return '';
+    const loc = [...g.location.entries()].sort((a, b) => b[1] - a[1]).map(([n, q]) => `${escapeHtml(n)} ${q}`).join(' · ');
+    const testo = `<b>${g.nome ? '📦 ' + escapeHtml(g.nome) : 'Senza contenitore'}</b><span>${g.n} ${g.n === 1 ? 'carta' : 'carte'} · ${formattaEuro(g.valore)}${loc ? ' — ' + loc : ''}</span>`;
+    if (tipo === 'pc') return `<tr class="coll-gruppo-tr"><td colspan="10"><div class="coll-gruppo">${testo}</div></td></tr>`;
+    return `<div class="coll-gruppo${tipo === 'griglia' ? ' coll-gruppo-griglia' : ''}">${testo}</div>`;
+}
 _collOrdine = prefFiltroPaginaScegli('collezione', 'ordine', Object.keys(_COLL_ORDINI), _collOrdine);
 (function _collRipristinaFiltri() {
     const lang = document.getElementById('filterLang');
@@ -33,16 +66,23 @@ _collOrdine = prefFiltroPaginaScegli('collezione', 'ordine', Object.keys(_COLL_O
     });
 })();
 function collRipristinaLocation() {
-    const s = document.getElementById('filterLocation');
-    const salvata = prefFiltroPaginaGet('collezione', 'location');
-    if (!s || !salvata || s.value || ![...s.options].some(o => o.value === salvata)) return false;
-    s.value = salvata;
-    return true;
+    let cambiato = false;
+    // sql/162: anche il filtro Contenitore
+    [['filterLocation', 'location'], ['filterContenitore', 'contenitore']].forEach(([id, chiave]) => {
+        const s = document.getElementById(id);
+        const salvata = prefFiltroPaginaGet('collezione', chiave);
+        if (!s || !salvata || s.value || ![...s.options].some(o => o.value === salvata)) return;
+        s.value = salvata;
+        cambiato = true;
+    });
+    return cambiato;
 }
 function _collSalvaFiltri() {
     const loc = document.getElementById('filterLocation'), lang = document.getElementById('filterLang');
+    const cont = document.getElementById('filterContenitore');
     prefFiltroPaginaSet('collezione', 'location', loc ? loc.value : '');
     prefFiltroPaginaSet('collezione', 'lingua', lang ? lang.value : '');
+    prefFiltroPaginaSet('collezione', 'contenitore', cont ? cont.value : '');
 }
 
 function _collEPC() {
@@ -96,7 +136,7 @@ function collApriFiltri() {
     if (!box) return;
     const aperto = box.style.display !== 'none';
     if (aperto) { box.style.display = 'none'; return; }
-    [['filterLocation', 'collFiltroLoc'], ['filterLang', 'collFiltroLang']].forEach(([da, a]) => {
+    [['filterLocation', 'collFiltroLoc'], ['filterContenitore', 'collFiltroCont'], ['filterLang', 'collFiltroLang']].forEach(([da, a]) => {
         const s1 = document.getElementById(da), s2 = document.getElementById(a);
         if (!s1 || !s2) return;
         s2.innerHTML = s1.innerHTML;
@@ -113,7 +153,7 @@ function collCambiaFiltro(idVecchio, valore) {
 }
 
 function collAzzeraFiltri() {
-    ['filterLocation', 'filterLang', 'collFiltroLoc', 'collFiltroLang'].forEach(id => {
+    ['filterLocation', 'filterLang', 'filterContenitore', 'collFiltroLoc', 'collFiltroLang', 'collFiltroCont'].forEach(id => {
         const s = document.getElementById(id); if (s) s.value = '';
     });
     _collSalvaFiltri();
@@ -169,8 +209,8 @@ function _collSigillataHtml(card) {
 function _collChip(card) {
     if (card.tabella === 'wishlist') return '<span class="coll-chip wish">Wishlist</span>';
     if (_collEdSealed(card)) return '<span class="coll-chip">Sealed</span>';
-    // sql/158: la location secondaria accanto, più piccola
-    const sec = card.locationSecondaria ? ` <small class="coll-chip-sec" title="Location secondaria">· ${escapeHtml(card.locationSecondaria)}</small>` : '';
+    // sql/162: il contenitore accanto, più piccolo
+    const sec = card.locationSecondaria ? ` <small class="coll-chip-sec" title="Contenitore">· 📦 ${escapeHtml(card.locationSecondaria)}</small>` : '';
     return `<span class="coll-chip">${escapeHtml(card.location || '—')}${sec}</span>`;
 }
 
@@ -222,7 +262,7 @@ function _collPillVarianti(link) {
 function _collRigaTelefonoHtml(card) {
     const id = _collAttr(card.id);
     const aperta = String(_collAzioniId) === String(card.id) && !_collInSelezione();
-    return `<div class="coll-riga${aperta ? ' aperta' : ''}${card.tabella === 'wishlist' ? ' e-wish' : ''}${_collSelTel.has(String(card.id)) ? ' scelta' : ''}" data-coll-id="${escapeHtml(String(card.id))}" onclick="collToccaRiga('${id}')">
+    return `${_collTestaGruppo(card, 'tel')}<div class="coll-riga${aperta ? ' aperta' : ''}${card.tabella === 'wishlist' ? ' e-wish' : ''}${_collSelTel.has(String(card.id)) ? ' scelta' : ''}" data-coll-id="${escapeHtml(String(card.id))}" onclick="collToccaRiga('${id}')">
             ${_collCheckTel(card)}
             <div class="coll-riga-top">
                 ${_collMiniatura(card, 'coll-mini')}
@@ -377,7 +417,7 @@ function collVaiACarta(id) {
 function _collTesseraHtml(card) {
     const id = _collAttr(card.id);
     const src = _urlImmagineVisualizzabile(card.immagine);
-    return `<button type="button" class="coll-tessera${card.tipo === 'sealed' ? ' e-sealed' : ''}${card.tabella === 'wishlist' ? ' e-wish' : ''}${_collSelTel.has(String(card.id)) ? ' scelta' : ''}" data-coll-id="${escapeHtml(String(card.id))}" onclick="if (_collToccoSelezione('${id}')) return; ${_collEdSealed(card) ? `apriModificaSealed('${id}')` : `apriImmagineIngrandita('${id}')`}">
+    return `${_collTestaGruppo(card, 'griglia')}<button type="button" class="coll-tessera${card.tipo === 'sealed' ? ' e-sealed' : ''}${card.tabella === 'wishlist' ? ' e-wish' : ''}${_collSelTel.has(String(card.id)) ? ' scelta' : ''}" data-coll-id="${escapeHtml(String(card.id))}" onclick="if (_collToccoSelezione('${id}')) return; ${_collEdSealed(card) ? `apriModificaSealed('${id}')` : `apriImmagineIngrandita('${id}')`}">
             ${_collCheckTel(card)}
             <span class="coll-tessera-img">${src ? `<img src="${src}" alt="" loading="lazy" onerror="this.remove()">` : ''}<i class="fa-solid ${card.tipo === 'sealed' ? 'fa-box' : 'fa-clone'} coll-segnaposto"></i></span>
             <span class="coll-tessera-nome">${escapeHtml(card.name || '(senza nome)')}${_collPillVarianti(card.link)}</span>
@@ -429,7 +469,7 @@ function _collTabellaPC(data) {
         const id = _collAttr(card.id);
         const sel = String(_collSelId) === String(card.id);
         const wish = card.tabella === 'wishlist';
-        return `<tr class="${sel ? 'sel' : ''}${wish ? ' e-wish' : ''}" data-coll-id="${escapeHtml(String(card.id))}" onclick="collToccaRiga('${id}')">
+        return `${_collTestaGruppo(card, 'pc')}<tr class="${sel ? 'sel' : ''}${wish ? ' e-wish' : ''}" data-coll-id="${escapeHtml(String(card.id))}" onclick="collToccaRiga('${id}')">
             <td class="coll-td-check">${_collEdSealed(card) ? '' : `<input type="checkbox" class="riga-checkbox" data-id="${escapeHtml(String(card.id))}" data-tabella="${card.tabella}" onclick="event.stopPropagation(); aggiornaSelezioneMultipla();">`}</td>
             <td><div class="coll-td-carta">${_collMiniatura(card, 'coll-mini piccola')}<div><div class="coll-nome">${escapeHtml(card.name || '(senza nome)')}${_collPillVarianti(card.link)}</div><div class="coll-meta">${escapeHtml([card.code, card.tipo === 'sealed' ? 'Sealed' : null].filter(Boolean).join(' · '))}</div></div></div></td>
             <td>${_collChip(card)}</td>
@@ -490,7 +530,7 @@ function _collDettaglioHtml(data) {
         ${_collSigillataHtml(card) ? `<div class="coll-dett-sig">${_collSigillataHtml(card)}</div>` : ''}
         <div class="coll-campi">
             ${wish ? campo('Location', 'Wishlist') : campo('Location', escapeHtml(card.location || '—'), `modificaLocationInline(event, '${id}', '${t}', '${_collAttr(card.location)}')`)}
-            ${t === 'carte' ? campo('Location 2', escapeHtml(card.locationSecondaria || '—'), `modificaLocationSecondariaInline(event, '${id}', '${_collAttr(card.locationSecondaria)}', '${_collAttr(card.location)}')`) : ''}
+            ${t === 'carte' ? campo('Contenitore', escapeHtml(card.locationSecondaria || '—'), `modificaContenitoreInline(event, '${id}', '${_collAttr(card.locationSecondaria)}')`) : ''}
             ${campo('Lingua', escapeHtml(card.lang || 'Qualsiasi'), `modificaLinguaInline(event, '${id}', '${t}', '${_collAttr(card.lang)}')`)}
             ${card.tipo === 'sealed' ? '' : campo('Condizione', escapeHtml(card.cond || '—'), `modificaCondizioneInline(event, '${id}', '${t}', '${_collAttr(card.cond)}')`)}
             ${wish ? '' : campo('Quantità', Number(card.qty) || 0, `modificaCampoInline('${id}', '${t}', 'qty', ${Number(card.qty) || 0}, 'Quantità', 'intero')`)}
@@ -525,7 +565,8 @@ function _collAggiornaTesta(data) {
     const ord = document.getElementById('collOrdineTesto');
     if (ord) ord.textContent = (_COLL_ORDINI[_collOrdine] || _COLL_ORDINI.prezzo_giu).etichetta;
     const loc = document.getElementById('filterLocation'), lang = document.getElementById('filterLang');
-    const nFiltri = (loc && loc.value ? 1 : 0) + (lang && lang.value ? 1 : 0);
+    const cont = document.getElementById('filterContenitore');
+    const nFiltri = (loc && loc.value ? 1 : 0) + (lang && lang.value ? 1 : 0) + (cont && cont.value ? 1 : 0);
     const bf = document.getElementById('collNumFiltri');
     if (bf) { bf.textContent = nFiltri; bf.style.display = nFiltri ? '' : 'none'; }
     const cerca = document.getElementById('collCercaInput'), vecchio = document.getElementById('searchInput');
@@ -573,6 +614,7 @@ function collezioneRender(data) {
     }
     _collUltimaFirma = firma;
     const ordinati = _collOrdina(data);
+    _collCalcolaGruppi(ordinati);
     if (corpo) {
         _collFermaBlocchi();
         if (_collVista === 'griglia') _collDisegnaABlocchi(corpo, ordinati, _collTesseraHtml, '<div class="coll-griglia">', '</div>', '.coll-griglia');

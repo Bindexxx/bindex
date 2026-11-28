@@ -268,7 +268,7 @@ const MODI_CON_VISTA_COMPATTA = ['visualizzazione', 'scambio', 'wishlist', 'seal
         function _popolaFiltroLocationCarte() {
             const selectLoc = document.getElementById('filterLocation');
             if (!selectLoc) return;
-            const locationPresenti = [...new Set(carteReali.flatMap(c => [c.location, c.locationSecondaria]).filter(Boolean))].sort();
+            const locationPresenti = [...new Set(carteReali.map(c => c.location).filter(Boolean))].sort();
             const valorePrecedente = selectLoc.value;
             selectLoc.innerHTML = '<option value="">Tutte le Location</option>';
             locationPresenti.forEach(loc => {
@@ -278,6 +278,22 @@ const MODI_CON_VISTA_COMPATTA = ['visualizzazione', 'scambio', 'wishlist', 'seal
                 selectLoc.appendChild(opt);
             });
             if (valorePrecedente) selectLoc.value = valorePrecedente;
+            _popolaFiltroContenitoreCarte();
+        }
+
+        // sql/162: filtro "Contenitore", a parte da quello della Location
+        const FILTRO_SENZA_CONTENITORE = '__senza__';
+        function _popolaFiltroContenitoreCarte() {
+            const sel = document.getElementById('filterContenitore');
+            if (!sel) return;
+            const nomi = [...new Set(carteReali.filter(c => c.tabella === 'carte').map(c => c.locationSecondaria).filter(Boolean))]
+                .sort((a, b) => a.localeCompare(b, 'it', { sensitivity: 'base' }));
+            const prima = sel.value;
+            sel.innerHTML = '<option value="">Tutti i contenitori</option>'
+                + (nomi.length ? `<option value="${FILTRO_SENZA_CONTENITORE}">Senza contenitore</option>` : '')
+                + nomi.map(n => `<option value="${escapeHtml(n)}">📦 ${escapeHtml(n)}</option>`).join('');
+            if (prima && [...sel.options].some(o => o.value === prima)) sel.value = prima;
+            else if (prima) sel.value = '';
         }
 
         let _avvisiHomeLeggeriTimer = null;
