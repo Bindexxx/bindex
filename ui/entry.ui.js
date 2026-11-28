@@ -11,14 +11,19 @@ async function caricaSelectLocationComune() {
 
             const valorePrecedente = select.value;
             select.innerHTML = '<option value="">per riga</option>';
+            const select2 = document.getElementById('selectLocation2Comune');
+            const valore2Precedente = select2 ? select2.value : '';
+            if (select2) select2.innerHTML = '<option value="">per riga</option>';
             if (tipoLocation === 'carta') { _insLocationNomi = (data || []).map(r => r.nome); _insAggiornaSelectRighe(); }
             (data || []).forEach(r => {
                 const opt = document.createElement('option');
                 opt.value = r.nome;
                 opt.textContent = r.nome;
                 select.appendChild(opt);
+                if (select2 && r.nome !== '?') select2.appendChild(opt.cloneNode(true));
             });
             if (valorePrecedente) select.value = valorePrecedente;
+            if (select2 && valore2Precedente) select2.value = valore2Precedente;
             _locationComuneCaricata = true;
         }
 
@@ -59,6 +64,8 @@ async function caricaSelectLocationComune() {
                 sigillata_originale: !!row.sig,
                 nota: (row.notes || '').trim() || null,
                 location: (row.loc && row.loc !== '?') ? row.loc : null,
+                // location secondaria (sql/158): solo etichetta, mai "?" e mai uguale alla principale
+                location_secondaria: (row.loc2 && row.loc2 !== '?' && row.loc2.toLowerCase() !== String(row.loc || '').toLowerCase()) ? row.loc2 : null,
                 destinazione,
                 qty,
                 ...(tipo ? { tipo } : {}),
@@ -99,8 +106,12 @@ async function caricaSelectLocationComune() {
             const wish = _destinazioneInserimento === 'wishlist';
             document.getElementById('inserimento')?.classList.toggle('ins-dest-wishlist', wish);
             pannelloLoc.style.display = (_tipoInserimento === 'sealed' || wish) ? 'none' : '';
+            const pannelloLoc2 = document.getElementById('pannelloLocation2Comune');
+            if (pannelloLoc2) pannelloLoc2.style.display = pannelloLoc.style.display;
             const selectLoc = document.getElementById('selectLocationComune');
             if (selectLoc) selectLoc.value = '';
+            const selectLoc2 = document.getElementById('selectLocation2Comune');
+            if (selectLoc2) selectLoc2.value = '';
 
             insAggiornaBottone();
             document.querySelectorAll('#entryTableBody tr').forEach(_insSommario);
@@ -149,7 +160,8 @@ async function caricaSelectLocationComune() {
                     sig: tr.querySelector('td:nth-child(6) input').checked,
                     qty: tr.querySelector('.qty-input').value,
                     loc: tr.querySelector('td:nth-child(8) select').value,
-                    notes: tr.querySelector('td:nth-child(9) input').value,
+                    loc2: tr.querySelector('td.ins-td-loc2 select')?.value || '',
+                    notes: tr.querySelector('td.ins-td-note input').value,
                     blocco: _insBloccoRiga(tr)
                 });
             });
@@ -162,13 +174,17 @@ async function caricaSelectLocationComune() {
             const locationComune = _destinazioneInserimento === 'wishlist'
                 ? 'WISHLIST'
                 : (document.getElementById('selectLocationComune')?.value.trim() || '');
+            const location2Comune = _destinazioneInserimento === 'wishlist'
+                ? ''
+                : (document.getElementById('selectLocation2Comune')?.value.trim() || '');
             const btn = document.getElementById('btnSalvaCarte');
             const originalHtml = btn.innerHTML;
             btn.disabled = true;
             btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Invio in corso...';
 
             const righeDb = righeValide.flatMap(r => _rigaEntryToRigheDb(
-                locationComune ? { ...r, loc: locationComune } : r,
+                { ...r, ...(locationComune ? { loc: locationComune } : {}),
+                    loc2: _destinazioneInserimento === 'wishlist' ? '' : (location2Comune || r.loc2) },
                 userId,
                 _tipoInserimento === 'sealed' ? 'sealed' : null,
                 _destinazioneInserimento
@@ -256,7 +272,8 @@ async function caricaSelectLocationComune() {
                         sig: tr.querySelector('td:nth-child(6) input').checked,
                         qty: tr.querySelector('.qty-input').value,
                         loc: tr.querySelector('td:nth-child(8) select').value,
-                        notes: tr.querySelector('td:nth-child(9) input').value,
+                        loc2: tr.querySelector('td.ins-td-loc2 select')?.value || '',
+                        notes: tr.querySelector('td.ins-td-note input').value,
                         ...(_insBloccoRiga(tr) ? { blocco: _insBloccoRiga(tr) } : {})
                     });
                 }
@@ -316,6 +333,7 @@ async function caricaSelectLocationComune() {
             const sigVal = data ? (data.sig ? 'checked' : '') : '';
             const qtyVal = data ? (data.qty || 1) : 1;
             const locVal = data ? (data.loc || '?') : '?';
+            const loc2Val = data ? (data.loc2 || '') : '';
             const notesVal = data ? (data.notes || '') : '';
             const opz = (lista, v) => lista.map(x => `<option value="${x}" ${v === x ? 'selected' : ''}>${x}</option>`).join('');
 
@@ -340,6 +358,7 @@ async function caricaSelectLocationComune() {
                     <button type="button" class="ins-apri" onclick="insApriRiga(this)" aria-label="Apri o chiudi la riga"><i class="fa-solid fa-chevron-down"></i></button>
                 </td>
                 <td data-label="Location" class="ins-td-sel ins-td-loc"><select onchange="handleEntryInput(this)">${_insOpzioniLocation(locVal)}</select></td>
+                <td data-label="Loc. 2" class="ins-td-sel ins-td-loc ins-td-loc2" title="Location secondaria: solo un'etichetta in più, la carta resta nella sua location"><select onchange="handleEntryInput(this)">${_insOpzioniLocation2(loc2Val)}</select></td>
                 <td data-label="Note" class="ins-td-note"><input type="text" placeholder="Nota (facoltativa)" value="${escapeHtml(notesVal)}" oninput="handleEntryInput(this)"></td>
                 <td class="ins-td-togli">
                     <button type="button" class="ins-togli" onclick="removeEntryRow(this)" title="Togli riga"><i class="fa-solid fa-trash"></i><span class="ins-solo-tel"> Togli riga</span></button>
@@ -361,10 +380,23 @@ async function caricaSelectLocationComune() {
             return nomi.map(n => `<option value="${escapeHtml(n)}" ${n === valore ? 'selected' : ''}>${escapeHtml(n === '?' ? '? (da decidere)' : n)}</option>`).join('');
         }
 
+        // Location secondaria (sql/158): "nessuna" in cima, niente "?".
+        function _insOpzioniLocation2(valore) {
+            const nomi = _insLocationNomi.filter(n => n !== '?');
+            if (valore && valore !== '?' && !nomi.includes(valore)) nomi.push(valore);
+            return `<option value="" ${!valore ? 'selected' : ''}>2ª: nessuna</option>` +
+                nomi.map(n => `<option value="${escapeHtml(n)}" ${n === valore ? 'selected' : ''}>2ª · ${escapeHtml(n)}</option>`).join('');
+        }
+
         function _insAggiornaSelectRighe() {
             document.querySelectorAll('#entryTableBody td:nth-child(8) select').forEach(sel => {
                 const v = sel.value;
                 sel.innerHTML = _insOpzioniLocation(v);
+                sel.value = v;
+            });
+            document.querySelectorAll('#entryTableBody td.ins-td-loc2 select').forEach(sel => {
+                const v = sel.value;
+                sel.innerHTML = _insOpzioniLocation2(v);
                 sel.value = v;
             });
         }
@@ -380,6 +412,9 @@ async function caricaSelectLocationComune() {
             if (tr.querySelector('td:nth-child(5) input').checked) parti.push('1ª ed.');
             if (tr.querySelector('td:nth-child(6) input').checked) parti.push('Sigillata');
             if (loc && loc !== '?') parti.push(loc);
+            const comune2 = document.getElementById('selectLocation2Comune')?.value || '';
+            const loc2 = _destinazioneInserimento === 'wishlist' ? '' : (comune2 || tr.querySelector('td.ins-td-loc2 select')?.value || '');
+            if (loc2 && loc2 !== '?' && loc2 !== loc) parti.push('2ª: ' + loc2);
             tr.querySelector('.ins-sommario').textContent = parti.join(' · ');
             const gia = tr.querySelector('.ins-gia');
             const n = nome.toLowerCase();

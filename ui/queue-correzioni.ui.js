@@ -149,6 +149,7 @@ async function caricaCarteConProblemi() {
                 owner_id: riga.owner_id, nome: overrides.nome ?? riga.nome, lingua: overrides.lingua || riga.lingua,
                 condizione: riga.condizione, qty: riga.qty, reverse: riga.reverse, first_ed: riga.first_ed,
                 nota: riga.nota, location: riga.location, tipo: riga.tipo, destinazione: riga.destinazione,
+                location_secondaria: riga.location_secondaria || null,   // sql/158-159
                 prezzo_obiettivo: riga.prezzo_obiettivo,
                 url_diretto: overrides.url_diretto !== undefined ? overrides.url_diretto : riga.url_diretto,
                 // sql/155: integrità della confezione (sealed) e spunta "Sigillata" (carte) restano come erano

@@ -57,6 +57,9 @@ function toggleMenuCompatto(id) {
             inputLocation.value = isWishlist ? '' : card.location;
             inputLocation.disabled = isWishlist;
             inputLocation.placeholder = isWishlist ? 'Non applicabile alla wishlist' : '';
+            // sql/158: location secondaria, solo per le carte della collezione
+            document.getElementById('campoEditLocation2').style.display = isWishlist ? 'none' : '';
+            document.getElementById('editLocation2').value = isWishlist ? '' : (card.locationSecondaria || '');
 
             const campoSigillata = document.getElementById('campoEditSigillata');
             campoSigillata.style.display = isWishlist ? 'none' : 'flex';
@@ -69,7 +72,7 @@ function toggleMenuCompatto(id) {
             }
 
             const datalist = document.getElementById('datalistEditLocation');
-            datalist.innerHTML = [...new Set(carteReali.map(c => c.location).filter(Boolean))]
+            datalist.innerHTML = [...new Set(carteReali.flatMap(c => [c.location, c.locationSecondaria]).filter(Boolean))]
                 .map(loc => `<option value="${escapeHtml(loc)}"></option>`).join('');
 
             document.getElementById('editCardModal').style.display = 'flex';
@@ -117,6 +120,9 @@ function toggleMenuCompatto(id) {
             }
             if (!isWishlist) {
                 aggiornamento.location = document.getElementById('editLocation').value.trim() || null;
+                const location2 = document.getElementById('editLocation2').value.trim();
+                aggiornamento.location_secondaria = (location2 && location2 !== '?'
+                    && location2.toLowerCase() !== String(aggiornamento.location || '').toLowerCase()) ? location2 : null;
                 aggiornamento.sigillata_originale = document.getElementById('editSigillata').checked;
                 if (_cartaInModifica.esitoControllo
                     && (aggiornamento.lingua !== _cartaInModifica.lang || aggiornamento.condizione !== _cartaInModifica.cond)) {
@@ -285,6 +291,13 @@ function toggleMenuCompatto(id) {
             return _locationDisponibiliCache;
         }
 
+        // sql/158: location secondaria dalla scheda della carta ('' = nessuna)
+        async function modificaLocationSecondariaInline(event, id, valoreAttuale, locationPrincipale) {
+            const span = event.target.closest('span');
+            const opzioni = ['', ...(await _locationDisponibili()).filter(n => n !== '?' && n !== locationPrincipale)];
+            _apriSelectInline(span, id, 'carte', 'location_secondaria', valoreAttuale || '', opzioni, 'Nessuna');
+        }
+
         async function modificaLocationInline(event, id, tabella, valoreAttuale) {
             const span = event.target.closest('span');
             let opzioni = await _locationDisponibili();
@@ -305,14 +318,14 @@ function toggleMenuCompatto(id) {
                 ['MT', 'NM+', 'NM', 'NM-', 'EX+', 'EX', 'EX-', 'GD+', 'GD', 'GD-', 'LP+', 'LP', 'LP-', 'PL+', 'PL', 'PL-', 'PO+', 'PO']);
         }
 
-        function _apriSelectInline(elemento, id, tabella, campo, valoreAttuale, opzioni) {
+        function _apriSelectInline(elemento, id, tabella, campo, valoreAttuale, opzioni, etichettaVuota = 'Qualsiasi') {
             if (valoreAttuale && !opzioni.includes(valoreAttuale)) opzioni = [valoreAttuale, ...opzioni];
             const select = document.createElement('select');
             select.style.cssText = 'font-size:0.75rem; padding:0.25rem; border-radius:6px; border:1px solid var(--primary); font-weight:700;';
             opzioni.forEach(opt => {
                 const o = document.createElement('option');
                 o.value = opt;
-                o.textContent = opt === '' ? 'Qualsiasi' : opt;
+                o.textContent = opt === '' ? etichettaVuota : opt;
                 if (opt === valoreAttuale) o.selected = true;
                 select.appendChild(o);
             });
@@ -321,7 +334,7 @@ function toggleMenuCompatto(id) {
             select.onchange = async () => {
                 const nuovo = select.value;
                 if (nuovo === valoreAttuale) { filterTable(); return; }
-                if (!(await chiediConferma({ titolo: 'Salvare la modifica?', testo: `"${campo}" = "${nuovo || 'Qualsiasi'}"`, conferma: 'Salva' }))) { filterTable(); return; }
+                if (!(await chiediConferma({ titolo: 'Salvare la modifica?', testo: `"${campo === 'location_secondaria' ? 'Location secondaria' : campo}" = "${nuovo || etichettaVuota}"`, conferma: 'Salva' }))) { filterTable(); return; }
                 const { error } = await cardsUpdateCampo(tabella, id, campo, nuovo);
                 if (error) { mostraAvviso(`❌ Errore nel salvare: ` + error.message); filterTable(); return; }
                 const carta = carteReali.find(c => String(c.id) === String(id));

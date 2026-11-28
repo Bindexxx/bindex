@@ -409,14 +409,20 @@ async function _locElimina(nomi) {
         ? `Eliminare la location "${eliminabili[0]}"? È vuota.`
         : `Eliminare ${eliminabili.length} location vuote?\n- ${eliminabili.join('\n- ')}`;
     if (saltate.length > 0) msg += `\n\nNon verranno eliminate:\n- ${saltate.join('\n- ')}`;
+    // sql/158: le carte che le usano come location secondaria la perdono (restano dove sono)
+    const conSecondaria = carteReali.filter(c => c.tabella === 'carte' && c.locationSecondaria && eliminabili.includes(c.locationSecondaria)).length;
+    if (conSecondaria > 0) msg += `\n\n${_locCarte(conSecondaria)} la ${conSecondaria === 1 ? 'usa' : 'usano'} come location secondaria: la perde${conSecondaria === 1 ? '' : 'ranno'}, restando dove ${conSecondaria === 1 ? 'è' : 'sono'}.`;
     if (!(await chiediConferma({ titolo: 'Eliminare le location?', testo: msg, conferma: 'Elimina', pericolo: true }))) return;
 
     _locOccupato = true;
     try {
         const userId = await authGetUserId();
         if (!userId) return;
+        const { error: errSec } = await locationSpostaSecondarie(userId, eliminabili, null);
+        if (errSec) { mostraAvviso('Errore nel togliere la location secondaria dalle carte: ' + errSec.message); return; }
         const { error } = await locationDeleteBatch(userId, eliminabili);
         if (error) { mostraAvviso('Errore nella cancellazione: ' + error.message); return; }
+        if (conSecondaria > 0 && typeof caricaCarteReali === 'function') await caricaCarteReali();
         _locInvalidaCache();
         _locSelezione.clear();
         _locChiudiModale();

@@ -5448,6 +5448,7 @@
             color: var(--primary-text, var(--primary)); font-size: 0.75rem; font-weight: 700; white-space: nowrap; max-width: 110px; overflow: hidden; text-overflow: ellipsis;
         }
         .coll-chip.wish { background: var(--danger-bg); color: var(--danger); }
+        .coll-chip-sec { font-size: inherit; font-weight: 500; opacity: 0.75; }  /* sql/158: location secondaria */
         .coll-var { color: var(--text-muted); font-size: 0.8rem; font-weight: 600; white-space: nowrap; }
         .coll-var.su { color: var(--success); }
         .coll-var.giu { color: var(--danger); }
@@ -6202,10 +6203,11 @@
             #inserimento .ins-solo-tel { display: none !important; }
             #inserimento .ins-solo-pc { display: initial !important; }
             #inserimento .ins-solo-pc-blocco { display: block !important; }
-            #inserimento .ins-comandi { flex-wrap: nowrap; align-items: center; }
+            #inserimento .ins-comandi { flex-wrap: wrap; align-items: center; }  /* sql/158: c'è anche "Location 2 per tutte" */
             #inserimento .ins-seg { flex: 0 0 auto; }
             #inserimento .ins-segbtn { padding: 8px 16px; }
             #inserimento .ins-location { flex: 0 1 380px; }
+            #inserimento .ins-location2 { flex: 0 1 300px; }
             #inserimento .ins-nuova-box { position: absolute; top: 100%; left: 0; right: 0; z-index: 3; margin-top: 6px; padding: 10px; border-radius: 12px; background: var(--card-bg); border: 1px solid var(--border-color); box-shadow: 0 8px 20px rgba(0,0,0,.1); }
             #inserimento .ins-tabella-box { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 18px; overflow-x: auto; overflow-y: hidden; }
             #inserimento table { display: table; }
@@ -6222,6 +6224,8 @@
             #inserimento .ins-td-sel select { padding: 6px 4px; font-size: 0.8rem; min-width: 58px; }
             #inserimento .ins-td-loc { min-width: 0; }
             #inserimento .ins-td-loc select { min-width: 104px; width: auto; }
+            /* sql/158: con la colonna "Loc. 2" le due location e il nome si stringono, così Note e cestino restano dentro */
+            #inserimento .ins-td-loc select, #inserimento .ins-td-loc2 select { min-width: 0; width: 100px; }
             #inserimento tbody tr td { padding: 7px 5px !important; }
             #inserimento .ins-chip { padding: 4px 9px; font-size: 0.74rem; }
             #inserimento .ins-td-qty .qty-control { justify-content: center; }
@@ -6231,7 +6235,7 @@
             #inserimento .ins-td-togli { text-align: center; }
             #inserimento .ins-piede { position: static; border: 0; border-top: 1px solid var(--border-color); border-radius: 0; box-shadow: none; }
             #inserimento #entryTableBodySealed tr td:first-child input { min-width: 220px; }
-            #inserimento .ins-td-nome input { min-width: 180px; }
+            #inserimento .ins-td-nome input { min-width: 150px; }  /* sql/158: era 180px, posto per "Loc. 2" */
             #inserimento .ins-td-note input { width: 70px; }
             #inserimento .ins-ultimo-lista { display: block; }
             #inserimento .ins-ultimo-riga b { font-size: 0.82rem; }

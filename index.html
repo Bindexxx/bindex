@@ -426,6 +426,13 @@
                             <button type="button" onclick="aggiungiNuovaLocationComune()">Aggiungi</button>
                         </div>
                     </div>
+                    <div id="pannelloLocation2Comune" class="ins-location ins-location2" title="Location secondaria: solo un'etichetta in più, la carta resta nella sua location">
+                        <i class="fa-regular fa-bookmark"></i>
+                        <label for="selectLocation2Comune">Location 2 per tutte</label>
+                        <select id="selectLocation2Comune" onchange="insLocationComuneCambiata()">
+                            <option value="">per riga</option>
+                        </select>
+                    </div>
                 </div>
 
                 <div class="ins-layout">
@@ -441,6 +448,7 @@
                                         <th colspan="3">Varianti</th>
                                         <th class="ins-th-centro">Q.tà</th>
                                         <th class="colonna-location">Location</th>
+                                        <th class="colonna-location" title="Location secondaria">Loc. 2</th>
                                         <th>Note</th>
                                         <th></th>
                                     </tr>
@@ -1856,6 +1864,10 @@
                 <label>Location</label>
                 <input type="text" id="editLocation" list="datalistEditLocation">
                 <datalist id="datalistEditLocation"></datalist>
+            </div>
+            <div class="auth-field" id="campoEditLocation2">
+                <label for="editLocation2">Location secondaria <small style="font-weight:400; color:var(--text-muted);">(facoltativa, solo un'etichetta: la carta resta nella sua location)</small></label>
+                <input type="text" id="editLocation2" list="datalistEditLocation" placeholder="Nessuna">
             </div>
             <div class="auth-field" id="campoEditSigillata" style="display:flex; align-items:center; gap:0.5rem;">
                 <input type="checkbox" id="editSigillata" style="width:auto;">
